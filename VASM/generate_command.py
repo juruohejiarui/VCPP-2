@@ -5,7 +5,7 @@ cnt = 0
 def generate(line : str, cmd : str, pos : int) :
     global cnt
     if pos >= len(line):
-        outfile.write('%-20s, ' % ('"' + cmd + '"'))
+        outfile.write('%-20s, ' % (cmd))
         cnt += 1
         if cnt % 10 == 0:
             outfile.write('\n')
