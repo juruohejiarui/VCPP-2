@@ -32,7 +32,7 @@ enum class DataTypeModifier {
 struct UnionData {
     Data data;
     DataTypeModifier dataType;
-}
+};
 enum class ValueTypeModifier {
     mr, r, t
 };
@@ -43,7 +43,8 @@ void stringSplit(const std::string &_str, const std::string &_sep, std::vector<s
 
 template<typename T>
 void readData(std::ifstream &_ifs, T &_data);
-void writeData(std::ofstraem &_ofs, const T &_data);
+template<typename T>
+void writeData(std::ofstream &_ofs, const T &_data);
 void readString(std::ifstream &_ifs, std::string &_str);
 void writeData(std::ofstream &_ofs, const std::string &_str);
 
