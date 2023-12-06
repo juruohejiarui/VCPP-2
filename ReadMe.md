@@ -3,4 +3,5 @@ This is the new version of $\texttt{VCPP}$, which inherits some features from th
 1. Generic support
 2. Function variable(not lambda, just reference to an existed function)
 3. Reflecting system
-4. Overriding and 
+4. Polymorphism
+5. Type inference for variables
