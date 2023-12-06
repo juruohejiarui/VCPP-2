@@ -1,9 +1,16 @@
 #include "tools.h"
 
-extern const std::string dataTypeModifierString[] = {"c", "b", "i16", "u16", "i32", "u32", "i64", "u64", "f32", "f64", "o", "B"};
-extern const std::string valueTypeModifierString[];
+extern const std::string dataTypeModifierString[] = {"c", "b", "i16", "u16", "i32", "u32", "i64", "u64", "f32", "f64", "o", "B", "unknown"};
+extern const std::string valueTypeModifierString[] = {"rm", "m", "t", "unknown"};
 
-void stringSplit(const std::string &_str, const std::string &_sep, std::vector<std::string> &_res) {
+DataTypeModifier getDataTypeModifier(const std::string &_name)
+{
+    for (int i = 0; i < dataTypeModifierNumber; i++) if (_name == dataTypeModifierString[i]) return (DataTypeModifier)i;
+    return (DataTypeModifier)dataTypeModifierNumber; 
+}
+
+void stringSplit(const std::string &_str, const std::string &_sep, std::vector<std::string> &_res)
+{
     _res.clear();
     std::size_t _pos = 0;
     while (_pos < _str.size()) {

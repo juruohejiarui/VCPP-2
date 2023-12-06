@@ -36,16 +36,20 @@ struct UnionData {
 enum class ValueTypeModifier {
     mr, r, t
 };
-extern std::string dataTypeModifierString[], valueTypeModifierString[];
+
+DataTypeModifier getDataTypeModifier(const std::string &_name);
+DataTypeModifier getValueTypeModifier(const std::string &_name);
+extern const std::string dataTypeModifierString[], valueTypeModifierString[];
+extern const int dataTypeModifierNumber, valueTypeModifierNumber;
 
 /// @brief separate STR using SEP and return RES
 void stringSplit(const std::string &_str, const std::string &_sep, std::vector<std::string> &_res);
+/// @brief separate STR using SEP and return RES
+void stringSplit(const std::string &_str, char _sep, std::vector<std::string> &_res);
 
-template<typename T>
-void readData(std::ifstream &_ifs, T &_data);
-template<typename T>
-void writeData(std::ofstream &_ofs, const T &_data);
+void readData(std::ifstream &_ifs, UnionData &_data);
+void writeData(std::ofstream &_ofs, UnionData &_data);
 void readString(std::ifstream &_ifs, std::string &_str);
-void writeData(std::ofstream &_ofs, const std::string &_str);
+void writeString(std::ofstream &_ofs, const std::string &_str);
 
 UnionData getTrueData(const std::string &_str);
