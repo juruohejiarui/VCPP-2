@@ -38,14 +38,20 @@ enum class ValueTypeModifier {
 };
 
 DataTypeModifier getDataTypeModifier(const std::string &_name);
-DataTypeModifier getValueTypeModifier(const std::string &_name);
+ValueTypeModifier getValueTypeModifier(const std::string &_name);
 extern const std::string dataTypeModifierString[], valueTypeModifierString[];
 extern const int dataTypeModifierNumber, valueTypeModifierNumber;
 
 /// @brief separate STR using SEP and return RES
+/// @param _str 
+/// @param _sep 
+/// @param _res 
 void stringSplit(const std::string &_str, const std::string &_sep, std::vector<std::string> &_res);
 /// @brief separate STR using SEP and return RES
-void stringSplit(const std::string &_str, char _sep, std::vector<std::string> &_res);
+/// @param _str 
+/// @param _sep 
+/// @param _res 
+void stringSplit(const std::string &_str, const char &_sep, std::vector<std::string> &_res);
 
 void readData(std::ifstream &_ifs, UnionData &_data);
 void writeData(std::ofstream &_ofs, UnionData &_data);

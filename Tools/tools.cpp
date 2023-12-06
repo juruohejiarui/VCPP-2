@@ -9,6 +9,12 @@ DataTypeModifier getDataTypeModifier(const std::string &_name)
     return (DataTypeModifier)dataTypeModifierNumber; 
 }
 
+ValueTypeModifier getValueTypeModifier(const std::string &_name)
+{
+    for (int i = 0; i < valueTypeModifierNumber; i++) if (_name == dataTypeModifierString[i]) return (ValueTypeModifier)i;
+    return (ValueTypeModifier)dataTypeModifierNumber; 
+}
+
 void stringSplit(const std::string &_str, const std::string &_sep, std::vector<std::string> &_res)
 {
     _res.clear();
@@ -17,5 +23,15 @@ void stringSplit(const std::string &_str, const std::string &_sep, std::vector<s
         std::size_t _rpos = _str.find(_sep, _pos);
         if (_rpos == std::string::npos) _rpos = _str.size();
         _res.push_back(_str.substr(_pos, _rpos - _pos)), _pos = _rpos + _sep.size() + 1;
+    }
+}
+
+void stringSplit(const std::string &_str, const char &_sep, std::vector<std::string> &_res) {
+    size_t lastPos = _str.find_first_not_of(_sep, 0);
+    size_t pos = _str.find(_sep, lastPos);
+    while (lastPos != std::string::npos) {
+        _res.emplace_back(_str.substr(lastPos, pos - lastPos));
+        lastPos = _str.find_first_not_of(_sep, pos);
+        pos = _str.find(_sep, lastPos);
     }
 }
