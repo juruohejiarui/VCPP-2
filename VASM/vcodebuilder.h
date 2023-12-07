@@ -4,26 +4,25 @@
 
 struct CommandInfo {
     Command command;
-    uint64_t argCount;
-    UnionData *args;
+    std::vector<UnionData> argument;
 
-    CommandInfo();
-    ~CommandInfo();
+    CommandInfo(Command _command = Command::none);
 };
 
 struct VCodePackage {
-    CommandInfo *commandList;
-    uint32 commandListLength;
+    std::vector<CommandInfo> commandList;
+    uint32 vcodeSize, mainAddr;
+    uint8 type;
     std::map<std::string, uint32_t> labelOffset;
     std::vector< std::pair<uint32_t, std::string> > hints;
     std::vector<std::string> stringList;
-    std::set<std::string> exposeSet;
-    std::set<std::string> externSet;
+    std::map<std::string, uint32> exposeMap;
+    std::vector<std::string> relyList;
+    std::vector<std::string> externList;
     uint64_t globalMemory;
     std::string definition;
 
     VCodePackage();
-    ~VCodePackage();
 
     void write(const std::string &_path);
     /// @brief read the package from the file and return if it is successful
