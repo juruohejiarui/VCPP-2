@@ -1,0 +1,10 @@
+#RELY "./basic.vlib"
+#RELY "./system.vlib"
+
+#EXTERN print@int, print@ulong
+
+setlocal 0x10
+pvar 0x0
+pvar 0x1
+i32_r_r_add
+call print@int

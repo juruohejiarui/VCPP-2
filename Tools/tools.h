@@ -1,4 +1,6 @@
 #pragma once
+#include <algorithm>
+#include <iostream>
 #include <fstream>
 #include <vector>
 #include <string>
@@ -69,8 +71,10 @@ void writeData(std::ofstream &_ofs, const UnionData &_data);
 void readString(std::ifstream &_ifs, std::string &_str);
 void writeString(std::ofstream &_ofs, const std::string &_str);
 
-UnionData getTrueData(const std::string &_str);
+UnionData getUnionData(const std::string &_str);
+std::string getString(const std::string &_str, int _start, int &_end);
 
 #define isLetter(ch) (('a' <= (ch) && (ch) <= 'z') || ('A' <= (ch) && (ch) <= 'Z') || (ch) == '_')
 #define isNumber(ch) ('0' <= (ch) && (ch) <= '9')
 #define toDigtal(ch) (('a' <= (ch) && ch <= 'f') ? ((ch) - 'a' + 10) : (('A' <= (ch) && (ch) <= 'F') ? ((ch) - 'A' + 10) : (ch) - '0'))
+#define isSeparator(ch) ((ch) == ' ' || (ch) == '\t' || (ch) == '\n' || (ch) == '\r') 

@@ -9,7 +9,7 @@ struct CommandInfo {
     CommandInfo(Command _command = Command::none);
 };
 
-struct VCodePackage {
+struct VASMPackage {
     std::vector<CommandInfo> commandList;
     uint32 vcodeSize, mainAddr;
     uint8 type;
@@ -18,13 +18,13 @@ struct VCodePackage {
     std::vector<std::string> stringList;
     std::map<std::string, uint32> exposeMap;
     std::vector<std::string> relyList;
-    std::vector<std::string> externList;
+    std::map<std::string, uint32> externMap;
     uint64_t globalMemory;
     std::string definition;
 
-    VCodePackage();
+    VASMPackage();
 
-    void write(const std::string &_path);
+    void write(const std::string &_path) const;
     /// @brief read the package from the file and return if it is successful
     /// @param _src_path the path of the file
     /// @return 
@@ -34,12 +34,17 @@ struct VCodePackage {
     /// @return 
     bool generate(const std::string &_src_path, bool _ignore_hint = false);
 
-    /// @brief merge two package and return if it is successful.
-    /// @param _dst the destination
-    /// @param _src the source
-    /// @return 
-    static bool merge(VCodePackage &_dst, VCodePackage &_src);
-
 private:
-    bool generateLine(const std::string &line, bool _ignore_hint = false);
+    /// @brief generate command for one line and return whether it is successful
+    /// @param line 
+    /// @param _ignore_hint 
+    /// @return 
+    bool generateLine(const std::string &_line, int _line_id, bool _ignore_hint = false);
 };
+
+/// @brief 
+/// @param type 
+/// @param _vasm_path 
+/// @param _rely_list 
+/// @return 
+bool buildVObj(uint8 type, const std::string &_vasm_path, const std::vector<std::string> &_rely_list);

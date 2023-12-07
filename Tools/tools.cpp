@@ -119,7 +119,7 @@ void writeString(std::ofstream &_ofs, const std::string &_str) {
     _ofs.write(_str.c_str(), sizeof(int8) * (_str.size() + 1));
 }
 
-UnionData getTrueData(const std::string &_str) {
+UnionData getUnionData(const std::string &_str) {
     bool hasDot = (_str.find('.') != std::string::npos);
     UnionData data;
     int base = 10, sign = 1, pos = 0;
@@ -181,4 +181,24 @@ UnionData getTrueData(const std::string &_str) {
         }
     }
     return data;
+}
+
+std::string getString(const std::string &_str, int _start, int &_end) {
+    std::string _res;
+    for (_end = _start + 1; _end < _str.size() && _str[_end] != '\"'; _end++) {
+        char newChar = _str[_end];
+        if (_str[_end] == '\\') {
+            _end++;
+            switch (_str[_end]) {
+                case 'n': newChar = '\n'; break;
+                case 'r': newChar = '\r'; break;
+                case 'b': newChar = '\b'; break;
+                case 't': newChar = '\t'; break;
+                case '0': newChar = '\0'; break;
+                default: newChar = _str[_end]; break;
+            }
+        }
+        _res.push_back(newChar);
+    }
+    return _res;
 }
