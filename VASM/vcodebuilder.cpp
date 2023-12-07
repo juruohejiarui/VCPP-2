@@ -58,6 +58,20 @@ void VCodePackage::write(const std::string &_path) {
 }
 
 bool VCodePackage::generate(const std::string &_src_path, bool _ignore_hint) {
-    bool succ = false;
+    bool succ = true;
+    std::ifstream ifs(_src_path);
+    if (!ifs.good()) {
+        printMessage(("Unable to read file " + _src_path + "\n").c_str(), messageTypeError);
+        return false;
+    }
+    while (!ifs.eof()) {
+        std::string line;
+        std::getline(ifs, line);
+        succ &= generateLine(line, _ignore_hint);
+    }
+    return succ;
+}
 
+bool VCodePackage::generateLine(const std::string &line, bool _ignore_hint) {
+    int pos = 0;
 }

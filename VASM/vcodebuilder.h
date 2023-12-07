@@ -39,4 +39,7 @@ struct VCodePackage {
     /// @param _src the source
     /// @return 
     static bool merge(VCodePackage &_dst, VCodePackage &_src);
+
+private:
+    bool generateLine(const std::string &line, bool _ignore_hint = false);
 };
