@@ -1,4 +1,4 @@
-#include "vcodebuilder.h"
+#include "vobjbuilder.h"
 
 CommandInfo::CommandInfo(Command _command) {
     this->command = _command;
@@ -11,16 +11,18 @@ VASMPackage::VASMPackage() {
     relyList.push_back("");
 }
 
-void VASMPackage::write(const std::string &_path) const {
+void VASMPackage::write(const std::string &_path, const std::string &_tdt_path) const {
     std::ofstream ofs(_path, std::ios::binary);
     UnionData data(DataTypeModifier::b);
+    // write the type of vobj file
     data.data.uint8_v = type, writeData(ofs, data);
     if (type == 1) {
+        // write the offset of label "main"
         data.type = DataTypeModifier::u32;
         data.data.uint32_v = mainAddr;
         writeData(ofs, data);
     } else {
-        writeString(ofs, definition);
+        // write expose list
         data.type = DataTypeModifier::u32;
         data.data.uint32_v = exposeMap.size();
         writeData(ofs, data);
@@ -30,26 +32,27 @@ void VASMPackage::write(const std::string &_path) const {
             writeData(ofs, data);
         }
     }
+
+    // write rely list
     data.type = DataTypeModifier::u32, data.data.uint32_v = relyList.size();
     writeData(ofs, data);
     for (auto &path : relyList) writeString(ofs, path);
 
-    data.type = DataTypeModifier::u32, data.data.uint32_v = externMap.size();
-    writeData(ofs, data);
-    std::vector< std::pair<uint32, std::string> > externList;
-    for (auto &iden : externMap) externList.push_back(std::make_pair(iden.second, iden.first));
-    std::sort(externList.begin(), externList.end());
-    for (auto pir : externList) writeString(ofs, pir.second);
-
+    // write string list
     data.type = DataTypeModifier::u32, data.data.uint32_v = stringList.size();
     writeData(ofs, data);
     for (auto &str : stringList) writeString(ofs, str);
 
+    // write definition
+    writeString(ofs, definition);
+
+    // write the global memory and vcode size
     data.type = DataTypeModifier::u64, data.data.uint64_v = globalMemory;
     writeData(ofs, data);
     data.type = DataTypeModifier::u32, data.data.uint32_v = vcodeSize;
     writeData(ofs, data);
 
+    // write the vcode
     for (auto &info : commandList) {
         uint32 vcode = getVCode(info.command);
         data.type = DataTypeModifier::u32;
@@ -276,6 +279,6 @@ bool VASMPackage::generateLine(const std::string &_line, int _line_id, bool _ign
     return true;
 }
 
-bool buildVObj(uint8 type, const std::string &_vasm_path, const std::vector<std::string> &_rely_list) {
-    
+bool buildVObj(uint8 type, const std::string &_vasm_path, const std::string &_tdt_path, const std::vector<std::string> &_rely_list) {
+
 }

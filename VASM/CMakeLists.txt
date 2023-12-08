@@ -2,8 +2,8 @@ cmake_minimum_required (VERSION 2.8)
 
 project (VASM)
 
-set(CXX_SOURCE ../Tools/tools.cpp ../Tools/message.cpp commandlist.cpp vcodebuilder.cpp main.cpp)
-set(CXX_HEADER ../Tools/tools.h ../Tools/message.h commandlist.h vcodebuilder.h)  
+set(CXX_SOURCE ../Tools/tools.cpp ../Tools/message.cpp commandlist.cpp vobjbuilder.cpp main.cpp)
+set(CXX_HEADER ../Tools/tools.h ../Tools/message.h commandlist.h vobjbuilder.h)  
 
 # set_target_properties(${TARGET} PROPERTIES
 #     COMPILE_FLAGS "-pthread"

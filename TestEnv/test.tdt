@@ -1,0 +1,6 @@
+System {
+    io {
+        print@object
+        input@type
+    }
+}

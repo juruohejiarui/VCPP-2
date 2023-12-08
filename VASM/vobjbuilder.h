@@ -27,7 +27,7 @@ struct VASMPackage {
 
     VASMPackage();
 
-    void write(const std::string &_path) const;
+    void write(const std::string &_path, const std::string &_tdt_path) const;
     /// @brief read the package from the file and return if it is successful
     /// @param _src_path the path of the file
     /// @return 
@@ -50,4 +50,4 @@ private:
 /// @param _vasm_path 
 /// @param _rely_list 
 /// @return 
-bool buildVObj(uint8 type, const std::string &_vasm_path, const std::vector<std::string> &_rely_list);
+bool buildVObj(uint8 type, const std::string &_vasm_path, const std::string &_tdt_path, const std::vector<std::string> &_rely_list);

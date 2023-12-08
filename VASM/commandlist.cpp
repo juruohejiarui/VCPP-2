@@ -296,7 +296,7 @@ const std::string commandString[] = {
 };
 
 const std::string pretreatCommandString[] {
-    "RELY", "EXTERN", "EXPOSE", "LABEL", "GLOMEM", "HINT", "STRING", "DEF", "unknown"
+    "RELY", "EXTERN", "EXPOSE", "LABEL", "GLOMEM", "HINT", "STRING", "DEF", "TYPEDATA_BEGIN", "TYPEDATA_END", "unknown"
 };
 
 extern const int tCommandNumber = 54;
@@ -309,7 +309,7 @@ extern const std::string tCommandString[] = {
     "unknown"
 };
 
-extern const int commandNumber = 2692, pretreatCommandNumber = 8;
+extern const int commandNumber = 2692, pretreatCommandNumber = 10;
 
 Command getCommand(const std::string &_name) {
     for (int i = 0; i < commandNumber; i++) if (_name == commandString[i]) return (Command)i;
@@ -323,26 +323,4 @@ TCommand getTCommand(const std::string &_name) {
 PretreatCommand getPretreatCommand(const std::string &_name) {
     for (int i = 0; i < pretreatCommandNumber; i++) if (_name == pretreatCommandString[i]) return (PretreatCommand)i;
     return (PretreatCommand)pretreatCommandNumber;
-}
-
-uint32 getVCode(Command _cmd) {
-    std::vector<std::string> prt;
-    stringSplit(commandString[(int)_cmd], '_', prt);
-    uint32 res = 0;
-    res = (uint32)getTCommand(prt.back());
-    int modifierPos = 16;
-    for (int i = 0; i < prt.size() - 1; i++) {
-        auto dtModifier = getDataTypeModifier(prt[i]);
-        if (dtModifier == DataTypeModifier::unknown) {
-            auto vlModifier = getValueTypeModifier(prt[i]);
-            res |= ((uint32)vlModifier) << modifierPos;
-            modifierPos += 2;
-        } else {
-            res |= ((uint32)dtModifier) << modifierPos;
-            modifierPos += 4;
-        }
-    }
-    printf("%s -> %#32x\n", commandString[(int)_cmd].c_str(), res);
-
-    return res;
 }
