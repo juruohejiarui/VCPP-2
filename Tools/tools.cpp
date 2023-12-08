@@ -4,8 +4,8 @@ const std::string dataTypeModifierString[] = {"c", "b", "i16", "u16", "i32", "u3
 const std::string valueTypeModifierString[] = {"rm", "m", "t", "unknown"};
 const int dataTypeModifierNumber = 12, valueTypeModifierNumber = 3;
 
-UnionData::UnionData() { type = (DataTypeModifier)dataTypeModifierNumber; }
-UnionData::UnionData(DataTypeModifier _type) { type = _type; }
+UnionData::UnionData() { type = (DataTypeModifier)dataTypeModifierNumber, data.uint64_v = 0; }
+UnionData::UnionData(DataTypeModifier _type) { type = _type, data.uint64_v = 0; }
 
 DataTypeModifier getDataTypeModifier(const std::string &_name)
 {
@@ -17,6 +17,13 @@ ValueTypeModifier getValueTypeModifier(const std::string &_name)
 {
     for (int i = 0; i < valueTypeModifierNumber; i++) if (_name == dataTypeModifierString[i]) return (ValueTypeModifier)i;
     return ValueTypeModifier::unknown;
+}
+
+bool isInteger(DataTypeModifier _dt_mfr) {
+    return _dt_mfr <= DataTypeModifier::u64 || _dt_mfr == DataTypeModifier::B;
+}
+bool isReference(ValueTypeModifier _vl_mfr) {
+    return _vl_mfr == ValueTypeModifier::mr || _vl_mfr == ValueTypeModifier::r;
 }
 
 void stringSplit(const std::string &_str, const std::string &_sep, std::vector<std::string> &_res)
@@ -38,6 +45,46 @@ void stringSplit(const std::string &_str, const char &_sep, std::vector<std::str
         lastPos = _str.find_first_not_of(_sep, pos);
         pos = _str.find(_sep, lastPos);
     }
+}
+
+std::string toString(const UnionData &_data) {
+    static char strBuf[128];
+    switch (_data.type) {
+        case DataTypeModifier::unknown:
+            sprintf(strBuf, "<unknown data>");
+            break;
+        case DataTypeModifier::b:
+            sprintf(strBuf, "<uint8 %#04x>", _data.data.uint8_v);
+            break;
+        case DataTypeModifier::c:
+            sprintf(strBuf, "<int8 %#04x>", _data.data.int8_v);
+            break;
+        case DataTypeModifier::i16:
+            sprintf(strBuf, "<int16 %#06x>", _data.data.uint16_v);
+            break;
+        case DataTypeModifier::u16:
+            sprintf(strBuf, "<uint16 %#06x>", _data.data.int16_v);
+            break;
+        case DataTypeModifier::i32:
+            sprintf(strBuf, "<int32 %#010x>", _data.data.uint32_v);
+            break;
+        case DataTypeModifier::u32:
+            sprintf(strBuf, "<uint32 %#010x>", _data.data.int32_v);
+            break;
+        case DataTypeModifier::i64:
+            sprintf(strBuf, "<int64 %#018x>", _data.data.uint32_v);
+            break;
+        case DataTypeModifier::u64:
+            sprintf(strBuf, "<uint64 %#018x>", _data.data.int32_v);
+            break;
+        case DataTypeModifier::f32:
+            sprintf(strBuf, "<float32 %10lf>", _data.data.float32_v);
+            break;
+        case DataTypeModifier::f64:
+            sprintf(strBuf, "<float64 %10lf>", _data.data.float64_v);
+            break;
+    }
+    return std::string(strBuf);
 }
 
 void readData(std::ifstream &_ifs, UnionData &_data) {
@@ -121,7 +168,7 @@ void writeString(std::ofstream &_ofs, const std::string &_str) {
 
 UnionData getUnionData(const std::string &_str) {
     bool hasDot = (_str.find('.') != std::string::npos);
-    UnionData data;
+    UnionData data(DataTypeModifier::unknown);
     int base = 10, sign = 1, pos = 0;
     if (_str[0] == '-') sign = -1, pos = 1;
     // handler float
@@ -147,7 +194,7 @@ UnionData getUnionData(const std::string &_str) {
         // check the base
         if (_str.size() - pos > 1) {
             if (_str[pos] == '0') {
-                if (_str.size() - pos > 2 && _str[pos + 1] == 'x') base = 16, pos++;
+                if (_str.size() - pos > 2 && _str[pos + 1] == 'x') base = 16, pos += 2;
                 else base = 8, pos++;
             }
         }
@@ -160,13 +207,13 @@ UnionData getUnionData(const std::string &_str) {
             else data.type = DataTypeModifier::u32, data.data.uint32_v = 0;
         } else {
             if (_str[endPos - 1] == 'l') data.type = DataTypeModifier::i64, data.data.int64_v = 0, endPos--;
-            else if (_str[endPos - 1] == 's') data.type = DataTypeModifier::i16, data.data.int16_v = 06, endPos--;
+            else if (_str[endPos - 1] == 's') data.type = DataTypeModifier::i16, data.data.int16_v = 0, endPos--;
             else if (_str[endPos - 1] == 'i') data.type =DataTypeModifier::i32, data.data.int32_v = 0, endPos--;
-            else data.type = DataTypeModifier::i32, data.data.int64_v = 0;
+            else data.type = DataTypeModifier::i32, data.data.int32_v = 0;
         }
-        data.data.uint64_v;
-        for (int i = 0; i < endPos; i++) 
-            data.data.uint64_v = data.data.uint64_v * base + toDigtal(_str.size());
+        data.data.uint64_v = 0;
+        for (int i = pos; i < endPos; i++) 
+            data.data.uint64_v = data.data.uint64_v * base + toDigtal(_str[i]);
         switch (data.type) {
             case DataTypeModifier::i64:
                 data.data.int64_v = sign * (int64)data.data.uint64_v; break;

@@ -22,6 +22,8 @@ arrnew
 [c/b/i16/u16/i32/u32/i64/u64/f32/f64/o/B]_[mr/r/t]_arrmem
 call
 vcall
+jmp
+[r/mr/t]_[jz/jp]
 setarg
 ret
 vret

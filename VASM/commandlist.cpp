@@ -286,6 +286,8 @@ const std::string commandString[] = {
     "o_mr_arrmem"      , "o_r_arrmem"       , "o_t_arrmem"       , "B_mr_arrmem"      , "B_r_arrmem"       , "B_t_arrmem"       , 
     "call"             , 
     "vcall"            , 
+    "jmp"              , 
+    "r_jz"             , "r_jp"             , "mr_jz"            , "mr_jp"            , "t_jz"             , "t_jp"             , 
     "setarg"           , 
     "ret"              , 
     "vret"             , 
@@ -297,14 +299,17 @@ const std::string pretreatCommandString[] {
     "RELY", "EXTERN", "EXPOSE", "LABEL", "GLOMEM", "HINT", "STRING", "DEF", "unknown"
 };
 
-extern const int tCommandNumber = 51;
+extern const int tCommandNumber = 54;
 extern const std::string tCommandString[] = {
-    "none", "mov", "addmov", "submov", "mulmov", "divmov", "andmov", "ormov", "xormov", "shlmov", "shrmov", "modmov", "add", "sub", "mul", "div", "and", "or", "xor", "shl", "shr", "mod", "not", "pinc", "sinc", "pdec", "sdec", "eq", "ne", "gt", "ge", "ls", "le", "cvt", "pop", "push", "pvar", "pglo", "cpy", "setlocal", "getarg", "new", "arrnew", "gvl", "mem", "arrmem", "call", "vcall", "setarg", "ret", "vret", 
-
+    "none", "mov", "addmov", "submov", "mulmov", "divmov", "andmov", "ormov", "xormov", "shlmov", "shrmov", "modmov", 
+    "add", "sub", "mul", "div", "and", "or", "xor", "shl", "shr", "mod", "not", 
+    "pinc", "sinc", "pdec", "sdec", "eq", "ne", "gt", "ge", "ls", "le", "cvt", 
+    "pop", "push", "pvar", "pglo", "cpy", "setlocal", "getarg", "new", "arrnew", "gvl", "mem", "arrmem", 
+    "call", "vcall", "jmp", "jz", "jp", "setarg", "ret", "vret", 
     "unknown"
 };
 
-extern const int commandNumber = 2658, pretreatCommandNumber = 8;
+extern const int commandNumber = 2692, pretreatCommandNumber = 8;
 
 Command getCommand(const std::string &_name) {
     for (int i = 0; i < commandNumber; i++) if (_name == commandString[i]) return (Command)i;

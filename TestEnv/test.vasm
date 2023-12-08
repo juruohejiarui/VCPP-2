@@ -1,10 +1,79 @@
 #RELY "./basic.vlib"
 #RELY "./system.vlib"
 
-#EXTERN print@int, print@ulong
+#EXTERN System@inputInt21
 
-setlocal 0x10
-pvar 0x0
-pvar 0x1
-i32_r_r_add
-call print@int
+#LABEL main
+    setlocal 0x10
+    #HINT 0 : n, 1 : i, 3 : f
+    #HINT f = int[0x10000]
+    o_pvar 0x2
+    i32_push 4
+    i32_push 0x10000
+    arrnew 1
+    o_r_t_mov
+
+    #HINT f[0] = 1;
+    o_pvar 0x3
+    i32_push 0
+    i32_r_arrmem 1
+    i32_push 1
+    i32_mr_t_mov
+
+    #HINT f[1] = 1;
+    o_pvar 0x3
+    i32_push 1
+    i32_r_arrmem 1
+    i32_push 1
+    i32_mr_t_mov
+
+    #HINT n = System.inputInt32()
+    i32_pvar 0x0
+    call System@inputInt32
+    i32_r_t_mov
+    
+    #HINT i = 2;
+    i32_pvar 0x1
+    i32_push 2
+    i32_r_t_mov
+
+    #LABEL loop_start_1
+        #HINT if (i > n) break;
+        i32_pvar 0x1
+        i32_pvar 0x0
+        i32_r_r_gt
+        t_jz loop_end_1
+        
+        #HINT f[i] = f[i - 1] + f[i - 2];
+        o_pvar 0x3
+        i32_pvar 0x1
+        i32_r_gvl
+        i32_r_arrmem 1
+        o_pvar 0x3
+        i32_pvar 0x1
+        i32_push 1
+        i32_r_t_sub
+        i32_r_arrmem 1
+        o_pvar 0x3
+        i32_pvar 0x1
+        i32_push 2
+        i32_r_t_sub
+        i32_r_arrmem 1
+        i32_mr_mr_add
+        i32_mr_t_mov
+
+        #HINT i++;
+        i32_pvar 0x1
+        i32_r_sinc
+        i32_r_pop
+        
+        jmp loop_start_1
+    #LABEL loop_end_1
+
+    o_pvar 0x3
+    u64_push 0x0lu
+    o_r_t_mov
+
+    i32_push 0
+    vret
+    

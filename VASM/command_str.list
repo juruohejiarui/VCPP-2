@@ -283,6 +283,8 @@
 "o_mr_arrmem"      , "o_r_arrmem"       , "o_t_arrmem"       , "B_mr_arrmem"      , "B_r_arrmem"       , "B_t_arrmem"       , 
 "call"             , 
 "vcall"            , 
+"jmp"              , 
+"r_jz"             , "r_jp"             , "mr_jz"            , "mr_jp"            , "t_jz"             , "t_jp"             , 
 "setarg"           , 
 "ret"              , 
 "vret"             , 

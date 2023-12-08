@@ -44,7 +44,10 @@
         "random": "cpp",
         "string": "cpp",
         "string_view": "cpp",
-        "set": "cpp"
+        "set": "cpp",
+        "iostream": "cpp",
+        "ctime": "cpp",
+        "iomanip": "cpp"
     },
     "cmake.configureOnOpen": true
 }

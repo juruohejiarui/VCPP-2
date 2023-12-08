@@ -288,15 +288,21 @@ enum class Command {
     o_mr_arrmem        , o_r_arrmem         , o_t_arrmem         , B_mr_arrmem        , B_r_arrmem         , B_t_arrmem         , 
     call               , 
     vcall              , 
+    jmp                , 
+    r_jz               , r_jp               , mr_jz              , mr_jp              , t_jz               , t_jp               , 
     setarg             , 
     ret                , 
     vret               , 
+
 
     unknown
 };
 
 enum class TCommand {
-    none, mov, addmov, submov, mulmov, divmov, andmov, ormov, xormov, shlmov, shrmov, modmov, add, sub, mul, div, _and, _or, _xor, shl, shr, mod, _not, pinc, sinc, pdec, sdec, eq, ne, gt, ge, ls, le, cvt, pop, push, pvar, pglo, cpy, setlocal, getarg, _new, arrnew, gvl, mem, arrmem, call, vcall, setarg, ret, vret, 
+    none, mov, addmov, submov, mulmov, divmov, andmov, ormov, xormov, shlmov, shrmov, modmov, 
+    add, sub, mul, div, _and, _or, _xor, shl, shr, mod, _not, pinc, sinc, pdec, sdec, 
+    eq, ne, gt, ge, ls, le, cvt, pop, push, pvar, pglo, cpy, setlocal, getarg, 
+    _new, arrnew, gvl, mem, arrmem, call, vcall, jmp, jz, jp, setarg, ret, vret, 
     unknown,
 };
 

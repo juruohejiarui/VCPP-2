@@ -8,6 +8,7 @@ CommandInfo::CommandInfo(Command _command) {
 VASMPackage::VASMPackage() {
     type = 0;
     vcodeSize = mainAddr = globalMemory = 0;
+    relyList.push_back("");
 }
 
 void VASMPackage::write(const std::string &_path) const {
@@ -75,6 +76,30 @@ bool VASMPackage::generate(const std::string &_src_path, bool _ignore_hint) {
         lineId++;
         succ &= generateLine(line, lineId, _ignore_hint);
     }
+
+    #ifndef NDEBUG
+    std::cout << "labels: \n";
+    for (auto &pir : labelOffset) std::cout << "Offset 0x" << std::setfill('0') << std::setbase(16) << std::setw(8) << pir.second << " : " << pir.first << std::endl;  
+    std::cout << "hints: \n";
+    for (auto &pir : hints) std::cout << "Offset 0x" << std::setfill('0') << std::setbase(16) << std::setw(8) << pir.first << " : " << pir.second << std::endl;  
+    std::cout << "strings \n";
+    for (auto &pir : stringList) std::cout << pir << std::endl;  
+    std::cout << "expose labels: \n";
+    for (auto &pir : exposeMap) std::cout << pir.first << std::endl; 
+    std::cout << "rely paths: \n";
+    for (auto &pir : relyList) std::cout << pir << std::endl;   
+    std::cout << "extern labels: \n";
+    for (auto &pir : externMap) std::cout<< pir.first << " : " << pir.second << std::endl;  
+    std::cout << "global memory : " << globalMemory << std::endl;
+    std::cout << "definition : \n" << definition << std::endl << std::setfill(' ');
+    for (auto &cInfo : commandList) {
+        std::cout << std::setfill('0') << "0x" << std::setiosflags(std::ios::right) << std::setw(8) << cInfo.offset << " ";
+        std::cout << std::setfill(' ') << std::setiosflags(std::ios::left) << std::setw(18) << commandString[(uint32)cInfo.command] << " ";
+        std::cout << std::setw(7) << tCommandString[((uint32)cInfo.vcode) & ((1 << 16) - 1)] << ' ';
+        for (auto &arg : cInfo.argument) std::cout << toString(arg) << " ";
+        std::cout << cInfo.argumentString << std::endl;
+    }
+    #endif
     return succ;
 }
 
@@ -117,43 +142,45 @@ bool VASMPackage::generateLine(const std::string &_line, int _line_id, bool _ign
         }
         switch (cmd) {
             case PretreatCommand::DEF:
-                definition += lst[1], definition.push_back('\n'); break;
+                definition += lst[2], definition.push_back('\n'); break;
             case PretreatCommand::EXPOSE:
-                exposeMap[lst[1]] = 0; break;
+                exposeMap[lst[2]] = 0; break;
             case PretreatCommand::EXTERN:
-                if (!externMap.count(lst[1])) 
-                    externMap.insert(std::make_pair(lst[1], externMap.size()));
+                if (!externMap.count(lst[2])) 
+                    externMap.insert(std::make_pair(lst[2], externMap.size()));
                 break;
             case PretreatCommand::RELY:
-                relyList.push_back(lst[1]);
+                relyList.push_back(lst[2]);
                 break;
             case PretreatCommand::GLOMEM:
-                globalMemory += getUnionData(lst[1]).data.uint64_v;
+                globalMemory += getUnionData(lst[2]).data.uint64_v;
                 break;
             case PretreatCommand::HINT:
-                hints.push_back(std::make_pair(vcodeSize, lst[1]));
+                hints.push_back(std::make_pair(vcodeSize, lst[2]));
                 break;
             case PretreatCommand::LABEL:
-                if (labelOffset.count(lst[1])) {
-                    printError(_line_id, "Multiple definition of label " + lst[1]);
+                if (labelOffset.count(lst[2])) {
+                    printError(_line_id, "Multiple definition of label " + lst[2]);
                     return false;
                 }
-                labelOffset[lst[1]] = vcodeSize;
+                labelOffset[lst[2]] = vcodeSize;
                 break;
         }
     } else {
-        std::vector<std::string> prt;
-        stringSplit(lst[1], '_', prt);
-        TCommand tcmd = getTCommand(prt.back());
-        Command cmd = getCommand(lst[1]);
+        std::vector<std::string> cmdParts;
+        stringSplit(lst[0], '_', cmdParts);
+        TCommand tcmd = getTCommand(cmdParts.back());
+        Command cmd = getCommand(lst[0]);
         if (tcmd == TCommand::unknown) {
-            printError(_line_id, "Invalid command name " + prt.back());
+            printError(_line_id, "Invalid command name " + cmdParts.back());
             return false;
         } else if (cmd == Command::unknown) {
-             printError(_line_id, "Invalid command name " + lst[1]);
+            printError(_line_id, "Invalid command name " + lst[0]);
             return false;
         }
         auto cInfo = CommandInfo(cmd);
+        cInfo.offset = vcodeSize;
+        // caluclate the modifiers and vcode
         DataTypeModifier dtMfr1 = DataTypeModifier::unknown,    dtMfr2 = DataTypeModifier::unknown;
         ValueTypeModifier vtMfr1 = ValueTypeModifier::unknown,  vtMfr2 = ValueTypeModifier::unknown;
         uint32 vcode = 0;
@@ -182,8 +209,8 @@ bool VASMPackage::generateLine(const std::string &_line, int _line_id, bool _ign
             case TCommand::ge:
             case TCommand::ls:
             case TCommand::le:
-                dtMfr1 = getDataTypeModifier(prt[0]);
-                vtMfr1 = getValueTypeModifier(prt[1]), vtMfr2 = getValueTypeModifier(prt[2]);
+                dtMfr1 = getDataTypeModifier(cmdParts[0]);
+                vtMfr1 = getValueTypeModifier(cmdParts[1]), vtMfr2 = getValueTypeModifier(cmdParts[2]);
                 break;
             case TCommand::_not:
             case TCommand::pinc:
@@ -194,17 +221,61 @@ bool VASMPackage::generateLine(const std::string &_line, int _line_id, bool _ign
             case TCommand::gvl:
             case TCommand::arrmem:
             case TCommand::mem:
-                dtMfr1 = getDataTypeModifier(prt[0]);
-                vtMfr1 = getValueTypeModifier(prt[1]);
+                dtMfr1 = getDataTypeModifier(cmdParts[0]);
+                vtMfr1 = getValueTypeModifier(cmdParts[1]);
                 break;
-            case TCommand::_new:
-            case TCommand::arrnew:
-
+            case TCommand::pvar:
+            case TCommand::pglo:
+            case TCommand::cpy:
+                dtMfr1 = getDataTypeModifier(cmdParts[0]);
+                break;
+            case TCommand::cvt:
+                dtMfr1 = getDataTypeModifier(cmdParts[0]), dtMfr2 = getDataTypeModifier(cmdParts[1]);
+                vtMfr1 = getValueTypeModifier(cmdParts[2]);
+                break;
+            case TCommand::jz:
+            case TCommand::jp:
+                vtMfr1 = getValueTypeModifier(cmdParts[0]);
+                break;
         }
         cInfo.vcode = (uint32)tcmd
                  | (((uint32)dtMfr1) << 16) | (((uint32)dtMfr2) << 20)
                  | (((uint32)vtMfr1) << 24) | (((uint32)vtMfr2) << 26);
+
+        // get the arguments
+        UnionData arg1;
+        std::string argStr1;
+        int argCnt = 0;
         
+        switch (tcmd) {
+            case TCommand::setlocal:
+            case TCommand::getarg:
+            case TCommand::arrnew:
+            case TCommand::arrmem:
+            case TCommand::mem:
+            case TCommand::pvar:
+            case TCommand::pglo:
+            case TCommand::push:
+                arg1 = getUnionData(lst[1]);
+                if (!isInteger(arg1.type)) {
+                    printError(_line_id, "The argument of command " + tCommandString[(int)tcmd] + " must be integer.\n");
+                    return false;
+                }
+                cInfo.argument.push_back(arg1);
+                break;
+            case TCommand::call:
+            case TCommand::jz:
+            case TCommand::jp:
+            case TCommand::jmp:
+                cInfo.argumentString = lst[1];
+                break;
+        }
+        commandList.push_back(cInfo);
+        vcodeSize += sizeof(uint32) + sizeof(uint64) * cInfo.argument.size() + sizeof(uint64) * (!cInfo.argumentString.empty());
     }
     return true;
+}
+
+bool buildVObj(uint8 type, const std::string &_vasm_path, const std::vector<std::string> &_rely_list) {
+    
 }

@@ -22,5 +22,5 @@ void printMessage(const std::string &_message, MessageType _type) {
 }
 
 void printError(int _line, const std::string &_message) {
-    printMessage("Line " + std::to_string(_line) + " " + _message, MessageType::Error);
+    printMessage("Line " + std::to_string(_line) + " " + _message + "\n", MessageType::Error);
 }

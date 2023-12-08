@@ -1,6 +1,7 @@
 #pragma once
 #include <algorithm>
 #include <iostream>
+#include <iomanip>
 #include <fstream>
 #include <vector>
 #include <string>
@@ -46,6 +47,8 @@ struct UnionData {
     UnionData();
     UnionData(DataTypeModifier _type);
 };
+
+
 enum class ValueTypeModifier {
     mr, r, t, unknown,
 };
@@ -54,6 +57,9 @@ DataTypeModifier getDataTypeModifier(const std::string &_name);
 ValueTypeModifier getValueTypeModifier(const std::string &_name);
 extern const std::string dataTypeModifierString[], valueTypeModifierString[];
 extern const int dataTypeModifierNumber, valueTypeModifierNumber;
+
+bool isInteger(DataTypeModifier _dt_mfr);
+bool isRefereence(ValueTypeModifier _vl_mfr);
 
 /// @brief separate STR using SEP and return RES
 /// @param _str 
@@ -73,6 +79,8 @@ void writeString(std::ofstream &_ofs, const std::string &_str);
 
 UnionData getUnionData(const std::string &_str);
 std::string getString(const std::string &_str, int _start, int &_end);
+
+std::string toString(const UnionData &_data);
 
 #define isLetter(ch) (('a' <= (ch) && (ch) <= 'z') || ('A' <= (ch) && (ch) <= 'Z') || (ch) == '_')
 #define isNumber(ch) ('0' <= (ch) && (ch) <= '9')
