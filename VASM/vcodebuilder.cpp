@@ -2,6 +2,7 @@
 
 CommandInfo::CommandInfo(Command _command) {
     this->command = _command;
+    vcode = 0;
 }
 
 VASMPackage::VASMPackage() {
@@ -144,14 +145,18 @@ bool VASMPackage::generateLine(const std::string &_line, int _line_id, bool _ign
         std::vector<std::string> prt;
         stringSplit(lst[1], '_', prt);
         TCommand tcmd = getTCommand(prt.back());
+        Command cmd = getCommand(lst[1]);
         if (tcmd == TCommand::unknown) {
             printError(_line_id, "Invalid command name " + prt.back());
             return false;
-        }
-        if (getCommand(lst[1]) == Command::unknown) {
+        } else if (cmd == Command::unknown) {
              printError(_line_id, "Invalid command name " + lst[1]);
             return false;
         }
+        auto cInfo = CommandInfo(cmd);
+        DataTypeModifier dtMfr1 = DataTypeModifier::unknown,    dtMfr2 = DataTypeModifier::unknown;
+        ValueTypeModifier vtMfr1 = ValueTypeModifier::unknown,  vtMfr2 = ValueTypeModifier::unknown;
+        uint32 vcode = 0;
         switch (tcmd) {
             case TCommand::mov:
             case TCommand::addmov:
@@ -171,8 +176,35 @@ bool VASMPackage::generateLine(const std::string &_line, int _line_id, bool _ign
             case TCommand::_and:
             case TCommand::_or:
             case TCommand::_xor:
+            case TCommand::eq:
+            case TCommand::ne:
+            case TCommand::gt:
+            case TCommand::ge:
+            case TCommand::ls:
+            case TCommand::le:
+                dtMfr1 = getDataTypeModifier(prt[0]);
+                vtMfr1 = getValueTypeModifier(prt[1]), vtMfr2 = getValueTypeModifier(prt[2]);
                 break;
+            case TCommand::_not:
+            case TCommand::pinc:
+            case TCommand::pdec:
+            case TCommand::sinc:
+            case TCommand::sdec:
+            case TCommand::pop:
+            case TCommand::gvl:
+            case TCommand::arrmem:
+            case TCommand::mem:
+                dtMfr1 = getDataTypeModifier(prt[0]);
+                vtMfr1 = getValueTypeModifier(prt[1]);
+                break;
+            case TCommand::_new:
+            case TCommand::arrnew:
+
         }
+        cInfo.vcode = (uint32)tcmd
+                 | (((uint32)dtMfr1) << 16) | (((uint32)dtMfr2) << 20)
+                 | (((uint32)vtMfr1) << 24) | (((uint32)vtMfr2) << 26);
+        
     }
     return true;
 }

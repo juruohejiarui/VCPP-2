@@ -4,6 +4,7 @@
 
 struct CommandInfo {
     Command command;
+    uint32 vcode;
     std::vector<UnionData> argument;
 
     CommandInfo(Command _command = Command::none);

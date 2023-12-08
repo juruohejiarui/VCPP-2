@@ -6,7 +6,7 @@ none
 [c/b/i16/u16/i32/u32/i64/u64]_[mr/r/t]_[mr/r/t]_[and/or/xor/shl/shr/mod]
 [c/b/i16/u16/i32/u32/i64/u64]_[mr/r/t]_not
 [c/b/i16/u16/i32/u32/i64/u64]_[mr/r]_[pinc/sinc/pdec/sdec]
-[c/b/i16/u16/i32/u32/i64/u64/f32/f64/B]_[eq/ne/gt/ge/ls/le]
+[c/b/i16/u16/i32/u32/i64/u64/f32/f64/B]_[mr/r/t]_[mr/r/t]_[eq/ne/gt/ge/ls/le]
 [c/b/i16/u16/i32/u32/i64/u64/f32/f64/B]_[c/b/i16/u16/i32/u32/i64/u64/f32/f64/B]_[r/mr/t]_cvt
 [c/b/i16/u16/i32/u32/i64/u64/f32/f64/o/B]_[r/mr/t]_pop
 [c/b/i16/u16/i32/u32/i64/u64/f32/f64]_push
