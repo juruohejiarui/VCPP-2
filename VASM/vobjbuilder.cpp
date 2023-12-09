@@ -6,63 +6,8 @@ CommandInfo::CommandInfo(Command _command) {
 }
 
 VASMPackage::VASMPackage() {
-    type = 0;
     vcodeSize = mainAddr = globalMemory = 0;
     relyList.push_back("");
-}
-
-void VASMPackage::write(const std::string &_path, const std::string &_tdt_path) const {
-    std::ofstream ofs(_path, std::ios::binary);
-    UnionData data(DataTypeModifier::b);
-    // write the type of vobj file
-    data.data.uint8_v = type, writeData(ofs, data);
-    if (type == 1) {
-        // write the offset of label "main"
-        data.type = DataTypeModifier::u32;
-        data.data.uint32_v = mainAddr;
-        writeData(ofs, data);
-    } else {
-        // write expose list
-        data.type = DataTypeModifier::u32;
-        data.data.uint32_v = exposeMap.size();
-        writeData(ofs, data);
-        for (auto &pir : exposeMap) {
-            writeString(ofs, pir.first);
-            data.type = DataTypeModifier::u32, data.data.uint32_v = pir.second;
-            writeData(ofs, data);
-        }
-    }
-
-    // write rely list
-    data.type = DataTypeModifier::u32, data.data.uint32_v = relyList.size();
-    writeData(ofs, data);
-    for (auto &path : relyList) writeString(ofs, path);
-
-    // write string list
-    data.type = DataTypeModifier::u32, data.data.uint32_v = stringList.size();
-    writeData(ofs, data);
-    for (auto &str : stringList) writeString(ofs, str);
-
-    // write definition
-    writeString(ofs, definition);
-
-    // write the global memory and vcode size
-    data.type = DataTypeModifier::u64, data.data.uint64_v = globalMemory;
-    writeData(ofs, data);
-    data.type = DataTypeModifier::u32, data.data.uint32_v = vcodeSize;
-    writeData(ofs, data);
-
-    // write the vcode
-    for (auto &info : commandList) {
-        uint32 vcode = getVCode(info.command);
-        data.type = DataTypeModifier::u32;
-        for (auto arg : info.argument) {
-            auto relt = arg.type;
-            arg.type = DataTypeModifier::u64;
-            writeData(ofs, arg);
-            arg.type = relt;
-        }
-    }
 }
 
 bool VASMPackage::generate(const std::string &_src_path, bool _ignore_hint) {
@@ -94,7 +39,6 @@ bool VASMPackage::generate(const std::string &_src_path, bool _ignore_hint) {
     std::cout << "extern labels: \n";
     for (auto &pir : externMap) std::cout<< pir.first << " : " << pir.second << std::endl;  
     std::cout << "global memory : " << globalMemory << std::endl;
-    std::cout << "definition : \n" << definition << std::endl << std::setfill(' ');
     for (auto &cInfo : commandList) {
         std::cout << std::setfill('0') << "0x" << std::setiosflags(std::ios::right) << std::setw(8) << cInfo.offset << " ";
         std::cout << std::setfill(' ') << std::setiosflags(std::ios::left) << std::setw(18) << commandString[(uint32)cInfo.command] << " ";
@@ -126,8 +70,8 @@ bool VASMPackage::generateLine(const std::string &_line, int _line_id, bool _ign
         } else if (isNumber(_line[pos])) {
             while (rpos + 1 < _line.size() && (isLetter(_line[rpos + 1]) || isNumber(_line[rpos + 1]) || _line[rpos + 1] == '.')) rpos++;
             newPart = _line.substr(pos, rpos - pos + 1);
-        } else if (isLetter(_line[pos]) || _line[pos] == '@') {
-            while (rpos + 1 < _line.size() && (isNumber(_line[rpos + 1]) || isLetter(_line[rpos + 1]) || _line[rpos + 1] == '@'))
+        } else if (isLetter(_line[pos]) || _line[pos] == '.') {
+            while (rpos + 1 < _line.size() && (isNumber(_line[rpos + 1]) || isLetter(_line[rpos + 1]) || _line[rpos + 1] == '.'))
                 rpos++;
             newPart = _line.substr(pos, rpos - pos + 1);
         } else if (_line[pos] == '#') {
@@ -144,8 +88,6 @@ bool VASMPackage::generateLine(const std::string &_line, int _line_id, bool _ign
             return false;
         }
         switch (cmd) {
-            case PretreatCommand::DEF:
-                definition += lst[2], definition.push_back('\n'); break;
             case PretreatCommand::EXPOSE:
                 exposeMap[lst[2]] = 0; break;
             case PretreatCommand::EXTERN:
@@ -224,6 +166,7 @@ bool VASMPackage::generateLine(const std::string &_line, int _line_id, bool _ign
             case TCommand::gvl:
             case TCommand::arrmem:
             case TCommand::mem:
+            case TCommand::vmem:
                 dtMfr1 = getDataTypeModifier(cmdParts[0]);
                 vtMfr1 = getValueTypeModifier(cmdParts[1]);
                 break;
@@ -270,6 +213,7 @@ bool VASMPackage::generateLine(const std::string &_line, int _line_id, bool _ign
             case TCommand::jz:
             case TCommand::jp:
             case TCommand::jmp:
+            case TCommand::_new:
                 cInfo.argumentString = lst[1];
                 break;
         }
@@ -279,6 +223,6 @@ bool VASMPackage::generateLine(const std::string &_line, int _line_id, bool _ign
     return true;
 }
 
-bool buildVObj(uint8 type, const std::string &_vasm_path, const std::string &_tdt_path, const std::vector<std::string> &_rely_list) {
-
+bool buildVObj(uint8 type, const std::string &_vasm_path, const std::string &_tdt_path, const std::string &_def_path, VOBJPackage &_vobj_pkg, const std::vector<std::string> &_rely_list) {
+    
 }

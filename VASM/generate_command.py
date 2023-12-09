@@ -16,7 +16,10 @@ def generate(line : str, cmd : str, pos : int) :
     global cnt
     if pos >= len(line):
         outfile_str.write('%-19s, ' % ('"' + cmd + '"'))
-        outfile.write('%-19s, ' % (cmd))
+        if cmd == 'new' or cmd == 'and' or cmd == 'or' or cmd == 'xor' or cmd == 'not': 
+            outfile.write('%-19s, ' % ('_' + cmd))
+        else:    
+            outfile.write('%-19s, ' % (cmd))
         tcmd = cmd.split('_')[-1]
         if tcmd not in tcmd_dic:
             tcmd_dic[tcmd] = 1
@@ -45,7 +48,15 @@ if __name__ == "__main__":
         outfile.write('\n')
         outfile_str.write('\n')
         cnt = 0
-
+    
+    cnt = 0
     for tcmd in tcmd_ls:
-        toutfile.write(f'{tcmd}, ')
-        toutfile_str.write(f'"{tcmd}", ')
+        cnt += 1
+        if tcmd == 'new' or tcmd == 'and' or tcmd == 'or' or tcmd == 'xor' or tcmd == 'not':
+            toutfile.write('%-10s, ' % ('_' + tcmd))
+        else:
+            toutfile.write('%-10s, ' % (tcmd))
+        toutfile_str.write('%-10s, ' % ('"' + tcmd + '"'))
+        if cnt % 10 == 0:
+            toutfile.write('\n')
+            toutfile_str.write('\n')

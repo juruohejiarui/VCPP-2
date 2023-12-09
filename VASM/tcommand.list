@@ -1,1 +1,7 @@
-none, mov, addmov, submov, mulmov, divmov, andmov, ormov, xormov, shlmov, shrmov, modmov, add, sub, mul, div, and, or, xor, shl, shr, mod, not, pinc, sinc, pdec, sdec, eq, ne, gt, ge, ls, le, cvt, pop, push, pvar, pglo, cpy, setlocal, getarg, new, arrnew, gvl, mem, arrmem, call, vcall, jmp, jz, jp, setarg, ret, vret, 
+none      , mov       , addmov    , submov    , mulmov    , divmov    , andmov    , ormov     , xormov    , shlmov    , 
+shrmov    , modmov    , add       , sub       , mul       , div       , _and      , _or       , _xor      , shl       , 
+shr       , mod       , _not      , pinc      , sinc      , pdec      , sdec      , eq        , ne        , gt        , 
+ge        , ls        , le        , cvt       , pop       , push      , pvar      , pglo      , cpy       , setlocal  , 
+getarg    , _new      , arrnew    , gvl       , mem       , vmem      , arrmem    , call      , vcall     , jmp       , 
+jz        , jp        , setarg    , ret       , vret      , catostr   , strtoca   , getcls    , getmtds   , getflds   , 
+getctrs   , 

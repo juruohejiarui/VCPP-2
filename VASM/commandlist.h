@@ -273,7 +273,7 @@ enum class Command {
     o_cpy              , B_cpy              , 
     setlocal           , 
     getarg             , 
-    _new                , 
+    _new               , 
     arrnew             , 
     c_mr_gvl           , c_r_gvl            , b_mr_gvl           , b_r_gvl            , i16_mr_gvl         , i16_r_gvl          , u16_mr_gvl         , u16_r_gvl          , i32_mr_gvl         , i32_r_gvl          , 
     u32_mr_gvl         , u32_r_gvl          , i64_mr_gvl         , i64_r_gvl          , u64_mr_gvl         , u64_r_gvl          , f32_mr_gvl         , f32_r_gvl          , f64_mr_gvl         , f64_r_gvl          , 
@@ -282,27 +282,39 @@ enum class Command {
     u16_r_mem          , u16_t_mem          , i32_mr_mem         , i32_r_mem          , i32_t_mem          , u32_mr_mem         , u32_r_mem          , u32_t_mem          , i64_mr_mem         , i64_r_mem          , 
     i64_t_mem          , u64_mr_mem         , u64_r_mem          , u64_t_mem          , f32_mr_mem         , f32_r_mem          , f32_t_mem          , f64_mr_mem         , f64_r_mem          , f64_t_mem          , 
     o_mr_mem           , o_r_mem            , o_t_mem            , B_mr_mem           , B_r_mem            , B_t_mem            , 
+    c_mr_vmem          , c_r_vmem           , c_t_vmem           , b_mr_vmem          , b_r_vmem           , b_t_vmem           , i16_mr_vmem        , i16_r_vmem         , i16_t_vmem         , u16_mr_vmem        , 
+    u16_r_vmem         , u16_t_vmem         , i32_mr_vmem        , i32_r_vmem         , i32_t_vmem         , u32_mr_vmem        , u32_r_vmem         , u32_t_vmem         , i64_mr_vmem        , i64_r_vmem         , 
+    i64_t_vmem         , u64_mr_vmem        , u64_r_vmem         , u64_t_vmem         , f32_mr_vmem        , f32_r_vmem         , f32_t_vmem         , f64_mr_vmem        , f64_r_vmem         , f64_t_vmem         , 
+    o_mr_vmem          , o_r_vmem           , o_t_vmem           , B_mr_vmem          , B_r_vmem           , B_t_vmem           , 
     c_mr_arrmem        , c_r_arrmem         , c_t_arrmem         , b_mr_arrmem        , b_r_arrmem         , b_t_arrmem         , i16_mr_arrmem      , i16_r_arrmem       , i16_t_arrmem       , u16_mr_arrmem      , 
     u16_r_arrmem       , u16_t_arrmem       , i32_mr_arrmem      , i32_r_arrmem       , i32_t_arrmem       , u32_mr_arrmem      , u32_r_arrmem       , u32_t_arrmem       , i64_mr_arrmem      , i64_r_arrmem       , 
     i64_t_arrmem       , u64_mr_arrmem      , u64_r_arrmem       , u64_t_arrmem       , f32_mr_arrmem      , f32_r_arrmem       , f32_t_arrmem       , f64_mr_arrmem      , f64_r_arrmem       , f64_t_arrmem       , 
     o_mr_arrmem        , o_r_arrmem         , o_t_arrmem         , B_mr_arrmem        , B_r_arrmem         , B_t_arrmem         , 
     call               , 
-    vcall              , 
+    mr_vcall           , r_vcall            , t_vcall            , 
     jmp                , 
     r_jz               , r_jp               , mr_jz              , mr_jp              , t_jz               , t_jp               , 
     setarg             , 
     ret                , 
     vret               , 
-
-
+    catostr            , 
+    strtoca            , 
+    getcls             , 
+    getmtds            , 
+    getflds            , 
+    getctrs            , 
+    
     unknown
 };
 
 enum class TCommand {
-    none, mov, addmov, submov, mulmov, divmov, andmov, ormov, xormov, shlmov, shrmov, modmov, 
-    add, sub, mul, div, _and, _or, _xor, shl, shr, mod, _not, pinc, sinc, pdec, sdec, 
-    eq, ne, gt, ge, ls, le, cvt, pop, push, pvar, pglo, cpy, setlocal, getarg, 
-    _new, arrnew, gvl, mem, arrmem, call, vcall, jmp, jz, jp, setarg, ret, vret, 
+    none      , mov       , addmov    , submov    , mulmov    , divmov    , andmov    , ormov     , xormov    , shlmov    , 
+    shrmov    , modmov    , add       , sub       , mul       , div       , _and      , _or       , _xor      , shl       , 
+    shr       , mod       , _not      , pinc      , sinc      , pdec      , sdec      , eq        , ne        , gt        , 
+    ge        , ls        , le        , cvt       , pop       , push      , pvar      , pglo      , cpy       , setlocal  , 
+    getarg    , _new      , arrnew    , gvl       , mem       , vmem      , arrmem    , call      , vcall     , jmp       , 
+    jz        , jp        , setarg    , ret       , vret      , catostr   , strtoca   , getcls    , getmtds   , getflds   , 
+    getctrs   , 
     unknown,
 };
 
