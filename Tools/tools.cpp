@@ -2,7 +2,8 @@
 
 const std::string dataTypeModifierString[] = {"c", "b", "i16", "u16", "i32", "u32", "i64", "u64", "f32", "f64", "o", "B", "unknown"};
 const std::string valueTypeModifierString[] = {"rm", "m", "t", "unknown"};
-const int dataTypeModifierNumber = 12, valueTypeModifierNumber = 3;
+const std::string identifierVisibilityString[] = {"public", "private", "protected", "unknown"};
+const int dataTypeModifierNumber = 12, valueTypeModifierNumber = 3, identifierVisibilityNumber = 3;
 
 UnionData::UnionData() { type = (DataTypeModifier)dataTypeModifierNumber, data.uint64_v = 0; }
 UnionData::UnionData(DataTypeModifier type) { type = type, data.uint64_v = 0; }
@@ -17,6 +18,10 @@ ValueTypeModifier getValueTypeModifier(const std::string &name)
 {
     for (int i = 0; i < valueTypeModifierNumber; i++) if (name == dataTypeModifierString[i]) return (ValueTypeModifier)i;
     return ValueTypeModifier::unknown;
+}
+IdentifierVisibility getIdentifierVisibility(const std::string &name) {
+    for (int i = 0; i < identifierVisibilityNumber; i++) if (name == identifierVisibilityString[i]) return (IdentifierVisibility)i;
+    return IdentifierVisibility::unknown;
 }
 
 bool isInteger(DataTypeModifier dtMfr) {

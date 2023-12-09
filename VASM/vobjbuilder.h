@@ -55,7 +55,7 @@ struct MethodTypeData {
 struct ClassTypeData {
     IdentifierVisibility visibility;
     std::string name, fullName;
-    uint64 offset;
+    uint64 offset, size;
     std::map<std::string, VariableTypeData *> fields;
     std::map<std::string, MethodTypeData *> methods;
 

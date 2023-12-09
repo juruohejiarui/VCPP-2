@@ -199,7 +199,6 @@ bool VASMPackage::generateLine(const std::string &line, int lineId, bool ignoreH
             case TCommand::getarg:
             case TCommand::arrnew:
             case TCommand::arrmem:
-            case TCommand::mem:
             case TCommand::pvar:
             case TCommand::pglo:
             case TCommand::push:
@@ -210,6 +209,7 @@ bool VASMPackage::generateLine(const std::string &line, int lineId, bool ignoreH
                 }
                 cInfo.argument.push_back(arg1);
                 break;
+            case TCommand::mem:
             case TCommand::call:
             case TCommand::jz:
             case TCommand::jp:
@@ -244,7 +244,7 @@ DataTypePackage::~DataTypePackage()
 }
 
 enum class TypeDataTokenType {
-    Function, Variable, Class, Namespace, TypeIdentifier, Visibility, SBracketL, SBracketR, MBracketL, MBracketR, LBracketL, LBracketR
+    Function, Variable, Class, Namespace, TypeIdentifier, Data, Visibility, LBracketL, LBracketR, unknown,
 };
 
 struct TypeDataToken {
@@ -253,17 +253,154 @@ struct TypeDataToken {
     std::string dataString;
 };
 
-bool getTypeDataTokenList(std::vector<TypeDataToken> &tkList) {
+bool getTypeDataTokenList(std::vector<TypeDataToken> &tkList, const std::string &text) {
     bool succ = true;
+    std::stack<int> pos;
+    for (uint32 l = 0, r = 0; l < text.size(); l = ++r) {
+        char ch = text[l];
+        TypeDataToken token;
+        token.type = TypeDataTokenType::unknown;
+        if (ch == '0') {
+            while (r < text.size() - 1 && (text[r + 1] == 'x' || isNumber(text[r + 1]))) r++;
+            token.type = TypeDataTokenType::Data;
+            token.dataString = text.substr(l, r - l + 1);
+            token.data = getUnionData(token.dataString);
+            token.data.type = DataTypeModifier::u64;
+        } else if (ch == 'V') {
+            r += 2;
+            while (r + 1 < text.size() - 1 && (isLetter(text[r + 1]))) r++;
+            token.type = TypeDataTokenType::Variable;
+            token.dataString = text.substr(l + 2, r - l + 1);
+        } else if (ch == 'F') {
+            r += 2;
+            while (r + 1 < text.size() - 1 && (isLetter(text[r + 1]) || text[r + 1] == '@' || text[r + 1] == '.')) r++;
+            token.type = TypeDataTokenType::Function;
+            token.dataString = text.substr(l + 2, r - l + 1);
+        } else if (ch == 'C') {
+            r += 2;
+            while (r + 1 < text.size() - 1 && (isLetter(text[r + 1]))) r++;
+            token.type = TypeDataTokenType::Class;
+            token.dataString = text.substr(l + 2, r - l + 1);
+        } else if (ch == 'N') {
+            r += 2;
+            while (r + 1 < text.size() - 1 && (isLetter(text[r + 1]))) r++;
+            token.type = TypeDataTokenType::Namespace;
+            token.dataString = text.substr(l + 2, r - l + 1);
+        } else if (ch == 'v') {
+            r += 2;
+            while (r + 1 < text.size() - 1 && (isLetter(text[r + 1]))) r++;
+            token.type = TypeDataTokenType::Visibility;
+            token.data.data.uint32_v = (uint32)getIdentifierVisibility(text.substr(l + 2, r - l + 1));
+        } else if (ch == ':') {
+            r += 2;
+            while (r + 1 < text.size() - 1 && (isLetter(text[r + 1]) || text[r + 1])) r++;
+            token.type = TypeDataTokenType::TypeIdentifier;
+            token.dataString = text.substr(l + 2, r - l + 1);
+        } else if (ch == '{') {
+            token.type = TypeDataTokenType::LBracketL;
+            pos.push(tkList.size());
+        } else if (ch == '}') {
+            token.type = TypeDataTokenType::LBracketR;
+            tkList[pos.top()].data.data.uint32_v = tkList.size();
+            token.data.data.uint32_v = pos.top();
+            pos.pop();
+        }
+        tkList.emplace_back(token);
+    }
     return succ;
 }
-
-bool compileTypeDataFile(DataTypePackage *dtPkg, std::vector<TypeDataToken> &tkList, uint32 l, uint32 r) {
-    return false;
+bool compileTypeDataFile(VariableTypeData *var, const std::vector<TypeDataToken> &tkList, uint32 l, uint32 &r) {
+    var->visibility = (IdentifierVisibility)tkList[l + 1].data.data.uint32_v;
+    var->offset = tkList[l + 2].data.data.uint64_v;
+    r = l + 2;
+    return true;
 }
-bool compileTypeDataFile(DataTypePackage *dtPkg, std::vector<TypeDataToken> &tkList) {
+bool compileTypeDataFile(MethodTypeData *mtd, const std::vector<TypeDataToken> &tkList, uint32 l, uint32 &r) {
+    // get the visibility and result type
+    mtd->visibility = (IdentifierVisibility)tkList[l + 1].data.data.uint32_v;
+    mtd->resultType = tkList[l + 2].dataString;
+    r = tkList[l + 3].data.data.uint32_v;
+    // get the arguement list
+    for (int i = l + 4; i < r; i++) mtd->argumentType.push_back(tkList[i].dataString);
+    return true;
+}
+bool compileTypeDataFile(ClassTypeData *cls, const std::vector<TypeDataToken> &tkList, uint32 l, uint32 &r) {
+    // get the size and visibility
+    cls->size = tkList[l + 1].data.data.uint64_v, cls->offset = 0;
+    cls->visibility = (IdentifierVisibility)tkList[l + 2].data.data.uint32_v;
+    r = tkList[l + 3].data.data.uint32_v;
+    uint32 fr = l + 4, to = fr;
+    bool succ = true;
+    while (to < r) {
+        const auto &tk = tkList[fr];
+        switch (tk.type) {
+            case TypeDataTokenType::Function:
+            {
+                auto mtd = new MethodTypeData;
+                mtd->name = tk.dataString;
+                cls->methods.insert(std::make_pair(tk.dataString, mtd));
+                succ &= compileTypeDataFile(mtd, tkList, fr, to);
+                break;
+            }
+            case TypeDataTokenType::Variable:
+            {
+                auto var = new VariableTypeData;
+                var->name = tk.dataString;
+                cls->fields.insert(std::make_pair(tk.dataString, var));
+                succ &= compileTypeDataFile(var, tkList, fr + 1, to);
+                break;
+            }
+        }
+        fr = ++to;
+    }
+}
+bool compileTypeDataFile(NamespaceTypeData *nsp, const std::vector<TypeDataToken> &tkList, uint32 l, uint32 r) {
+    uint32 fr = l + 1, to = l + 1;
+    bool succ = true;
+    while (to < r) {
+        const auto &tk = tkList[fr];
+        switch (tk.type) {
+            case TypeDataTokenType::Class:
+            {
+                auto cls = new ClassTypeData;
+                cls->name = tk.dataString;
+                nsp->classes.insert(std::make_pair(tk.dataString, cls));
+                succ &= compileTypeDataFile(cls, tkList, fr, to);
+                break;
+            }
+            case TypeDataTokenType::Function:
+            {
+                auto mtd = new MethodTypeData;
+                mtd->name = tk.dataString;
+                nsp->methods.insert(std::make_pair(tk.dataString, mtd));
+                succ &= compileTypeDataFile(mtd, tkList, fr, to);
+                break;
+            }
+            case TypeDataTokenType::Variable:
+            {
+                auto var = new VariableTypeData;
+                var->name = tk.dataString;
+                nsp->variables.insert(std::make_pair(tk.dataString, var));
+                succ &= compileTypeDataFile(var, tkList, fr + 1, to);
+                break;
+            }
+            case TypeDataTokenType::Namespace:
+            {
+                auto nsp = new NamespaceTypeData;
+                nsp->name = tk.dataString;
+                nsp->children.insert(std::make_pair(tk.dataString, nsp));
+                to = tkList[l + 1].data.data.uint32_v;
+                succ &= compileTypeDataFile(nsp, tkList, l + 1, tkList[l + 1].data.data.uint32_v);
+                break;
+            }
+        }
+        fr = ++to;
+    }
+    return succ;
+}
+bool compileTypeDataFile(DataTypePackage *dtPkg, const std::vector<TypeDataToken> &tkList) {
     dtPkg->root = new NamespaceTypeData;
-    return compileTypeDataFile(dtPkg, tkList, 1lu, tkList.size() - 1);
+    return compileTypeDataFile(dtPkg->root, tkList, 1lu, tkList.size() - 1);
 }
 bool DataTypePackage::generate(const std::string &filePath) {
     std::vector<TypeDataToken> tkList;
@@ -279,7 +416,7 @@ bool DataTypePackage::generate(const std::string &filePath) {
         std::getline(ifs, line), text += line + '\n';
     }
     // get the token list
-    if (!getTypeDataTokenList(tkList)) return false;
+    if (!getTypeDataTokenList(tkList, text)) return false;
     // compile this file
     int tdtSize = 0;
     if (!compileTypeDataFile(this, tkList)) return false;

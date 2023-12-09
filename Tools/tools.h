@@ -54,12 +54,13 @@ enum class ValueTypeModifier {
 };
 
 enum class IdentifierVisibility {
-    Private, Public, Protected
+    Private, Public, Protected, unknown
 };
 DataTypeModifier getDataTypeModifier(const std::string &name);
 ValueTypeModifier getValueTypeModifier(const std::string &name);
-extern const std::string dataTypeModifierString[], valueTypeModifierString[];
-extern const int dataTypeModifierNumber, valueTypeModifierNumber;
+IdentifierVisibility getIdentifierVisibility(const std::string &name);
+extern const std::string dataTypeModifierString[], valueTypeModifierString[], identifierVisibilityString[];
+extern const int dataTypeModifierNumber, valueTypeModifierNumber, identifierVisibilityNumber;
 
 bool isInteger(DataTypeModifier dtMfr);
 bool isRefereence(ValueTypeModifier vlMfr);
