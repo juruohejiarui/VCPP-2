@@ -323,16 +323,16 @@ extern const std::string tCommandString[] = {
 
 extern const int commandNumber = 2736, pretreatCommandNumber = 10;
 
-Command getCommand(const std::string &_name) {
-    for (int i = 0; i < commandNumber; i++) if (_name == commandString[i]) return (Command)i;
+Command getCommand(const std::string &name) {
+    for (int i = 0; i < commandNumber; i++) if (name == commandString[i]) return (Command)i;
     return (Command)commandNumber;
 }
 
-TCommand getTCommand(const std::string &_name) {
-    for (int i = 0; i < tCommandNumber; i++) if (_name == tCommandString[i]) return (TCommand)i;
+TCommand getTCommand(const std::string &name) {
+    for (int i = 0; i < tCommandNumber; i++) if (name == tCommandString[i]) return (TCommand)i;
     return (TCommand)commandNumber;
 }
-PretreatCommand getPretreatCommand(const std::string &_name) {
-    for (int i = 0; i < pretreatCommandNumber; i++) if (_name == pretreatCommandString[i]) return (PretreatCommand)i;
+PretreatCommand getPretreatCommand(const std::string &name) {
+    for (int i = 0; i < pretreatCommandNumber; i++) if (name == pretreatCommandString[i]) return (PretreatCommand)i;
     return (PretreatCommand)pretreatCommandNumber;
 }

@@ -1,6 +1,5 @@
-System {
-    io {
-        print@object
-        input@type
+{
+    class ArrayList {
+        
     }
 }

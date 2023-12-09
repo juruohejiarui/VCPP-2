@@ -332,8 +332,6 @@ extern const std::string tCommandString[];
 extern const int pretreatCommandNumber;
 extern const std::string pretreatCommandString[];
 
-Command getCommand(const std::string &_name);
-TCommand getTCommand(const std::string &_name);
-PretreatCommand getPretreatCommand(const std::string &_name);
-
-uint32 getVCode(Command _cmd);
+Command getCommand(const std::string &name);
+TCommand getTCommand(const std::string &name);
+PretreatCommand getPretreatCommand(const std::string &name);

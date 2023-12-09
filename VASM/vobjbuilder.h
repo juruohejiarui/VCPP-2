@@ -25,33 +25,41 @@ struct VASMPackage {
 
     VASMPackage();
     /// @brief generate this package using the source and return if it is successful
-    /// @param _src_path the path of the source
+    /// @param srcPath the path of the source
     /// @return 
-    bool generate(const std::string &_src_path, bool _ignore_hint = false);
+    bool generate(const std::string &srcPath, bool ignoreHint = false);
 
 private:
     /// @brief generate command for one line and return whether it is successful
     /// @param line 
-    /// @param _ignore_hint 
+    /// @param ignoreHint 
     /// @return 
-    bool generateLine(const std::string &_line, int _line_id, bool _ignore_hint = false);
+    bool generateLine(const std::string &line, int lineId, bool ignoreHint = false);
 };
 
 struct ClassTypeData;
-struct FieldTypeData {
-
-};
 struct VariableTypeData {
+    IdentifierVisibility visibility;
+    std::string name;
+    std::string type;
 
+    uint64 offset;
 };
 struct MethodTypeData {
-
+    IdentifierVisibility visibility;
+    std::string name;
+    std::string resultType;
+    uint64 offset;
+    std::vector<std::string> argumentType;
 };
 struct ClassTypeData {
-    std::string name;
+    IdentifierVisibility visibility;
+    std::string name, fullName;
     uint64 offset;
     std::map<std::string, VariableTypeData *> fields;
-    std::map<std::string, 
+    std::map<std::string, MethodTypeData *> methods;
+
+    ~ClassTypeData();
 };
 struct NamespaceTypeData {
     std::string name;
@@ -59,14 +67,29 @@ struct NamespaceTypeData {
     std::map<std::string, MethodTypeData *> methods;
     std::map<std::string, VariableTypeData *> variables;
     std::map<std::string, ClassTypeData *> classes;
+
+    ~NamespaceTypeData();
 };
 struct DataTypePackage {
-    NamespaceTypeData root;
+    NamespaceTypeData *root = nullptr;
+    ~DataTypePackage();
+
+    bool generate(const std::string &filePath);
 };
 
 struct VOBJPackage {
     VASMPackage vasmPackage;
     DataTypePackage dataTypePackage;
     std::string definition;
+    
+    /// @brief read the content of the vobj file
+    /// @param path 
+    /// @return if it is successful
+    bool read(const std::string &path);
 };
-bool buildVObj(uint8 type, const std::string &_vasm_path, const std::string &_tdt_path, const std::string &_def_path, VOBJPackage &_vobj_pkg, const std::vector<std::string> &_rely_list);
+bool buildVObj( uint8 type,
+                const std::string &vasmPath, 
+                const std::string &typeDataPath,
+                const std::string &defPath, 
+                const std::vector<std::string> &relyList,
+                const std::string &target);

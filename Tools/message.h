@@ -5,7 +5,7 @@
 enum class MessageType {
     Error, Warning, Log
 };
-void printMessage(const char *_message, MessageType _type);
-void printMessage(const std::string &_message, MessageType _type);
+void printMessage(const char *msg, MessageType type);
+void printMessage(const std::string &msg, MessageType type);
 
-void printError(int _line, const std::string &_message);
+void printError(int lineId, const std::string &msg);

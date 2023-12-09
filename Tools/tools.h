@@ -45,7 +45,7 @@ struct UnionData {
     Data data;
     DataTypeModifier type;
     UnionData();
-    UnionData(DataTypeModifier _type);
+    UnionData(DataTypeModifier type);
 };
 
 
@@ -53,34 +53,37 @@ enum class ValueTypeModifier {
     mr, r, t, unknown,
 };
 
-DataTypeModifier getDataTypeModifier(const std::string &_name);
-ValueTypeModifier getValueTypeModifier(const std::string &_name);
+enum class IdentifierVisibility {
+    Private, Public, Protected
+};
+DataTypeModifier getDataTypeModifier(const std::string &name);
+ValueTypeModifier getValueTypeModifier(const std::string &name);
 extern const std::string dataTypeModifierString[], valueTypeModifierString[];
 extern const int dataTypeModifierNumber, valueTypeModifierNumber;
 
-bool isInteger(DataTypeModifier _dt_mfr);
-bool isRefereence(ValueTypeModifier _vl_mfr);
+bool isInteger(DataTypeModifier dtMfr);
+bool isRefereence(ValueTypeModifier vlMfr);
 
 /// @brief separate STR using SEP and return RES
-/// @param _str 
-/// @param _sep 
-/// @param _res 
-void stringSplit(const std::string &_str, const std::string &_sep, std::vector<std::string> &_res);
+/// @param str 
+/// @param sep 
+/// @param res 
+void stringSplit(const std::string &str, const std::string &sep, std::vector<std::string> &res);
 /// @brief separate STR using SEP and return RES
-/// @param _str 
-/// @param _sep 
-/// @param _res 
-void stringSplit(const std::string &_str, const char &_sep, std::vector<std::string> &_res);
+/// @param str 
+/// @param sep 
+/// @param res 
+void stringSplit(const std::string &str, const char &sep, std::vector<std::string> &res);
 
-void readData(std::ifstream &_ifs, UnionData &_data);
-void writeData(std::ofstream &_ofs, const UnionData &_data);
-void readString(std::ifstream &_ifs, std::string &_str);
-void writeString(std::ofstream &_ofs, const std::string &_str);
+void readData(std::ifstream &ifs, UnionData &data);
+void writeData(std::ofstream &ofs, const UnionData &data);
+void readString(std::ifstream &ifs, std::string &str);
+void writeString(std::ofstream &ofs, const std::string &str);
 
-UnionData getUnionData(const std::string &_str);
-std::string getString(const std::string &_str, int _start, int &_end);
+UnionData getUnionData(const std::string &str);
+std::string getString(const std::string &str, int st, int &ed);
 
-std::string toString(const UnionData &_data);
+std::string toString(const UnionData &data);
 
 #define isLetter(ch) (('a' <= (ch) && (ch) <= 'z') || ('A' <= (ch) && (ch) <= 'Z') || (ch) == '_')
 #define isNumber(ch) ('0' <= (ch) && (ch) <= '9')

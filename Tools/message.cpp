@@ -1,8 +1,8 @@
 #include "message.h"
 
-void setColor(MessageType _type) {
+void setColor(MessageType type) {
     int _c = 0;
-    switch (_type) {
+    switch (type) {
         case MessageType::Error:
             _c = 0x01; break;
         case MessageType::Warning:
@@ -13,14 +13,14 @@ void setColor(MessageType _type) {
     printf("\e[3%cm", _c + '0');
 }
 
-void printMessage(const char *_message, MessageType _type) {
-    setColor(_type), printf("%s\e[0m", _message);
+void printMessage(const char *msg, MessageType type) {
+    setColor(type), printf("%s\e[0m", msg);
 }
 
-void printMessage(const std::string &_message, MessageType _type) {
-    printMessage(_message.c_str(), _type);
+void printMessage(const std::string &msg, MessageType type) {
+    printMessage(msg.c_str(), type);
 }
 
-void printError(int _line, const std::string &_message) {
-    printMessage("Line " + std::to_string(_line) + " " + _message + "\n", MessageType::Error);
+void printError(int lineId, const std::string &msg) {
+    printMessage("Line " + std::to_string(lineId) + " " + msg + "\n", MessageType::Error);
 }
