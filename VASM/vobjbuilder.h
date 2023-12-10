@@ -17,10 +17,10 @@ struct VASMPackage {
     std::vector< std::pair<uint32, std::string> > hints;
     std::vector<std::string> stringList;
     /// @brief the map of exposed identifier : identifier -> offset
-    std::map<std::string, uint32> exposeMap;
-    std::vector<std::string> relyList;
+    // std::map<std::string, uint32> exposeMap;
+    // std::vector<std::string> relyList;
     /// @brief the map of extern identifier : identifier -> id(before compiled) / (rely | offset)(after compiled)
-    std::map<std::string, uint64> externMap;
+    // std::map<std::string, uint64> externMap;
     uint64 globalMemory;
 
     VASMPackage();

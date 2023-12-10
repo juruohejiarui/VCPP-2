@@ -24,3 +24,9 @@ void printMessage(const std::string &msg, MessageType type) {
 void printError(int lineId, const std::string &msg) {
     printMessage("Line " + std::to_string(lineId) + " " + msg + "\n", MessageType::Error);
 }
+
+std::string getIndent(int dep) {
+    std::string res = "";
+    while (dep--) res += "  ";
+    return res;
+}

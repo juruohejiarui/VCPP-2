@@ -8,7 +8,6 @@ CommandInfo::CommandInfo(Command _command) {
 #pragma region VASMPackage
 VASMPackage::VASMPackage() {
     vcodeSize = mainAddr = globalMemory = 0;
-    relyList.push_back("");
 }
 
 bool VASMPackage::generate(const std::string &srcPath, bool ignoreHint) {
@@ -33,12 +32,12 @@ bool VASMPackage::generate(const std::string &srcPath, bool ignoreHint) {
     for (auto &pir : hints) std::cout << "Offset 0x" << std::setfill('0') << std::setbase(16) << std::setw(8) << pir.first << " : " << pir.second << std::endl;  
     std::cout << "strings \n";
     for (auto &pir : stringList) std::cout << pir << std::endl;  
-    std::cout << "expose labels: \n";
-    for (auto &pir : exposeMap) std::cout << pir.first << std::endl; 
-    std::cout << "rely paths: \n";
-    for (auto &pir : relyList) std::cout << pir << std::endl;   
-    std::cout << "extern labels: \n";
-    for (auto &pir : externMap) std::cout<< pir.first << " : " << pir.second << std::endl;  
+    // std::cout << "expose labels: \n";
+    // for (auto &pir : exposeMap) std::cout << pir.first << std::endl; 
+    // std::cout << "rely paths: \n";
+    // for (auto &pir : relyList) std::cout << pir << std::endl;   
+    // std::cout << "extern labels: \n";
+    // for (auto &pir : externMap) std::cout<< pir.first << " : " << pir.second << std::endl;  
     std::cout << "global memory : " << globalMemory << std::endl;
     for (auto &cInfo : commandList) {
         std::cout << std::setfill('0') << "0x" << std::setiosflags(std::ios::right) << std::setw(8) << cInfo.offset << " ";
@@ -89,15 +88,15 @@ bool VASMPackage::generateLine(const std::string &line, int lineId, bool ignoreH
             return false;
         }
         switch (cmd) {
-            case PretreatCommand::EXPOSE:
-                exposeMap[lst[2]] = 0; break;
-            case PretreatCommand::EXTERN:
-                if (!externMap.count(lst[2])) 
-                    externMap.insert(std::make_pair(lst[2], externMap.size()));
-                break;
-            case PretreatCommand::RELY:
-                relyList.push_back(lst[2]);
-                break;
+            // case PretreatCommand::EXPOSE:
+            //     exposeMap[lst[2]] = 0; break;
+            // case PretreatCommand::EXTERN:
+            //     if (!externMap.count(lst[2])) 
+            //         externMap.insert(std::make_pair(lst[2], externMap.size()));
+            //     break;
+            // case PretreatCommand::RELY:
+            //     relyList.push_back(lst[2]);
+            //     break;
             case PretreatCommand::GLOMEM:
                 globalMemory += getUnionData(lst[2]).data.uint64_v;
                 break;
@@ -260,8 +259,10 @@ bool getTypeDataTokenList(std::vector<TypeDataToken> &tkList, const std::string 
         char ch = text[l];
         TypeDataToken token;
         token.type = TypeDataTokenType::unknown;
+        token.data.data.uint64_v = 0;
+        token.dataString = "";
         if (ch == '0') {
-            while (r < text.size() - 1 && (text[r + 1] == 'x' || isNumber(text[r + 1]))) r++;
+            while (r < text.size() - 1 && (text[r + 1] == 'x' || isNumber(text[r + 1]) || ('a' <= text[r + 1] && text[r + 1] <= 'f') || ('A' <= text[r + 1] && text[r + 1] <= 'F'))) r++;
             token.type = TypeDataTokenType::Data;
             token.dataString = text.substr(l, r - l + 1);
             token.data = getUnionData(token.dataString);
@@ -270,32 +271,32 @@ bool getTypeDataTokenList(std::vector<TypeDataToken> &tkList, const std::string 
             r += 2;
             while (r + 1 < text.size() - 1 && (isLetter(text[r + 1]))) r++;
             token.type = TypeDataTokenType::Variable;
-            token.dataString = text.substr(l + 2, r - l + 1);
+            token.dataString = text.substr(l + 2, r - l - 1);
         } else if (ch == 'F') {
             r += 2;
             while (r + 1 < text.size() - 1 && (isLetter(text[r + 1]) || text[r + 1] == '@' || text[r + 1] == '.')) r++;
             token.type = TypeDataTokenType::Function;
-            token.dataString = text.substr(l + 2, r - l + 1);
+            token.dataString = text.substr(l + 2, r - l - 1);
         } else if (ch == 'C') {
             r += 2;
             while (r + 1 < text.size() - 1 && (isLetter(text[r + 1]))) r++;
             token.type = TypeDataTokenType::Class;
-            token.dataString = text.substr(l + 2, r - l + 1);
+            token.dataString = text.substr(l + 2, r - l - 1);
         } else if (ch == 'N') {
             r += 2;
             while (r + 1 < text.size() - 1 && (isLetter(text[r + 1]))) r++;
             token.type = TypeDataTokenType::Namespace;
-            token.dataString = text.substr(l + 2, r - l + 1);
+            token.dataString = text.substr(l + 2, r - l - 1);
         } else if (ch == 'v') {
             r += 2;
             while (r + 1 < text.size() - 1 && (isLetter(text[r + 1]))) r++;
             token.type = TypeDataTokenType::Visibility;
-            token.data.data.uint32_v = (uint32)getIdentifierVisibility(text.substr(l + 2, r - l + 1));
+            token.data.data.uint32_v = (uint32)getIdentifierVisibility(text.substr(l + 2, r - l - 1));
         } else if (ch == ':') {
             r += 2;
-            while (r + 1 < text.size() - 1 && (isLetter(text[r + 1]) || text[r + 1])) r++;
+            while (r + 1 < text.size() - 1 && (isLetter(text[r + 1]) || text[r + 1] == '.' || text[r + 1] == '[' || text[r + 1] == ']')) r++;
             token.type = TypeDataTokenType::TypeIdentifier;
-            token.dataString = text.substr(l + 2, r - l + 1);
+            token.dataString = text.substr(l + 2, r - l - 1);
         } else if (ch == '{') {
             token.type = TypeDataTokenType::LBracketL;
             pos.push(tkList.size());
@@ -305,20 +306,21 @@ bool getTypeDataTokenList(std::vector<TypeDataToken> &tkList, const std::string 
             token.data.data.uint32_v = pos.top();
             pos.pop();
         }
-        tkList.emplace_back(token);
+        if (token.type != TypeDataTokenType::unknown) tkList.emplace_back(token);
     }
     return succ;
 }
 bool compileTypeDataFile(VariableTypeData *var, const std::vector<TypeDataToken> &tkList, uint32 l, uint32 &r) {
     var->visibility = (IdentifierVisibility)tkList[l + 1].data.data.uint32_v;
     var->offset = tkList[l + 2].data.data.uint64_v;
-    r = l + 2;
+    var->type = tkList[l + 3].dataString;
+    r = l + 3;
     return true;
 }
 bool compileTypeDataFile(MethodTypeData *mtd, const std::vector<TypeDataToken> &tkList, uint32 l, uint32 &r) {
     // get the visibility and result type
     mtd->visibility = (IdentifierVisibility)tkList[l + 1].data.data.uint32_v;
-    mtd->resultType = tkList[l + 2].dataString;
+    mtd->resultType = tkList[l + 2].dataString, mtd->offset = 0;
     r = tkList[l + 3].data.data.uint32_v;
     // get the arguement list
     for (int i = l + 4; i < r; i++) mtd->argumentType.push_back(tkList[i].dataString);
@@ -326,8 +328,8 @@ bool compileTypeDataFile(MethodTypeData *mtd, const std::vector<TypeDataToken> &
 }
 bool compileTypeDataFile(ClassTypeData *cls, const std::vector<TypeDataToken> &tkList, uint32 l, uint32 &r) {
     // get the size and visibility
-    cls->size = tkList[l + 1].data.data.uint64_v, cls->offset = 0;
-    cls->visibility = (IdentifierVisibility)tkList[l + 2].data.data.uint32_v;
+    cls->visibility = (IdentifierVisibility)tkList[l + 1].data.data.uint32_v;
+    cls->size = tkList[l + 2].data.data.uint64_v, cls->offset = 0;
     r = tkList[l + 3].data.data.uint32_v;
     uint32 fr = l + 4, to = fr;
     bool succ = true;
@@ -347,12 +349,13 @@ bool compileTypeDataFile(ClassTypeData *cls, const std::vector<TypeDataToken> &t
                 auto var = new VariableTypeData;
                 var->name = tk.dataString;
                 cls->fields.insert(std::make_pair(tk.dataString, var));
-                succ &= compileTypeDataFile(var, tkList, fr + 1, to);
+                succ &= compileTypeDataFile(var, tkList, fr, to);
                 break;
             }
         }
         fr = ++to;
     }
+    return true;
 }
 bool compileTypeDataFile(NamespaceTypeData *nsp, const std::vector<TypeDataToken> &tkList, uint32 l, uint32 r) {
     uint32 fr = l + 1, to = l + 1;
@@ -381,7 +384,7 @@ bool compileTypeDataFile(NamespaceTypeData *nsp, const std::vector<TypeDataToken
                 auto var = new VariableTypeData;
                 var->name = tk.dataString;
                 nsp->variables.insert(std::make_pair(tk.dataString, var));
-                succ &= compileTypeDataFile(var, tkList, fr + 1, to);
+                succ &= compileTypeDataFile(var, tkList, fr, to);
                 break;
             }
             case TypeDataTokenType::Namespace:
@@ -400,8 +403,39 @@ bool compileTypeDataFile(NamespaceTypeData *nsp, const std::vector<TypeDataToken
 }
 bool compileTypeDataFile(DataTypePackage *dtPkg, const std::vector<TypeDataToken> &tkList) {
     dtPkg->root = new NamespaceTypeData;
-    return compileTypeDataFile(dtPkg->root, tkList, 1lu, tkList.size() - 1);
+    return compileTypeDataFile(dtPkg->root, tkList, 0lu, tkList.size() - 1);
 }
+
+#ifndef NDEBUG
+void debugPrintTypeData(VariableTypeData *var, int dep) {
+    std::cout << getIndent(dep) << "variable : " << var->name << std::endl;
+    std::cout << getIndent(dep + 1) << "visibility : " << identifierVisibilityString[(uint32)var->visibility] << std::endl;
+    std::cout << getIndent(dep + 1) << "type       : " << var->type << std::endl;
+    std::cout << getIndent(dep + 1) << "offset     : 0x" << var->offset << std::endl;  
+}
+void debugPrintTypeData(MethodTypeData *mtd, int dep) {
+    std::cout << getIndent(dep) << "function : " << mtd->name << std::endl;
+    std::cout << getIndent(dep + 1) << "visibility  : " << identifierVisibilityString[(uint32)mtd->visibility] << std::endl;
+    std::cout << getIndent(dep + 1) << "result type : " << mtd->resultType << std::endl;
+    std::cout << getIndent(dep + 1) << "offset      : 0x" << std::setbase(16) << mtd->offset << std::endl;
+    for (auto &arg : mtd->argumentType) std::cout << getIndent(dep + 1) << arg << std::endl;
+}
+void debugPrintTypeData(ClassTypeData *cls, int dep) {
+    std::cout << getIndent(dep) << "class : " << cls->name << std::endl;
+    std::cout << getIndent(dep + 1) << "visibility : " << identifierVisibilityString[(uint32)cls->visibility] << std::endl;
+    std::cout << getIndent(dep + 1) << "size       : 0x" << std::setbase(16) << cls->size << std::endl;
+    std::cout << getIndent(dep + 1) << "offset     : 0x" << std::setbase(16) << cls->offset << std::endl;
+    for (auto &pir : cls->methods) debugPrintTypeData(pir.second, dep + 1);
+    for (auto &pir : cls->fields) debugPrintTypeData(pir.second, dep + 1);
+}
+void debugPrintTypeData(NamespaceTypeData *nsp, int dep = 0) {
+    std::cout << getIndent(dep) << "namespace : " << nsp->name << std::endl;
+    for (auto &pir : nsp->children) debugPrintTypeData(pir.second, dep + 1);
+    for (auto &pir : nsp->methods) debugPrintTypeData(pir.second, dep + 1);
+    for (auto &pir : nsp->variables) debugPrintTypeData(pir.second, dep + 1);
+    for (auto &pir : nsp->classes) debugPrintTypeData(pir.second, dep + 1);
+}
+#endif
 bool DataTypePackage::generate(const std::string &filePath) {
     std::vector<TypeDataToken> tkList;
     std::string text;
@@ -420,6 +454,10 @@ bool DataTypePackage::generate(const std::string &filePath) {
     // compile this file
     int tdtSize = 0;
     if (!compileTypeDataFile(this, tkList)) return false;
+
+    #ifndef NDEBUG
+    debugPrintTypeData(this->root);
+    #endif
     return succ;
 }
 
@@ -428,6 +466,16 @@ bool VOBJPackage::read(const std::string &path) {
 }
 
 #pragma endregion
+
+bool getClassOffset(VOBJPackage &vobjPkg, std::map<std::string, uint64> &cOffset, uint32 bid) {
+
+}
+bool getOffset(VOBJPackage &vobjPkg, std::map<std::string, uint64> &mOffset, std::map<std::string, uint64> &cOffset, uint32 bid) {
+    return true;
+}
+bool applyOffset(VOBJPackage &vobjPkg, const std::map<std::string, uint64> &mOffset, const std::map<std::string, uint64> &cOffset) {
+    return true;
+}
 
 /// @brief build a vobj file using the vasm file, the typedata file, the definition file, and the relied dynamic libraries
 /// @param type the type of this vobj file
@@ -443,7 +491,9 @@ bool buildVObj( uint8 type,
                 const std::string &defPath, 
                 const std::vector<std::string> &relyList,
                 const std::string &target) {
+    // load the files
     VOBJPackage vobjPkg;
+    std::vector<VOBJPackage> relyPkg(relyList.size());
     bool succ = vobjPkg.vasmPackage.generate(vasmPath) && vobjPkg.dataTypePackage.generate(typeDataPath);
     std::ifstream ifs(defPath);
     if (!ifs.good()) {
@@ -455,5 +505,15 @@ bool buildVObj( uint8 type,
         while (!ifs.eof())
             std::getline(ifs, line), line.append("\n"), vobjPkg.definition.append(line + '\n');
     }
+    for (int i = 0; i < relyList.size(); i++) relyPkg[i].read(relyList[i]);
+
+    // get the offset of functions shown in tdt file
+    std::map<std::string, uint64> mOffset, cOffset;
+    succ &= getOffset(vobjPkg, mOffset, cOffset, 0);
+    uint32 bid = 0;
+    for (auto &rely : relyPkg) succ &= getOffset(vobjPkg, mOffset, cOffset, ++bid);
+    if (!succ) return false;
+    // change the strings in vcode into offset
+    succ = applyOffset(vobjPkg, mOffset, cOffset);
     return succ;
 }

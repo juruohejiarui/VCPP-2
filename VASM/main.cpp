@@ -3,8 +3,6 @@
 using namespace std;
 
 int main() {
-
-    VASMPackage pkg;
-    pkg.generate("./test.vasm");
+    buildVObj(1, "./test.vasm", "./test.tdt", "./test.vdef", std::vector<std::string>(), "./test.vobj");
     return 0;
 }

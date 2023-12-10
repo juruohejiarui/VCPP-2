@@ -1,18 +1,18 @@
 public class ArrayLike<T> {
-	public varfunc get(index : int) -> T;
-	public varfunc set(index : int, data : ValueT) -> T;
-	public varfunc getLength() -> uint;
-	public void swap(x : int, y : int) -> void;
+	public varfunc get(index : int) : T;
+	public varfunc set(index : int, data : ValueT) : T;
+	public varfunc getLength() : uint;
+	public void swap(x : int, y : int) : void;
 }
 public class MapLike<KeyT, ValueT> {
-	public varfunc get(index : keyT) -> T;
-	public varfunc set(index : keyT, data : ValueT) -> T;
+	public varfunc get(index : keyT) : T;
+	public varfunc set(index : keyT, data : ValueT) : T;
 }
 
 public class String : ArrayLike<char> {
-	public varfunc get(index : int) -> char;
-	public varfunc set(index : int, dt : char) -> void;
-	public func getLength() -> uint;
+	public varfunc get(index : int) : char;
+	public varfunc set(index : int, dt : char) : void;
+	public func getLength() : uint;
 	public func resize(length : int);
 	public func append(dt : char)
 	public constructer();
@@ -28,22 +28,22 @@ public class Array<T> : ArrayLike<T> {
 	public constructer(int length, T initData) {
 		while (length--) append(initData);
 	}
-    public varfunc get(index : int) -> T {
+    public varfunc get(index : int) : T {
 		return data[index];
 	}
-	public varfunc set(index : int, dt : T) -> {
+	public varfunc set(index : int, dt : T) : {
 		data[index] = dt;
 	}
-    public varfunc getLength() -> uint {
+    public varfunc getLength() : uint {
 		return length;
 	}
-	public varfunc swap(x : int, y : int) -> void {
+	public varfunc swap(x : int, y : int) : void {
 		T tmp = data[x];
 		data[x] = data[y];
 		data[y] = tmp;
 	}
 
-	public func append(dt : T) -> void {
+	public func append(dt : T) : void {
 		if (length == capacity) {
 			var newCapacity = capacity;
 			if (capacity == 0) newCapacity = 1;
@@ -72,24 +72,24 @@ public func sort<T>(ArrayLike<T> array, Compare<T> cmp) {
 } 
 
 public class Compare<T> {
-	public varfunc compare(a : T, b : T) -> int;
+	public varfunc compare(a : T, b : T) : int;
 }
 public class IntSmaller : Compare<int> {
-	public varfunc compare(a : int, b : int) -> int {
+	public varfunc compare(a : int, b : int) : int {
 		if (a == b) return 0;
 		else if (a > b) return -1;
 		else return 1;
 	}
 }
 public class UIntSmaller : Compare<uint> {
-    public varfunc compare(a : uint, b : uint) -> uint {
+    public varfunc compare(a : uint, b : uint) : uint {
 		if (a == b) return 0;
 		else if (a > b) return -1;
 		else return 1;
 	}
 }
 public class LongSmaller : Compare<long> {
-    public varfunc compare(a : long, b : long) -> long {
+    public varfunc compare(a : long, b : long) : long {
         if (a == b) return 0;
         else if (a > b) return -1;
         else return 1;

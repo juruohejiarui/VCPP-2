@@ -1,0 +1,23 @@
+cmake_minimum_required (VERSION 2.8)
+
+project (VASM)
+
+set(CXX_SOURCE ../Tools/tools.cpp ../Tools/message.cpp ../VASM/commandlist.cpp tokenlist.cpp)
+set(CXX_HEADER ../Tools/tools.h ../Tools/message.h ../VASM/commandlist.h tokenlist.h)  
+
+# set_target_properties(${TARGET} PROPERTIES
+#     COMPILE_FLAGS "-pthread"
+#     LINK_FLAGS "-pthread")
+add_executable(VASM ${CXX_SOURCE} ${CXX_HEADER})
+find_package(Threads)
+target_link_libraries(VASM ${CMAKE_THREAD_LIBS_INIT})
+
+
+# ��ʽָ��������
+set(CMAKE_CXX_COMPILER "g++")
+
+ 
+# ����������Ϣ
+set(CMAKE_BUILD_TYPE "Debug")
+set(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -g2 -ggdb -std=c++17")
+set(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -g -O3 -std=c++17")
