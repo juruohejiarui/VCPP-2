@@ -4,10 +4,10 @@
 
 struct CommandInfo {
     Command command;
-    uint32 vcode, offset;
+    uint32 vcode, offset, lineId;
     std::vector<UnionData> argument;
     std::string argumentString;
-    CommandInfo(Command _command = Command::none);
+    CommandInfo(Command _command = Command::none, uint32 lineId = 0);
 };
 
 struct VASMPackage {

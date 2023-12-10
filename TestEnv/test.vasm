@@ -27,19 +27,19 @@
     call System.inputInt32
     i32_r_t_mov
     
-    #HINT i = 2;
+    #HINT "i = 2;"
     i32_pvar 0x1
     i32_push 2
     i32_r_t_mov
 
     #LABEL loop_start_1
-        #HINT if (i > n) break;
+        #HINT "if (i > n) break;"
         i32_pvar 0x1
         i32_pvar 0x0
         i32_r_r_gt
         t_jz loop_end_1
         
-        #HINT f[i] = f[i - 1] + f[i - 2];
+        #HINT "f[i] = f[i - 1] + f[i - 2];"
         o_pvar 0x3
         i32_pvar 0x1
         i32_r_gvl
@@ -57,7 +57,7 @@
         i32_mr_mr_add
         i32_mr_t_mov
 
-        #HINT i++;
+        #HINT "i++;"
         i32_pvar 0x1
         i32_r_sinc
         i32_r_pop

@@ -1,7 +1,8 @@
 #include "vobjbuilder.h"
 
-CommandInfo::CommandInfo(Command _command) {
+CommandInfo::CommandInfo(Command _command, uint32 lineId) {
     this->command = _command;
+    this->lineId = lineId;
     vcode = 0;
 }
 
@@ -123,7 +124,7 @@ bool VASMPackage::generateLine(const std::string &line, int lineId, bool ignoreH
             printError(lineId, "Invalid command name " + lst[0]);
             return false;
         }
-        auto cInfo = CommandInfo(cmd);
+        auto cInfo = CommandInfo(cmd, lineId);
         cInfo.offset = vcodeSize;
         // caluclate the modifiers and vcode
         DataTypeModifier dtMfr1 = DataTypeModifier::unknown,    dtMfr2 = DataTypeModifier::unknown;
@@ -199,8 +200,8 @@ bool VASMPackage::generateLine(const std::string &line, int lineId, bool ignoreH
             case TCommand::arrnew:
             case TCommand::arrmem:
             case TCommand::pvar:
-            case TCommand::pglo:
             case TCommand::push:
+            case TCommand::mem:
                 arg1 = getUnionData(lst[1]);
                 if (!isInteger(arg1.type)) {
                     printError(lineId, "The argument of command " + tCommandString[(int)tcmd] + " must be integer.\n");
@@ -208,7 +209,7 @@ bool VASMPackage::generateLine(const std::string &line, int lineId, bool ignoreH
                 }
                 cInfo.argument.push_back(arg1);
                 break;
-            case TCommand::mem:
+            case TCommand::pglo:
             case TCommand::call:
             case TCommand::jz:
             case TCommand::jp:
@@ -336,16 +337,14 @@ bool compileTypeDataFile(ClassTypeData *cls, const std::vector<TypeDataToken> &t
     while (to < r) {
         const auto &tk = tkList[fr];
         switch (tk.type) {
-            case TypeDataTokenType::Function:
-            {
+            case TypeDataTokenType::Function: {
                 auto mtd = new MethodTypeData;
                 mtd->name = tk.dataString;
                 cls->methods.insert(std::make_pair(tk.dataString, mtd));
                 succ &= compileTypeDataFile(mtd, tkList, fr, to);
                 break;
             }
-            case TypeDataTokenType::Variable:
-            {
+            case TypeDataTokenType::Variable: {
                 auto var = new VariableTypeData;
                 var->name = tk.dataString;
                 cls->fields.insert(std::make_pair(tk.dataString, var));
@@ -467,13 +466,134 @@ bool VOBJPackage::read(const std::string &path) {
 
 #pragma endregion
 
-bool getClassOffset(VOBJPackage &vobjPkg, std::map<std::string, uint64> &cOffset, uint32 bid) {
+bool getOffset(VOBJPackage &vobjPkg, std::map<std::string, uint64> &mOffset, std::map<std::string, uint64> &cOffset, std::map<std::string, uint64> &vOffset, uint32 bid) {
+    uint32 curOffset = 0;
+    // get the offset of classes
+    auto getClassOffset = [&]() -> bool {
+        auto recursion = [&](auto &&self, NamespaceTypeData *nsp, std::string pfx) -> bool {
+            bool succ = true;
+            for (auto &pir : nsp->children) succ &= self(self, pir.second, pfx + pir.first + ".");
+            for (auto &pir : nsp->classes) {
+                pir.second->offset = curOffset, curOffset += pir.second->size;
+                std::string fullName = pfx + pir.first;
+                if (cOffset.count(fullName)) {
+                    printError(0, "Multiple definition of class : " + fullName);
+                    return false;
+                }
+                pir.second->offset |= ((uint64)bid) << 32;
+                cOffset.insert(std::make_pair(pfx + pir.first, pir.second->offset));
+            }
+            return succ;
+        };
+        return recursion(recursion, vobjPkg.dataTypePackage.root, std::string(""));
+    };
+    // get the offset of methods from vcode
+    auto getMethodOffset = [&]() -> bool {
+        auto scanMtd = [&](MethodTypeData *mtd, std::string pfx) -> bool {
+            auto fullName = pfx + mtd->name;
+            if (!vobjPkg.vasmPackage.labelOffset.count(fullName)) {
+                printError(0, "Can not find the label : " + fullName);
+                return false;
+            }
+            mtd->offset = (((uint64)bid) << 32) | vobjPkg.vasmPackage.labelOffset[fullName];
+            mOffset.insert(std::make_pair(fullName, mtd->offset));
+            return true;
+        };
+        auto scanCls = [&](ClassTypeData *cls, std::string pfx) -> bool {
+            pfx += cls->name + ".";
+            bool succ = true;
+            for (auto &pir : cls->methods) succ &= scanMtd(pir.second, pfx);
+            return succ;
+        };
+        auto scanNsp = [&](auto &&self, NamespaceTypeData *nsp, std::string pfx) -> bool {
+            bool succ = true;
+            for (auto &pir : nsp->children) succ &= self(self, pir.second, pfx + pir.first + ".");
+            for (auto &pir : nsp->methods) succ &= scanMtd(pir.second, pfx);
+            for (auto &pir : nsp->classes) succ &= scanCls(pir.second, pfx);
+            return succ;
+        };
+        return scanNsp(scanNsp, vobjPkg.dataTypePackage.root, std::string(""));
+    };
+    // modify the offset of variables using bid
+    auto getVariableOffset = [&]() -> bool {
+        auto scanNsp = [&](auto &&self, NamespaceTypeData *nsp, std::string pfx) -> bool {
+            bool succ = true;
+            for (auto &pir : nsp->children) succ &= self(self, pir.second, pfx + pir.first + ".");
+            for (auto &pir : nsp->variables) {
+                auto fullName = pfx + "." + pir.first;
+                if (vOffset.count(fullName)) {
+                    printError(0, "Multiple definition of " + fullName);
+                    return false;
+                }
+                pir.second->offset |= ((uint64)bid) << 32;
+                vOffset.insert(std::make_pair(fullName, pir.second->offset));
+            }
+            return succ;
+        };
+        return scanNsp(scanNsp, vobjPkg.dataTypePackage.root, std::string(""));
+    };
+    return getClassOffset() && getMethodOffset() && getVariableOffset();
+}
+bool applyOffset(VOBJPackage &vobjPkg,std::map<std::string, uint64> &mOffset, std::map<std::string, uint64> &cOffset, std::map<std::string, uint64> &vOffset) {
+    auto &cmdls = vobjPkg.vasmPackage.commandList;
+    bool succ = false;
+    UnionData data(DataTypeModifier::u64);
+    for (uint32 i = 0; i < cmdls.size(); i++) {
+        auto &cmd = cmdls[i];
+        auto tcmd = (TCommand)(cmd.vcode & ((1 << 16) - 1));
+        switch(tcmd) {
+            case TCommand::call: {
+                const auto &mtdName = cmd.argumentString;
+                if (mOffset.count(mtdName)) data.data.uint64_v = mOffset[mtdName], cmd.argument.push_back(data);
+                else {
+                    printError(cmd.lineId, "Can not find method : " + mtdName);
+                    succ = false;
+                }
+                break;
+            }
+            case TCommand::_new: {
+                const auto &clsName = cmd.argumentString;
+                if (cOffset.count(clsName)) data.data.uint64_v = cOffset[clsName], cmd.argument.push_back(data);
+                else {
+                    printError(cmd.lineId, "Can not find class : " + clsName);
+                    succ = false;
+                }
+                break;
+            }
+            case TCommand::pglo: {
+                const auto &varName = cmd.argumentString;
+                if (vOffset.count(varName)) data.data.uint64_v = vOffset[varName], cmd.argument.push_back(data);
+                else {
+                    printError(cmd.lineId, "Can not find global var : " + varName);
+                    succ = false;
+                }
+                break;
+            }
+        }
+    }
+    return succ;
+}
 
-}
-bool getOffset(VOBJPackage &vobjPkg, std::map<std::string, uint64> &mOffset, std::map<std::string, uint64> &cOffset, uint32 bid) {
-    return true;
-}
-bool applyOffset(VOBJPackage &vobjPkg, const std::map<std::string, uint64> &mOffset, const std::map<std::string, uint64> &cOffset) {
+bool writeVObj(uint8 type, const VOBJPackage &vobjPkg, const std::vector<std::string> &relyList, const std::string &target,
+    const std::map<std::string, uint64> &mOffset, const std::map<std::string, uint64> &cOffset, std::map<std::string, uint64> &vOffset) {
+    std::ofstream ofs(target, std::ios::binary);
+    UnionData data;
+    data.type = DataTypeModifier::b, data.data.uint8_v = type, writeData(ofs, data);
+    auto writeTypeData = [&]() {
+        auto writeVar = [&](VariableTypeData *var) {
+
+        };
+        auto writeMtd = [&](MethodTypeData *mtd) {
+
+        };
+        auto writeCls = [&](ClassTypeData *cls) {
+
+        };
+        auto writeNsp = [&](auto &&self, NamespaceTypeData *nsp) {
+            
+        };
+        writeNsp(writeNsp, vobjPkg.dataTypePackage.root);
+    };
     return true;
 }
 
@@ -508,12 +628,14 @@ bool buildVObj( uint8 type,
     for (int i = 0; i < relyList.size(); i++) relyPkg[i].read(relyList[i]);
 
     // get the offset of functions shown in tdt file
-    std::map<std::string, uint64> mOffset, cOffset;
-    succ &= getOffset(vobjPkg, mOffset, cOffset, 0);
+    std::map<std::string, uint64> mOffset, cOffset, vOffset;
+    succ &= getOffset(vobjPkg, mOffset, cOffset, vOffset, 0);
     uint32 bid = 0;
-    for (auto &rely : relyPkg) succ &= getOffset(vobjPkg, mOffset, cOffset, ++bid);
+    for (auto &rely : relyPkg) succ &= getOffset(vobjPkg, mOffset, cOffset, vOffset, ++bid);
     if (!succ) return false;
     // change the strings in vcode into offset
-    succ = applyOffset(vobjPkg, mOffset, cOffset);
+    succ = applyOffset(vobjPkg, mOffset, cOffset, vOffset);
+
+    writeVObj(type, vobjPkg, relyList, target, mOffset, cOffset, vOffset);
     return succ;
 }
