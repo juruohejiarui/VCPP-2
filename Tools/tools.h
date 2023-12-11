@@ -46,6 +46,32 @@ struct UnionData {
     DataTypeModifier type;
     UnionData();
     UnionData(DataTypeModifier type);
+
+    UnionData(uint8 dt);
+    UnionData(int8 dt);
+    UnionData(uint16 dt);
+    UnionData(int16 dt);
+    UnionData(uint32 dt);
+    UnionData(int32 dt);
+    UnionData(uint64 dt);
+    UnionData(int64 dt);
+    UnionData(float32 dt);
+    UnionData(float64 dt);
+
+    uint8 &uint8_v();
+    int8 &int8_v();
+
+    uint16 &uint16_v();
+    int16 &int16_v();
+
+    uint32 &uint32_v();
+    int32 &int32_v();
+
+    uint64 &uint64_v();
+    int64 &int64_v();
+
+    float32 &float32_v();
+    float64 &float64_v();
 };
 
 

@@ -8,6 +8,33 @@ const int dataTypeModifierNumber = 12, valueTypeModifierNumber = 3, identifierVi
 UnionData::UnionData() { type = (DataTypeModifier)dataTypeModifierNumber, data.uint64_v = 0; }
 UnionData::UnionData(DataTypeModifier type) { type = type, data.uint64_v = 0; }
 
+UnionData::UnionData(uint8 dt) { type = DataTypeModifier::b, data.uint64_v = 0, data.uint8_v = dt; }
+UnionData::UnionData(int8 dt) { type = DataTypeModifier::c, data.uint64_v = 0, data.int8_v = dt; }
+UnionData::UnionData(uint16 dt) { type = DataTypeModifier::u16, data.uint64_v = 0, data.uint16_v = dt; }
+UnionData::UnionData(int16 dt) { type = DataTypeModifier::i16, data.uint64_v = 0, data.int16_v = dt; }
+UnionData::UnionData(uint32 dt) { type = DataTypeModifier::u32, data.uint64_v = 0, data.uint32_v = dt; }
+UnionData::UnionData(int32 dt) { type = DataTypeModifier::i32, data.uint64_v = 0, data.int32_v = dt; }
+UnionData::UnionData(uint64 dt) { type = DataTypeModifier::u64, data.uint64_v = dt; }
+UnionData::UnionData(int64 dt) { type = DataTypeModifier::i64, data.uint64_v = dt; }
+UnionData::UnionData(float32 dt) { type = DataTypeModifier::f32, data.uint64_v = 0, data.float32_v = dt; }
+UnionData::UnionData(float64 dt) { type = DataTypeModifier::f32, data.uint64_v = 0, data.float64_v = dt; }
+
+
+uint8 &UnionData::uint8_v() { return data.uint8_v; }
+int8 &UnionData::int8_v() { return data.int8_v; }
+
+uint16 &UnionData::uint16_v() { return data.uint16_v; }
+int16 &UnionData::int16_v() { return data.int16_v; }
+
+uint32 &UnionData::uint32_v() { return data.uint32_v; }
+int32 &UnionData::int32_v() { return data.int32_v; }
+
+uint64 &UnionData::uint64_v() { return data.uint64_v; }
+int64 &UnionData::int64_v() { return data.int64_v; }
+
+float32 &UnionData::float32_v() { return data.float32_v; }
+float64 &UnionData::float64_v() { return data.float64_v; }
+
 DataTypeModifier getDataTypeModifier(const std::string &name)
 {
     for (int i = 0; i < dataTypeModifierNumber; i++) if (name == dataTypeModifierString[i]) return (DataTypeModifier)i;

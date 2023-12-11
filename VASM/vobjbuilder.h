@@ -71,13 +71,15 @@ struct NamespaceTypeData {
     ~NamespaceTypeData();
 };
 struct DataTypePackage {
-    NamespaceTypeData *root = nullptr;
+    NamespaceTypeData *root;
+    DataTypePackage();
     ~DataTypePackage();
 
     bool generate(const std::string &filePath);
 };
 
 struct VOBJPackage {
+    uint8 type;
     VASMPackage vasmPackage;
     DataTypePackage dataTypePackage;
     std::string definition;

@@ -238,6 +238,7 @@ NamespaceTypeData::~NamespaceTypeData() {
     for (auto &pir : classes) if (pir.second != nullptr) delete pir.second;
 }
 
+DataTypePackage::DataTypePackage() { root = nullptr; }
 DataTypePackage::~DataTypePackage()
 {
     if (root != nullptr) delete root;
@@ -461,7 +462,85 @@ bool DataTypePackage::generate(const std::string &filePath) {
 }
 
 bool VOBJPackage::read(const std::string &path) {
-    return false;
+    std::ifstream ifs(path, std::ios::binary);
+    if (!ifs.good()) {
+        printError(0, "Can read from file " + path);
+        return false;
+    }
+    UnionData dt(DataTypeModifier::b);
+    readData(ifs, dt), type = dt.uint8_v();
+
+    // read type data
+    
+    auto readTD = [&]() {
+        auto readVar = [&]() -> VariableTypeData * {
+            VariableTypeData *var = new VariableTypeData;
+            readString(ifs, var->name);
+            dt.type = DataTypeModifier::u32, readData(ifs, dt), var->visibility = (IdentifierVisibility)dt.uint32_v();
+            dt.type = DataTypeModifier::u64, readData(ifs, dt), var->offset = dt.uint64_v();
+            readString(ifs, var->type);
+            return var;
+        };
+        auto readMtd = [&]() -> MethodTypeData * {
+            MethodTypeData *mtd = new MethodTypeData;
+            readString(ifs, mtd->name);
+            dt.type = DataTypeModifier::u32, readData(ifs, dt), mtd->visibility = (IdentifierVisibility)dt.uint32_v();
+            dt.type = DataTypeModifier::u64, readData(ifs, dt), mtd->offset = dt.uint64_v();
+            readString(ifs, mtd->resultType);
+            readData(ifs, dt), mtd->argumentType.resize(dt.uint64_v(), 0);
+            for (auto &arg : mtd->argumentType) readString(ifs, arg);
+            return mtd;
+        };
+        auto readCls = [&]() -> ClassTypeData * {
+            ClassTypeData *cls = new ClassTypeData;
+            readString(ifs, cls->name);
+            dt.type = DataTypeModifier::u32, readData(ifs, dt), cls->visibility = (IdentifierVisibility)dt.uint32_v();
+            dt.type = DataTypeModifier::u64;
+            readData(ifs, dt), cls->size = dt.uint64_v();
+            readData(ifs, dt), cls->size = dt.uint64_v();
+            uint64 mtdCnt = 0, fldCnt = 0;
+            readData(ifs, dt), mtdCnt = dt.uint64_v();
+            readData(ifs, dt), fldCnt = dt.uint64_v(); 
+            while (--mtdCnt) {
+                auto mtd = readMtd();
+                cls->methods.insert(std::make_pair(mtd->name, mtd));
+            }
+            while (--fldCnt) {
+                auto var = readVar();
+                cls->fields.insert(std::make_pair(var->name, var));
+            }
+            return cls;
+        };
+        auto readNsp = [&](auto &&self) -> NamespaceTypeData * {
+            auto *nsp = new NamespaceTypeData;
+            readString(ifs, nsp->name);
+            dt.type = DataTypeModifier::u64;
+            uint64 nCnt = 0, cCnt = 0, mCnt = 0, vCnt = 0;
+            readData(ifs, dt), nCnt = dt.uint64_v();
+            readData(ifs, dt), cCnt = dt.uint64_v();
+            readData(ifs, dt), mCnt = dt.uint64_v();
+            readData(ifs, dt), vCnt = dt.uint64_v();
+            while (--nCnt) {
+                NamespaceTypeData *child = self(self);
+                nsp->children.insert(std::make_pair(child->name, child));
+            }
+            while (--cCnt) {
+                auto *cls = readCls();
+                nsp->classes.insert(std::make_pair(cls->name, cls));
+            }
+            while (--mCnt) {
+                auto *mtd = readMtd();
+                nsp->methods.insert(std::make_pair(mtd->name, mtd));
+            }
+            while (--vCnt) {
+                auto *var = readVar();
+                nsp->variables.insert(std::make_pair(var->name, var));
+            }
+            return nsp;
+        };
+        this->dataTypePackage.root = readNsp(readNsp);
+    };
+    return true;
 }
 
 #pragma endregion
@@ -520,7 +599,7 @@ bool getOffset(VOBJPackage &vobjPkg, std::map<std::string, uint64> &mOffset, std
             bool succ = true;
             for (auto &pir : nsp->children) succ &= self(self, pir.second, pfx + pir.first + ".");
             for (auto &pir : nsp->variables) {
-                auto fullName = pfx + "." + pir.first;
+                auto fullName = pfx + pir.first;
                 if (vOffset.count(fullName)) {
                     printError(0, "Multiple definition of " + fullName);
                     return false;
@@ -564,7 +643,7 @@ bool applyOffset(VOBJPackage &vobjPkg,std::map<std::string, uint64> &mOffset, st
                 const auto &varName = cmd.argumentString;
                 if (vOffset.count(varName)) data.data.uint64_v = vOffset[varName], cmd.argument.push_back(data);
                 else {
-                    printError(cmd.lineId, "Can not find global var : " + varName);
+                    printError(cmd.lineId, "Can not find global variable : " + varName);
                     succ = false;
                 }
                 break;
@@ -574,26 +653,66 @@ bool applyOffset(VOBJPackage &vobjPkg,std::map<std::string, uint64> &mOffset, st
     return succ;
 }
 
-bool writeVObj(uint8 type, const VOBJPackage &vobjPkg, const std::vector<std::string> &relyList, const std::string &target,
+bool writeVObj(uint8 type, VOBJPackage &vobjPkg, const std::vector<std::string> &relyList, const std::string &target,
     const std::map<std::string, uint64> &mOffset, const std::map<std::string, uint64> &cOffset, std::map<std::string, uint64> &vOffset) {
     std::ofstream ofs(target, std::ios::binary);
     UnionData data;
     data.type = DataTypeModifier::b, data.data.uint8_v = type, writeData(ofs, data);
     auto writeTypeData = [&]() {
-        auto writeVar = [&](VariableTypeData *var) {
-
+        auto writeVar = [&](VariableTypeData *var) -> void {
+            writeString(ofs, var->name);
+            writeData(ofs, UnionData((uint32)var->visibility));
+            writeData(ofs, UnionData(var->offset));
+            writeString(ofs, var->type);
         };
         auto writeMtd = [&](MethodTypeData *mtd) {
-
+            writeString(ofs, mtd->name);
+            writeData(ofs, UnionData((uint32)mtd->visibility));
+            writeData(ofs, UnionData(mtd->offset));
+            writeString(ofs, mtd->resultType);
+            writeData(ofs, UnionData((uint64)mtd->argumentType.size()));
+            for (auto &arg : mtd->argumentType) writeString(ofs, arg);
         };
-        auto writeCls = [&](ClassTypeData *cls) {
-
+        auto writeCls = [&](ClassTypeData *cls) -> void {
+            writeString(ofs, cls->name);
+            writeData(ofs, UnionData((uint32)cls->visibility));
+            writeData(ofs, UnionData(cls->size));
+            writeData(ofs, UnionData(cls->offset));
+            writeData(ofs, UnionData((uint64)cls->methods.size()));
+            writeData(ofs, UnionData((uint64)cls->fields.size()));
+            for (auto &pir : cls->methods) writeMtd(pir.second);
+            for (auto &pir : cls->fields) writeVar(pir.second);
         };
-        auto writeNsp = [&](auto &&self, NamespaceTypeData *nsp) {
-            
+        auto writeNsp = [&](auto &&self, NamespaceTypeData *nsp) -> void {
+            writeString(ofs, nsp->name);
+            writeData(ofs, UnionData((uint64)nsp->children.size()));
+            writeData(ofs, UnionData((uint64)nsp->classes.size()));
+            writeData(ofs, UnionData((uint64)nsp->methods.size()));
+            writeData(ofs, UnionData((uint64)nsp->variables.size()));
+            for (auto &pir : nsp->children)     self(self, pir.second);
+            for (auto &pir : nsp->classes)      writeCls(pir.second);
+            for (auto &pir : nsp->methods)      writeMtd(pir.second);
+            for (auto &pir : nsp->variables)    writeVar(pir.second);
         };
         writeNsp(writeNsp, vobjPkg.dataTypePackage.root);
     };
+
+    writeTypeData();
+    writeData(ofs, UnionData((uint32)relyList.size()));
+    for (auto &rely : relyList) writeString(ofs, rely);
+    writeString(ofs, vobjPkg.definition);
+    if (vobjPkg.vasmPackage.labelOffset.count("main"))
+        writeData(ofs, UnionData(vobjPkg.vasmPackage.labelOffset["main"]));
+    else writeData(ofs, UnionData((uint64)0));
+    writeData(ofs, UnionData((uint64)vobjPkg.vasmPackage.stringList.size()));
+    for (auto &str : vobjPkg.vasmPackage.stringList) writeString(ofs, str);
+    writeData(ofs, UnionData(vobjPkg.vasmPackage.globalMemory));
+    writeData(ofs, UnionData(vobjPkg.vasmPackage.vcodeSize));
+    for (auto &cmd : vobjPkg.vasmPackage.commandList) {
+        writeData(ofs, UnionData(cmd.vcode));
+        for (auto &arg : cmd.argument) writeData(ofs, UnionData(arg));
+    }
+    ofs.close();
     return true;
 }
 
@@ -613,6 +732,7 @@ bool buildVObj( uint8 type,
                 const std::string &target) {
     // load the files
     VOBJPackage vobjPkg;
+    vobjPkg.type = type;
     std::vector<VOBJPackage> relyPkg(relyList.size());
     bool succ = vobjPkg.vasmPackage.generate(vasmPath) && vobjPkg.dataTypePackage.generate(typeDataPath);
     std::ifstream ifs(defPath);

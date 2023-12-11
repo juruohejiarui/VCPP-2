@@ -3,6 +3,6 @@
 using namespace std;
 
 int main() {
-    buildVObj(1, "./test.vasm", "./test.tdt", "./test.vdef", std::vector<std::string>(), "./test.vobj");
+    buildVObj(1, "./test.vasm", "./test.vtd", "./test.vdef", std::vector<std::string>(), "./test.vobj");
     return 0;
 }

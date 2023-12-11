@@ -47,7 +47,8 @@
         "set": "cpp",
         "iostream": "cpp",
         "ctime": "cpp",
-        "iomanip": "cpp"
+        "iomanip": "cpp",
+        "*.vcpp": "cpp"
     },
     "cmake.configureOnOpen": true
 }

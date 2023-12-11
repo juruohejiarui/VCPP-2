@@ -1,0 +1,4 @@
+{
+    V f v private 0x0 : int[]
+    F main v public : int {}
+}

@@ -1,3 +1,7 @@
+o_pglo f
+i32_push 4
+i32_push 0x10000
+arrnew 1
 #LABEL main
     setlocal 0x10
     #HINT "0 : n, 1 : i, 3 : f"
@@ -24,7 +28,9 @@
 
     #HINT "n = System.inputInt32()"
     i32_pvar 0x0
-    call System.inputInt32
+    i32_push 0x10000
+    i32_push 0x1
+    i32_t_t_sub
     i32_r_t_mov
     
     #HINT "i = 2;"
@@ -64,11 +70,6 @@
         
         jmp loop_start_1
     #LABEL loop_end_1
-
-    o_pvar 0x2
-    u32_push 0x20u
-    new String
-    o_r_t_mov
     
     o_pvar 0x3
     u64_push 0x0lu
