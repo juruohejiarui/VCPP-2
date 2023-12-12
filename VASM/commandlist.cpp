@@ -301,6 +301,7 @@ const std::string commandString[] = {
     "getmtds"          , 
     "getflds"          , 
     "getctrs"          , 
+    "sys"              ,
 
     "unknown"
 };
@@ -309,7 +310,7 @@ const std::string pretreatCommandString[] {
     "RELY", "EXTERN", "EXPOSE", "LABEL", "GLOMEM", "HINT", "STRING", "DEF", "TYPEDATA_BEGIN", "TYPEDATA_END", "unknown"
 };
 
-extern const int tCommandNumber = 61;
+extern const int tCommandNumber = 62;
 extern const std::string tCommandString[] = {
     "none"    , "mov"     , "addmov"  , "submov"  , "mulmov"  , "divmov"  , "andmov"  , "ormov"   , "xormov"  , "shlmov"  , 
     "shrmov"  , "modmov"  , "add"     , "sub"     , "mul"     , "div"     , "and"     , "or"      , "xor"     , "shl"     , 
@@ -317,11 +318,11 @@ extern const std::string tCommandString[] = {
     "ge"      , "ls"      , "le"      , "cvt"     , "pop"     , "push"    , "pvar"    , "pglo"    , "cpy"     , "setlocal", 
     "getarg"  , "new"     , "arrnew"  , "gvl"     , "mem"     , "vmem"    , "arrmem"  , "call"    , "vcall"   , "jmp"     , 
     "jz"      , "jp"      , "setarg"  , "ret"     , "vret"    , "catostr" , "strtoca" , "getcls"  , "getmtds" , "getflds" , 
-    "getctrs" , 
+    "getctrs" , "sys"     ,
     "unknown"
 };
 
-extern const int commandNumber = 2736, pretreatCommandNumber = 10;
+extern const int commandNumber = 2737, pretreatCommandNumber = 10;
 
 Command getCommand(const std::string &name) {
     for (int i = 0; i < commandNumber; i++) if (name == commandString[i]) return (Command)i;

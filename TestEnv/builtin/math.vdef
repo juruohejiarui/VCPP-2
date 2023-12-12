@@ -1,0 +1,4 @@
+namespace Math {
+    public func max(a : int, b : int) : int;
+    public func min(a : int, b : int) : int;
+}

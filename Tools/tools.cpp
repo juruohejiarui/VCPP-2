@@ -6,7 +6,7 @@ const std::string identifierVisibilityString[] = {"public", "private", "protecte
 const int dataTypeModifierNumber = 12, valueTypeModifierNumber = 3, identifierVisibilityNumber = 3;
 
 UnionData::UnionData() { type = (DataTypeModifier)dataTypeModifierNumber, data.uint64_v = 0; }
-UnionData::UnionData(DataTypeModifier type) { type = type, data.uint64_v = 0; }
+UnionData::UnionData(DataTypeModifier type) { this->type = type, data.uint64_v = 0; }
 
 UnionData::UnionData(uint8 dt) { type = DataTypeModifier::b, data.uint64_v = 0, data.uint8_v = dt; }
 UnionData::UnionData(int8 dt) { type = DataTypeModifier::c, data.uint64_v = 0, data.int8_v = dt; }
@@ -189,10 +189,9 @@ void writeData(std::ofstream &ofs, const UnionData &data) {
     }
 }
 void readString(std::ifstream &ifs, std::string &str) {
-    UnionData data;
-    data.type = DataTypeModifier::c, str.clear();
-    while (readData(ifs, data), data.data.int8_v != '\0')
-        str.push_back(data.data.int8_v);
+    char ch;
+    while (ifs.read(&ch, sizeof(char)), ch != '\0')
+        str.push_back(ch);
 }
 void writeString(std::ofstream &ofs, const std::string &str) {
     ofs.write(str.c_str(), sizeof(int8) * (str.size() + 1));

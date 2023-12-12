@@ -1,0 +1,4 @@
+namespace System.IO.Console {
+    public func print(int data) : void;
+    public func inputInt() : int;
+}

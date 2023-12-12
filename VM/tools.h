@@ -70,8 +70,18 @@ typedef struct tmpTrie {
     tmpTrie *str[128];
 } TrieNode;
 
+/// @brief Initialize the Trie
+/// @param root 
 void Trie_init(TrieNode *root);
-void Trie_insert(TrieNode *root, const char *str, void *value);
+/// @brief Insert STR and the VAL into a trie whose root is ROOT
+/// @param root 
+/// @param str 
+/// @param value 
+void Trie_insert(TrieNode *root, const char *str, void *val);
+/// @brief get the value where the str is in the trie whose root is ROOT
+/// @param root 
+/// @param str 
+/// @return 
 void *Trie_get(TrieNode *root, const char *str);
 
 #endif

@@ -1,0 +1,14 @@
+#LABEL System.IO.Console.print@int
+    setlocal 0x1
+    getarg 0x1
+    i32_pvar 0x0
+    i32_r_gvl
+    sys 0x0
+    ret
+#LABEL System.IO.Console.inputInt
+    setlocal 0x1
+    i32_pvar 0x0
+    sys 0x1
+    i32_pvar 0x0
+    i32_r_gvl
+    vret

@@ -1,0 +1,10 @@
+{
+    N System {
+        N IO {
+            N Console {
+                F print@int v public : void {: int}
+                F inputInt v public : int {}
+            }
+        }
+    }
+}

@@ -71,7 +71,7 @@ bool VASMPackage::generateLine(const std::string &line, int lineId, bool ignoreH
         } else if (isNumber(line[pos])) {
             while (rpos + 1 < line.size() && (isLetter(line[rpos + 1]) || isNumber(line[rpos + 1]) || line[rpos + 1] == '.')) rpos++;
             newPart = line.substr(pos, rpos - pos + 1);
-        } else if (isLetter(line[pos]) || line[pos] == '.' || line[rpos + 1] == '@') {
+        } else if (isLetter(line[pos]) || line[pos] == '.' || line[pos] == '@') {
             while (rpos + 1 < line.size() && (isNumber(line[rpos + 1]) || isLetter(line[rpos + 1]) || line[rpos + 1] == '.' || line[rpos + 1] == '@'))
                 rpos++;
             newPart = line.substr(pos, rpos - pos + 1);
@@ -197,14 +197,19 @@ bool VASMPackage::generateLine(const std::string &line, int lineId, bool ignoreH
         switch (tcmd) {
             case TCommand::setlocal:
             case TCommand::getarg:
+            case TCommand::setarg:
             case TCommand::arrnew:
             case TCommand::arrmem:
             case TCommand::pvar:
             case TCommand::push:
             case TCommand::mem:
+                if (lst.size() != 2) {
+                    printError(lineId, "This argument need one data argument");
+                    return false;
+                }
                 arg1 = getUnionData(lst[1]);
                 if (!isInteger(arg1.type)) {
-                    printError(lineId, "The argument of command " + tCommandString[(int)tcmd] + " must be integer.\n");
+                    printError(lineId, "The argument of command " + tCommandString[(int)tcmd] + " must be integer.");
                     return false;
                 }
                 cInfo.argument.push_back(arg1);
@@ -215,6 +220,10 @@ bool VASMPackage::generateLine(const std::string &line, int lineId, bool ignoreH
             case TCommand::jp:
             case TCommand::jmp:
             case TCommand::_new:
+                if (lst.size() != 2) {
+                    printError(lineId, "This argument need one string argument");
+                    return false;
+                }
                 cInfo.argumentString = lst[1];
                 break;
         }
@@ -389,11 +398,11 @@ bool compileTypeDataFile(NamespaceTypeData *nsp, const std::vector<TypeDataToken
             }
             case TypeDataTokenType::Namespace:
             {
-                auto nsp = new NamespaceTypeData;
-                nsp->name = tk.dataString;
-                nsp->children.insert(std::make_pair(tk.dataString, nsp));
-                to = tkList[l + 1].data.data.uint32_v;
-                succ &= compileTypeDataFile(nsp, tkList, l + 1, tkList[l + 1].data.data.uint32_v);
+                auto child = new NamespaceTypeData;
+                child->name = tk.dataString;
+                nsp->children.insert(std::make_pair(tk.dataString, child));
+                to = tkList[fr + 1].data.data.uint32_v;
+                succ &= compileTypeDataFile(child, tkList, fr + 1, tkList[fr + 1].data.data.uint32_v);
                 break;
             }
         }
@@ -487,7 +496,7 @@ bool VOBJPackage::read(const std::string &path) {
             dt.type = DataTypeModifier::u32, readData(ifs, dt), mtd->visibility = (IdentifierVisibility)dt.uint32_v();
             dt.type = DataTypeModifier::u64, readData(ifs, dt), mtd->offset = dt.uint64_v();
             readString(ifs, mtd->resultType);
-            readData(ifs, dt), mtd->argumentType.resize(dt.uint64_v(), 0);
+            readData(ifs, dt), mtd->argumentType.resize(dt.uint64_v(), "");
             for (auto &arg : mtd->argumentType) readString(ifs, arg);
             return mtd;
         };
@@ -501,11 +510,11 @@ bool VOBJPackage::read(const std::string &path) {
             uint64 mtdCnt = 0, fldCnt = 0;
             readData(ifs, dt), mtdCnt = dt.uint64_v();
             readData(ifs, dt), fldCnt = dt.uint64_v(); 
-            while (--mtdCnt) {
+            while (mtdCnt--) {
                 auto mtd = readMtd();
                 cls->methods.insert(std::make_pair(mtd->name, mtd));
             }
-            while (--fldCnt) {
+            while (fldCnt--) {
                 auto var = readVar();
                 cls->fields.insert(std::make_pair(var->name, var));
             }
@@ -520,19 +529,19 @@ bool VOBJPackage::read(const std::string &path) {
             readData(ifs, dt), cCnt = dt.uint64_v();
             readData(ifs, dt), mCnt = dt.uint64_v();
             readData(ifs, dt), vCnt = dt.uint64_v();
-            while (--nCnt) {
+            while (nCnt--) {
                 NamespaceTypeData *child = self(self);
                 nsp->children.insert(std::make_pair(child->name, child));
             }
-            while (--cCnt) {
+            while (cCnt--) {
                 auto *cls = readCls();
                 nsp->classes.insert(std::make_pair(cls->name, cls));
             }
-            while (--mCnt) {
+            while (mCnt--) {
                 auto *mtd = readMtd();
                 nsp->methods.insert(std::make_pair(mtd->name, mtd));
             }
-            while (--vCnt) {
+            while (vCnt--) {
                 auto *var = readVar();
                 nsp->variables.insert(std::make_pair(var->name, var));
             }
@@ -540,6 +549,9 @@ bool VOBJPackage::read(const std::string &path) {
         };
         this->dataTypePackage.root = readNsp(readNsp);
     };
+    readTD();
+    // read vcode
+
     return true;
 }
 
@@ -606,6 +618,59 @@ bool getOffset(VOBJPackage &vobjPkg, std::map<std::string, uint64> &mOffset, std
                 }
                 pir.second->offset |= ((uint64)bid) << 32;
                 vOffset.insert(std::make_pair(fullName, pir.second->offset));
+            }
+            return succ;
+        };
+        return scanNsp(scanNsp, vobjPkg.dataTypePackage.root, std::string(""));
+    };
+    return getClassOffset() && getMethodOffset() && getVariableOffset();
+}
+
+bool getRelyOffset(VOBJPackage &vobjPkg, std::map<std::string, uint64> &mOffset, std::map<std::string, uint64> &cOffset, std::map<std::string, uint64> &vOffset, uint32 bid) {
+    uint32 curOffset = 0;
+    // get the offset of classes
+    auto getClassOffset = [&]() -> bool {
+        auto recursion = [&](auto &&self, NamespaceTypeData *nsp, std::string pfx) -> bool {
+            bool succ = true;
+            for (auto &pir : nsp->children) succ &= self(self, pir.second, pfx + pir.first + ".");
+            for (auto &pir : nsp->classes) {
+                std::string fullName = pfx + pir.first;
+                cOffset.insert(std::make_pair(pfx + pir.first, (((uint64)bid) << 32) | pir.second->offset));
+            }
+            return succ;
+        };
+        return recursion(recursion, vobjPkg.dataTypePackage.root, std::string(""));
+    };
+    // get the offset of methods from vcode
+    auto getMethodOffset = [&]() -> bool {
+        auto scanMtd = [&](MethodTypeData *mtd, std::string pfx) -> bool {
+            auto fullName = pfx + mtd->name;
+            mOffset.insert(std::make_pair(fullName, (((uint64)bid) << 32) | mtd->offset));
+            return true;
+        };
+        auto scanCls = [&](ClassTypeData *cls, std::string pfx) -> bool {
+            pfx += cls->name + ".";
+            bool succ = true;
+            for (auto &pir : cls->methods) succ &= scanMtd(pir.second, pfx);
+            return succ;
+        };
+        auto scanNsp = [&](auto &&self, NamespaceTypeData *nsp, std::string pfx) -> bool {
+            bool succ = true;
+            for (auto &pir : nsp->children) succ &= self(self, pir.second, pfx + pir.first + ".");
+            for (auto &pir : nsp->methods) succ &= scanMtd(pir.second, pfx);
+            for (auto &pir : nsp->classes) succ &= scanCls(pir.second, pfx);
+            return succ;
+        };
+        return scanNsp(scanNsp, vobjPkg.dataTypePackage.root, std::string(""));
+    };
+    // modify the offset of variables using bid
+    auto getVariableOffset = [&]() -> bool {
+        auto scanNsp = [&](auto &&self, NamespaceTypeData *nsp, std::string pfx) -> bool {
+            bool succ = true;
+            for (auto &pir : nsp->children) succ &= self(self, pir.second, pfx + pir.first + ".");
+            for (auto &pir : nsp->variables) {
+                auto fullName = pfx + pir.first;
+                vOffset.insert(std::make_pair(fullName, (((uint64)bid) << 32) | pir.second->offset));
             }
             return succ;
         };
@@ -710,7 +775,12 @@ bool writeVObj(uint8 type, VOBJPackage &vobjPkg, const std::vector<std::string> 
     writeData(ofs, UnionData(vobjPkg.vasmPackage.vcodeSize));
     for (auto &cmd : vobjPkg.vasmPackage.commandList) {
         writeData(ofs, UnionData(cmd.vcode));
-        for (auto &arg : cmd.argument) writeData(ofs, UnionData(arg));
+        for (auto &arg : cmd.argument) writeData(ofs, arg);
+            #ifndef NDEBUG
+        printf("%#010x ", cmd.vcode);
+        for (auto &arg : cmd.argument) printf("%#018llx ", arg.uint64_v());
+        putchar('\n');
+        #endif
     }
     ofs.close();
     return true;
@@ -735,6 +805,7 @@ bool buildVObj( uint8 type,
     vobjPkg.type = type;
     std::vector<VOBJPackage> relyPkg(relyList.size());
     bool succ = vobjPkg.vasmPackage.generate(vasmPath) && vobjPkg.dataTypePackage.generate(typeDataPath);
+    if (!succ) return false;
     std::ifstream ifs(defPath);
     if (!ifs.good()) {
         printError(0, "Cannot read from file : " + defPath);
@@ -751,8 +822,17 @@ bool buildVObj( uint8 type,
     std::map<std::string, uint64> mOffset, cOffset, vOffset;
     succ &= getOffset(vobjPkg, mOffset, cOffset, vOffset, 0);
     uint32 bid = 0;
-    for (auto &rely : relyPkg) succ &= getOffset(vobjPkg, mOffset, cOffset, vOffset, ++bid);
+    for (auto &rely : relyPkg) succ &= getRelyOffset(rely, mOffset, cOffset, vOffset, ++bid);
     if (!succ) return false;
+
+    #ifndef NDEBUG
+    std::cout << "global variables : " << std::endl;
+    for (auto &pir : vOffset) std::cout << pir.first << " 0x" << std::setbase(16) << pir.second << std::endl;
+    std::cout << "methods : " << std::endl;
+    for (auto &pir : mOffset) std::cout << pir.first << " 0x" << std::setbase(16) << pir.second << std::endl;
+    std::cout << "classes : " << std::endl;
+    for (auto &pir : cOffset) std::cout << pir.first << " 0x" << std::setbase(16) << pir.second << std::endl;
+    #endif
     // change the strings in vcode into offset
     succ = applyOffset(vobjPkg, mOffset, cOffset, vOffset);
 

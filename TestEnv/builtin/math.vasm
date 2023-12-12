@@ -1,0 +1,28 @@
+#LABEL Math.max@int@int
+    setlocal 0x2
+    getarg 0x2
+    i32_pvar 0
+    i32_pvar 1
+    i32_r_r_gt
+    t_jz @COND_FAIL_0
+        i32_pvar 0
+        i32_r_gvl
+        vret
+    #LABEL @COND_FAIL_0
+        i32_pvar 1
+        i32_r_gvl
+        vret
+#LABEL Math.min@int@int
+    setlocal 0x2
+    getarg 0x2
+    i32_pvar 0
+    i32_pvar 1
+    i32_r_r_gt
+    t_jz @COND_FAIL_1
+        i32_pvar 1
+        i32_r_gvl
+        vret
+    #LABEL @COND_FAIL_1
+        i32_pvar 0
+        i32_r_gvl
+        vret

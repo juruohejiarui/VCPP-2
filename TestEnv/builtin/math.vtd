@@ -1,0 +1,6 @@
+{
+    N Math {
+        F max@int@int v public : int {: int : int}
+        F min@int@int v public : int {: int : int}
+    }
+}
