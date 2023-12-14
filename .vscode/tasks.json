@@ -23,25 +23,25 @@
             "dependsOn": ["VASM-cmake"]
         },
         {
-            "label": "Runtime-cmake",
+            "label": "VM-cmake",
             "type": "shell",
             "command": "cmake",
             "args": [
-                "../../Runtime"
+                "../../VM"
             ],
             "options": {
-                "cwd": "${workspaceFolder}/build/Runtime"
+                "cwd": "${workspaceFolder}/build/VM"
             },            
         },
         {
-            "label": "Runtime-make",
+            "label": "VM-make",
             "type": "shell",
             "command": "make",
             "args": [],
             "options": {
-                "cwd": "${workspaceFolder}/build/Runtime"
+                "cwd": "${workspaceFolder}/build/VM"
             }, 
-            "dependsOn": ["Runtime-cmake"]
+            "dependsOn": ["VM-cmake"]
         },
     ],
 }

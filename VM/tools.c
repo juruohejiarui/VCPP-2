@@ -25,6 +25,7 @@ void PairList_init(PairListElement *start, PairListElement *end) {
 
 void PairList_insert(PairListElement *pos, PairListElement *ele) {
     ele->prev = pos->prev;
+    ele->prev->next = ele;
     ele->next = pos;
     pos->prev = ele;
 }
@@ -127,4 +128,49 @@ void *Trie_get(TrieNode *root, const char *str) {
         cur = cur->child[str[i]];
     }
     return cur->content;
+}
+
+static char strBuf[1048576];
+static const uint32 maxStrBufSize = 1048576;
+static uint32 strBufSize;
+const char *readString(FILE *filePtr) {
+    strBufSize = 0;
+    char *res = NULL;
+    uint32 resSize = 0;
+    char ch;
+    while (readData(filePtr, &ch, char), ch != '\0') {
+        if (strBufSize == maxStrBufSize) {
+            // update the size of res and copy the data in strBuf into res
+            char *newRes = mallocArray(char, resSize + maxStrBufSize);
+            if (res != NULL) {
+                memcpy(newRes, res, resSize * sizeof(char));
+                free(res);
+            }
+            memcpy(newRes + resSize, strBuf, sizeof(char) * maxStrBufSize);
+            res = newRes;
+            strBufSize = 0;
+        }
+        strBuf[strBufSize++] = ch;
+    }
+    char *newRes = mallocArray(char, resSize + strBufSize + 1);
+    if (res != NULL) {
+        memcpy(newRes, res, sizeof(resSize));
+        free(res);
+    }
+    res = newRes;
+    if (strBufSize > 0) memcpy(res + resSize, strBuf, sizeof(char) * strBufSize);
+    resSize += strBufSize;
+    res[resSize] = '\0';
+
+    return res;
+}
+
+void writeString(FILE *filePtr, const char *str) {
+    int len = strlen(str);
+    fwrite(str, sizeof(char), len + 1, filePtr);
+}
+
+void ignoreString(FILE *filePtr) {
+    char ch;
+    while (readData(filePtr, &ch, uint8), ch != '\0') ;
 }

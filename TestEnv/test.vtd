@@ -1,4 +1,8 @@
 {
     V f v private 0x0 : int[]
     F main v public : int {}
+    C ACNode v private 0x10 {
+        V ch v private 0x0 : int[]
+        V fl v private 0x8 : int
+    }
 }

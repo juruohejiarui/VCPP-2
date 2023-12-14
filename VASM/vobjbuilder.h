@@ -56,9 +56,12 @@ struct ClassTypeData {
     IdentifierVisibility visibility;
     std::string name, fullName;
     uint64 offset, size;
+    uint8 *dataTemplate;
+    std::vector<std::pair<uint64, std::string> > offsetMap;
     std::map<std::string, VariableTypeData *> fields;
     std::map<std::string, MethodTypeData *> methods;
 
+    ClassTypeData();
     ~ClassTypeData();
 };
 struct NamespaceTypeData {

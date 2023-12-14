@@ -18,14 +18,14 @@
             "MIMode": "lldb"
         },
         {
-            "name": "(lldb)Runtime",
+            "name": "(lldb)VM",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/Runtime/Runtime",
+            "program": "${workspaceFolder}/build/VM/VM",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/TestEnv",
-            "preLaunchTask": "Runtime-make",
+            "preLaunchTask": "VM-make",
             "environment": [],
             "externalConsole": false,
             "MIMode": "lldb"
@@ -57,17 +57,17 @@
         },
 
         {
-            "name": "Runtime",
+            "name": "VM",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/Runtime/Runtime",
+            "program": "${workspaceFolder}/build/VM/VM",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/TestEnv",
             "environment": [],
             "externalConsole": false,
             "MIMode": "gdb",
-            "preLaunchTask": "Runtime-make",
+            "preLaunchTask": "VM-make",
             "setupCommands": [
                 {
                     "description": "Enable pretty-printing for gdb",

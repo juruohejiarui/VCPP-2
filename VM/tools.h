@@ -108,6 +108,11 @@ void Trie_insert(TrieNode *root, const char *str, void *val);
 /// @return 
 void *Trie_get(TrieNode *root, const char *str);
 
-uint8 readuint8(FILE *file);
+#define readData(filePtr, dataPtr, dataType) (fread(dataPtr, (sizeof(dataType)), 1, (filePtr)))
+#define writeData(filePtr, dataPtr, dataType) (fwrite((dataPtr), (sizeof(dataType)), 1, (filePtr)))
+
+const char *readString(FILE *filePtr);
+void writeString(FILE *filePtr, const char *str);
+void ignoreString(FILE *filePtr);
 
 #endif

@@ -236,9 +236,13 @@ bool VASMPackage::generateLine(const std::string &line, int lineId, bool ignoreH
 #pragma endregion
 
 #pragma region DataTypePackage
+ClassTypeData::ClassTypeData() {
+    dataTemplate = nullptr;
+}
 ClassTypeData::~ClassTypeData() {
     for (auto &pir : fields) if (pir.second != nullptr) delete pir.second;
     for (auto &pir : methods) if (pir.second != nullptr) delete pir.second;
+    if (dataTemplate != nullptr) delete dataTemplate;
 }
 
 NamespaceTypeData::~NamespaceTypeData() {
@@ -345,8 +349,13 @@ bool compileTypeDataFile(ClassTypeData *cls, const std::vector<TypeDataToken> &t
     uint32 fr = l + 4, to = fr;
     bool succ = true;
     while (to < r) {
-        const auto &tk = tkList[fr];
+        auto &tk = tkList[fr];
         switch (tk.type) {
+            case TypeDataTokenType::Data: {
+                cls->offsetMap.push_back(std::make_pair(tk.data.data.uint64_v, tkList[fr + 1].dataString));
+                to = fr + 1;
+                break;
+            }
             case TypeDataTokenType::Function: {
                 auto mtd = new MethodTypeData;
                 mtd->name = tk.dataString;
@@ -506,7 +515,9 @@ bool VOBJPackage::read(const std::string &path) {
             dt.type = DataTypeModifier::u32, readData(ifs, dt), cls->visibility = (IdentifierVisibility)dt.uint32_v();
             dt.type = DataTypeModifier::u64;
             readData(ifs, dt), cls->size = dt.uint64_v();
-            readData(ifs, dt), cls->size = dt.uint64_v();
+            readData(ifs, dt), cls->offset = dt.uint64_v();
+            cls->dataTemplate = new uint8[cls->size];
+            ifs.read((char *)cls->dataTemplate, sizeof(uint8) * cls->size);
             uint64 mtdCnt = 0, fldCnt = 0;
             readData(ifs, dt), mtdCnt = dt.uint64_v();
             readData(ifs, dt), fldCnt = dt.uint64_v(); 
@@ -561,22 +572,23 @@ bool getOffset(VOBJPackage &vobjPkg, std::map<std::string, uint64> &mOffset, std
     uint32 curOffset = 0;
     // get the offset of classes
     auto getClassOffset = [&]() -> bool {
-        auto recursion = [&](auto &&self, NamespaceTypeData *nsp, std::string pfx) -> bool {
+        auto scanNsp = [&](auto &&self, NamespaceTypeData *nsp, std::string pfx) -> bool {
             bool succ = true;
             for (auto &pir : nsp->children) succ &= self(self, pir.second, pfx + pir.first + ".");
             for (auto &pir : nsp->classes) {
-                pir.second->offset = curOffset, curOffset += pir.second->size;
+                auto cls = pir.second;
+                cls->offset = curOffset, curOffset += cls->size;
                 std::string fullName = pfx + pir.first;
                 if (cOffset.count(fullName)) {
                     printError(0, "Multiple definition of class : " + fullName);
                     return false;
                 }
-                pir.second->offset |= ((uint64)bid) << 32;
-                cOffset.insert(std::make_pair(pfx + pir.first, pir.second->offset));
+                cls->offset |= ((uint64)bid) << 32;
+                cOffset.insert(std::make_pair(pfx + pir.first, cls->offset));
             }
             return succ;
         };
-        return recursion(recursion, vobjPkg.dataTypePackage.root, std::string(""));
+        return scanNsp(scanNsp, vobjPkg.dataTypePackage.root, std::string(""));
     };
     // get the offset of methods from vcode
     auto getMethodOffset = [&]() -> bool {
@@ -600,7 +612,15 @@ bool getOffset(VOBJPackage &vobjPkg, std::map<std::string, uint64> &mOffset, std
             bool succ = true;
             for (auto &pir : nsp->children) succ &= self(self, pir.second, pfx + pir.first + ".");
             for (auto &pir : nsp->methods) succ &= scanMtd(pir.second, pfx);
-            for (auto &pir : nsp->classes) succ &= scanCls(pir.second, pfx);
+            for (auto &pir : nsp->classes) {
+                succ &= scanCls(pir.second, pfx);
+                // get the date template
+                auto cls = pir.second;
+                cls->dataTemplate = new uint8[cls->size];
+                std::sort(cls->offsetMap.begin(), cls->offsetMap.end(), [](std::pair<uint64, std::string> &a, std::pair<uint64, std::string> &b) { return a.first < b.first; });
+                for (auto &pir : cls->offsetMap)
+                    *((uint64*)&cls->dataTemplate[pir.first]) = cls->methods[pir.second]->offset;
+            }
             return succ;
         };
         return scanNsp(scanNsp, vobjPkg.dataTypePackage.root, std::string(""));
@@ -630,7 +650,7 @@ bool getRelyOffset(VOBJPackage &vobjPkg, std::map<std::string, uint64> &mOffset,
     uint32 curOffset = 0;
     // get the offset of classes
     auto getClassOffset = [&]() -> bool {
-        auto recursion = [&](auto &&self, NamespaceTypeData *nsp, std::string pfx) -> bool {
+        auto scanNsp = [&](auto &&self, NamespaceTypeData *nsp, std::string pfx) -> bool {
             bool succ = true;
             for (auto &pir : nsp->children) succ &= self(self, pir.second, pfx + pir.first + ".");
             for (auto &pir : nsp->classes) {
@@ -639,7 +659,7 @@ bool getRelyOffset(VOBJPackage &vobjPkg, std::map<std::string, uint64> &mOffset,
             }
             return succ;
         };
-        return recursion(recursion, vobjPkg.dataTypePackage.root, std::string(""));
+        return scanNsp(scanNsp, vobjPkg.dataTypePackage.root, std::string(""));
     };
     // get the offset of methods from vcode
     auto getMethodOffset = [&]() -> bool {
@@ -743,6 +763,7 @@ bool writeVObj(uint8 type, VOBJPackage &vobjPkg, const std::vector<std::string> 
             writeData(ofs, UnionData((uint32)cls->visibility));
             writeData(ofs, UnionData(cls->size));
             writeData(ofs, UnionData(cls->offset));
+            ofs.write((char *)cls->dataTemplate, sizeof(uint8) * cls->size);
             writeData(ofs, UnionData((uint64)cls->methods.size()));
             writeData(ofs, UnionData((uint64)cls->fields.size()));
             for (auto &pir : cls->methods) writeMtd(pir.second);
