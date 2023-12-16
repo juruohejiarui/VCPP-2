@@ -2,21 +2,24 @@
 #define __MMANAGE_H__
 
 #include "tools.h"
-enum ObjectState {
+typedef enum {
     ObjectState_Active, ObjectState_Free, ObjectState_Waiting,
-};
+} ObjectState;
+
 typedef struct tmpObject {
     uint64 dataSize, flagSize;
     uint64 *flag;
     uint8 *data;
 
     /// @brief the number of reference to this Object
-    uint64 refCount, rootRefCount;
+    uint64 refCount, rootRefCount, crossRefCount;
 
-    int32 state;
+    ObjectState state;
     
     /// @brief the generation this Object belongs to
     uint32 genID;
+
+    ListElement *belong;
 } Object;
 
 void initGC();

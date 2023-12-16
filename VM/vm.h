@@ -10,7 +10,7 @@ enum ValueTypeModifier {
     mbrRef, varRef, trueVal, vlMdfUnknown,
 };
 
-enum TCommand {
+typedef enum TCommand {
     none      , mov       , addmov    , submov    , mulmov    , divmov    , andmov    , ormov     , xormov    , shlmov    , 
     shrmov    , modmov    , add       , sub       , mul       , _div      , _and      , _or       , _xor      , shl       , 
     shr       , mod       , _not      , pinc      , sinc      , pdec      , sdec      , eq        , ne        , gt        , 
@@ -24,7 +24,16 @@ enum TCommand {
 typedef struct tmpRuntimeBlock {
     uint32 *relyBlkId;
     char **relyList;
-    
+    uint8 *typeData, *globalMemory;
+    uint32 *vcode;
 } RuntimeBlock;
+
+typedef struct tmpCallFrame {
+    uint64 offset;
+    uint64 *var;
+    uint64 *calcStack, *calcOStackO, *calcStackTop, *calcOStackTop;
+} CallFrame;
+
+int VM(const char *vobjPath);
 
 #endif
