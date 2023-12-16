@@ -536,6 +536,7 @@ bool VOBJPackage::read(const std::string &path) {
             readString(ifs, nsp->name);
             dt.type = DataTypeModifier::u64;
             uint64 nCnt = 0, cCnt = 0, mCnt = 0, vCnt = 0;
+            readData(ifs, dt), nsp->dataTemplateSize = dt.uint64_v();
             readData(ifs, dt), nCnt = dt.uint64_v();
             readData(ifs, dt), cCnt = dt.uint64_v();
             readData(ifs, dt), mCnt = dt.uint64_v();
@@ -574,7 +575,11 @@ bool getOffset(VOBJPackage &vobjPkg, std::map<std::string, uint64> &mOffset, std
     auto getClassOffset = [&]() -> bool {
         auto scanNsp = [&](auto &&self, NamespaceTypeData *nsp, std::string pfx) -> bool {
             bool succ = true;
-            for (auto &pir : nsp->children) succ &= self(self, pir.second, pfx + pir.first + ".");
+            nsp->dataTemplateSize = 0;
+            for (auto &pir : nsp->children) {
+                succ &= self(self, pir.second, pfx + pir.first + ".");
+                if (succ) nsp->dataTemplateSize += pir.second->dataTemplateSize;
+            }
             for (auto &pir : nsp->classes) {
                 auto cls = pir.second;
                 cls->offset = curOffset, curOffset += cls->size;
@@ -585,6 +590,7 @@ bool getOffset(VOBJPackage &vobjPkg, std::map<std::string, uint64> &mOffset, std
                 }
                 cls->offset |= ((uint64)bid) << 32;
                 cOffset.insert(std::make_pair(pfx + pir.first, cls->offset));
+                nsp->dataTemplateSize += cls->size;
             }
             return succ;
         };
@@ -771,6 +777,7 @@ bool writeVObj(uint8 type, VOBJPackage &vobjPkg, const std::vector<std::string> 
         };
         auto writeNsp = [&](auto &&self, NamespaceTypeData *nsp) -> void {
             writeString(ofs, nsp->name);
+            writeData(ofs, UnionData(nsp->dataTemplateSize));
             writeData(ofs, UnionData((uint64)nsp->children.size()));
             writeData(ofs, UnionData((uint64)nsp->classes.size()));
             writeData(ofs, UnionData((uint64)nsp->methods.size()));

@@ -3,6 +3,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 typedef unsigned long long uint64;
 typedef unsigned int uint32;
@@ -64,6 +65,10 @@ void List_insert(ListElement *pos, ListElement *ele);
 /// @brief Remove the ELE from the list that ELE currently belongs to (this action will not free the memory of ELE)
 /// @param ele 
 void List_remove(ListElement *ele);
+/// @brief Clear the list and free the elements of this list, action will not free the memory of content
+/// @param start 
+/// @param end 
+void List_clear(ListElement *start, ListElement *end);
 
 
 typedef struct tmpHashMap {
@@ -109,8 +114,12 @@ void Trie_insert(TrieNode *root, const char *str, void *val);
 void *Trie_get(TrieNode *root, const char *str);
 
 #define readData(filePtr, dataPtr, dataType) (fread(dataPtr, (sizeof(dataType)), 1, (filePtr)))
+#define readArray(filePtr, dataPtr, dataType, arraySize) (fread(dataPtr, sizeof(dataType), (arraySize), filePtr))
 #define writeData(filePtr, dataPtr, dataType) (fwrite((dataPtr), (sizeof(dataType)), 1, (filePtr)))
 
+/// @brief read a string from the file, and create a memory block to store the string
+/// @param filePtr 
+/// @return 
 const char *readString(FILE *filePtr);
 void writeString(FILE *filePtr, const char *str);
 void ignoreString(FILE *filePtr);

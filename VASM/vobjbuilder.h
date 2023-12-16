@@ -66,6 +66,7 @@ struct ClassTypeData {
 };
 struct NamespaceTypeData {
     std::string name;
+    uint64 dataTemplateSize;
     std::map<std::string, NamespaceTypeData *> children;
     std::map<std::string, MethodTypeData *> methods;
     std::map<std::string, VariableTypeData *> variables;

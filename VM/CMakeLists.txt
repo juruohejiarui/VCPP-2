@@ -2,8 +2,8 @@ cmake_minimum_required (VERSION 2.8)
 
 project (VM)
 
-set(C_SOURCE tools.c mmanage.c vm.c typedata.c main.c)
-set(C_HEADER tools.h mmanage.h vm.h typedata.h)  
+set(C_SOURCE tools.c mmanage.c vm.c typedata.c main.c rflsys.c)
+set(C_HEADER tools.h mmanage.h vm.h typedata.h rflsys.h)  
 
 add_executable(VM ${C_SOURCE} ${C_HEADER})
 set(THREADS_PREFER_PTHREAD_FLAG ON)

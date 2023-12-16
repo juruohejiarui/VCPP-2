@@ -2,6 +2,7 @@
 #define __VM_H__
 
 #include "tools.h"
+#include "rflsys.h"
 
 enum DataTypeModifier {
     i8, u8, i16, u16, i32, u32, i64, u64, f32, f64, o, B, dtMdfUnknown,
@@ -22,13 +23,14 @@ typedef enum TCommand {
 };
 
 typedef struct tmpRuntimeBlock {
-    uint32 *relyBlkId;
+    uint32 *relyBlkId, relyCount;
     char **relyList;
-    uint8 *typeData, *globalMemory;
+    uint8 *dataTemplate, *globalMemory;
     uint32 *vcode;
+    NamespaceTypeData *tdRoot;
 } RuntimeBlock;
 
-typedef struct tmpCallFrame {
+typedef struct tmpCallFrame { 
     uint64 offset;
     uint64 *var;
     uint64 *calcStack, *calcOStackO, *calcStackTop, *calcOStackTop;

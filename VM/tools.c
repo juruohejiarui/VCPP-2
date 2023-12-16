@@ -55,6 +55,13 @@ void List_remove(ListElement *ele) {
     ele->next = ele->prev = NULL;
 }
 
+void List_clear(ListElement *start, ListElement *end) {
+    for (ListElement *ele = start->next, *nxt; ele != end; ele = nxt) {
+        nxt = ele->next;
+        List_remove(ele), free(ele);
+    }
+}
+
 void HashMap_init(HashMap *map, uint32 range) {
     map->hashRange = range;
     map->listStart = mallocArray(ListElement, range);
