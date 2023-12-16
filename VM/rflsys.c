@@ -25,15 +25,20 @@ MethodTypeData *loadTypeData_mtd(FILE *fPtr) {
 }
 ClassTypeData *loadTypeData_cls(FILE *fPtr) {
     ClassTypeData *cls = mallocObj(ClassTypeData);
-
     cls->name = readString(fPtr);
     readData(fPtr, &cls->visbility, uint32);
     readData(fPtr, &cls->size, uint64);
     readData(fPtr, &cls->offset, uint64);
     cls->dataTemplate = mallocArray(uint8, cls->size);
     readArray(fPtr, cls->dataTemplate, uint8, cls->size);
+
+    // initialize Tries
+    cls->methods = mallocObj(TrieNode), cls->fields = mallocObj(TrieNode);
+    Trie_init(cls->methods), Trie_init(cls->fields);
+
     uint64 mCnt, fCnt;
     readData(fPtr, &mCnt, uint64), readData(fPtr, &fCnt, uint64);
+    
     while (mCnt--) {
         MethodTypeData *mtd = loadTypeData_mtd(fPtr);
         Trie_insert(cls->methods, mtd->name, mtd);
@@ -53,10 +58,13 @@ NamespaceTypeData *loadTypeData_nsp(FILE *fPtr) {
     NamespaceTypeData *nsp = mallocObj(NamespaceTypeData);
     nsp->name = readString(fPtr);
     readData(fPtr, &nsp->dataTemplateSize, uint64);
+
+    // initialize Tries
     nsp->children = mallocObj(TrieNode),    nsp->classes = mallocObj(TrieNode);
     nsp->methods = mallocObj(TrieNode),     nsp->variables = mallocObj(TrieNode);
     Trie_init(nsp->children),   Trie_init(nsp->classes);
     Trie_init(nsp->methods),    Trie_init(nsp->variables);
+
     uint64 nCnt, cCnt, mCnt, vCnt;
     readData(fPtr, &nCnt, uint64), readData(fPtr, &cCnt, uint64);
     readData(fPtr, &mCnt, uint64), readData(fPtr, &vCnt, uint64);

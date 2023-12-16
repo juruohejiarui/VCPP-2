@@ -12,7 +12,7 @@ struct CommandInfo {
 
 struct VASMPackage {
     std::vector<CommandInfo> commandList;
-    uint32 vcodeSize, mainAddr;
+    uint64 vcodeSize, mainAddr;
     std::map<std::string, uint64> labelOffset;
     std::vector< std::pair<uint32, std::string> > hints;
     std::vector<std::string> stringList;

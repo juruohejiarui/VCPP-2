@@ -588,7 +588,7 @@ bool getOffset(VOBJPackage &vobjPkg, std::map<std::string, uint64> &mOffset, std
                     printError(0, "Multiple definition of class : " + fullName);
                     return false;
                 }
-                cls->offset |= ((uint64)bid) << 32;
+                cls->offset |= ((uint64)bid) << 48;
                 cOffset.insert(std::make_pair(pfx + pir.first, cls->offset));
                 nsp->dataTemplateSize += cls->size;
             }
@@ -604,7 +604,7 @@ bool getOffset(VOBJPackage &vobjPkg, std::map<std::string, uint64> &mOffset, std
                 printError(0, "Can not find the label : " + fullName);
                 return false;
             }
-            mtd->offset = (((uint64)bid) << 32) | vobjPkg.vasmPackage.labelOffset[fullName];
+            mtd->offset = (((uint64)bid) << 48) | vobjPkg.vasmPackage.labelOffset[fullName];
             mOffset.insert(std::make_pair(fullName, mtd->offset));
             return true;
         };
@@ -642,7 +642,7 @@ bool getOffset(VOBJPackage &vobjPkg, std::map<std::string, uint64> &mOffset, std
                     printError(0, "Multiple definition of " + fullName);
                     return false;
                 }
-                pir.second->offset |= ((uint64)bid) << 32;
+                pir.second->offset |= ((uint64)bid) << 48;
                 vOffset.insert(std::make_pair(fullName, pir.second->offset));
             }
             return succ;
@@ -661,7 +661,7 @@ bool getRelyOffset(VOBJPackage &vobjPkg, std::map<std::string, uint64> &mOffset,
             for (auto &pir : nsp->children) succ &= self(self, pir.second, pfx + pir.first + ".");
             for (auto &pir : nsp->classes) {
                 std::string fullName = pfx + pir.first;
-                cOffset.insert(std::make_pair(pfx + pir.first, (((uint64)bid) << 32) | pir.second->offset));
+                cOffset.insert(std::make_pair(pfx + pir.first, (((uint64)bid) << 48) | pir.second->offset));
             }
             return succ;
         };
@@ -671,7 +671,7 @@ bool getRelyOffset(VOBJPackage &vobjPkg, std::map<std::string, uint64> &mOffset,
     auto getMethodOffset = [&]() -> bool {
         auto scanMtd = [&](MethodTypeData *mtd, std::string pfx) -> bool {
             auto fullName = pfx + mtd->name;
-            mOffset.insert(std::make_pair(fullName, (((uint64)bid) << 32) | mtd->offset));
+            mOffset.insert(std::make_pair(fullName, (((uint64)bid) << 48) | mtd->offset));
             return true;
         };
         auto scanCls = [&](ClassTypeData *cls, std::string pfx) -> bool {
@@ -696,7 +696,7 @@ bool getRelyOffset(VOBJPackage &vobjPkg, std::map<std::string, uint64> &mOffset,
             for (auto &pir : nsp->children) succ &= self(self, pir.second, pfx + pir.first + ".");
             for (auto &pir : nsp->variables) {
                 auto fullName = pfx + pir.first;
-                vOffset.insert(std::make_pair(fullName, (((uint64)bid) << 32) | pir.second->offset));
+                vOffset.insert(std::make_pair(fullName, (((uint64)bid) << 48) | pir.second->offset));
             }
             return succ;
         };
@@ -791,7 +791,7 @@ bool writeVObj(uint8 type, VOBJPackage &vobjPkg, const std::vector<std::string> 
     };
 
     writeTypeData();
-    writeData(ofs, UnionData((uint32)relyList.size()));
+    writeData(ofs, UnionData((uint64)relyList.size()));
     for (auto &rely : relyList) writeString(ofs, rely);
     writeString(ofs, vobjPkg.definition);
     if (vobjPkg.vasmPackage.labelOffset.count("main"))

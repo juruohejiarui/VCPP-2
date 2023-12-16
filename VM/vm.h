@@ -23,17 +23,20 @@ typedef enum TCommand {
 };
 
 typedef struct tmpRuntimeBlock {
-    uint32 *relyBlkId, relyCount;
-    char **relyList;
+    uint32 id;
+    uint64 *relyBlkId, relyCount, strCount;
+    char **relyList, **strList;
     uint8 *dataTemplate, *globalMemory;
-    uint32 *vcode;
+    uint8 *vcode;
+    uint64 *mainOffset;
     NamespaceTypeData *tdRoot;
 } RuntimeBlock;
 
 typedef struct tmpCallFrame { 
     uint64 offset;
+    uint32 blkId;
     uint64 *var;
-    uint64 *calcStack, *calcOStackO, *calcStackTop, *calcOStackTop;
+    uint64 calcStack[16], calcOStack[16], *calcStackTop, *calcOStackTop;
 } CallFrame;
 
 int VM(const char *vobjPath);
