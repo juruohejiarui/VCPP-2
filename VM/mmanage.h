@@ -2,6 +2,7 @@
 #define __MMANAGE_H__
 
 #include "tools.h"
+#include "rflsys.h"
 typedef enum {
     ObjectState_Active, ObjectState_Free, ObjectState_Waiting,
 } ObjectState;
@@ -20,6 +21,8 @@ typedef struct tmpObject {
     uint32 genId;
 
     ListElement *belong;
+
+    ClassTypeData *typeData;
 } Object;
 
 void initGC();

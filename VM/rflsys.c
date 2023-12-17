@@ -98,6 +98,8 @@ uint8 *generateDataTemplate(NamespaceTypeData *root) {
     for (ListElement *ele = clsListStart.next; ele != &clsListEnd; ele = ele->next) {
         ClassTypeData *cls = ele->content;
         memcpy(dtTemplate + cls->offset, cls->dataTemplate, sizeof(uint8) * cls->size);
+        // copy the pointer of class type data into the front of data template
+        *(uint64 *)dtTemplate = (uint64)cls;
     }
     List_clear(&clsListStart, &clsListEnd);
     return dtTemplate;

@@ -9,6 +9,7 @@
     setlocal 0x1
     i32_pvar 0x0
     sys 0x1
+    i32_r_t_mov
     i32_pvar 0x0
     i32_r_gvl
     vret

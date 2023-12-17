@@ -23,6 +23,6 @@ set(CMAKE_C_COMPILER "gcc")
 
  
 # set the arguments
-set(CMAKE_BUILD_TYPE "debug")
+set(CMAKE_BUILD_TYPE "Debug")
 set(CMAKE_C_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -g2 -ggdb -std=c11 -lpthread")
 set(CMAKE_C_FLAGS_RELEASE "$ENV{CXXFLAGS} -O3 -std=c11 -lpthread")

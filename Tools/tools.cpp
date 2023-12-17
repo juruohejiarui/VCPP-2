@@ -1,7 +1,7 @@
 #include "tools.h"
 
 const std::string dataTypeModifierString[] = {"c", "b", "i16", "u16", "i32", "u32", "i64", "u64", "f32", "f64", "o", "B", "unknown"};
-const std::string valueTypeModifierString[] = {"rm", "m", "t", "unknown"};
+const std::string valueTypeModifierString[] = {"mr", "r", "t", "unknown"};
 const std::string identifierVisibilityString[] = {"public", "private", "protected", "unknown"};
 const int dataTypeModifierNumber = 12, valueTypeModifierNumber = 3, identifierVisibilityNumber = 3;
 
@@ -43,7 +43,7 @@ DataTypeModifier getDataTypeModifier(const std::string &name)
 
 ValueTypeModifier getValueTypeModifier(const std::string &name)
 {
-    for (int i = 0; i < valueTypeModifierNumber; i++) if (name == dataTypeModifierString[i]) return (ValueTypeModifier)i;
+    for (int i = 0; i < valueTypeModifierNumber; i++) if (name == valueTypeModifierString[i]) return (ValueTypeModifier)i;
     return ValueTypeModifier::unknown;
 }
 IdentifierVisibility getIdentifierVisibility(const std::string &name) {

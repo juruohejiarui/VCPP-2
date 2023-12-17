@@ -6,7 +6,7 @@ arrnew 1
     setlocal 0x10
     #HINT "0 : n, 1 : i, 3 : f"
     #HINT "f = int[0x10000]"
-    o_pvar 0x2
+    o_pvar 0x3
     i32_push 4
     i32_push 0x10000
     arrnew 1
@@ -32,6 +32,7 @@ arrnew 1
     i32_push 0x10000
     i32_push 0x1
     i32_t_t_sub
+    setarg 0x2
     call Math.min@int@int
     i32_r_t_mov
     
@@ -44,7 +45,7 @@ arrnew 1
         #HINT "if (i > n) break;"
         i32_pvar 0x1
         i32_pvar 0x0
-        i32_r_r_gt
+        i32_r_r_le
         t_jz loop_end_1
         
         #HINT "f[i] = f[i - 1] + f[i - 2];"

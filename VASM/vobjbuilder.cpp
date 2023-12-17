@@ -155,6 +155,9 @@ bool VASMPackage::generateLine(const std::string &line, int lineId, bool ignoreH
             case TCommand::ge:
             case TCommand::ls:
             case TCommand::le:
+                if (tcmd == TCommand::mov) {
+                    printf("...");
+                }
                 dtMfr1 = getDataTypeModifier(cmdParts[0]);
                 vtMfr1 = getValueTypeModifier(cmdParts[1]), vtMfr2 = getValueTypeModifier(cmdParts[2]);
                 break;
@@ -186,8 +189,8 @@ bool VASMPackage::generateLine(const std::string &line, int lineId, bool ignoreH
                 break;
         }
         cInfo.vcode = (uint32)tcmd
-                 | (((uint32)dtMfr1) << 16) | (((uint32)dtMfr2) << 20)
-                 | (((uint32)vtMfr1) << 24) | (((uint32)vtMfr2) << 26);
+                 | (((uint32)dtMfr1 & 15) << 16) | (((uint32)dtMfr2 & 15) << 20)
+                 | (((uint32)vtMfr1 & 3) << 24) | (((uint32)vtMfr2 & 3) << 26);
 
         // get the arguments
         UnionData arg1;
@@ -203,6 +206,7 @@ bool VASMPackage::generateLine(const std::string &line, int lineId, bool ignoreH
             case TCommand::pvar:
             case TCommand::push:
             case TCommand::mem:
+            case TCommand::sys:
                 if (lst.size() != 2) {
                     printError(lineId, "This argument need one data argument");
                     return false;
@@ -712,6 +716,11 @@ bool applyOffset(VOBJPackage &vobjPkg,std::map<std::string, uint64> &mOffset, st
         auto &cmd = cmdls[i];
         auto tcmd = (TCommand)(cmd.vcode & ((1 << 16) - 1));
         switch(tcmd) {
+            case TCommand::jz:
+            case TCommand::jp:
+            case TCommand::jmp:
+                cmd.argument.push_back(UnionData(vobjPkg.vasmPackage.labelOffset[cmd.argumentString]));
+                break;
             case TCommand::call: {
                 const auto &mtdName = cmd.argumentString;
                 if (mOffset.count(mtdName)) data.data.uint64_v = mOffset[mtdName], cmd.argument.push_back(data);
@@ -803,7 +812,7 @@ bool writeVObj(uint8 type, VOBJPackage &vobjPkg, const std::vector<std::string> 
     writeData(ofs, UnionData(vobjPkg.vasmPackage.vcodeSize));
     for (auto &cmd : vobjPkg.vasmPackage.commandList) {
         writeData(ofs, UnionData(cmd.vcode));
-        for (auto &arg : cmd.argument) writeData(ofs, arg);
+        for (auto &arg : cmd.argument) arg.type = DataTypeModifier::u64, writeData(ofs, arg);
             #ifndef NDEBUG
         printf("%#010x ", cmd.vcode);
         for (auto &arg : cmd.argument) printf("%#018llx ", arg.uint64_v());
