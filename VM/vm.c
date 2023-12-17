@@ -134,15 +134,15 @@ void getTrueValue(uint16 vlmdf, uint16 dtmdf) {
     switch(dtmdf) {
         case i8:
         case u8:
-            *(uint8 *)clStackTop->cStackTop = *((uint8*)*clStackTop->cStackTop);
+            *clStackTop->cStackTop = *((uint8*)*clStackTop->cStackTop) & ((1ull << 8) - 1);
             break;
         case i16:
         case u16:
-            *(uint16 *)clStackTop->cStackTop = *((uint16*)*clStackTop->cStackTop);
+            *clStackTop->cStackTop = *((uint16*)*clStackTop->cStackTop) & ((1ull << 16) - 1);
             break;
         case i32:
         case u32:
-            *(uint32 *)clStackTop->cStackTop = *((uint32*)*clStackTop->cStackTop);
+            *clStackTop->cStackTop = *((uint32*)*clStackTop->cStackTop) & ((1ull << 32) - 1);
             break;
         case i64:
         case u64:
@@ -153,6 +153,7 @@ void getTrueValue(uint16 vlmdf, uint16 dtmdf) {
             break;
         case f32:
             *(float32 *)clStackTop->cStackTop = *(float32 *)*clStackTop->cStackTop;
+            *clStackTop->cStackTop &= ((1ull << 32) - 1);
             break;
         case f64:
             *(float64 *)clStackTop->cStackTop = *(float64 *)*clStackTop->cStackTop;
@@ -627,6 +628,8 @@ void mainLoop() {
             }
             #pragma endregion
 
+            #pragma region inc and dec
+            #pragma endregion
             case push:
                 *(++clStackTop->cStackTop) = *(uint64 *)&curRBlock->vcode[clStackTop->offset];
                 clStackTop->offset += sizeof(uint64);
@@ -797,7 +800,8 @@ void mainLoop() {
                         clStackTop->cStackTop--;
                         break;
                     case 0x1: {
-                        scanf("%d", (uint32*)(++clStackTop->cStackTop));
+                        *(++clStackTop->cStackTop) = 0;
+                        scanf("%d", (uint32*)clStackTop->cStackTop);
                         break;
                     }
                 }
