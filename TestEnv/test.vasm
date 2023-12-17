@@ -1,14 +1,14 @@
 o_pglo f
 i32_push 4
-i32_push 0x10000
+i32_push 100000000
 arrnew 1
 #LABEL main
     setlocal 0x10
     #HINT "0 : n, 1 : i, 3 : f"
-    #HINT "f = int[0x10000]"
+    #HINT "f = int[100000000]"
     o_pvar 0x3
     i32_push 4
-    i32_push 0x10000
+    i32_push 100000000
     arrnew 1
     o_r_t_mov
 
@@ -29,7 +29,7 @@ arrnew 1
     #HINT "n = System.inputInt32()"
     i32_pvar 0x0
     call System.IO.Console.inputInt
-    i32_push 0x10000
+    i32_push 100000000
     i32_push 0x1
     i32_t_t_sub
     setarg 0x2

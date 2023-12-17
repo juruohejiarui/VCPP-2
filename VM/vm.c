@@ -172,7 +172,7 @@ void mainLoop() {
     static uint64 tmpData[16], argData[16];
     while (clStackTop != clStack) {
         uint32 vcode = *(uint32*)&curRBlock->vcode[clStackTop->offset], tcmd = vcode & ((1 << 16) - 1);
-        printf("offset = %#018llx vcode = %x, tmd = %d\n", clStackTop->offset, vcode, tcmd);
+        // printf("offset = %#018llx vcode = %x, tmd = %d\n", clStackTop->offset, vcode, tcmd);
         clStackTop->offset += sizeof(uint32);
 
         uint16  dtmdf1 = (vcode >> 16) & 15, 
@@ -180,7 +180,7 @@ void mainLoop() {
                 vlmdf1 = (vcode >> 24) & 3,
                 vlmdf2 = (vcode >> 26) & 3;
 
-        printf("modifiers : %d %d %d %d\n", dtmdf1, dtmdf2, vlmdf1, vlmdf2);
+        // printf("modifiers : %d %d %d %d\n", dtmdf1, dtmdf2, vlmdf1, vlmdf2);
         uint64 arg1, arg2;
         switch (tcmd) {
             case mov: {
