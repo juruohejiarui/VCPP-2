@@ -51,5 +51,6 @@
         "*.vcpp": "cpp",
         "vm.h": "c"
     },
-    "cmake.configureOnOpen": true
+    "cmake.configureOnOpen": true,
+    "C_Cpp.default.compilerPath": "/usr/bin/g++"
 }

@@ -17,7 +17,7 @@ typedef struct tmpObject {
     ObjectState state;
     
     /// @brief the generation this Object belongs to
-    uint32 genID;
+    uint32 genId;
 
     ListElement *belong;
 } Object;

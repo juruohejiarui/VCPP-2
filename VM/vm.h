@@ -2,13 +2,14 @@
 #define __VM_H__
 
 #include "tools.h"
+#include "mmanage.h"
 #include "rflsys.h"
 
 enum DataTypeModifier {
     i8, u8, i16, u16, i32, u32, i64, u64, f32, f64, o, B, dtMdfUnknown,
 };
 enum ValueTypeModifier {
-    mbrRef, varRef, trueVal, vlMdfUnknown,
+    MemberRef, VarRef, TrueVal, vlMdfUnknown,
 };
 
 typedef enum TCommand {
@@ -36,7 +37,8 @@ typedef struct tmpCallFrame {
     uint64 offset;
     uint32 blkId;
     uint64 *var;
-    uint64 calcStack[16], calcOStack[16], *calcStackTop, *calcOStackTop;
+    uint64 calcStack[16], *calcStackTop;
+    Object **calcOStack[16], **calcOStackTop;
 } CallFrame;
 
 int VM(const char *vobjPath);

@@ -32,7 +32,7 @@ Object *newObject(uint64 size) {
     obj->flag = mallocArray(uint64, obj->flagSize);
     memset(obj->data, 0, sizeof(uint8) * size);
     memset(obj->flag, 0, sizeof(uint64) * obj->flagSize); 
-    obj->genID = 0, obj->state = ObjectState_Active;
+    obj->genId = 0, obj->state = ObjectState_Active;
 
     List_insert(&objListEnd[0], obj->belong);
 
@@ -66,7 +66,7 @@ void scanObj(Object *obj, uint32 mxGen) {
     for (uint32 i = 0; i < obj->flagSize; i++) if (obj->flag[i]) {
         for (int j = 0; j < 64 && (j + i * 64) * 8 + 8 <= obj->dataSize; i++) if (obj->flag[i] & (1ull << j)) {
             Object *ref = *(uint64*) &obj->data[(i * 64 + j) * 8];
-            if (ref == NULL || ref->genID > mxGen || ref->state == ObjectState_Active) continue;
+            if (ref == NULL || ref->genId > mxGen || ref->state == ObjectState_Active) continue;
             scanObj(ref, mxGen);
         }
     }
@@ -87,7 +87,7 @@ void genGC() {
     for (ListElement *ele = objListStart[0].next, *nxt; ele != &objListEnd[0]; ele = nxt) {
         Object *obj = (Object *)ele->content;
         nxt = ele->next;
-        obj->genID = 1, obj->crossRefCount = 0;
+        obj->genId = 1, obj->crossRefCount = 0;
         List_remove(ele), List_insert(&objListEnd[1], ele);
         genSize[1] += obj->dataSize, genSize[0] -= obj->dataSize;
     }
