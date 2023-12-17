@@ -9,6 +9,16 @@
             "cStandard": "c11",
             "cppStandard": "c++14",
             "compilerPath": "/usr/bin/gcc-9"
+        },
+        {
+            "name": "Windows",
+            "includePath": [
+                "${workspaceFolder}/**"
+            ],
+            "defines": [],
+            "cStandard": "c11",
+            "cppStandard": "c++14",
+            "compilerPath": "D:\\Program Files\\MSYS64\\ucrt64\\bin\\gcc"
         }
     ],
     "version": 4
