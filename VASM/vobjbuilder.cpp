@@ -155,9 +155,6 @@ bool VASMPackage::generateLine(const std::string &line, int lineId, bool ignoreH
             case TCommand::ge:
             case TCommand::ls:
             case TCommand::le:
-                if (tcmd == TCommand::mov) {
-                    printf("...");
-                }
                 dtMfr1 = getDataTypeModifier(cmdParts[0]);
                 vtMfr1 = getValueTypeModifier(cmdParts[1]), vtMfr2 = getValueTypeModifier(cmdParts[2]);
                 break;

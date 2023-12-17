@@ -1,5 +1,6 @@
 #include "vm.h"
 #include "mmanage.h"
+#include <time.h>
 
 #define BLK_ERROR_ID (1ull << 31)
 #define CALLSTACK_SIZE (1ull << 22)
@@ -51,7 +52,6 @@ uint32 loadRuntimeBlock(const char *path) {
     memset(rblk->globalMemory, 0, sizeof(uint8) * gloMemSize);
     // read vcode
     readData(fPtr, &vcodeSize, uint64);
-    printf("vcode size = %#018llx\n", vcodeSize);
     rblk->vcode = mallocArray(uint8, vcodeSize);
     readArray(fPtr, rblk->vcode, uint8, vcodeSize);
 
@@ -171,6 +171,7 @@ void getTrueValue(uint16 vlmdf, uint16 dtmdf) {
 void mainLoop() {
     static uint64 tmpData[16], argData[16];
     while (clStackTop != clStack) {
+        if (checkGC()) genGC();
         uint32 vcode = *(uint32*)&curRBlock->vcode[clStackTop->offset], tcmd = vcode & ((1 << 16) - 1);
         // printf("offset = %#018llx vcode = %x, tmd = %d\n", clStackTop->offset, vcode, tcmd);
         clStackTop->offset += sizeof(uint32);
@@ -629,11 +630,191 @@ void mainLoop() {
             #pragma endregion
 
             #pragma region inc and dec
+            case sinc: {
+                switch (dtmdf1) {
+                    case u8: {
+                        *clStackTop->cStackTop = ((*(uint8*)*clStackTop->cStackTop)++) & ((1ull << 8) - 1);
+                        break;
+                    }
+                    case i8: {
+                        *clStackTop->cStackTop = ((*(int8*)*clStackTop->cStackTop)++) & ((1ull << 8) - 1);
+                        break;
+                    }
+                    case u16: {
+                        *clStackTop->cStackTop = ((*(uint16*)*clStackTop->cStackTop)++) & ((1ull << 16) - 1);
+                        break;
+                    }
+                    case i16: {
+                        *clStackTop->cStackTop = ((*(int16*)*clStackTop->cStackTop)++) & ((1ull << 16) - 1);
+                        break;
+                    }
+                    case u32: {
+                        *clStackTop->cStackTop = ((*(uint32*)*clStackTop->cStackTop)++) & ((1ull << 32) - 1);
+                        break;
+                    }
+                    case i32: {
+                        *clStackTop->cStackTop = ((*(int32*)*clStackTop->cStackTop)++) & ((1ull << 32) - 1);
+                        break;
+                    }
+                    case u64: {
+                        *clStackTop->cStackTop = ((*(uint64*)*clStackTop->cStackTop)++) & ((1ull << 64) - 1);
+                        break;
+                    }
+                    case i64: {
+                        *clStackTop->cStackTop = ((*(int64*)*clStackTop->cStackTop)++) & ((1ull << 64) - 1);
+                        break;
+                    }
+                }
+                if (vlmdf1 == MemberRef) {
+                    Object *obj = *(clStackTop->oStackTop--);
+                    obj->refCount--, obj->rootRefCount--;
+                    if (!obj->refCount) refGC(obj);
+                }
+                break;
+            }
+            case pinc:
+                switch (dtmdf1) {
+                    case u8: {
+                        *clStackTop->cStackTop = (++(*(uint8*)*clStackTop->cStackTop)) & ((1ull << 8) - 1);
+                        break;
+                    }
+                    case i8: {
+                        *clStackTop->cStackTop = (++(*(int8*)*clStackTop->cStackTop)) & ((1ull << 8) - 1);
+                        break;
+                    }
+                    case u16: {
+                        *clStackTop->cStackTop = (++(*(uint16*)*clStackTop->cStackTop)) & ((1ull << 16) - 1);
+                        break;
+                    }
+                    case i16: {
+                        *clStackTop->cStackTop = (++(*(int16*)*clStackTop->cStackTop)) & ((1ull << 16) - 1);
+                        break;
+                    }
+                    case u32: {
+                        *clStackTop->cStackTop = (++(*(uint32*)*clStackTop->cStackTop)) & ((1ull << 32) - 1);
+                        break;
+                    }
+                    case i32: {
+                        *clStackTop->cStackTop = (++(*(int32*)*clStackTop->cStackTop)) & ((1ull << 32) - 1);
+                        break;
+                    }
+                    case u64: {
+                        *clStackTop->cStackTop = (++(*(uint64*)*clStackTop->cStackTop)) & ((1ull << 64) - 1);
+                        break;
+                    }
+                    case i64: {
+                        *clStackTop->cStackTop = (++(*(int64*)*clStackTop->cStackTop)) & ((1ull << 64) - 1);
+                        break;
+                    }
+                }
+                if (vlmdf1 == MemberRef) {
+                    Object *obj = *(clStackTop->oStackTop--);
+                    obj->refCount--, obj->rootRefCount--;
+                    if (!obj->refCount) refGC(obj);
+                }
+                break;
+            case sdec: {
+                switch (dtmdf1) {
+                    case u8: {
+                        *clStackTop->cStackTop = ((*(uint8*)*clStackTop->cStackTop)--) & ((1ull << 8) - 1);
+                        break;
+                    }
+                    case i8: {
+                        *clStackTop->cStackTop = ((*(int8*)*clStackTop->cStackTop)--) & ((1ull << 8) - 1);
+                        break;
+                    }
+                    case u16: {
+                        *clStackTop->cStackTop = ((*(uint16*)*clStackTop->cStackTop)--) & ((1ull << 16) - 1);
+                        break;
+                    }
+                    case i16: {
+                        *clStackTop->cStackTop = ((*(int16*)*clStackTop->cStackTop)--) & ((1ull << 16) - 1);
+                        break;
+                    }
+                    case u32: {
+                        *clStackTop->cStackTop = ((*(uint32*)*clStackTop->cStackTop)--) & ((1ull << 32) - 1);
+                        break;
+                    }
+                    case i32: {
+                        *clStackTop->cStackTop = ((*(int32*)*clStackTop->cStackTop)--) & ((1ull << 32) - 1);
+                        break;
+                    }
+                    case u64: {
+                        *clStackTop->cStackTop = ((*(uint64*)*clStackTop->cStackTop)--) & ((1ull << 64) - 1);
+                        break;
+                    }
+                    case i64: {
+                        *clStackTop->cStackTop = ((*(int64*)*clStackTop->cStackTop)--) & ((1ull << 64) - 1);
+                        break;
+                    }
+                }
+                if (vlmdf1 == MemberRef) {
+                    Object *obj = *(clStackTop->oStackTop--);
+                    obj->refCount--, obj->rootRefCount--;
+                    if (!obj->refCount) refGC(obj);
+                }
+                break;
+            }
+            case pdec: {
+                switch (dtmdf1) {
+                    case u8: {
+                        *clStackTop->cStackTop = (--(*(uint8*)*clStackTop->cStackTop)) & ((1ull << 8) - 1);
+                        break;
+                    }
+                    case i8: {
+                        *clStackTop->cStackTop = (--(*(int8*)*clStackTop->cStackTop)) & ((1ull << 8) - 1);
+                        break;
+                    }
+                    case u16: {
+                        *clStackTop->cStackTop = (--(*(uint16*)*clStackTop->cStackTop)) & ((1ull << 16) - 1);
+                        break;
+                    }
+                    case i16: {
+                        *clStackTop->cStackTop = (--(*(int16*)*clStackTop->cStackTop)) & ((1ull << 16) - 1);
+                        break;
+                    }
+                    case u32: {
+                        *clStackTop->cStackTop = (--(*(uint32*)*clStackTop->cStackTop)) & ((1ull << 32) - 1);
+                        break;
+                    }
+                    case i32: {
+                        *clStackTop->cStackTop = (--(*(int32*)*clStackTop->cStackTop)) & ((1ull << 32) - 1);
+                        break;
+                    }
+                    case u64: {
+                        *clStackTop->cStackTop = (--(*(uint64*)*clStackTop->cStackTop)) & ((1ull << 64) - 1);
+                        break;
+                    }
+                    case i64: {
+                        *clStackTop->cStackTop = (--(*(int64*)*clStackTop->cStackTop)) & ((1ull << 64) - 1);
+                        break;
+                    }
+                }
+                if (vlmdf1 == MemberRef) {
+                    Object *obj = *(clStackTop->oStackTop--);
+                    obj->refCount--, obj->rootRefCount--;
+                    if (!obj->refCount) refGC(obj);
+                }
+                break;
+            }
             #pragma endregion
+            
             case push:
                 *(++clStackTop->cStackTop) = *(uint64 *)&curRBlock->vcode[clStackTop->offset];
                 clStackTop->offset += sizeof(uint64);
                 break;
+            case pop: {
+                getTrueValue(vlmdf1, dtmdf1);
+                if (dtmdf1 == o) {
+                    Object *obj = (Object *)*clStackTop->cStackTop;
+                    if (obj) {
+                        obj->refCount--, obj->rootRefCount--;
+                        if (!obj->refCount) refGC(obj);
+                    }
+                }
+                clStackTop->cStackTop--;
+                break;
+            }
             case pvar:
                 *(++clStackTop->cStackTop) = (uint64)&clStackTop->var[*(uint64 *)&curRBlock->vcode[clStackTop->offset]];
                 if (dtmdf1 == o) {
@@ -826,6 +1007,9 @@ int VM(const char *vobjPath) {
     // set entry
     callFunc(blk, mainAddr);
 
+    clock_t st = clock();
     mainLoop();
+    clock_t ed = clock();
+    printf("\nexit, cost %f(s)\n", 1.0 * (1.0 * ed - 1.0 * st) / CLOCKS_PER_SEC);
     return 0;
 }

@@ -29,7 +29,7 @@ typedef struct tmpRuntimeBlock {
     char **relyList, **strList;
     uint8 *dataTemplate, *globalMemory;
     uint8 *vcode;
-    uint64 *mainOffset;
+    uint64 mainOffset;
     NamespaceTypeData *tdRoot;
 } RuntimeBlock;
 
