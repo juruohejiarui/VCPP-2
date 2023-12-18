@@ -13,6 +13,6 @@ project("InterpreterLinux")
 
 # 包含子项目。
 add_subdirectory("VASM")
-# add_subdirectory("VCPP")
+add_subdirectory("VCPP")
 add_subdirectory("VM")
 # add_subdirectory("Runtime")

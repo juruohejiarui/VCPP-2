@@ -1,16 +1,16 @@
 cmake_minimum_required (VERSION 2.8)
 
-project (VASM)
+project (VCPP)
 
-set(CXX_SOURCE ../Tools/tools.cpp ../Tools/message.cpp ../VASM/commandlist.cpp tokenlist.cpp)
-set(CXX_HEADER ../Tools/tools.h ../Tools/message.h ../VASM/commandlist.h tokenlist.h)  
+set(CXX_SOURCE ../Tools/tools.cpp ../Tools/message.cpp ../VASM/commandlist.cpp tokenlist.cpp main.cpp)
+set(CXX_HEADER ../Tools/tools.h ../Tools/message.h ../VASM/commandlist.h tokenlist.h compiler.h)  
 
 # set_target_properties(${TARGET} PROPERTIES
 #     COMPILE_FLAGS "-pthread"
 #     LINK_FLAGS "-pthread")
-add_executable(VASM ${CXX_SOURCE} ${CXX_HEADER})
+add_executable(VCPP ${CXX_SOURCE} ${CXX_HEADER})
 find_package(Threads)
-target_link_libraries(VASM ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(VCPP ${CMAKE_THREAD_LIBS_INIT})
 
 
 # ��ʽָ��������

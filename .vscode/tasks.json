@@ -43,5 +43,26 @@
             }, 
             "dependsOn": ["VM-cmake"]
         },
+        {
+            "label": "VCPP-cmake",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "../../VCPP"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/build/VCPP"
+            },            
+        },
+        {
+            "label": "VCPP-make",
+            "type": "shell",
+            "command": "make",
+            "args": [],
+            "options": {
+                "cwd": "${workspaceFolder}/build/VCPP"
+            }, 
+            "dependsOn": ["VCPP-cmake"]
+        },
     ],
 }

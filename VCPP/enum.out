@@ -1,0 +1,16 @@
+"Identifier", "ConstData",
+// Brackets
+"SBrkL", "SBrkR", "MBrkL", "MBrkR", "LBrkL", "LBrkR", "GBrkL", "BRrkR",
+// operators
+"Assign", "AddAssign", "SubAssign", "MulAssign", "DivAssign", "ModAssign", "AndAssign", "OrAssign", "XorAssign", "ShlAssign", "ShrAssign",
+"Add", "Sub", "Mul", "Div", "Mod", "And", "Or", "Xor", "Shl", "Shr", "Not", "LogicAnd", "LogicOr", "LogicNot",
+"Equ", "Neq", "Gt", "Ge", "Ls", "Le",
+"GetMem", "NewObj", "Convert",
+// keywords
+"If", "Else", "While", "For", "Continue", "Break", "Return", 
+"VarDef", "FuncDef", "VarFuncDef", "ClsDef", "NspDef",
+"Private", "Public", "Protected",
+
+// pretreat command
+"Vasm", 
+"ExprEnd"
