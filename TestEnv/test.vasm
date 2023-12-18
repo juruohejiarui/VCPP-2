@@ -68,7 +68,7 @@ arrnew 1
 
         #HINT "i++;"
         i32_pvar 0x1
-        i32_r_sinc
+        i32_r_pinc
         i32_t_pop
         
         jmp loop_start_1

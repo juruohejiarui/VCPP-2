@@ -1,16 +1,7 @@
-Identifier, ConstData,
-// Brackets
-SBrkL, SBrkR, MBrkL, MBrkR, LBrkL, LBrkR, GBrkL, BRrkR,
-// operators
-Assign, AddAssign, SubAssign, MulAssign, DivAssign, ModAssign, AndAssign, OrAssign, XorAssign, ShlAssign, ShrAssign,
-Add, Sub, Mul, Div, Mod, And, Or, Xor, Shl, Shr, Not, LogicAnd, LogicOr, LogicNot,
-Equ, Neq, Gt, Ge, Ls, Le,
-GetMem, NewObj, Convert,
-// keywords
-If, Else, While, For, Continue, Break, Return, 
-VarDef, FuncDef, VarFuncDef, ClsDef, NspDef,
-Private, Public, Protected,
+Identifier, ConstValue, String, GenericArea,
+If, Else, While, For, Break, Continue, Return, Block, 
+Expression, Operator, MethodCall,
+VarDef, VarFuncDef, FuncDef, ClsDef, NspDef,
 
-// pretreat command
-Vasm, 
-ExprEnd
+SourceFile, DefinitionFile,
+Empty, Unknown,

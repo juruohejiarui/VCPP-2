@@ -5,6 +5,7 @@ const std::string tokenTypeString[] = {
     // Brackets
     "SBrkL", "SBrkR", "MBrkL", "MBrkR", "LBrkL", "LBrkR", "GBrkL", "GBrkR",
     // operators
+    "Comma", 
     "Assign", "AddAssign", "SubAssign", "MulAssign", "DivAssign", "ModAssign", "AndAssign", "OrAssign", "XorAssign", "ShlAssign", "ShrAssign",
     "Add", "Sub", "Mul", "Div", "Mod", "And", "Or", "Xor", "Shl", "Shr", "Not", "LogicAnd", "LogicOr", "LogicNot",
     "Equ", "Neq", "Gt", "Ge", "Ls", "Le",
@@ -15,7 +16,7 @@ const std::string tokenTypeString[] = {
     // keywords
     "If", "Else", "While", "For", "Continue", "Break", "Return", 
     "VarDef", "FuncDef", "VarFuncDef", "ClsDef", "NspDef",
-    "Private", "Public", "Protected",
+    "Private", "Public", "Protected", "Using", 
 
     // pretreat command
     "Vasm", 
@@ -24,14 +25,31 @@ const std::string tokenTypeString[] = {
 };
 
 const std::string keywordString[] = {
-    "if", "else", "while", "for", "continue", "break", "return", "var", "func", "varfunc", "class", "namespace", "private", "public", "protected",
+    "if", "else", "while", "for", "continue", "break", "return", "var", "func", "varfunc", "class", "namespace", "private", "public", "protected", "using",
 };
-const size_t tokenTypeNumber = 65, keywordTokenTypeNumber = 15;
+const size_t tokenTypeNumber = 67, keywordTokenTypeNumber = 16;
 
 
 TokenType getKeyworkType(const std::string str) {
     for (int i = 0; i < keywordTokenTypeNumber; i++) if (str == keywordString[i]) return TokenType(i + (int)TokenType::If);
     return TokenType::Unknown;
+}
+
+TokenType getTokenType(const std::string& str) {
+    for (int i = 0; i < tokenTypeNumber; i++) if (tokenTypeString[i] == str) return (TokenType)i;
+    return TokenType::Unknown;
+}
+
+int32 operWeight[] = {
+    1,
+    2, 
+};
+
+int32 getOperWeight(TokenType oper) {
+    // the weight of []
+    if (oper == TokenType::MBrkL || oper == TokenType::MBrkR) return 15;
+    if (oper < TokenType::Comma || oper > TokenType::Convert) return -1;
+    return operWeight[(int32)oper - (int32)TokenType::Comma];
 }
 
 bool generateTokenList(const std::string &src, TokenList &tkList) {
@@ -133,7 +151,7 @@ bool generateTokenList(const std::string &src, TokenList &tkList) {
             } else if (line[l] == '}') {
                 tk.type = TokenType::LBrkR;
                 if (brkStk.empty() || tkList[brkStk.top()].type != TokenType::LBrkL) {
-                    printError(lId, "can not match bracket of \"<$ $>\"");
+                    printError(lId, "can not match bracket of \"{ }\"");
                     return false;
                 }
                 tkList[brkStk.top()].data.uint64_v() = tkList.size();
@@ -145,7 +163,7 @@ bool generateTokenList(const std::string &src, TokenList &tkList) {
             } else if (line[l] == ']') {
                 tk.type = TokenType::MBrkR;
                 if (brkStk.empty() || tkList[brkStk.top()].type != TokenType::MBrkL) {
-                    printError(lId, "can not match bracket of \"<$ $>\"");
+                    printError(lId, "can not match bracket of \"[ ]\"");
                     return false;
                 }
                 tkList[brkStk.top()].data.uint64_v() = tkList.size();
@@ -157,7 +175,7 @@ bool generateTokenList(const std::string &src, TokenList &tkList) {
             } else if (line[l] == ')') {
                 tk.type = TokenType::SBrkR;
                 if (brkStk.empty() || tkList[brkStk.top()].type != TokenType::SBrkL) {
-                    printError(lId, "can not match bracket of \"<$ $>\"");
+                    printError(lId, "can not match bracket of \"( )\"");
                     return false;
                 }
                 tkList[brkStk.top()].data.uint64_v() = tkList.size();
@@ -183,3 +201,7 @@ std::string Token::toString() const {
     else if (type == TokenType::Identifier) res.append(" " + dataStr);
     return res;
 }
+
+bool isBracketL(TokenType type) { return type == TokenType::LBrkL || type == TokenType::MBrkL || type == TokenType::SBrkL || type == TokenType::GBrkL; }
+bool isBracketR(TokenType type) { return type == TokenType::LBrkR || type == TokenType::MBrkR || type == TokenType::SBrkR || type == TokenType::GBrkR; }
+bool isOperator(TokenType type) { return type >= TokenType::Comma && type <= TokenType::Convert; }

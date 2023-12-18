@@ -38,7 +38,7 @@ typedef struct tmpCallFrame {
     uint32 blkId;
     uint64 *var;
     uint64 cStack[16], *cStackTop;
-    Object **oStack[16], **oStackTop;
+    Object *oStack[16], **oStackTop;
 } CallFrame;
 
 int VM(const char *vobjPath);

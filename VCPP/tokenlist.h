@@ -7,6 +7,7 @@ enum class TokenType {
     // Brackets
     SBrkL, SBrkR, MBrkL, MBrkR, LBrkL, LBrkR, GBrkL, GBrkR,
     // operators
+    Comma, 
     Assign, AddAssign, SubAssign, MulAssign, DivAssign, ModAssign, AndAssign, OrAssign, XorAssign, ShlAssign, ShrAssign,
     Add, Sub, Mul, Div, Mod, And, Or, Xor, Shl, Shr, Not, LogicAnd, LogicOr, LogicNot,
     Equ, Neq, Gt, Ge, Ls, Le,
@@ -17,7 +18,7 @@ enum class TokenType {
     // keywords
     If, Else, While, For, Continue, Break, Return, 
     VarDef, FuncDef, VarFuncDef, ClsDef, NspDef,
-    Private, Public, Protected,
+    Private, Public, Protected, Using, 
     
     // pretreat command
     Vasm, 
@@ -28,6 +29,10 @@ extern const std::string tokenTypeString[];
 extern const size_t tokenTypeNumber, keywordTokenTypeNumber;
 
 TokenType getTokenType(const std::string &str);
+/// @brief Get the weight of operator
+/// @param oper the token of operator
+/// @return the weight of operator
+int32 getOperWeight(TokenType oper);
 
 struct Token {
     TokenType type;
@@ -48,3 +53,7 @@ typedef std::vector<Token> TokenList;
 /// @param tkList the token list (as the result)
 /// @return whether it is generated successfully
 bool generateTokenList(const std::string &src, TokenList &tkList);
+
+bool isBracketL(TokenType type);
+bool isBracketR(TokenType type);
+bool isOperator(TokenType type);

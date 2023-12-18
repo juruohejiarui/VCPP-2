@@ -2,8 +2,8 @@ cmake_minimum_required (VERSION 2.8)
 
 project (VCPP)
 
-set(CXX_SOURCE ../Tools/tools.cpp ../Tools/message.cpp ../VASM/commandlist.cpp tokenlist.cpp main.cpp)
-set(CXX_HEADER ../Tools/tools.h ../Tools/message.h ../VASM/commandlist.h tokenlist.h compiler.h)  
+set(CXX_SOURCE ../Tools/tools.cpp ../Tools/message.cpp ../VASM/commandlist.cpp tokenlist.cpp syntaxnode.cpp typesystem.cpp main.cpp)
+set(CXX_HEADER ../Tools/tools.h ../Tools/message.h ../VASM/commandlist.h tokenlist.h cpltree.h compiler.h)  
 
 # set_target_properties(${TARGET} PROPERTIES
 #     COMPILE_FLAGS "-pthread"
@@ -13,11 +13,11 @@ find_package(Threads)
 target_link_libraries(VCPP ${CMAKE_THREAD_LIBS_INIT})
 
 
-# ��ʽָ��������
+#   ʽָ        
 set(CMAKE_CXX_COMPILER "g++")
 
  
-# ����������Ϣ
+#           Ϣ
 set(CMAKE_BUILD_TYPE "Debug")
 set(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -g2 -ggdb -std=c++17")
 set(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -g -O3 -std=c++17")

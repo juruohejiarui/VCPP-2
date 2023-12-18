@@ -72,6 +72,21 @@ struct UnionData {
 
     float32 &float32_v();
     float64 &float64_v();
+
+    uint8 uint8_v() const;
+    int8 int8_v() const;
+
+    uint16 uint16_v() const;
+    int16 int16_v() const;
+
+    uint32 uint32_v() const;
+    int32 int32_v() const;
+
+    uint64 uint64_v() const;
+    int64 int64_v() const;
+
+    float32 float32_v() const;
+    float64 float64_v() const;
 };
 
 

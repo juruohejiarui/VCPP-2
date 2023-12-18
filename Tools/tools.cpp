@@ -35,6 +35,21 @@ int64 &UnionData::int64_v() { return data.int64_v; }
 float32 &UnionData::float32_v() { return data.float32_v; }
 float64 &UnionData::float64_v() { return data.float64_v; }
 
+uint8 UnionData::uint8_v() const { return data.uint8_v; }
+int8 UnionData::int8_v() const { return data.int8_v; }
+
+uint16 UnionData::uint16_v() const { return data.uint16_v; }
+int16 UnionData::int16_v() const { return data.int16_v; }
+
+uint32 UnionData::uint32_v() const { return data.uint32_v; }
+int32 UnionData::int32_v() const { return data.int32_v; }
+
+uint64 UnionData::uint64_v() const { return data.uint64_v; }
+int64 UnionData::int64_v() const { return data.int64_v; }
+
+float32 UnionData::float32_v() const { return data.float32_v; }
+float64 UnionData::float64_v() const { return data.float64_v; }
+
 DataTypeModifier getDataTypeModifier(const std::string &name)
 {
     for (int i = 0; i < dataTypeModifierNumber; i++) if (name == dataTypeModifierString[i]) return (DataTypeModifier)i;
@@ -86,34 +101,37 @@ std::string toString(const UnionData &data) {
             sprintf(strBuf, "<unknown data>");
             break;
         case DataTypeModifier::b:
-            sprintf(strBuf, "<uint8 %#04x>", data.data.uint8_v);
+            sprintf(strBuf, "<uint8 %#04x>\0", data.data.uint8_v);
             break;
         case DataTypeModifier::c:
-            sprintf(strBuf, "<int8 %#04x>", data.data.int8_v);
+            sprintf(strBuf, "<int8 %#04x>\0", data.data.int8_v);
             break;
         case DataTypeModifier::i16:
-            sprintf(strBuf, "<int16 %#06x>", data.data.uint16_v);
+            sprintf(strBuf, "<int16 %#06x>\0", data.data.uint16_v);
             break;
         case DataTypeModifier::u16:
-            sprintf(strBuf, "<uint16 %#06x>", data.data.int16_v);
+            sprintf(strBuf, "<uint16 %#06x>\0", data.data.int16_v);
             break;
         case DataTypeModifier::i32:
-            sprintf(strBuf, "<int32 %#010x>", data.data.uint32_v);
+            sprintf(strBuf, "<int32 %#010x>\0", data.data.uint32_v);
             break;
         case DataTypeModifier::u32:
-            sprintf(strBuf, "<uint32 %#010x>", data.data.int32_v);
+            sprintf(strBuf, "<uint32 %#010x>\0", data.data.int32_v);
             break;
         case DataTypeModifier::i64:
-            sprintf(strBuf, "<int64 %#018x>", data.data.uint32_v);
+            sprintf(strBuf, "<int64 %#018x>\0", data.data.uint32_v);
             break;
         case DataTypeModifier::u64:
-            sprintf(strBuf, "<uint64 %#018x>", data.data.int32_v);
+            sprintf(strBuf, "<uint64 %#018x>\0", data.data.int32_v);
             break;
         case DataTypeModifier::f32:
-            sprintf(strBuf, "<float32 %10lf>", data.data.float32_v);
+            sprintf(strBuf, "<float32 %10lf>\0", data.data.float32_v);
             break;
         case DataTypeModifier::f64:
-            sprintf(strBuf, "<float64 %10lf>", data.data.float64_v);
+            sprintf(strBuf, "<float64 %10lf>\0", data.data.float64_v);
+            break;
+        default:
+            sprintf(strBuf, "<unknown data>\0");
             break;
     }
     return std::string(strBuf);
@@ -215,8 +233,8 @@ UnionData getUnionData(const std::string &str) {
         i++; float64 base2 = 1.0 / base;
         for (; str[i] != 'f' || i < str.size(); i++, base2 /= base)
             if (data.type == DataTypeModifier::f32) 
-                data.data.float32_v = data.data.float32_v + toDigtal(str[i]) * base2;
-            else data.data.float64_v = data.data.float64_v + toDigtal(str[i]) * base2;
+                data.data.float32_v = data.data.float32_v + (float32)toDigtal(str[i]) * (float32)base2;
+            else data.data.float64_v = data.data.float64_v + (float64)toDigtal(str[i]) * base2;
         if (data.type == DataTypeModifier::f32)
             data.data.float32_v *= sign;
         else data.data.float64_v *= sign;
@@ -229,7 +247,7 @@ UnionData getUnionData(const std::string &str) {
                 else base = 8, pos++;
             }
         }
-        int endPos = str.size();
+        size_t endPos = str.size();
         if (str[endPos - 1] == 'u') {
             endPos--;
             if (str[endPos - 1] == 'l') data.type = DataTypeModifier::u64, data.data.uint64_v = 0, endPos--;
@@ -249,11 +267,11 @@ UnionData getUnionData(const std::string &str) {
             case DataTypeModifier::i64:
                 data.data.int64_v = sign * (int64)data.data.uint64_v; break;
             case DataTypeModifier::u32:
-                data.data.uint32_v = sign * data.data.uint64_v; break;
+                data.data.uint32_v = sign * (uint32)data.data.uint64_v; break;
             case DataTypeModifier::i32:
                 data.data.int32_v = sign * (int32)data.data.uint64_v; break;
             case DataTypeModifier::u16:
-                data.data.uint16_v = sign * data.data.uint64_v; break;
+                data.data.uint16_v = sign * (uint16)data.data.uint16_v; break;
             case DataTypeModifier::i16:
                 data.data.int16_v = sign * (int16)data.data.uint64_v; break;
         }

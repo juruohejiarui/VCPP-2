@@ -172,14 +172,14 @@ void mainLoop() {
     static uint64 tmpData[16], argData[16];
     while (clStackTop != clStack) {
         if (checkGC()) genGC();
-        uint32 vcode = *(uint32*)&curRBlock->vcode[clStackTop->offset], tcmd = vcode & ((1 << 16) - 1);
+        uint32 vcode = *(uint32 *) &curRBlock->vcode[clStackTop->offset], tcmd = vcode & ((1 << 16) - 1);
         // printf("offset = %#018llx vcode = %x, tmd = %d\n", clStackTop->offset, vcode, tcmd);
         clStackTop->offset += sizeof(uint32);
 
-        uint16  dtmdf1 = (vcode >> 16) & 15, 
-                dtmdf2 = (vcode >> 20) & 15,
-                vlmdf1 = (vcode >> 24) & 3,
-                vlmdf2 = (vcode >> 26) & 3;
+        uint16  dtmdf1 = (vcode >> 16) & 15,
+            dtmdf2 = (vcode >> 20) & 15,
+            vlmdf1 = (vcode >> 24) & 3,
+            vlmdf2 = (vcode >> 26) & 3;
 
         // printf("modifiers : %d %d %d %d\n", dtmdf1, dtmdf2, vlmdf1, vlmdf2);
         uint64 arg1, arg2;
@@ -190,45 +190,46 @@ void mainLoop() {
                 switch (dtmdf1) {
                     case i8:
                     case u8:
-                        *(uint8 *)*(clStackTop->cStackTop - 1) = *(uint8 *)clStackTop->cStackTop;
+                        *(uint8 *) *(clStackTop->cStackTop - 1) = *(uint8 *) clStackTop->cStackTop;
                         break;
                     case i16:
                     case u16:
-                        *(uint16 *)*(clStackTop->cStackTop - 1) = *(uint16 *)clStackTop->cStackTop;
+                        *(uint16 *) *(clStackTop->cStackTop - 1) = *(uint16 *) clStackTop->cStackTop;
                         break;
                     case i32:
                     case u32:
-                        *(uint32 *)*(clStackTop->cStackTop - 1) = *(uint32 *)clStackTop->cStackTop;
+                        *(uint32 *) *(clStackTop->cStackTop - 1) = *(uint32 *) clStackTop->cStackTop;
                         break;
                     case i64:
                     case u64:
-                        *(uint64 *)*(clStackTop->cStackTop - 1) = *(uint64 *)clStackTop->cStackTop;
+                        *(uint64 *) *(clStackTop->cStackTop - 1) = *(uint64 *) clStackTop->cStackTop;
                         break;
                     case f32:
-                         *(float32 *)*(clStackTop->cStackTop - 1) = *(float32 *)clStackTop->cStackTop;
+                        *(float32 *) *(clStackTop->cStackTop - 1) = *(float32 *) clStackTop->cStackTop;
                         break;
                     case f64:
-                         *(float64 *)*(clStackTop->cStackTop - 1) = *(float64 *)clStackTop->cStackTop;
+                        *(float64 *) *(clStackTop->cStackTop - 1) = *(float64 *) clStackTop->cStackTop;
                         break;
                     case o: {
-                        Object *lst = (Object *)*(uint64 *)*(clStackTop->cStackTop - 1);
+                        Object *lst = (Object *) *(uint64 *) *(clStackTop->cStackTop - 1);
                         if (lst) {
                             if (vlmdf1 == VarRef) {
                                 lst->refCount -= 2, lst->rootRefCount -= 2;
-                            } else {
+                            }
+                            else {
                                 lst->refCount -= 2, lst->rootRefCount--;
                                 lst->crossRefCount -= (lst->genId < par->genId);
                             }
                             if (!lst->refCount) refGC(lst);
                         }
-                        Object *nObj = (Object *)*clStackTop->cStackTop;
+                        Object *nObj = (Object *) *clStackTop->cStackTop;
                         if (nObj) {
                             if (vlmdf1 == MemberRef) {
                                 nObj->rootRefCount--;
                                 nObj->crossRefCount += (nObj->genId < par->genId);
                             }
                         }
-                        *(uint64 *)*(clStackTop->cStackTop - 1) = nObj;
+                        *(uint64 *) *(clStackTop->cStackTop - 1) = (uint64) nObj;
                     }
                 }
                 clStackTop->cStackTop -= 2;
@@ -243,41 +244,41 @@ void mainLoop() {
                 break;
             }
 
-            #pragma region basic operator (+ - * / % << >> & | ^ ~)
+#pragma region basic operator (+ - * / % << >> & | ^ ~)
             case add: {
                 getTrueValue(vlmdf2, dtmdf1);
                 uint64 dt = *(clStackTop->cStackTop--);
                 getTrueValue(vlmdf1, dtmdf1);
                 switch (dtmdf1) {
                     case i8:
-                        *(int8 *)clStackTop->cStackTop += *(int8 *)&dt;
+                        *(int8 *) clStackTop->cStackTop += *(int8 *) &dt;
                         break;
                     case u8:
-                        *(uint8 *)clStackTop->cStackTop += *(uint8 *)&dt;
+                        *(uint8 *) clStackTop->cStackTop += *(uint8 *) &dt;
                         break;
                     case i16:
-                        *(int16 *)clStackTop->cStackTop += *(int16 *)&dt;
+                        *(int16 *) clStackTop->cStackTop += *(int16 *) &dt;
                         break;
                     case u16:
-                        *(uint16 *)clStackTop->cStackTop += *(uint16 *)&dt;
+                        *(uint16 *) clStackTop->cStackTop += *(uint16 *) &dt;
                         break;
                     case i32:
-                        *(int32 *)clStackTop->cStackTop += *(int32 *)&dt;
+                        *(int32 *) clStackTop->cStackTop += *(int32 *) &dt;
                         break;
                     case u32:
-                        *(uint32 *)clStackTop->cStackTop += *(uint32 *)&dt;
+                        *(uint32 *) clStackTop->cStackTop += *(uint32 *) &dt;
                         break;
                     case i64:
-                        *(int8 *)clStackTop->cStackTop += *(int64 *)&dt;
+                        *(int64 *) clStackTop->cStackTop += *(int64 *) &dt;
                         break;
                     case u64:
-                        *(uint8 *)clStackTop->cStackTop += *(uint64 *)&dt;
+                        *(uint64 *) clStackTop->cStackTop += *(uint64 *) &dt;
                         break;
                     case f32:
-                        *(float32 *)clStackTop->cStackTop += *(float32 *)&dt;
+                        *(float32 *) clStackTop->cStackTop += *(float32 *) &dt;
                         break;
                     case f64:
-                        *(float64 *)clStackTop->cStackTop += *(float64 *)&dt;
+                        *(float64 *) clStackTop->cStackTop += *(float64 *) &dt;
                         break;
                 }
                 break;
@@ -288,34 +289,34 @@ void mainLoop() {
                 getTrueValue(vlmdf1, dtmdf1);
                 switch (dtmdf1) {
                     case i8:
-                        *(int8 *)clStackTop->cStackTop -= *(int8 *)&dt;
+                        *(int8 *) clStackTop->cStackTop -= *(int8 *) &dt;
                         break;
                     case u8:
-                        *(uint8 *)clStackTop->cStackTop -= *(uint8 *)&dt;
+                        *(uint8 *) clStackTop->cStackTop -= *(uint8 *) &dt;
                         break;
                     case i16:
-                        *(int16 *)clStackTop->cStackTop -= *(int16 *)&dt;
+                        *(int16 *) clStackTop->cStackTop -= *(int16 *) &dt;
                         break;
                     case u16:
-                        *(uint16 *)clStackTop->cStackTop -= *(uint16 *)&dt;
+                        *(uint16 *) clStackTop->cStackTop -= *(uint16 *) &dt;
                         break;
                     case i32:
-                        *(int32 *)clStackTop->cStackTop -= *(int32 *)&dt;
+                        *(int32 *) clStackTop->cStackTop -= *(int32 *) &dt;
                         break;
                     case u32:
-                        *(uint32 *)clStackTop->cStackTop -= *(uint32 *)&dt;
+                        *(uint32 *) clStackTop->cStackTop -= *(uint32 *) &dt;
                         break;
                     case i64:
-                        *(int8 *)clStackTop->cStackTop -= *(int64 *)&dt;
+                        *(int64 *) clStackTop->cStackTop -= *(int64 *) &dt;
                         break;
                     case u64:
-                        *(uint8 *)clStackTop->cStackTop -= *(uint64 *)&dt;
+                        *(uint64 *) clStackTop->cStackTop -= *(uint64 *) &dt;
                         break;
                     case f32:
-                        *(float32 *)clStackTop->cStackTop -= *(float32 *)&dt;
+                        *(float32 *) clStackTop->cStackTop -= *(float32 *) &dt;
                         break;
                     case f64:
-                        *(float64 *)clStackTop->cStackTop -= *(float64 *)&dt;
+                        *(float64 *) clStackTop->cStackTop -= *(float64 *) &dt;
                         break;
                 }
                 break;
@@ -326,34 +327,34 @@ void mainLoop() {
                 getTrueValue(vlmdf1, dtmdf1);
                 switch (dtmdf1) {
                     case i8:
-                        *(int8 *)clStackTop->cStackTop *= *(int8 *)&dt;
+                        *(int8 *) clStackTop->cStackTop *= *(int8 *) &dt;
                         break;
                     case u8:
-                        *(uint8 *)clStackTop->cStackTop *= *(uint8 *)&dt;
+                        *(uint8 *) clStackTop->cStackTop *= *(uint8 *) &dt;
                         break;
                     case i16:
-                        *(int16 *)clStackTop->cStackTop *= *(int16 *)&dt;
+                        *(int16 *) clStackTop->cStackTop *= *(int16 *) &dt;
                         break;
                     case u16:
-                        *(uint16 *)clStackTop->cStackTop *= *(uint16 *)&dt;
+                        *(uint16 *) clStackTop->cStackTop *= *(uint16 *) &dt;
                         break;
                     case i32:
-                        *(int32 *)clStackTop->cStackTop *= *(int32 *)&dt;
+                        *(int32 *) clStackTop->cStackTop *= *(int32 *) &dt;
                         break;
                     case u32:
-                        *(uint32 *)clStackTop->cStackTop *= *(uint32 *)&dt;
+                        *(uint32 *) clStackTop->cStackTop *= *(uint32 *) &dt;
                         break;
                     case i64:
-                        *(int8 *)clStackTop->cStackTop *= *(int64 *)&dt;
+                        *(int64 *) clStackTop->cStackTop *= *(int64 *) &dt;
                         break;
                     case u64:
-                        *(uint8 *)clStackTop->cStackTop *= *(uint64 *)&dt;
+                        *(uint64 *) clStackTop->cStackTop *= *(uint64 *) &dt;
                         break;
                     case f32:
-                        *(float32 *)clStackTop->cStackTop *= *(float32 *)&dt;
+                        *(float32 *) clStackTop->cStackTop *= *(float32 *) &dt;
                         break;
                     case f64:
-                        *(float64 *)clStackTop->cStackTop *= *(float64 *)&dt;
+                        *(float64 *) clStackTop->cStackTop *= *(float64 *) &dt;
                         break;
                 }
                 break;
@@ -364,75 +365,75 @@ void mainLoop() {
                 getTrueValue(vlmdf1, dtmdf1);
                 switch (dtmdf1) {
                     case i8:
-                        *(int8 *)clStackTop->cStackTop /= *(int8 *)&dt;
+                        *(int8 *) clStackTop->cStackTop /= *(int8 *) &dt;
                         break;
                     case u8:
-                        *(uint8 *)clStackTop->cStackTop /= *(uint8 *)&dt;
+                        *(uint8 *) clStackTop->cStackTop /= *(uint8 *) &dt;
                         break;
                     case i16:
-                        *(int16 *)clStackTop->cStackTop /= *(int16 *)&dt;
+                        *(int16 *) clStackTop->cStackTop /= *(int16 *) &dt;
                         break;
                     case u16:
-                        *(uint16 *)clStackTop->cStackTop /= *(uint16 *)&dt;
+                        *(uint16 *) clStackTop->cStackTop /= *(uint16 *) &dt;
                         break;
                     case i32:
-                        *(int32 *)clStackTop->cStackTop /= *(int32 *)&dt;
+                        *(int32 *) clStackTop->cStackTop /= *(int32 *) &dt;
                         break;
                     case u32:
-                        *(uint32 *)clStackTop->cStackTop /= *(uint32 *)&dt;
+                        *(uint32 *) clStackTop->cStackTop /= *(uint32 *) &dt;
                         break;
                     case i64:
-                        *(int8 *)clStackTop->cStackTop /= *(int64 *)&dt;
+                        *(int64 *) clStackTop->cStackTop /= *(int64 *) &dt;
                         break;
                     case u64:
-                        *(uint8 *)clStackTop->cStackTop /= *(uint64 *)&dt;
+                        *(uint64 *) clStackTop->cStackTop /= *(uint64 *) &dt;
                         break;
                     case f32:
-                        *(float32 *)clStackTop->cStackTop /= *(float32 *)&dt;
+                        *(float32 *) clStackTop->cStackTop /= *(float32 *) &dt;
                         break;
                     case f64:
-                        *(float64 *)clStackTop->cStackTop /= *(float64 *)&dt;
+                        *(float64 *) clStackTop->cStackTop /= *(float64 *) &dt;
                         break;
                 }
                 break;
             }
-            #pragma endregion
-            
-            #pragma region compare operator (< > <= >= == !=)
+#pragma endregion
+
+#pragma region compare operator (< > <= >= == !=)
             case gt: {
                 getTrueValue(vlmdf2, dtmdf1);
                 uint64 dt2 = *(clStackTop->cStackTop--);
                 getTrueValue(vlmdf1, dtmdf1);
                 switch (dtmdf1) {
                     case u8:
-                        *(clStackTop->cStackTop) = (uint64)(*(uint8*)clStackTop->cStackTop > *(uint8*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(uint8 *) clStackTop->cStackTop > *(uint8 *) &dt2);
                         break;
                     case i8:
-                        *(clStackTop->cStackTop) = (uint64)(*(int8*)clStackTop->cStackTop > *(int8*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(int8 *) clStackTop->cStackTop > *(int8 *) &dt2);
                         break;
                     case u16:
-                        *(clStackTop->cStackTop) = (uint64)(*(uint16*)clStackTop->cStackTop > *(uint16*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(uint16 *) clStackTop->cStackTop > *(uint16 *) &dt2);
                         break;
                     case i16:
-                        *(clStackTop->cStackTop) = (uint64)(*(int16*)clStackTop->cStackTop > *(int16*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(int16 *) clStackTop->cStackTop > *(int16 *) &dt2);
                         break;
                     case u32:
-                        *(clStackTop->cStackTop) = (uint64)(*(uint32*)clStackTop->cStackTop > *(uint32*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(uint32 *) clStackTop->cStackTop > *(uint32 *) &dt2);
                         break;
                     case i32:
-                        *(clStackTop->cStackTop) = (uint64)(*(int32*)clStackTop->cStackTop > *(int32*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(int32 *) clStackTop->cStackTop > *(int32 *) &dt2);
                         break;
                     case u64:
-                        *(clStackTop->cStackTop) = (uint64)(*(uint8*)clStackTop->cStackTop > *(uint64*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(uint8 *) clStackTop->cStackTop > *(uint64 *) &dt2);
                         break;
                     case i64:
-                        *(clStackTop->cStackTop) = (uint64)(*(int8*)clStackTop->cStackTop > *(int64*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(int8 *) clStackTop->cStackTop > *(int64 *) &dt2);
                         break;
                     case f32:
-                        *(clStackTop->cStackTop) = (uint64)(*(float32*)clStackTop->cStackTop > *(float32*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(float32 *) clStackTop->cStackTop > *(float32 *) &dt2);
                         break;
                     case f64:
-                        *(clStackTop->cStackTop) = (uint64)(*(float64*)clStackTop->cStackTop > *(float64*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(float64 *) clStackTop->cStackTop > *(float64 *) &dt2);
                         break;
                 }
                 break;
@@ -443,34 +444,34 @@ void mainLoop() {
                 getTrueValue(vlmdf1, dtmdf1);
                 switch (dtmdf1) {
                     case u8:
-                        *(clStackTop->cStackTop) = (uint64)(*(uint8*)clStackTop->cStackTop >= *(uint8*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(uint8 *) clStackTop->cStackTop >= *(uint8 *) &dt2);
                         break;
                     case i8:
-                        *(clStackTop->cStackTop) = (uint64)(*(int8*)clStackTop->cStackTop >= *(int8*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(int8 *) clStackTop->cStackTop >= *(int8 *) &dt2);
                         break;
                     case u16:
-                        *(clStackTop->cStackTop) = (uint64)(*(uint16*)clStackTop->cStackTop >= *(uint16*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(uint16 *) clStackTop->cStackTop >= *(uint16 *) &dt2);
                         break;
                     case i16:
-                        *(clStackTop->cStackTop) = (uint64)(*(int16*)clStackTop->cStackTop >= *(int16*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(int16 *) clStackTop->cStackTop >= *(int16 *) &dt2);
                         break;
                     case u32:
-                        *(clStackTop->cStackTop) = (uint64)(*(uint32*)clStackTop->cStackTop >= *(uint32*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(uint32 *) clStackTop->cStackTop >= *(uint32 *) &dt2);
                         break;
                     case i32:
-                        *(clStackTop->cStackTop) = (uint64)(*(int32*)clStackTop->cStackTop >= *(int32*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(int32 *) clStackTop->cStackTop >= *(int32 *) &dt2);
                         break;
                     case u64:
-                        *(clStackTop->cStackTop) = (uint64)(*(uint8*)clStackTop->cStackTop >= *(uint64*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(uint8 *) clStackTop->cStackTop >= *(uint64 *) &dt2);
                         break;
                     case i64:
-                        *(clStackTop->cStackTop) = (uint64)(*(int8*)clStackTop->cStackTop >= *(int64*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(int8 *) clStackTop->cStackTop >= *(int64 *) &dt2);
                         break;
                     case f32:
-                        *(clStackTop->cStackTop) = (uint64)(*(float32*)clStackTop->cStackTop >= *(float32*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(float32 *) clStackTop->cStackTop >= *(float32 *) &dt2);
                         break;
                     case f64:
-                        *(clStackTop->cStackTop) = (uint64)(*(float64*)clStackTop->cStackTop >= *(float64*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(float64 *) clStackTop->cStackTop >= *(float64 *) &dt2);
                         break;
                 }
                 break;
@@ -481,34 +482,34 @@ void mainLoop() {
                 getTrueValue(vlmdf1, dtmdf1);
                 switch (dtmdf1) {
                     case u8:
-                        *(clStackTop->cStackTop) = (uint64)(*(uint8*)clStackTop->cStackTop < *(uint8*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(uint8 *) clStackTop->cStackTop < *(uint8 *) &dt2);
                         break;
                     case i8:
-                        *(clStackTop->cStackTop) = (uint64)(*(int8*)clStackTop->cStackTop < *(int8*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(int8 *) clStackTop->cStackTop < *(int8 *) &dt2);
                         break;
                     case u16:
-                        *(clStackTop->cStackTop) = (uint64)(*(uint16*)clStackTop->cStackTop < *(uint16*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(uint16 *) clStackTop->cStackTop < *(uint16 *) &dt2);
                         break;
                     case i16:
-                        *(clStackTop->cStackTop) = (uint64)(*(int16*)clStackTop->cStackTop < *(int16*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(int16 *) clStackTop->cStackTop < *(int16 *) &dt2);
                         break;
                     case u32:
-                        *(clStackTop->cStackTop) = (uint64)(*(uint32*)clStackTop->cStackTop < *(uint32*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(uint32 *) clStackTop->cStackTop < *(uint32 *) &dt2);
                         break;
                     case i32:
-                        *(clStackTop->cStackTop) = (uint64)(*(int32*)clStackTop->cStackTop < *(int32*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(int32 *) clStackTop->cStackTop < *(int32 *) &dt2);
                         break;
                     case u64:
-                        *(clStackTop->cStackTop) = (uint64)(*(uint8*)clStackTop->cStackTop < *(uint64*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(uint8 *) clStackTop->cStackTop < *(uint64 *) &dt2);
                         break;
                     case i64:
-                        *(clStackTop->cStackTop) = (uint64)(*(int8*)clStackTop->cStackTop < *(int64*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(int8 *) clStackTop->cStackTop < *(int64 *) &dt2);
                         break;
                     case f32:
-                        *(clStackTop->cStackTop) = (uint64)(*(float32*)clStackTop->cStackTop < *(float32*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(float32 *) clStackTop->cStackTop < *(float32 *) &dt2);
                         break;
                     case f64:
-                        *(clStackTop->cStackTop) = (uint64)(*(float64*)clStackTop->cStackTop < *(float64*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(float64 *) clStackTop->cStackTop < *(float64 *) &dt2);
                         break;
                 }
                 break;
@@ -519,34 +520,34 @@ void mainLoop() {
                 getTrueValue(vlmdf1, dtmdf1);
                 switch (dtmdf1) {
                     case u8:
-                        *(clStackTop->cStackTop) = (uint64)(*(uint8*)clStackTop->cStackTop <= *(uint8*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(uint8 *) clStackTop->cStackTop <= *(uint8 *) &dt2);
                         break;
                     case i8:
-                        *(clStackTop->cStackTop) = (uint64)(*(int8*)clStackTop->cStackTop <= *(int8*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(int8 *) clStackTop->cStackTop <= *(int8 *) &dt2);
                         break;
                     case u16:
-                        *(clStackTop->cStackTop) = (uint64)(*(uint16*)clStackTop->cStackTop <= *(uint16*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(uint16 *) clStackTop->cStackTop <= *(uint16 *) &dt2);
                         break;
                     case i16:
-                        *(clStackTop->cStackTop) = (uint64)(*(int16*)clStackTop->cStackTop <= *(int16*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(int16 *) clStackTop->cStackTop <= *(int16 *) &dt2);
                         break;
                     case u32:
-                        *(clStackTop->cStackTop) = (uint64)(*(uint32*)clStackTop->cStackTop <= *(uint32*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(uint32 *) clStackTop->cStackTop <= *(uint32 *) &dt2);
                         break;
                     case i32:
-                        *(clStackTop->cStackTop) = (uint64)(*(int32*)clStackTop->cStackTop <= *(int32*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(int32 *) clStackTop->cStackTop <= *(int32 *) &dt2);
                         break;
                     case u64:
-                        *(clStackTop->cStackTop) = (uint64)(*(uint8*)clStackTop->cStackTop <= *(uint64*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(uint8 *) clStackTop->cStackTop <= *(uint64 *) &dt2);
                         break;
                     case i64:
-                        *(clStackTop->cStackTop) = (uint64)(*(int8*)clStackTop->cStackTop <= *(int64*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(int8 *) clStackTop->cStackTop <= *(int64 *) &dt2);
                         break;
                     case f32:
-                        *(clStackTop->cStackTop) = (uint64)(*(float32*)clStackTop->cStackTop <= *(float32*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(float32 *) clStackTop->cStackTop <= *(float32 *) &dt2);
                         break;
                     case f64:
-                        *(clStackTop->cStackTop) = (uint64)(*(float64*)clStackTop->cStackTop <= *(float64*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(float64 *) clStackTop->cStackTop <= *(float64 *) &dt2);
                         break;
                 }
                 break;
@@ -557,34 +558,34 @@ void mainLoop() {
                 getTrueValue(vlmdf1, dtmdf1);
                 switch (dtmdf1) {
                     case u8:
-                        *(clStackTop->cStackTop) = (uint64)(*(uint8*)clStackTop->cStackTop == *(uint8*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(uint8 *) clStackTop->cStackTop == *(uint8 *) &dt2);
                         break;
                     case i8:
-                        *(clStackTop->cStackTop) = (uint64)(*(int8*)clStackTop->cStackTop == *(int8*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(int8 *) clStackTop->cStackTop == *(int8 *) &dt2);
                         break;
                     case u16:
-                        *(clStackTop->cStackTop) = (uint64)(*(uint16*)clStackTop->cStackTop == *(uint16*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(uint16 *) clStackTop->cStackTop == *(uint16 *) &dt2);
                         break;
                     case i16:
-                        *(clStackTop->cStackTop) = (uint64)(*(int16*)clStackTop->cStackTop == *(int16*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(int16 *) clStackTop->cStackTop == *(int16 *) &dt2);
                         break;
                     case u32:
-                        *(clStackTop->cStackTop) = (uint64)(*(uint32*)clStackTop->cStackTop == *(uint32*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(uint32 *) clStackTop->cStackTop == *(uint32 *) &dt2);
                         break;
                     case i32:
-                        *(clStackTop->cStackTop) = (uint64)(*(int32*)clStackTop->cStackTop == *(int32*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(int32 *) clStackTop->cStackTop == *(int32 *) &dt2);
                         break;
                     case u64:
-                        *(clStackTop->cStackTop) = (uint64)(*(uint8*)clStackTop->cStackTop == *(uint64*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(uint8 *) clStackTop->cStackTop == *(uint64 *) &dt2);
                         break;
                     case i64:
-                        *(clStackTop->cStackTop) = (uint64)(*(int8*)clStackTop->cStackTop == *(int64*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(int8 *) clStackTop->cStackTop == *(int64 *) &dt2);
                         break;
                     case f32:
-                        *(clStackTop->cStackTop) = (uint64)(*(float32*)clStackTop->cStackTop == *(float32*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(float32 *) clStackTop->cStackTop == *(float32 *) &dt2);
                         break;
                     case f64:
-                        *(clStackTop->cStackTop) = (uint64)(*(float64*)clStackTop->cStackTop == *(float64*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(float64 *) clStackTop->cStackTop == *(float64 *) &dt2);
                         break;
                 }
                 break;
@@ -595,73 +596,73 @@ void mainLoop() {
                 getTrueValue(vlmdf1, dtmdf1);
                 switch (dtmdf1) {
                     case u8:
-                        *(clStackTop->cStackTop) = (uint64)(*(uint8*)clStackTop->cStackTop != *(uint8*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(uint8 *) clStackTop->cStackTop != *(uint8 *) &dt2);
                         break;
                     case i8:
-                        *(clStackTop->cStackTop) = (uint64)(*(int8*)clStackTop->cStackTop != *(int8*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(int8 *) clStackTop->cStackTop != *(int8 *) &dt2);
                         break;
                     case u16:
-                        *(clStackTop->cStackTop) = (uint64)(*(uint16*)clStackTop->cStackTop != *(uint16*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(uint16 *) clStackTop->cStackTop != *(uint16 *) &dt2);
                         break;
                     case i16:
-                        *(clStackTop->cStackTop) = (uint64)(*(int16*)clStackTop->cStackTop != *(int16*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(int16 *) clStackTop->cStackTop != *(int16 *) &dt2);
                         break;
                     case u32:
-                        *(clStackTop->cStackTop) = (uint64)(*(uint32*)clStackTop->cStackTop != *(uint32*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(uint32 *) clStackTop->cStackTop != *(uint32 *) &dt2);
                         break;
                     case i32:
-                        *(clStackTop->cStackTop) = (uint64)(*(int32*)clStackTop->cStackTop != *(int32*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(int32 *) clStackTop->cStackTop != *(int32 *) &dt2);
                         break;
                     case u64:
-                        *(clStackTop->cStackTop) = (uint64)(*(uint8*)clStackTop->cStackTop != *(uint64*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(uint8 *) clStackTop->cStackTop != *(uint64 *) &dt2);
                         break;
                     case i64:
-                        *(clStackTop->cStackTop) = (uint64)(*(int8*)clStackTop->cStackTop != *(int64*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(int8 *) clStackTop->cStackTop != *(int64 *) &dt2);
                         break;
                     case f32:
-                        *(clStackTop->cStackTop) = (uint64)(*(float32*)clStackTop->cStackTop != *(float32*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(float32 *) clStackTop->cStackTop != *(float32 *) &dt2);
                         break;
                     case f64:
-                        *(clStackTop->cStackTop) = (uint64)(*(float64*)clStackTop->cStackTop != *(float64*)&dt2);
+                        *(clStackTop->cStackTop) = (uint64) (*(float64 *) clStackTop->cStackTop != *(float64 *) &dt2);
                         break;
                 }
                 break;
             }
-            #pragma endregion
+#pragma endregion
 
-            #pragma region inc and dec
+#pragma region inc and dec
             case sinc: {
                 switch (dtmdf1) {
                     case u8: {
-                        *clStackTop->cStackTop = ((*(uint8*)*clStackTop->cStackTop)++) & ((1ull << 8) - 1);
+                        *clStackTop->cStackTop = (++(*(uint8 *) *clStackTop->cStackTop) - 1) & ((1ull << 8) - 1);
                         break;
                     }
                     case i8: {
-                        *clStackTop->cStackTop = ((*(int8*)*clStackTop->cStackTop)++) & ((1ull << 8) - 1);
+                        *clStackTop->cStackTop = (++(*(int8 *) *clStackTop->cStackTop) - 1) & ((1ull << 8) - 1);
                         break;
                     }
                     case u16: {
-                        *clStackTop->cStackTop = ((*(uint16*)*clStackTop->cStackTop)++) & ((1ull << 16) - 1);
+                        *clStackTop->cStackTop = (++(*(uint16 *) *clStackTop->cStackTop) - 1) & ((1ull << 16) - 1);
                         break;
                     }
                     case i16: {
-                        *clStackTop->cStackTop = ((*(int16*)*clStackTop->cStackTop)++) & ((1ull << 16) - 1);
+                        *clStackTop->cStackTop = (++(*(int16 *) *clStackTop->cStackTop) - 1) & ((1ull << 16) - 1);
                         break;
                     }
                     case u32: {
-                        *clStackTop->cStackTop = ((*(uint32*)*clStackTop->cStackTop)++) & ((1ull << 32) - 1);
+                        *clStackTop->cStackTop = (++(*(uint32 *) *clStackTop->cStackTop) - 1) & ((1ull << 32) - 1);
                         break;
                     }
                     case i32: {
-                        *clStackTop->cStackTop = ((*(int32*)*clStackTop->cStackTop)++) & ((1ull << 32) - 1);
+                        *clStackTop->cStackTop = (++(*(int32 *) *clStackTop->cStackTop) - 1) & ((1ull << 32) - 1);
                         break;
                     }
                     case u64: {
-                        *clStackTop->cStackTop = ((*(uint64*)*clStackTop->cStackTop)++) & ((1ull << 64) - 1);
+                        *clStackTop->cStackTop = (++(*(uint64 *) *clStackTop->cStackTop) - 1);
                         break;
                     }
                     case i64: {
-                        *clStackTop->cStackTop = ((*(int64*)*clStackTop->cStackTop)++) & ((1ull << 64) - 1);
+                        *clStackTop->cStackTop = (++(*(int64 *) *clStackTop->cStackTop) - 1);
                         break;
                     }
                 }
@@ -675,35 +676,35 @@ void mainLoop() {
             case pinc:
                 switch (dtmdf1) {
                     case u8: {
-                        *clStackTop->cStackTop = (++(*(uint8*)*clStackTop->cStackTop)) & ((1ull << 8) - 1);
+                        *clStackTop->cStackTop = (++(*(uint8 *) *clStackTop->cStackTop)) & ((1ull << 8) - 1);
                         break;
                     }
                     case i8: {
-                        *clStackTop->cStackTop = (++(*(int8*)*clStackTop->cStackTop)) & ((1ull << 8) - 1);
+                        *clStackTop->cStackTop = (++(*(int8 *) *clStackTop->cStackTop)) & ((1ull << 8) - 1);
                         break;
                     }
                     case u16: {
-                        *clStackTop->cStackTop = (++(*(uint16*)*clStackTop->cStackTop)) & ((1ull << 16) - 1);
+                        *clStackTop->cStackTop = (++(*(uint16 *) *clStackTop->cStackTop)) & ((1ull << 16) - 1);
                         break;
                     }
                     case i16: {
-                        *clStackTop->cStackTop = (++(*(int16*)*clStackTop->cStackTop)) & ((1ull << 16) - 1);
+                        *clStackTop->cStackTop = (++(*(int16 *) *clStackTop->cStackTop)) & ((1ull << 16) - 1);
                         break;
                     }
                     case u32: {
-                        *clStackTop->cStackTop = (++(*(uint32*)*clStackTop->cStackTop)) & ((1ull << 32) - 1);
+                        *clStackTop->cStackTop = (++(*(uint32 *) *clStackTop->cStackTop)) & ((1ull << 32) - 1);
                         break;
                     }
                     case i32: {
-                        *clStackTop->cStackTop = (++(*(int32*)*clStackTop->cStackTop)) & ((1ull << 32) - 1);
+                        *clStackTop->cStackTop = (++(*(int32 *) *clStackTop->cStackTop)) & ((1ull << 32) - 1);
                         break;
                     }
                     case u64: {
-                        *clStackTop->cStackTop = (++(*(uint64*)*clStackTop->cStackTop)) & ((1ull << 64) - 1);
+                        *clStackTop->cStackTop = (++(*(uint64 *) *clStackTop->cStackTop));
                         break;
                     }
                     case i64: {
-                        *clStackTop->cStackTop = (++(*(int64*)*clStackTop->cStackTop)) & ((1ull << 64) - 1);
+                        *clStackTop->cStackTop = (++(*(int64 *) *clStackTop->cStackTop));
                         break;
                     }
                 }
@@ -716,35 +717,35 @@ void mainLoop() {
             case sdec: {
                 switch (dtmdf1) {
                     case u8: {
-                        *clStackTop->cStackTop = ((*(uint8*)*clStackTop->cStackTop)--) & ((1ull << 8) - 1);
+                        *clStackTop->cStackTop = (--(*(uint8 *) *clStackTop->cStackTop) + 1) & ((1ull << 8) - 1);
                         break;
                     }
                     case i8: {
-                        *clStackTop->cStackTop = ((*(int8*)*clStackTop->cStackTop)--) & ((1ull << 8) - 1);
+                        *clStackTop->cStackTop = (--(*(int8 *) *clStackTop->cStackTop) + 1) & ((1ull << 8) - 1);
                         break;
                     }
                     case u16: {
-                        *clStackTop->cStackTop = ((*(uint16*)*clStackTop->cStackTop)--) & ((1ull << 16) - 1);
+                        *clStackTop->cStackTop = (--(*(uint16 *) *clStackTop->cStackTop) + 1) & ((1ull << 16) - 1);
                         break;
                     }
                     case i16: {
-                        *clStackTop->cStackTop = ((*(int16*)*clStackTop->cStackTop)--) & ((1ull << 16) - 1);
+                        *clStackTop->cStackTop = (--(*(int16 *) *clStackTop->cStackTop) + 1) & ((1ull << 16) - 1);
                         break;
                     }
                     case u32: {
-                        *clStackTop->cStackTop = ((*(uint32*)*clStackTop->cStackTop)--) & ((1ull << 32) - 1);
+                        *clStackTop->cStackTop = (--(*(uint32 *) *clStackTop->cStackTop) + 1) & ((1ull << 32) - 1);
                         break;
                     }
                     case i32: {
-                        *clStackTop->cStackTop = ((*(int32*)*clStackTop->cStackTop)--) & ((1ull << 32) - 1);
+                        *clStackTop->cStackTop = (--(*(int32 *) *clStackTop->cStackTop) + 1) & ((1ull << 32) - 1);
                         break;
                     }
                     case u64: {
-                        *clStackTop->cStackTop = ((*(uint64*)*clStackTop->cStackTop)--) & ((1ull << 64) - 1);
+                        *clStackTop->cStackTop = (--(*(uint64 *) *clStackTop->cStackTop) + 1);
                         break;
                     }
                     case i64: {
-                        *clStackTop->cStackTop = ((*(int64*)*clStackTop->cStackTop)--) & ((1ull << 64) - 1);
+                        *clStackTop->cStackTop = (--(*(int64 *) *clStackTop->cStackTop) + 1);
                         break;
                     }
                 }
@@ -758,35 +759,35 @@ void mainLoop() {
             case pdec: {
                 switch (dtmdf1) {
                     case u8: {
-                        *clStackTop->cStackTop = (--(*(uint8*)*clStackTop->cStackTop)) & ((1ull << 8) - 1);
+                        *clStackTop->cStackTop = (--(*(uint8 *) *clStackTop->cStackTop)) & ((1ull << 8) - 1);
                         break;
                     }
                     case i8: {
-                        *clStackTop->cStackTop = (--(*(int8*)*clStackTop->cStackTop)) & ((1ull << 8) - 1);
+                        *clStackTop->cStackTop = (--(*(int8 *) *clStackTop->cStackTop)) & ((1ull << 8) - 1);
                         break;
                     }
                     case u16: {
-                        *clStackTop->cStackTop = (--(*(uint16*)*clStackTop->cStackTop)) & ((1ull << 16) - 1);
+                        *clStackTop->cStackTop = (--(*(uint16 *) *clStackTop->cStackTop)) & ((1ull << 16) - 1);
                         break;
                     }
                     case i16: {
-                        *clStackTop->cStackTop = (--(*(int16*)*clStackTop->cStackTop)) & ((1ull << 16) - 1);
+                        *clStackTop->cStackTop = (--(*(int16 *) *clStackTop->cStackTop)) & ((1ull << 16) - 1);
                         break;
                     }
                     case u32: {
-                        *clStackTop->cStackTop = (--(*(uint32*)*clStackTop->cStackTop)) & ((1ull << 32) - 1);
+                        *clStackTop->cStackTop = (--(*(uint32 *) *clStackTop->cStackTop)) & ((1ull << 32) - 1);
                         break;
                     }
                     case i32: {
-                        *clStackTop->cStackTop = (--(*(int32*)*clStackTop->cStackTop)) & ((1ull << 32) - 1);
+                        *clStackTop->cStackTop = (--(*(int32 *) *clStackTop->cStackTop)) & ((1ull << 32) - 1);
                         break;
                     }
                     case u64: {
-                        *clStackTop->cStackTop = (--(*(uint64*)*clStackTop->cStackTop)) & ((1ull << 64) - 1);
+                        *clStackTop->cStackTop = (--(*(uint64 *) *clStackTop->cStackTop));
                         break;
                     }
                     case i64: {
-                        *clStackTop->cStackTop = (--(*(int64*)*clStackTop->cStackTop)) & ((1ull << 64) - 1);
+                        *clStackTop->cStackTop = (--(*(int64 *) *clStackTop->cStackTop));
                         break;
                     }
                 }
@@ -797,16 +798,16 @@ void mainLoop() {
                 }
                 break;
             }
-            #pragma endregion
-            
+#pragma endregion
+
             case push:
-                *(++clStackTop->cStackTop) = *(uint64 *)&curRBlock->vcode[clStackTop->offset];
+                *(++clStackTop->cStackTop) = *(uint64 *) &curRBlock->vcode[clStackTop->offset];
                 clStackTop->offset += sizeof(uint64);
                 break;
             case pop: {
                 getTrueValue(vlmdf1, dtmdf1);
                 if (dtmdf1 == o) {
-                    Object *obj = (Object *)*clStackTop->cStackTop;
+                    Object *obj = (Object *) *clStackTop->cStackTop;
                     if (obj) {
                         obj->refCount--, obj->rootRefCount--;
                         if (!obj->refCount) refGC(obj);
@@ -816,19 +817,19 @@ void mainLoop() {
                 break;
             }
             case pvar:
-                *(++clStackTop->cStackTop) = (uint64)&clStackTop->var[*(uint64 *)&curRBlock->vcode[clStackTop->offset]];
+                *(++clStackTop->cStackTop) = (uint64) &clStackTop->var[*(uint64 *) &curRBlock->vcode[clStackTop->offset]];
                 if (dtmdf1 == o) {
-                    Object *obj = (Object *)*(uint64 *)*clStackTop->cStackTop;
+                    Object *obj = (Object *) *(uint64 *) *clStackTop->cStackTop;
                     if (obj) obj->rootRefCount++, obj->refCount++;
                 }
                 clStackTop->offset += sizeof(uint64);
                 break;
             case pglo: {
-                uint64 id = *(uint64*)&curRBlock->vcode[clStackTop->offset], offset = id & ((1ull << 48) - 1);
+                uint64 id = *(uint64 *) &curRBlock->vcode[clStackTop->offset], offset = id & ((1ull << 48) - 1);
                 uint32 blkid = getRelyBlkId((id >> 48) & ((1ull << 16) - 1));
-                *(++clStackTop->cStackTop) = (uint64)(rBlocks[blkid].globalMemory + offset);
+                *(++clStackTop->cStackTop) = (uint64) (rBlocks[blkid].globalMemory + offset);
                 if (dtmdf1 == o) {
-                    Object *obj = (Object *)*(uint64 *)*clStackTop->cStackTop;
+                    Object *obj = (Object *) *(uint64 *) *clStackTop->cStackTop;
                     if (obj) obj->rootRefCount++, obj->refCount++;
                 }
                 clStackTop->offset += sizeof(uint64);
@@ -836,25 +837,25 @@ void mainLoop() {
             }
 
             case _new: {
-                uint64 tid = *(uint64*)&curRBlock->vcode[clStackTop->offset], offset = tid & ((1ull << 48) - 1);
+                uint64 tid = *(uint64 *) &curRBlock->vcode[clStackTop->offset], offset = tid & ((1ull << 48) - 1);
                 clStackTop->offset += sizeof(uint64);
                 const uint32 blkid = getRelyBlkId((tid >> 48) & ((1ull << 16) - 1));
 
                 // get the information from the data template
-                uint8* dtTemplate = rBlocks[blkid].dataTemplate + offset;
-                uint64 size = ((ClassTypeData *)*(uint64 *)dtTemplate)->size;
+                uint8 *dtTemplate = rBlocks[blkid].dataTemplate + offset;
+                uint64 size = ((ClassTypeData *) *(uint64 *) dtTemplate)->size;
 
                 Object *obj = newObject(size);
                 obj->rootRefCount = obj->refCount = 1;
-                obj->typeData = dtTemplate;
+                obj->typeData = (ClassTypeData *) dtTemplate;
                 // copy the dtTemplate into the data block of obj
                 memcpy(obj->data, dtTemplate, size);
 
-                *(++clStackTop->cStackTop) = (uint64)obj;
+                *(++clStackTop->cStackTop) = (uint64) obj;
                 break;
             }
             case arrnew: {
-                uint64 dimc = *(uint64*)&curRBlock->vcode[clStackTop->offset];
+                uint64 dimc = *(uint64 *) &curRBlock->vcode[clStackTop->offset];
                 clStackTop->offset += sizeof(uint64);
 
                 // calculate the size
@@ -863,82 +864,82 @@ void mainLoop() {
 
                 Object *obj = newObject(dimc * sizeof(uint64) + tmpData[dimc]);
                 obj->refCount = obj->rootRefCount = 1;
-                for (int i = 0; i < dimc; i++) ((uint64 *)obj->data)[i] = tmpData[i];
+                for (int i = 0; i < dimc; i++) ((uint64 *) obj->data)[i] = tmpData[i];
 
-                *(++clStackTop->cStackTop) = (uint64)obj;
-                break; 
+                *(++clStackTop->cStackTop) = (uint64) obj;
+                break;
             }
 
             case mem: {
-                uint64 offset = *(uint64*)&curRBlock->vcode[clStackTop->offset];
+                uint64 offset = *(uint64 *) &curRBlock->vcode[clStackTop->offset];
                 clStackTop->offset += sizeof(uint64);
 
                 // put the object into OStack
                 getTrueValue(vlmdf1, o);
-                Object *obj = *(++clStackTop->oStackTop) = (Object *)*clStackTop->cStackTop;
-                
-                *clStackTop->cStackTop = (uint64)(obj->data + offset);
+                Object *obj = *(++clStackTop->oStackTop) = (Object *) *clStackTop->cStackTop;
+
+                *clStackTop->cStackTop = (uint64) (obj->data + offset);
                 // this field is an object
                 if (dtmdf1 == o) {
                     // set the flag of this object
                     uint64 pos = offset / 8 / 64;
                     obj->flag[pos] |= (1ull << (offset - pos * 64));
                     // update the reference count of this child
-                    Object *child = (Object *)*(uint64*)(obj->data + offset);
+                    Object *child = (Object *) *(uint64 *) (obj->data + offset);
                     if (child) child->rootRefCount++, child->refCount++;
                 }
                 break;
             }
             case arrmem: {
-                uint64 dimc = *(uint64*)&curRBlock->vcode[clStackTop->offset];
+                uint64 dimc = *(uint64 *) &curRBlock->vcode[clStackTop->offset];
                 clStackTop->offset += sizeof(uint64);
 
                 for (int i = dimc - 1; i >= 0; i--) tmpData[i] = *(clStackTop->cStackTop--);
                 getTrueValue(vlmdf1, o);
-                Object *arr = (Object *)*clStackTop->cStackTop;
+                Object *arr = (Object *) *clStackTop->cStackTop;
                 uint64 offset = dimc * sizeof(uint64);
-                for (int i = 0; i < dimc; i++) offset += ((uint64 *)arr->data)[i] * tmpData[i];
-                
+                for (int i = 0; i < dimc; i++) offset += ((uint64 *) arr->data)[i] * tmpData[i];
+
                 // push the array object into oStack
                 *(++clStackTop->oStackTop) = arr;
-                *clStackTop->cStackTop = (uint64)(arr->data + dimc * sizeof(uint64) + offset);
-                
+                *clStackTop->cStackTop = (uint64) (arr->data + dimc * sizeof(uint64) + offset);
+
                 // this element is an object
                 if (dtmdf1 == o) {
                     // set the flag of this array
                     uint64 pos = offset / 8 / 64;
                     arr->flag[pos] |= (1ull << (offset - pos * 64));
                     // update the reference count of this child
-                    Object *child = (Object *)*(uint64*)(arr->data + offset);
+                    Object *child = (Object *) *(uint64 *) (arr->data + offset);
                     if (child) child->rootRefCount++, child->refCount++;
                 }
                 break;
             }
 
-            #pragma region jump operator
+#pragma region jump operator
             case jz: {
-                uint64 offset = *(uint64*)&curRBlock->vcode[clStackTop->offset];
+                uint64 offset = *(uint64 *) &curRBlock->vcode[clStackTop->offset];
                 getTrueValue(vlmdf1, u64);
                 if (*(clStackTop->cStackTop--)) clStackTop->offset += sizeof(uint64);
                 else clStackTop->offset = offset;
                 break;
             }
             case jp: {
-                uint64 offset = *(uint64*)&curRBlock->vcode[clStackTop->offset];
+                uint64 offset = *(uint64 *) &curRBlock->vcode[clStackTop->offset];
                 getTrueValue(vlmdf1, u64);
                 if (!*(clStackTop->cStackTop--)) clStackTop->offset += sizeof(uint64);
                 else clStackTop->offset = offset;
                 break;
             }
             case jmp: {
-                clStackTop->offset = *(uint64*)&curRBlock->vcode[clStackTop->offset];
+                clStackTop->offset = *(uint64 *) &curRBlock->vcode[clStackTop->offset];
                 break;
             }
-            #pragma endregion
+#pragma endregion
 
-            #pragma region function call operator
+#pragma region function call operator
             case call: {
-                uint64 addr = *(uint64*)&curRBlock->vcode[clStackTop->offset];
+                uint64 addr = *(uint64 *) &curRBlock->vcode[clStackTop->offset];
                 clStackTop->offset += sizeof(uint64);
                 uint32 blkId = getRelyBlkId(addr >> 48 & ((1ull << 16) - 1));
                 uint64 offset = addr & ((1ull << 48) - 1);
@@ -954,35 +955,35 @@ void mainLoop() {
                 break;
             }
             case setlocal: {
-                uint64 number = *(uint64*)&curRBlock->vcode[clStackTop->offset];
+                uint64 number = *(uint64 *) &curRBlock->vcode[clStackTop->offset];
                 clStackTop->offset += sizeof(uint64);
                 clStackTop->var = mallocArray(uint64, number);
                 memset(clStackTop->var, 0, sizeof(uint64) * number);
                 break;
             }
             case setarg: {
-                uint64 number = *(uint64*)&curRBlock->vcode[clStackTop->offset];
+                uint64 number = *(uint64 *) &curRBlock->vcode[clStackTop->offset];
                 clStackTop->offset += sizeof(uint64);
                 for (int i = number - 1; i >= 0; i--) argData[i] = *(clStackTop->cStackTop--);
                 break;
             }
             case getarg: {
-                uint64 number = *(uint64*)&curRBlock->vcode[clStackTop->offset];
+                uint64 number = *(uint64 *) &curRBlock->vcode[clStackTop->offset];
                 clStackTop->offset += sizeof(uint64);
                 for (int i = number - 1; i >= 0; i--) clStackTop->var[i] = argData[i];
                 break;
             }
             case sys: {
-                uint64 id = *(uint64*)&curRBlock->vcode[clStackTop->offset];
+                uint64 id = *(uint64 *) &curRBlock->vcode[clStackTop->offset];
                 clStackTop->offset += sizeof(uint64);
                 switch (id) {
                     case 0x0:
-                        printf("%d", *(int32 *)clStackTop->cStackTop);
+                        printf("%d", *(int32 *) clStackTop->cStackTop);
                         clStackTop->cStackTop--;
                         break;
                     case 0x1: {
                         *(++clStackTop->cStackTop) = 0;
-                        scanf("%d", (uint32*)clStackTop->cStackTop);
+                        scanf("%d", (uint32 *) clStackTop->cStackTop);
                         break;
                     }
                 }
@@ -990,9 +991,9 @@ void mainLoop() {
             }
             default:
                 printf("Unknown command : %x\n", vcode);
-                return ;
+                return;
                 break;
-            #pragma endregion
+#pragma endregion
         }
     }
 }

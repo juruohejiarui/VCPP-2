@@ -1,3 +1,4 @@
+#pragma once
 #include "tokenlist.h"
 
 enum class SyntaxNodeType {
@@ -10,8 +11,23 @@ enum class SyntaxNodeType {
     Empty, Unknown,
 };
 
-class EResultType {
-    
+extern std::string syntaxNodeTypeString[];
+extern const int syntaxNodeTypeNumber;
+
+class ClassInfo {
+    std::string name, fullName;
+};
+struct EResultType {
+    ClassInfo* cls;
+    int dimc;
+    ValueTypeModifier valueType;
+    bool isConst;
+    std::vector<EResultType> genericList;
+
+    EResultType();
+    EResultType(ClassInfo* cls, int dimc = 0, ValueTypeModifier valueType = ValueTypeModifier::t, bool isConst = false);
+
+    std::string toString() const ;
 };
 
 #pragma region Syntax Node
@@ -20,11 +36,10 @@ protected:
     SyntaxNodeType type;
     Token token;
 
-    SyntaxNode(SyntaxNodeType type);
-    SyntaxNode(SyntaxNodeType type, const Token &tk);
-
-    std::vector<SyntaxNodeType*> children;
+    std::vector<SyntaxNode*> children;
 public:
+    SyntaxNode(SyntaxNodeType type);
+    SyntaxNode(SyntaxNodeType type, const Token& tk);
     virtual std::string toString() const = 0;
 
     SyntaxNodeType getType() const;
@@ -33,8 +48,9 @@ public:
     void setToken(const Token &tk);
 
     size_t childrenCount() const;
-    const SyntaxNode &operator [] (size_t index) const;
-    SyntaxNode &operator [] (size_t index);
+    void addChild(SyntaxNode *child);
+    SyntaxNode *operator [] (size_t index) const;
+    SyntaxNode *&operator [] (size_t index);
 
     /// @brief build this node and its children using the token list, and the start point is ST, then return the end point in ED
     /// @param tkList the token list
@@ -42,6 +58,7 @@ public:
     /// @param ed the end point
     /// @return if it is successful to build this syntax node
     virtual bool buildNode(const TokenList &tkList, size_t st, size_t &ed) = 0;
+    virtual bool checkEResultType() = 0;
 };
 
 /// @brief the syntax node of an expression
@@ -49,13 +66,16 @@ class ExpressionNode : public SyntaxNode {
 protected:
     EResultType resultType;
 public:
-    ExpressionNode(SyntaxNodeType *type);
-    ExpressionNode(SyntaxNodeType *type, const Token &tk);
-    const EResultType &getResultType();
+    virtual std::string toString() const;
+    ExpressionNode(SyntaxNodeType type);
+    ExpressionNode(SyntaxNodeType type, const Token &tk);
+    const EResultType &getResultType() const ;
 
-    virtual bool buildNode(const TokenList &tkList, size_t st, size_t &ed);
+    bool buildNode(const TokenList &tkList, size_t st, size_t &ed);
+    bool buildNode(const TokenList &tkList, size_t st, size_t ed);
 
-    virtual uint32 getWeight() const;
+    int32 getWeight() const;
+    virtual bool checkEResultType();
 };
 /// @brief the syntax node of an identifier
 class IdentifierNode : public ExpressionNode {
@@ -74,14 +94,16 @@ public:
     void setName(const std::string &name);
     const std::string &getName() const;
 
-    virtual bool buildNode(const TokenList &tkList, size_t st, size_t &ed);
+    virtual bool checkEResultType();
 };
 
 class MethodCallNode : public IdentifierNode {
-private:
+public:
     MethodCallNode();
     MethodCallNode(const Token &tk);
     virtual bool buildNode(const TokenList &tkList, size_t st, size_t &ed);
+    
+    bool checkEResultType();
 };
 
 /// @brief the syntax node of an operator
@@ -94,9 +116,9 @@ public:
     OperatorNode(const Token &tk);
     
     TokenType getOperator() const;
-    uint32 getWeight() const;
+    int32 getWeight() const;
 
-    bool buildNode(const TokenList &tkList, size_t st, size_t &ed);
+    bool checkEResultType();
 };
 
 class ConstValueNode : public ExpressionNode {
@@ -109,7 +131,7 @@ public:
     
     UnionData &data();
 
-    bool buildNode(const TokenList &tkList, size_t st, size_t &ed);
+    bool checkEResultType();
 };
 
 class GenericAreaNode : public ExpressionNode {
@@ -119,7 +141,8 @@ public:
     GenericAreaNode();
     GenericAreaNode(const Token &tk);
     
-    bool buildNode(const TokenList &tkList, size_t st, size_t &ed);
+    bool buildNode(const TokenList &tkList, size_t st, size_t ed);
+    bool checkEResultType();
 };
 
 class ConditionNode : public SyntaxNode {
@@ -134,6 +157,7 @@ public:
     const SyntaxNode &getFailNode() const;
 
     bool buildNode(const TokenList &tkList, size_t st, size_t &ed);
+    bool checkEResultType();
 };
 
 class WhileNode : public SyntaxNode {
@@ -147,6 +171,7 @@ public:
     const SyntaxNode &getContentNode() const;
 
     bool buildNode(const TokenList &tkList, size_t st, size_t &ed);
+    bool checkEResultType();
 };
 
 class ForNode : public SyntaxNode {
@@ -162,9 +187,12 @@ public:
     const SyntaxNode &getContentNode() const;
 
     bool buildNode(const TokenList &tkList, size_t st, size_t &ed);
+    bool checkEResultType();
 };
 
 class VarDefNode : public SyntaxNode {
+private:
+    IdentifierVisibility visibility;
 public:
     std::string toString() const;
 
@@ -172,6 +200,57 @@ public:
     VarDefNode(const Token &tk);
     
     bool buildNode(const TokenList &tkList, size_t st, size_t &ed);
+    IdentifierVisibility getVisibility() const;
+    bool checkEResultType();
+};
+
+class FuncDefNode : public SyntaxNode {
+private:
+    IdentifierVisibility visibility;
+public:
+    std::string toString() const;
+
+    FuncDefNode();
+    FuncDefNode(const Token& tk);
+
+    bool buildNode(const TokenList& tkList, size_t st, size_t& ed);
+    IdentifierVisibility getVisibility() const;
+    bool checkEResultType();
+};
+
+class ClsDefNode : public SyntaxNode {
+private:
+    IdentifierVisibility visibility;
+public:
+    std::string toString() const;
+
+    ClsDefNode();
+    ClsDefNode(const Token& tk);
+
+    bool buildNode(const TokenList& tkList, size_t st, size_t& ed);
+    IdentifierVisibility getVisibility() const;
+    bool checkEResultType();
+};
+class NspDefNode : public SyntaxNode {
+public:
+    std::string toString() const;
+
+    NspDefNode();
+    NspDefNode(const Token& tk);
+
+    bool buildNode(const TokenList& tkList, size_t st, size_t& ed);
+    bool checkEResultType();
+};
+
+class BlockNode : public SyntaxNode {
+public:
+    std::string toString() const;
+
+    BlockNode();
+    BlockNode(const Token& tk);
+
+    bool buildNode(const TokenList& tkList, size_t st, size_t& ed);
+    bool checkEResultType();
 };
 
 #pragma endregion
