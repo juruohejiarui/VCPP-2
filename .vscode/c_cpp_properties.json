@@ -18,7 +18,8 @@
             "defines": [],
             "cStandard": "c11",
             "cppStandard": "c++14",
-            "compilerPath": "D:\\Program Files\\MSYS64\\ucrt64\\bin\\gcc"
+            "compilerPath": "D:\\Program Files\\MSYS64\\ucrt64\\bin\\gcc",
+            "configurationProvider": "ms-vscode.cmake-tools"
         }
     ],
     "version": 4
