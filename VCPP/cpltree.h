@@ -67,11 +67,13 @@ struct EResultType {
     std::string clsName;
     int dimc;
     ValueTypeModifier valueType;
-    bool isConst;
+    bool isConst, isGeneric;
     std::vector<EResultType> genericList;
 
     EResultType();
     EResultType(ClassInfo* cls, int dimc = 0, ValueTypeModifier valueType = ValueTypeModifier::t, bool isConst = false);
+
+    EResultType convertToParent() const;
 
     std::string toString() const ;
 };
