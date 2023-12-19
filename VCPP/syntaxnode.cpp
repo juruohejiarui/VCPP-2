@@ -1,6 +1,6 @@
 #include "cpltree.h"
 
-extern std::string syntaxNodeTypeString[] = {
+const std::string syntaxNodeTypeString[] = {
 	"Identifier", "ConstValue", "String", "GenericArea",
 	"If", "Else", "While", "For", "Break", "Continue", "Return", "Block", 
 	"Expression", "Operator", "MethodCall",
@@ -9,10 +9,24 @@ extern std::string syntaxNodeTypeString[] = {
 	"SourceFile", "DefinitionFile",
 	"Empty", "Unknown",
 };
-extern const int syntaxNodeTypeNumber = 23;
+const int syntaxNodeTypeNumber = 23;
 
+/**
+ * @brief Builds a single syntax node from a given token list.
+ * 
+ * This function takes a token list, a starting index, and a reference to an ending index.
+ * It constructs a single syntax node using the tokens in the token list, starting from the
+ * specified starting index. The ending index is updated to point to the last token used in
+ * constructing the syntax node.
+ * 
+ * @param tkList The token list from which to build the syntax node.
+ * @param st The starting index in the token list.
+ * @param ed A reference to the ending index, which will be updated by the function.
+ * @return A pointer to the constructed syntax node.
+ */
 SyntaxNode *buildSingleNode(const TokenList &tkList, size_t st, size_t &ed);
 
+#pragma region SyntaxNode
 SyntaxNode::SyntaxNode(const Token& tk) { token = tk, varCount = 0; }
 SyntaxNode::SyntaxNode(SyntaxNodeType type) { this->type = type, varCount = 0; }
 SyntaxNode::SyntaxNode(SyntaxNodeType type, const Token& tk) {
@@ -20,6 +34,7 @@ SyntaxNode::SyntaxNode(SyntaxNodeType type, const Token& tk) {
 	this->token = tk;
 	varCount = 0;
 }
+SyntaxNode::~SyntaxNode() { for (auto child : children) if (child != nullptr) delete child; }
 
 SyntaxNodeType SyntaxNode::getType() const { return this->type; }
 
@@ -27,17 +42,19 @@ const Token& SyntaxNode::getToken() const { return token; }
 void SyntaxNode::setToken(const Token& tk) { token = tk; }
 
 size_t SyntaxNode::childrenCount() const { return children.size(); }
-void SyntaxNode::addChild(SyntaxNode *child) { children.push_back(child); }
-
+void SyntaxNode::addChild(SyntaxNode *child) { children.push_back(child), child->setParent(this); }
 SyntaxNode *SyntaxNode::operator[](size_t index) const { return children[index]; }
 SyntaxNode*& SyntaxNode::operator[](size_t index) { return children[index]; }
+SyntaxNode *SyntaxNode::getParent() const { return parent; }
+void SyntaxNode::setParent(SyntaxNode *parent) { this->parent = parent; }
 
 uint32 SyntaxNode::getVarCount() const { return varCount; }
+#pragma endregion
 
+#pragma region ExpressionNode
 std::string ExpressionNode::toString() const { return std::string("Expression") + resultType.toString(); }
 
 ExpressionNode::ExpressionNode(SyntaxNodeType type): SyntaxNode(type) { }
-
 ExpressionNode::ExpressionNode(SyntaxNodeType type, const Token& tk) : SyntaxNode(type, tk) { }
 
 const EResultType& ExpressionNode::getResultType() const { return resultType; }
@@ -140,17 +157,15 @@ bool ExpressionNode::buildNode(const TokenList &tkList, size_t st, size_t ed) {
 int32 ExpressionNode::getWeight() const {
 	return 10000000;
 }
+#pragma endregion
 
+#pragma region IdentifierNode
 IdentifierNode::IdentifierNode() : ExpressionNode(SyntaxNodeType::Identifier) { id = 0; }
-
 IdentifierNode::IdentifierNode(const Token &tk) : ExpressionNode(SyntaxNodeType::Identifier, tk) { name = tk.dataStr; id = 0; }
 
 std::string IdentifierNode::toString() const { return tokenTypeString[(int)type] + " " + name + " " + std::to_string(id) + " " + resultType.toString(); }
-
 const uint64 &IdentifierNode::getId() const { return id; }
-
 void IdentifierNode::setId(uint64 id) { this->id = id; }
-
 const std::string &IdentifierNode::getName() const { return name; }
 void IdentifierNode::setName(const std::string &name) { this->name = name; }
 
@@ -162,10 +177,19 @@ bool IdentifierNode::buildNode(const TokenList &tkList, size_t st, size_t &ed) {
 		succ = gaNode->buildNode(tkList, st + 1, tkList[st + 1].data.uint64_v());
 		addChild(gaNode);
 		ed = tkList[st + 1].data.uint64_v();
-	}
+	} else ed = st;
 	return succ;
 }
+#pragma endregion
 
+#pragma region MethodCallNode
+MethodCallNode::MethodCallNode() : IdentifierNode() { type = SyntaxNodeType::MethodCall; }
+MethodCallNode::MethodCallNode(const Token &tk) : IdentifierNode(tk) { type = SyntaxNodeType::MethodCall; }
+
+std::string MethodCallNode::toString() const { return tokenTypeString[(int)type] + " " + getName() + " " + resultType.toString(); }
+#pragma endregion
+
+#pragma region OperatorNode
 OperatorNode::OperatorNode() : ExpressionNode(SyntaxNodeType::Operator) { }
 
 OperatorNode::OperatorNode(TokenType opType) : ExpressionNode(SyntaxNodeType::Operator) { token.type = opType; }
@@ -174,14 +198,14 @@ OperatorNode::OperatorNode(const Token &tk) : ExpressionNode(SyntaxNodeType::Ope
 TokenType OperatorNode::getOpType() const { return token.type; }
 
 int32 OperatorNode::getWeight() const { return getOperWeight(token.type); }
+#pragma endregion
 
+#pragma region ConstValueNode
 ConstValueNode::ConstValueNode() : ExpressionNode(SyntaxNodeType::ConstValue) { }
-
 ConstValueNode::ConstValueNode(const UnionData &data) : ExpressionNode(SyntaxNodeType::ConstValue) {
 	this->token.type = TokenType::ConstData;
 	this->token.data = data;
 }
-
 ConstValueNode::ConstValueNode(const Token &tk) : ExpressionNode(SyntaxNodeType::ConstValue, tk) { }
 
 UnionData ConstValueNode::data() const { return token.data; }
@@ -190,7 +214,9 @@ UnionData &ConstValueNode::data() { return token.data; }
 std::string ConstValueNode::toString() const {
 	return tokenTypeString[(int)type] + " " + token.toString() + " " + resultType.toString();
 }
+#pragma endregion
 
+#pragma region GenericAreaNode
 GenericAreaNode::GenericAreaNode() : ExpressionNode(SyntaxNodeType::GenericArea) { }
 GenericAreaNode::GenericAreaNode(const Token &tk) : ExpressionNode(SyntaxNodeType::GenericArea, tk) { }
 
@@ -210,7 +236,9 @@ bool GenericAreaNode::buildNode(const TokenList &tkList, size_t st, size_t ed) {
 	}
 	return false;
 }
+#pragma endregion
 
+#pragma region ConditionNode
 ConditionNode::ConditionNode() : SyntaxNode(SyntaxNodeType::If) { }
 ConditionNode::ConditionNode(const Token &tk) : SyntaxNode(SyntaxNodeType::If, tk) { }
 
@@ -243,7 +271,9 @@ bool ConditionNode::buildNode(const TokenList &tkList, size_t st, size_t &ed) {
 ExpressionNode *ConditionNode::getCondNode() const { return (ExpressionNode *)children[0]; }
 SyntaxNode *ConditionNode::getSuccNode() const { return children[1]; }
 SyntaxNode *ConditionNode::getFailNode() const { return children[2]; }
+#pragma endregion
 
+#pragma region WhileNode
 WhileNode::WhileNode() : SyntaxNode(SyntaxNodeType::While) { }
 WhileNode::WhileNode(const Token &tk) : SyntaxNode(SyntaxNodeType::While, tk) { }
 
@@ -267,7 +297,9 @@ bool WhileNode::buildNode(const TokenList &tkList, size_t st, size_t &ed) {
 	addChild(contentNode);
 	return succ;
 }
+#pragma endregion
 
+#pragma region ForNode
 ForNode::ForNode() : SyntaxNode(SyntaxNodeType::For) { }
 ForNode::ForNode(const Token &tk) : SyntaxNode(SyntaxNodeType::For, tk) { }
 
@@ -296,7 +328,9 @@ bool ForNode::buildNode(const TokenList &tkList, size_t st, size_t &ed) {
 	varCount += contentNode->getVarCount();
 	return succ;
 }
+#pragma endregion
 
+#pragma region ControlNode
 ControlNode::ControlNode(SyntaxNodeType type) : SyntaxNode(type) { }
 ControlNode::ControlNode(const Token &tk) : SyntaxNode(tk) {
 	if (tk.type == TokenType::Break) type = SyntaxNodeType::Break;
@@ -339,7 +373,9 @@ bool ControlNode::buildNode(const TokenList &tkList, size_t st, size_t &ed) {
 	}
 	return succ;
 }
+#pragma endregion
 
+#pragma region BlockNode
 BlockNode::BlockNode() : SyntaxNode(SyntaxNodeType::Block) { }
 BlockNode::BlockNode(const Token &tk) : SyntaxNode(SyntaxNodeType::Block, tk) { }
 
@@ -364,11 +400,13 @@ bool BlockNode::buildNode(const TokenList &tkList, size_t st, size_t &ed) {
 	varCount = std::max(varCount, tmpVarCount);
 	return succ;
 }
+#pragma endregion
 
+#pragma region VarDefNode
 VarDefNode::VarDefNode() : SyntaxNode(SyntaxNodeType::VarDef) { }
 VarDefNode::VarDefNode(const Token &tk) : SyntaxNode(SyntaxNodeType::VarDef, tk) { }
 
-std::string VarDefNode::toString() const { return syntaxNodeTypeString[(int)type]; }
+std::string VarDefNode::toString() const { return identifierVisibilityString[(int)visibility] + " " + syntaxNodeTypeString[(int)type]; }
 
 bool VarDefNode::buildNode(const TokenList &tkList, size_t st, size_t &ed) {
 	ed = st;
@@ -399,7 +437,233 @@ bool VarDefNode::buildNode(const TokenList &tkList, size_t st, size_t &ed) {
 			succ &= initNode->buildNode(tkList, assignPos + 1, rpos - 1);
 		}
 		addChild(idNode), addChild(typeNode), addChild(initNode);
-		pos = rpos;
+		pos = rpos + 1;
 	}
 	return succ;
+}
+#pragma endregion
+
+#pragma region FuncDefNode
+FuncDefNode::FuncDefNode() : SyntaxNode(SyntaxNodeType::FuncDef) { }
+FuncDefNode::FuncDefNode(const Token &tk) : SyntaxNode(SyntaxNodeType::FuncDef, tk) {
+	if (tk.type == TokenType::VarFuncDef) type = SyntaxNodeType::VarFuncDef;
+	else type = SyntaxNodeType::FuncDef;
+}
+
+std::string FuncDefNode::toString() const { return identifierTypeString[(int)visibility] + " " + syntaxNodeTypeString[(int)type] + " " + name; }
+IdentifierVisibility FuncDefNode::getVisibility() const { return visibility; }
+std::string FuncDefNode::getName() const { return name; }
+
+bool FuncDefNode::buildNode(const TokenList &tkList, size_t st, size_t &ed) {
+	bool succ = true;
+	varCount = 0;
+	if (st > 0 && isVisibility(tkList[st - 1].type)) visibility = ::getVisibility(tkList[st - 1].type);
+
+	// get the function name
+	ed = st + 1;
+	name = tkList[ed].dataStr;
+	
+	// get the param list
+	size_t pos = ed + 2;
+	ed = tkList[ed + 1].data.uint64_v();
+	while (pos < ed) {
+		size_t rpos = pos;
+		IdentifierNode *idNode = new IdentifierNode(tkList[pos]), *typeNode = nullptr;
+		if (tkList[pos + 1].type != TokenType::TypeHint) {
+			succ = false;
+			printError(tkList[pos + 1].lineId, "Invalid parameter definition " + tkList[pos + 1].toString());
+		}
+		typeNode = new IdentifierNode(tkList[pos + 2]);
+		typeNode->buildNode(tkList, pos + 2, rpos);
+		pos = rpos + 1;
+		addChild(idNode), addChild(typeNode);
+	}
+	// get the return type
+	ed++;
+	IdentifierNode *retType = nullptr;
+	if (tkList[ed].type != TokenType::TypeHint) {
+		printError(tkList[ed].lineId, "Invalid return type definition " + tkList[ed].toString());
+		succ = false;
+	} else {
+		retType = new IdentifierNode(tkList[ed + 1]);
+		succ &= retType->buildNode(tkList, ed + 1, ed);
+	}
+	addChild(retType);
+	ed++;
+	// get the content
+	auto contentNode = buildSingleNode(tkList, ed, ed);
+	if (contentNode == nullptr) succ = false;
+	else varCount += contentNode->getVarCount();
+	addChild(contentNode);
+
+	return succ;
+}
+#pragma endregion
+
+#pragma region ClsDefNode
+ClsDefNode::ClsDefNode() : SyntaxNode(SyntaxNodeType::ClsDef) { }
+ClsDefNode::ClsDefNode(const Token &tk) : SyntaxNode(SyntaxNodeType::ClsDef, tk) { name = tk.dataStr; }
+
+std::string ClsDefNode::toString() const { return identifierTypeString[(int)visibility] + " " + syntaxNodeTypeString[(int)type] + " " + name; }
+std::string ClsDefNode::getName() const { return name; }
+IdentifierVisibility ClsDefNode::getVisibility() const { return visibility; }
+
+bool ClsDefNode::buildNode(const TokenList &tkList, size_t st, size_t& ed) {
+	bool succ = true;
+	varCount = 0;
+	if (st > 0 && isVisibility(tkList[st - 1].type)) visibility = ::getVisibility(tkList[st - 1].type);
+	// get the class name
+	ed = st + 1;
+	name = tkList[ed].dataStr;
+	// get the base class
+	ed++;
+	IdentifierNode *baseClass = nullptr;
+	if (tkList[ed].type == TokenType::TypeHint) {
+		baseClass = new IdentifierNode(tkList[ed + 1]);
+		succ &= baseClass->buildNode(tkList, ed + 1, ed);
+		ed++;
+	}
+	addChild(baseClass);
+
+	// get the content
+	size_t pos = ed + 1;
+	ed = tkList[ed].data.uint64_v();
+	while (pos < ed) {
+		size_t rpos = pos;
+		switch (tkList[pos].type) {
+			case TokenType::VarDef: {
+				VarDefNode *varDefNode = new VarDefNode(tkList[pos]);
+				succ &= varDefNode->buildNode(tkList, pos, rpos);
+				addChild(varDefNode);
+				break;
+			}
+			case TokenType::FuncDef: {
+				FuncDefNode *funcDefNode = new FuncDefNode(tkList[pos]);
+				succ &= funcDefNode->buildNode(tkList, pos, rpos);
+				addChild(funcDefNode);
+				break;
+			}
+			default:
+				if (!isVisibility(tkList[pos].type)) {
+					printError(tkList[pos].lineId, "Invalid content of a class definition " + tkList[pos].toString());
+					succ = false;
+				}
+				break;
+		}
+		pos = rpos + 1;
+	}
+	return succ;
+}
+#pragma endregion
+
+#pragma region NspDefNode
+NspDefNode::NspDefNode() : SyntaxNode(SyntaxNodeType::NspDef) { }
+NspDefNode::NspDefNode(const Token &tk) : SyntaxNode(SyntaxNodeType::NspDef, tk) { name = tk.dataStr; }
+
+std::string NspDefNode::toString() const { return syntaxNodeTypeString[(int)type] + name; }
+std::string NspDefNode::getName() const { return name; }
+
+bool NspDefNode::buildNode(const TokenList &tkList, size_t st, size_t &ed) {
+	// get the namespace name
+	ed = st + 1;
+	name = tkList[ed].dataStr;
+	bool succ = true;
+	// get the content
+	size_t pos = ed + 2;
+	ed = tkList[ed + 1].data.uint64_v();
+	while (pos < ed) {
+		size_t rpos = pos;
+		switch (tkList[pos].type) {
+			case TokenType::VarDef: {
+				VarDefNode *varDefNode = new VarDefNode(tkList[pos]);
+				succ &= varDefNode->buildNode(tkList, pos, rpos);
+				addChild(varDefNode);
+				break;
+			}
+			case TokenType::FuncDef: {
+				FuncDefNode *funcDefNode = new FuncDefNode(tkList[pos]);
+				succ &= funcDefNode->buildNode(tkList, pos, rpos);
+				addChild(funcDefNode);
+				break;
+			}
+			case TokenType::ClsDef: {
+				ClsDefNode *clsDefNode = new ClsDefNode(tkList[pos]);
+				succ &= clsDefNode->buildNode(tkList, pos, rpos);
+				addChild(clsDefNode);
+				break;
+			}
+			default:
+				if (!isVisibility(tkList[pos].type)) {
+					printError(tkList[pos].lineId, "Invalid content of a namespace definition " + tkList[pos].toString());
+					succ = false;
+				}
+				break;
+		}
+		pos = rpos + 1;
+	}
+	return succ;
+}
+#pragma endregion
+
+SyntaxNode *buildSingleNode(const TokenList &tkList, size_t st, size_t &ed) {
+	const Token &firTk = tkList[st];
+	bool succ = true;
+	SyntaxNode *newNode = nullptr;
+	switch (firTk.type) {
+		case TokenType::If: {
+			newNode = new ConditionNode(firTk);
+			succ = ((ConditionNode *)newNode)->buildNode(tkList, st, ed);
+			break;
+		}
+		case TokenType::While: {
+			newNode = new WhileNode(firTk);
+			succ = ((WhileNode *)newNode)->buildNode(tkList, st, ed);
+			break;
+		}
+		case TokenType::For: {
+			newNode = new ForNode(firTk);
+			succ = ((ForNode *)newNode)->buildNode(tkList, st, ed);
+			break;
+		}
+		case TokenType::Break:
+		case TokenType::Continue:
+		case TokenType::Return: {
+			newNode = new ControlNode(firTk);
+			succ = ((ControlNode *)newNode)->buildNode(tkList, st, ed);
+			break;
+		}
+		case TokenType::LBrkL: {
+			newNode = new BlockNode(firTk);
+			succ = ((BlockNode *)newNode)->buildNode(tkList, st, ed);
+			break;
+		}
+		case TokenType::VarDef: {
+			newNode = new VarDefNode(firTk);
+			succ = ((VarDefNode *)newNode)->buildNode(tkList, st, ed);
+			break;
+		}
+		case TokenType::FuncDef: {
+			newNode = new FuncDefNode(firTk);
+			succ = ((FuncDefNode *)newNode)->buildNode(tkList, st, ed);
+			break;
+		}
+		case TokenType::ClsDef: {
+			newNode = new ClsDefNode(firTk);
+			succ = ((ClsDefNode *)newNode)->buildNode(tkList, st, ed);
+			break;
+		}
+		case TokenType::ExprEnd: break;
+		default: {
+			// it is an expression node
+			newNode = new ExpressionNode(SyntaxNodeType::Expression, firTk);
+			while (tkList[ed].type != TokenType::ExprEnd) ed++;
+			succ = ((ExpressionNode *)newNode)->buildNode(tkList, st, ed - 1);
+			break;
+		}
+	}
+	if (!succ) {
+		delete newNode;
+		return nullptr;
+	}
+	return newNode;
 }

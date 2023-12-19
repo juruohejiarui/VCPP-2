@@ -151,6 +151,7 @@ protected:
     Token token; /**< The associated token. */
 
     std::vector<SyntaxNode*> children; /**< The child nodes of the syntax node. */
+    SyntaxNode *parent; /**< The parent node of the syntax node. */
 public:
     /**
      * @brief Constructs a SyntaxNode object with the given token.
@@ -170,6 +171,8 @@ public:
      * @param tk The associated token.
      */
     SyntaxNode(SyntaxNodeType type, const Token& tk);
+
+    ~SyntaxNode();
 
     /**
      * @brief Converts the syntax node to a string representation.
@@ -206,6 +209,17 @@ public:
      * @param child The child node to add.
      */
     void addChild(SyntaxNode *child);
+
+    /**
+     * @brief Gets the parent node of the syntax node.
+     * @return The parent node of the syntax node.
+     */
+    SyntaxNode *getParent() const;
+    /**
+     * @brief Sets the parent node of the syntax node.
+     * @param parent The parent node to set.
+     */
+    void setParent(SyntaxNode *parent);
 
     /**
      * @brief Gets the child node at the specified index.
@@ -262,7 +276,7 @@ public:
      * @brief Converts the expression node to a string representation.
      * @return The string representation of the expression node.
      */
-    virtual std::string toString() const;
+    virtual std::string toString() const override;
 
     /**
      * @brief Constructs an expression node with the specified syntax node type.
@@ -290,7 +304,7 @@ public:
      * @param ed The end index of the range (updated by the method).
      * @return True if the node was successfully built, false otherwise.
      */
-    bool buildNode(const TokenList &tkList, size_t st, size_t &ed);
+    bool buildNode(const TokenList &tkList, size_t st, size_t &ed) override;
 
     /**
      * @brief Builds the expression node from a list of tokens within the specified range.
@@ -311,7 +325,7 @@ public:
      * @brief Checks the result type of the expression.
      * @return True if the result type is valid, false otherwise.
      */
-    virtual bool checkEResultType();
+    virtual bool checkEResultType() override;
 };
 /**
  * @class IdentifierNode
@@ -340,7 +354,7 @@ public:
      * @brief Converts the IdentifierNode to a string representation.
      * @return The string representation of the IdentifierNode.
      */
-    std::string toString() const;
+    std::string toString() const override;
     
     /**
      * @brief Sets the ID of the identifier.
@@ -378,13 +392,13 @@ public:
      * @param ed The ending index of the token list (updated by the function).
      * @return true if the node is successfully built, false otherwise.
      */
-    bool buildNode(const TokenList &tkList, size_t st, size_t &ed);
+    bool buildNode(const TokenList &tkList, size_t st, size_t &ed) override;
 
     /**
      * @brief Checks if the expression result type is valid.
      * @return True if the expression result type is valid, false otherwise.
      */
-    virtual bool checkEResultType();
+    virtual bool checkEResultType() override;
 };
 
 /**
@@ -410,7 +424,13 @@ public:
      * @brief Checks the expected result type of the method call.
      * @return True if the expected result type is valid, false otherwise.
      */
-    bool checkEResultType();
+    bool checkEResultType() override;
+
+    /**
+     * @brief Converts the MethodCallNode to a string representation.
+     * @return The string representation of the MethodCallNode.
+     */
+    std::string toString() const override;
 };
 
 /**
@@ -426,7 +446,7 @@ public:
      * 
      * @return The string representation of the operator node.
      */
-    std::string toString() const;
+    std::string toString() const override;
 
     /**
      * @brief Default constructor for OperatorNode.
@@ -466,7 +486,7 @@ public:
      * 
      * @return True if the expression result type is valid, false otherwise.
      */
-    bool checkEResultType();
+    bool checkEResultType() override;
 };
 
 class ConstValueNode : public ExpressionNode {
@@ -476,7 +496,7 @@ public:
      * 
      * @return std::string The string representation of the ConstValueNode.
      */
-    std::string toString() const;
+    std::string toString() const override;
     
     /**
      * @brief Default constructor for ConstValueNode.
@@ -516,7 +536,7 @@ public:
      * 
      * @return bool True if the expression result type is valid, false otherwise.
      */
-    bool checkEResultType();
+    bool checkEResultType() override;
 };
 
 /**
@@ -530,7 +550,7 @@ public:
      * @brief Converts the generic area node to a string representation.
      * @return The string representation of the generic area node.
      */
-    std::string toString() const;
+    std::string toString() const override;
 
     /**
      * @brief Default constructor for the generic area node.
@@ -556,7 +576,7 @@ public:
      * @brief Checks the expression result type of the generic area node.
      * @return True if the expression result type is valid, false otherwise.
      */
-    bool checkEResultType();
+    bool checkEResultType() override;
 };
 
 /**
@@ -570,7 +590,7 @@ public:
      * @brief Converts the ConditionNode object to a string representation.
      * @return The string representation of the ConditionNode object.
      */
-    std::string toString() const;
+    std::string toString() const override;
 
     /**
      * @brief Default constructor for ConditionNode.
@@ -608,13 +628,13 @@ public:
      * @param ed The ending index in the token list (updated by the function).
      * @return True if the node was successfully built, false otherwise.
      */
-    bool buildNode(const TokenList &tkList, size_t st, size_t &ed);
+    bool buildNode(const TokenList &tkList, size_t st, size_t &ed) override;
 
     /**
      * @brief Checks the expression result type of the ConditionNode object.
      * @return True if the expression result type is valid, false otherwise.
      */
-    bool checkEResultType();
+    bool checkEResultType() override;
 };
 
 /**
@@ -631,7 +651,7 @@ public:
      * @brief Converts the while loop node to a string representation.
      * @return The string representation of the while loop node.
      */
-    std::string toString() const;
+    std::string toString() const override;
 
     /**
      * @brief Default constructor for WhileNode.
@@ -663,13 +683,13 @@ public:
      * @param ed The ending index in the token list (updated by the function).
      * @return True if the node was successfully built, false otherwise.
      */
-    bool buildNode(const TokenList &tkList, size_t st, size_t &ed);
+    bool buildNode(const TokenList &tkList, size_t st, size_t &ed) override;
 
     /**
      * @brief Checks the result type of the expression in the while loop.
      * @return True if the result type is valid, false otherwise.
      */
-    bool checkEResultType();
+    bool checkEResultType() override;
 };
 
 /**
@@ -681,7 +701,7 @@ public:
      * @brief Converts the ForNode to a string representation.
      * @return The string representation of the ForNode.
      */
-    std::string toString() const;
+    std::string toString() const override;
 
     /**
      * @brief Default constructor for ForNode.
@@ -725,88 +745,225 @@ public:
      * @param ed The ending index in the token list (updated by the function).
      * @return True if the ForNode was successfully built, false otherwise.
      */
-    bool buildNode(const TokenList &tkList, size_t st, size_t &ed);
+    bool buildNode(const TokenList &tkList, size_t st, size_t &ed) override;
 
     /**
      * @brief Checks the expression result type of the ForNode.
      * @return True if the expression result type is valid, false otherwise.
      */
-    bool checkEResultType();
+    bool checkEResultType() override;
 };
 
+/**
+ * @brief Represents a control node in the syntax tree.
+ * 
+ * This class inherits from SyntaxNode and provides additional functionality
+ * specific to control nodes.
+ */
 class ControlNode : public SyntaxNode {
 public:
-    std::string toString() const;
+    /**
+     * @brief Converts the control node to a string representation.
+     * 
+     * @return The string representation of the control node.
+     */
+    std::string toString() const override;
 
+    /**
+     * @brief Constructs a control node with the specified type.
+     * 
+     * @param type The type of the control node.
+     */
     ControlNode(SyntaxNodeType type);
+
+    /**
+     * @brief Constructs a control node with the specified token.
+     * 
+     * @param tk The token to initialize the control node with.
+     */
     ControlNode(const Token &tk);
 
-    bool buildNode(const TokenList &tkList, size_t st, size_t &ed);
-    bool checkEResultType();
+    /**
+     * @brief Builds the control node from a list of tokens.
+     * 
+     * @param tkList The list of tokens.
+     * @param st The starting index in the token list.
+     * @param ed The ending index in the token list (updated by the function).
+     * @return True if the control node was successfully built, false otherwise.
+     */
+    bool buildNode(const TokenList &tkList, size_t st, size_t &ed) override;
+
+    /**
+     * @brief Checks the expected result type of the control node.
+     * 
+     * @return True if the expected result type is valid, false otherwise.
+     */
+    bool checkEResultType() override;
 };
 
 class BlockNode : public SyntaxNode {
 public:
-    std::string toString() const;
+    /**
+     * @brief Converts the BlockNode object to a string representation.
+     * @return The string representation of the BlockNode object.
+     */
+    std::string toString() const override;
 
+    /**
+     * @brief Default constructor for BlockNode.
+     */
     BlockNode();
+
+    /**
+     * @brief Constructor for BlockNode with a specified token.
+     * @param tk The token to initialize the BlockNode with.
+     */
     BlockNode(const Token &tk);
 
-    bool buildNode(const TokenList &tkList, size_t st, size_t &ed);
-    bool checkEResultType();
+    /**
+     * @brief Builds the BlockNode from a list of tokens.
+     * @param tkList The list of tokens.
+     * @param st The starting index in the token list.
+     * @param ed The ending index in the token list (updated by the function).
+     * @return True if the BlockNode was successfully built, false otherwise.
+     */
+    bool buildNode(const TokenList &tkList, size_t st, size_t &ed) override;
+
+    /**
+     * @brief Checks the expected result type of the BlockNode.
+     * @return True if the expected result type is valid, false otherwise.
+     */
+    bool checkEResultType() override;
 };
 
 class VarDefNode : public SyntaxNode {
 private:
     IdentifierVisibility visibility;
 public:
-    std::string toString() const;
-
+    /**
+     * @brief Default constructor for VarDefNode.
+     */
     VarDefNode();
+
+    /**
+     * @brief Constructor for VarDefNode with a token.
+     * @param tk The token to initialize the VarDefNode with.
+     */
     VarDefNode(const Token &tk);
     
+    /**
+     * @brief Get the visibility of the VarDefNode.
+     * @return The visibility of the VarDefNode.
+     */
     IdentifierVisibility getVisibility() const;
 
-    bool buildNode(const TokenList &tkList, size_t st, size_t &ed);
-    bool checkEResultType();
+    /**
+     * @brief Build the VarDefNode from a list of tokens.
+     * @param tkList The list of tokens to build the VarDefNode from.
+     * @param st The starting index of the tokens to build the VarDefNode from.
+     * @param ed The ending index of the tokens to build the VarDefNode from (updated by the function).
+     * @return True if the VarDefNode was successfully built, false otherwise.
+     */
+    bool buildNode(const TokenList &tkList, size_t st, size_t &ed) override;
+
+    /**
+     * @brief Check the expression result type of the VarDefNode.
+     * @return True if the expression result type is valid, false otherwise.
+     */
+    bool checkEResultType() override;
+
+    /**
+     * @brief Convert the VarDefNode to a string representation.
+     * @return The string representation of the VarDefNode.
+     */
+    std::string toString() const override;
 };
 
+/**
+ * @class FuncDefNode
+ * @brief Represents a syntax node for a function definition.
+ * 
+ * This class inherits from SyntaxNode and provides functionality to represent a function definition in the syntax tree.
+ */
 class FuncDefNode : public SyntaxNode {
 private:
-    IdentifierVisibility visibility;
+    std::string name; /**< The name of the function. */
+    IdentifierVisibility visibility; /**< The visibility of the function. */
 public:
-    std::string toString() const;
+    /**
+     * @brief Converts the FuncDefNode to a string representation.
+     * @return The string representation of the FuncDefNode.
+     */
+    std::string toString() const override;
 
+    /**
+     * @brief Default constructor for FuncDefNode.
+     */
     FuncDefNode();
+
+    /**
+     * @brief Constructor for FuncDefNode.
+     * @param tk The token representing the function definition.
+     */
     FuncDefNode(const Token& tk);
 
+    /**
+     * @brief Gets the visibility of the function.
+     * @return The visibility of the function.
+     */
     IdentifierVisibility getVisibility() const;
 
-    bool buildNode(const TokenList& tkList, size_t st, size_t& ed);
-    bool checkEResultType();
+    /**
+     * @brief Gets the name of the function.
+     * @return The name of the function.
+     */
+    std::string getName() const;
+
+    /**
+     * @brief Builds the FuncDefNode from a list of tokens.
+     * @param tkList The list of tokens.
+     * @param st The starting index in the token list.
+     * @param ed The ending index in the token list.
+     * @return True if the node was successfully built, false otherwise.
+     */
+    bool buildNode(const TokenList& tkList, size_t st, size_t& ed) override;
+
+    /**
+     * @brief Checks the expected result type of the function.
+     * @return True if the expected result type is valid, false otherwise.
+     */
+    bool checkEResultType() override;
 };
 
 class ClsDefNode : public SyntaxNode {
 private:
+    std::string name;
     IdentifierVisibility visibility;
 public:
-    std::string toString() const;
+    std::string toString() const override;
 
     ClsDefNode();
     ClsDefNode(const Token& tk);
 
-    bool buildNode(const TokenList& tkList, size_t st, size_t& ed);
+    std::string getName() const;
     IdentifierVisibility getVisibility() const;
-    bool checkEResultType();
+
+    bool buildNode(const TokenList& tkList, size_t st, size_t& ed) override;
+
+    bool checkEResultType() override;
 };
 class NspDefNode : public SyntaxNode {
+private:
+    std::string name;
 public:
-    std::string toString() const;
+    std::string toString() const override;
 
     NspDefNode();
     NspDefNode(const Token& tk);
 
-    bool buildNode(const TokenList& tkList, size_t st, size_t& ed);
-    bool checkEResultType();
+    std::string getName() const;
+
+    bool buildNode(const TokenList& tkList, size_t st, size_t& ed) override;
+    bool checkEResultType() override;
 };
 #pragma endregion

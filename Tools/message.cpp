@@ -8,7 +8,7 @@
 #include<unistd.h>
 #endif
 
-#ifdef __linux__ || __linux__
+#ifdef __linux__ || __APPLE__
 void setColor(MessageType type) {
     int _c = 0;
     switch (type) {
@@ -22,7 +22,6 @@ void setColor(MessageType type) {
     printf("\e[3%cm", _c + '0');
 }
 #elif _WIN32
-
 void setColor(UINT uFore, UINT uBack) {
     HANDLE handle = GetStdHandle(STD_OUTPUT_HANDLE);
     SetConsoleTextAttribute(handle, uFore + uBack * 0x10);
