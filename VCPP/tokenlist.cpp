@@ -205,3 +205,11 @@ std::string Token::toString() const {
 bool isBracketL(TokenType type) { return type == TokenType::LBrkL || type == TokenType::MBrkL || type == TokenType::SBrkL || type == TokenType::GBrkL; }
 bool isBracketR(TokenType type) { return type == TokenType::LBrkR || type == TokenType::MBrkR || type == TokenType::SBrkR || type == TokenType::GBrkR; }
 bool isOperator(TokenType type) { return type >= TokenType::Comma && type <= TokenType::Convert; }
+bool isVisibility(TokenType type) { return type == TokenType::Private || type == TokenType::Public || type == TokenType::Protected; }
+
+IdentifierVisibility getVisibility(TokenType type) {
+    if (type == TokenType::Private) return IdentifierVisibility::Private;
+    if (type == TokenType::Public) return IdentifierVisibility::Public;
+    if (type == TokenType::Protected) return IdentifierVisibility::Protected;
+    return IdentifierVisibility::Unknown;
+}

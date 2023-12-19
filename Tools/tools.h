@@ -91,11 +91,11 @@ struct UnionData {
 
 
 enum class ValueTypeModifier {
-    mr, r, t, unknown,
+    mr, r, t, Unknown,
 };
 
 enum class IdentifierVisibility {
-    Private, Public, Protected, unknown
+    Private, Public, Protected, Unknown
 };
 DataTypeModifier getDataTypeModifier(const std::string &name);
 ValueTypeModifier getValueTypeModifier(const std::string &name);

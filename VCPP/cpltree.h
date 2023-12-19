@@ -146,6 +146,7 @@ struct NamespaceInfo : public IdentifierInfo {
  */
 class SyntaxNode {
 protected:
+    uint32 varCount;
     SyntaxNodeType type; /**< The type of the syntax node. */
     Token token; /**< The associated token. */
 
@@ -219,6 +220,15 @@ public:
      * @return A reference to the child node at the specified index.
      */
     SyntaxNode *&operator [] (size_t index);
+
+    /**
+     * @brief Gets the number of variables.
+     *
+     * This function returns the count of variables in the tree.
+     *
+     * @return The number of variables.
+     */
+    uint32 getVarCount() const;
 
     /**
      * @brief Builds the syntax node from a list of tokens.
@@ -736,15 +746,11 @@ public:
 };
 
 class BlockNode : public SyntaxNode {
-private:
-    uint32 varCount;
 public:
     std::string toString() const;
 
     BlockNode();
     BlockNode(const Token &tk);
-
-    uint32 getVarCount() const;
 
     bool buildNode(const TokenList &tkList, size_t st, size_t &ed);
     bool checkEResultType();
@@ -753,24 +759,20 @@ public:
 class VarDefNode : public SyntaxNode {
 private:
     IdentifierVisibility visibility;
-    uint32 varCount;
 public:
     std::string toString() const;
 
     VarDefNode();
     VarDefNode(const Token &tk);
     
-    uint32 getVarCount() const;
     IdentifierVisibility getVisibility() const;
 
     bool buildNode(const TokenList &tkList, size_t st, size_t &ed);
-    IdentifierVisibility getVisibility() const;
     bool checkEResultType();
 };
 
 class FuncDefNode : public SyntaxNode {
 private:
-    uint32 varCount;
     IdentifierVisibility visibility;
 public:
     std::string toString() const;
@@ -778,10 +780,9 @@ public:
     FuncDefNode();
     FuncDefNode(const Token& tk);
 
-    uint32 getVarCount() const;
+    IdentifierVisibility getVisibility() const;
 
     bool buildNode(const TokenList& tkList, size_t st, size_t& ed);
-    IdentifierVisibility getVisibility() const;
     bool checkEResultType();
 };
 
@@ -808,16 +809,4 @@ public:
     bool buildNode(const TokenList& tkList, size_t st, size_t& ed);
     bool checkEResultType();
 };
-
-class BlockNode : public SyntaxNode {
-public:
-    std::string toString() const;
-
-    BlockNode();
-    BlockNode(const Token& tk);
-
-    bool buildNode(const TokenList& tkList, size_t st, size_t& ed);
-    bool checkEResultType();
-};
-
 #pragma endregion

@@ -128,7 +128,7 @@ bool VASMPackage::generateLine(const std::string &line, int lineId, bool ignoreH
         cInfo.offset = vcodeSize;
         // caluclate the modifiers and vcode
         DataTypeModifier dtMfr1 = DataTypeModifier::unknown,    dtMfr2 = DataTypeModifier::unknown;
-        ValueTypeModifier vtMfr1 = ValueTypeModifier::unknown,  vtMfr2 = ValueTypeModifier::unknown;
+        ValueTypeModifier vtMfr1 = ValueTypeModifier::Unknown,  vtMfr2 = ValueTypeModifier::Unknown;
         uint32 vcode = 0;
         switch (tcmd) {
             case TCommand::mov:

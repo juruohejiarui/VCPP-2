@@ -59,11 +59,11 @@ DataTypeModifier getDataTypeModifier(const std::string &name)
 ValueTypeModifier getValueTypeModifier(const std::string &name)
 {
     for (int i = 0; i < valueTypeModifierNumber; i++) if (name == valueTypeModifierString[i]) return (ValueTypeModifier)i;
-    return ValueTypeModifier::unknown;
+    return ValueTypeModifier::Unknown;
 }
 IdentifierVisibility getIdentifierVisibility(const std::string &name) {
     for (int i = 0; i < identifierVisibilityNumber; i++) if (name == identifierVisibilityString[i]) return (IdentifierVisibility)i;
-    return IdentifierVisibility::unknown;
+    return IdentifierVisibility::Unknown;
 }
 
 bool isInteger(DataTypeModifier dtMfr) {

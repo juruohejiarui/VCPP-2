@@ -57,3 +57,6 @@ bool generateTokenList(const std::string &src, TokenList &tkList);
 bool isBracketL(TokenType type);
 bool isBracketR(TokenType type);
 bool isOperator(TokenType type);
+bool isVisibility(TokenType type);
+
+IdentifierVisibility getVisibility(TokenType type);

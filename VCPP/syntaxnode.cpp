@@ -13,11 +13,12 @@ extern const int syntaxNodeTypeNumber = 23;
 
 SyntaxNode *buildSingleNode(const TokenList &tkList, size_t st, size_t &ed);
 
-SyntaxNode::SyntaxNode(const Token& tk) { token = tk; }
-SyntaxNode::SyntaxNode(SyntaxNodeType type) { this->type = type; }
+SyntaxNode::SyntaxNode(const Token& tk) { token = tk, varCount = 0; }
+SyntaxNode::SyntaxNode(SyntaxNodeType type) { this->type = type, varCount = 0; }
 SyntaxNode::SyntaxNode(SyntaxNodeType type, const Token& tk) {
 	this->type = type;
 	this->token = tk;
+	varCount = 0;
 }
 
 SyntaxNodeType SyntaxNode::getType() const { return this->type; }
@@ -30,6 +31,8 @@ void SyntaxNode::addChild(SyntaxNode *child) { children.push_back(child); }
 
 SyntaxNode *SyntaxNode::operator[](size_t index) const { return children[index]; }
 SyntaxNode*& SyntaxNode::operator[](size_t index) { return children[index]; }
+
+uint32 SyntaxNode::getVarCount() const { return varCount; }
 
 std::string ExpressionNode::toString() const { return std::string("Expression") + resultType.toString(); }
 
@@ -224,11 +227,15 @@ bool ConditionNode::buildNode(const TokenList &tkList, size_t st, size_t &ed) {
 	auto succNode = buildSingleNode(tkList, pos, ed);
 	if (succNode == nullptr) return false;
 	addChild(succNode);
+	varCount = succNode->getVarCount();
 	pos = ed + 1;
 	if (tkList[pos].type == TokenType::Else) {
 		auto failNode = buildSingleNode(tkList, pos + 1, ed);
 		if (failNode == nullptr) return false;
-		addChild(failNode);
+		else {
+			addChild(failNode);
+			varCount = std::max(varCount, failNode->getVarCount());
+		}
 	} else addChild(nullptr);
 	return succ;
 }
@@ -255,6 +262,7 @@ bool WhileNode::buildNode(const TokenList &tkList, size_t st, size_t &ed) {
 	pos = tkList[pos].data.uint64_v() + 1;
 	auto contentNode = buildSingleNode(tkList, pos, ed);
 	if (contentNode == nullptr) return false;
+	else varCount = contentNode->getVarCount();
 	addChild(condNode);
 	addChild(contentNode);
 	return succ;
@@ -274,6 +282,7 @@ bool ForNode::buildNode(const TokenList &tkList, size_t st, size_t &ed) {
 	bool succ = true;
 	auto initNode = buildSingleNode(tkList, pos, rpos);
 	if (initNode == nullptr) succ = false;
+	else varCount = initNode->getVarCount();
 	pos = ++rpos;
 	while (tkList[rpos].type != TokenType::ExprEnd) rpos++;
 	auto condNode = new ExpressionNode(SyntaxNodeType::Expression, tkList[pos]);
@@ -284,6 +293,7 @@ bool ForNode::buildNode(const TokenList &tkList, size_t st, size_t &ed) {
 	auto contentNode = buildSingleNode(tkList, ed + 1, ed);
 	if (contentNode == nullptr) succ = false;
 	addChild(contentNode);
+	varCount += contentNode->getVarCount();
 	return succ;
 }
 
@@ -334,3 +344,62 @@ BlockNode::BlockNode() : SyntaxNode(SyntaxNodeType::Block) { }
 BlockNode::BlockNode(const Token &tk) : SyntaxNode(SyntaxNodeType::Block, tk) { }
 
 std::string BlockNode::toString() const { return syntaxNodeTypeString[(int)type]; }
+
+bool BlockNode::buildNode(const TokenList &tkList, size_t st, size_t &ed) {
+	ed = tkList[st].data.uint64_v();
+	bool succ = true;
+	size_t pos = st + 1;
+	uint32 tmpVarCount = 0;
+	while (pos < ed) {
+		size_t rpos = pos;
+		auto childNode = buildSingleNode(tkList, pos, rpos);
+		if (childNode == nullptr) succ = false;
+		else {
+			if (childNode->getType() == SyntaxNodeType::VarDef) tmpVarCount += childNode->getVarCount();
+			else varCount = std::max(varCount, tmpVarCount + childNode->getVarCount());
+		}
+		pos = rpos + 1;
+		addChild(childNode);
+	}
+	varCount = std::max(varCount, tmpVarCount);
+	return succ;
+}
+
+VarDefNode::VarDefNode() : SyntaxNode(SyntaxNodeType::VarDef) { }
+VarDefNode::VarDefNode(const Token &tk) : SyntaxNode(SyntaxNodeType::VarDef, tk) { }
+
+std::string VarDefNode::toString() const { return syntaxNodeTypeString[(int)type]; }
+
+bool VarDefNode::buildNode(const TokenList &tkList, size_t st, size_t &ed) {
+	ed = st;
+	bool succ = true;
+	varCount = 0;
+	if (st > 0 && isVisibility(tkList[st - 1].type)) 
+		visibility = ::getVisibility(tkList[st - 1].type);
+	while (tkList[ed].type != TokenType::ExprEnd) ed++;
+	for (size_t pos = st + 1; pos < ed; pos++) {
+		size_t rpos = pos;
+		while (rpos < ed && tkList[rpos].type != TokenType::Comma) {
+			if (isBracketL(tkList[rpos].type)) rpos = tkList[rpos].data.uint64_v();
+			rpos++;
+		}
+		IdentifierNode *idNode = new IdentifierNode(tkList[pos]), *typeNode = nullptr;
+		ExpressionNode *initNode = nullptr;
+		varCount++;
+		if (rpos > pos + 1 && tkList[pos + 1].type == TokenType::TypeHint) {
+			typeNode = new IdentifierNode(tkList[pos + 2]);
+			size_t typeHintTo = pos + 2;
+			succ &= typeNode->buildNode(tkList, pos + 2, typeHintTo);
+			pos = typeHintTo + 1;
+		}
+		size_t assignPos = pos + 1;
+		while (assignPos < rpos && tkList[assignPos].type != TokenType::Assign) assignPos++;
+		if (assignPos < rpos) {
+			initNode = new ExpressionNode(SyntaxNodeType::Expression, tkList[assignPos + 1]);
+			succ &= initNode->buildNode(tkList, assignPos + 1, rpos - 1);
+		}
+		addChild(idNode), addChild(typeNode), addChild(initNode);
+		pos = rpos;
+	}
+	return succ;
+}
