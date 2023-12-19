@@ -181,7 +181,7 @@ bool generateTokenList(const std::string &src, TokenList &tkList) {
                 tkList[brkStk.top()].data.uint64_v() = tkList.size();
                 tk.data.uint64_v() = brkStk.top();
                 brkStk.pop();
-            }
+            } else if (line[l] == ';') tk.type = TokenType::ExprEnd;
             if (tk.type != TokenType::Unknown) tkList.emplace_back(tk);
         }
     }

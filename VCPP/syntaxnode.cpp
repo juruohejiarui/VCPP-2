@@ -11,58 +11,33 @@ extern std::string syntaxNodeTypeString[] = {
 };
 extern const int syntaxNodeTypeNumber = 23;
 
+SyntaxNode *buildSingleNode(const TokenList &tkList, size_t st, size_t &ed);
 
-SyntaxNode::SyntaxNode(SyntaxNodeType type) {
-	this->type = type;
-}
-
+SyntaxNode::SyntaxNode(const Token& tk) { token = tk; }
+SyntaxNode::SyntaxNode(SyntaxNodeType type) { this->type = type; }
 SyntaxNode::SyntaxNode(SyntaxNodeType type, const Token& tk) {
 	this->type = type;
 	this->token = tk;
 }
 
-SyntaxNodeType SyntaxNode::getType() const {
-	return this->type;
-}
+SyntaxNodeType SyntaxNode::getType() const { return this->type; }
 
-const Token& SyntaxNode::getToken() const {
-	return token;
-}
+const Token& SyntaxNode::getToken() const { return token; }
+void SyntaxNode::setToken(const Token& tk) { token = tk; }
 
-void SyntaxNode::setToken(const Token& tk) {
-	token = tk;
-}
+size_t SyntaxNode::childrenCount() const { return children.size(); }
+void SyntaxNode::addChild(SyntaxNode *child) { children.push_back(child); }
 
-size_t SyntaxNode::childrenCount() const {
-	return children.size();
-}
+SyntaxNode *SyntaxNode::operator[](size_t index) const { return children[index]; }
+SyntaxNode*& SyntaxNode::operator[](size_t index) { return children[index]; }
 
-void SyntaxNode::addChild(SyntaxNode *child) {
-	children.push_back(child);
-}
+std::string ExpressionNode::toString() const { return std::string("Expression") + resultType.toString(); }
 
-SyntaxNode* SyntaxNode::operator[](size_t index) const {
-	return children[index];
-}
+ExpressionNode::ExpressionNode(SyntaxNodeType type): SyntaxNode(type) { }
 
-SyntaxNode*& SyntaxNode::operator[](size_t index) {
-	return children[index];
-}
+ExpressionNode::ExpressionNode(SyntaxNodeType type, const Token& tk) : SyntaxNode(type, tk) { }
 
-std::string ExpressionNode::toString() const
-{
-	return std::string("Expression") + resultType.toString();
-}
-
-ExpressionNode::ExpressionNode(SyntaxNodeType type): SyntaxNode(type) {
-}
-
-ExpressionNode::ExpressionNode(SyntaxNodeType type, const Token& tk) : SyntaxNode(type, tk) {
-}
-
-const EResultType& ExpressionNode::getResultType() const {
-	return resultType;
-}
+const EResultType& ExpressionNode::getResultType() const { return resultType; }
 
 bool ExpressionNode::buildNode(const TokenList &tkList, size_t st, size_t &ed) {
 	ed = st;
@@ -139,6 +114,23 @@ bool ExpressionNode::buildNode(const TokenList &tkList, size_t st, size_t ed) {
 		}
 		list.push_back(newNode);
 	}
+
+	auto buildTree = [&] () -> ExpressionNode * {
+		auto recursion = [&](auto &&self, uint32 l, uint32 r) {
+			if (l > r) return (ExpressionNode *)nullptr;
+			if (l == r) return list[l];
+			uint32 minPos = l;
+			for (uint32 i = l + 1; i <= r; i++) {
+				if (list[i]->getWeight() <= list[minPos]->getWeight()) minPos = i;
+			}
+			ExpressionNode *root = list[minPos];
+			root->addChild(self(self, l, minPos - 1));
+			root->addChild(self(self, minPos + 1, r));
+			return root;
+		};
+		return recursion(recursion, 0, list.size() - 1);
+	};
+	addChild(buildTree());
 	return false;
 }
 
@@ -146,19 +138,199 @@ int32 ExpressionNode::getWeight() const {
 	return 10000000;
 }
 
-IdentifierNode::IdentifierNode() : ExpressionNode(SyntaxNodeType::Identifier) {
-	id = 0;
+IdentifierNode::IdentifierNode() : ExpressionNode(SyntaxNodeType::Identifier) { id = 0; }
+
+IdentifierNode::IdentifierNode(const Token &tk) : ExpressionNode(SyntaxNodeType::Identifier, tk) { name = tk.dataStr; id = 0; }
+
+std::string IdentifierNode::toString() const { return tokenTypeString[(int)type] + " " + name + " " + std::to_string(id) + " " + resultType.toString(); }
+
+const uint64 &IdentifierNode::getId() const { return id; }
+
+void IdentifierNode::setId(uint64 id) { this->id = id; }
+
+const std::string &IdentifierNode::getName() const { return name; }
+void IdentifierNode::setName(const std::string &name) { this->name = name; }
+
+bool IdentifierNode::buildNode(const TokenList &tkList, size_t st, size_t &ed) {
+	name = tkList[st].dataStr;
+	bool succ = true;
+	if (st + 1 < tkList.size() && tkList[st + 1].type == TokenType::GBrkL) {
+		GenericAreaNode *gaNode = new GenericAreaNode(tkList[st + 1]);
+		succ = gaNode->buildNode(tkList, st + 1, tkList[st + 1].data.uint64_v());
+		addChild(gaNode);
+		ed = tkList[st + 1].data.uint64_v();
+	}
+	return succ;
 }
 
-IdentifierNode::IdentifierNode(const Token &tk) : ExpressionNode(SyntaxNodeType::Identifier, tk) {
-	name = tk.dataStr;
-	id = 0;
+OperatorNode::OperatorNode() : ExpressionNode(SyntaxNodeType::Operator) { }
+
+OperatorNode::OperatorNode(TokenType opType) : ExpressionNode(SyntaxNodeType::Operator) { token.type = opType; }
+OperatorNode::OperatorNode(const Token &tk) : ExpressionNode(SyntaxNodeType::Operator, tk) { }
+
+TokenType OperatorNode::getOpType() const { return token.type; }
+
+int32 OperatorNode::getWeight() const { return getOperWeight(token.type); }
+
+ConstValueNode::ConstValueNode() : ExpressionNode(SyntaxNodeType::ConstValue) { }
+
+ConstValueNode::ConstValueNode(const UnionData &data) : ExpressionNode(SyntaxNodeType::ConstValue) {
+	this->token.type = TokenType::ConstData;
+	this->token.data = data;
 }
 
-std::string IdentifierNode::toString() const {
-    return tokenTypeString[(int)type] + " " + name + " " + std::to_string(id) + " " + resultType.toString();
+ConstValueNode::ConstValueNode(const Token &tk) : ExpressionNode(SyntaxNodeType::ConstValue, tk) { }
+
+UnionData ConstValueNode::data() const { return token.data; }
+UnionData &ConstValueNode::data() { return token.data; }
+
+std::string ConstValueNode::toString() const {
+	return tokenTypeString[(int)type] + " " + token.toString() + " " + resultType.toString();
 }
 
-const uint64 &IdentifierNode::getId() const {
-    return id;
+GenericAreaNode::GenericAreaNode() : ExpressionNode(SyntaxNodeType::GenericArea) { }
+GenericAreaNode::GenericAreaNode(const Token &tk) : ExpressionNode(SyntaxNodeType::GenericArea, tk) { }
+
+bool GenericAreaNode::buildNode(const TokenList &tkList, size_t st, size_t ed) {
+	if (st > ed) return true;
+	size_t pos = st + 1;
+	while (pos < ed) {
+		size_t rpos = pos;
+		while (rpos < ed && tkList[rpos].type != TokenType::Comma) {
+			if (isBracketL(tkList[rpos].type)) rpos = tkList[rpos].data.uint64_v();
+			rpos++;
+		}
+		ExpressionNode *argNode = new ExpressionNode(SyntaxNodeType::Expression, tkList[pos]);
+		bool succ = argNode->buildNode(tkList, pos, rpos - 1);
+		pos = rpos + 1;
+		addChild(argNode);
+	}
+	return false;
 }
+
+ConditionNode::ConditionNode() : SyntaxNode(SyntaxNodeType::If) { }
+ConditionNode::ConditionNode(const Token &tk) : SyntaxNode(SyntaxNodeType::If, tk) { }
+
+bool ConditionNode::buildNode(const TokenList &tkList, size_t st, size_t &ed) {
+	ed = st;
+	size_t pos = st + 1;
+	if (tkList[pos].type != TokenType::SBrkL) {
+		printError(tkList[pos + 1].lineId, "Invalid content of a condition expression " + tkList[pos].toString());
+		return false;
+	}
+	auto condNode = new ExpressionNode(SyntaxNodeType::Expression, tkList[pos]);
+	bool succ = condNode->buildNode(tkList, pos + 1, tkList[pos].data.uint64_v() - 1);
+	pos = tkList[pos].data.uint64_v() + 1;
+	auto succNode = buildSingleNode(tkList, pos, ed);
+	if (succNode == nullptr) return false;
+	addChild(succNode);
+	pos = ed + 1;
+	if (tkList[pos].type == TokenType::Else) {
+		auto failNode = buildSingleNode(tkList, pos + 1, ed);
+		if (failNode == nullptr) return false;
+		addChild(failNode);
+	} else addChild(nullptr);
+	return succ;
+}
+
+ExpressionNode *ConditionNode::getCondNode() const { return (ExpressionNode *)children[0]; }
+SyntaxNode *ConditionNode::getSuccNode() const { return children[1]; }
+SyntaxNode *ConditionNode::getFailNode() const { return children[2]; }
+
+WhileNode::WhileNode() : SyntaxNode(SyntaxNodeType::While) { }
+WhileNode::WhileNode(const Token &tk) : SyntaxNode(SyntaxNodeType::While, tk) { }
+
+ExpressionNode *WhileNode::getCondNode() const { return (ExpressionNode *)children[0]; }
+SyntaxNode *WhileNode::getContentNode() const { return children[1]; }
+
+bool WhileNode::buildNode(const TokenList &tkList, size_t st, size_t &ed) {
+	ed = st;
+	size_t pos = st + 1;
+	if (tkList[pos].type != TokenType::SBrkL) {
+		printError(tkList[pos + 1].lineId, "Invalid content of a condition expression " + tkList[pos].toString());
+		return false;
+	}
+	auto condNode = new ExpressionNode(SyntaxNodeType::Expression, tkList[pos]);
+	bool succ = condNode->buildNode(tkList, pos + 1, tkList[pos].data.uint64_v() - 1);
+	pos = tkList[pos].data.uint64_v() + 1;
+	auto contentNode = buildSingleNode(tkList, pos, ed);
+	if (contentNode == nullptr) return false;
+	addChild(condNode);
+	addChild(contentNode);
+	return succ;
+}
+
+ForNode::ForNode() : SyntaxNode(SyntaxNodeType::For) { }
+ForNode::ForNode(const Token &tk) : SyntaxNode(SyntaxNodeType::For, tk) { }
+
+SyntaxNode *ForNode::getInitNode() const { return children[0]; }
+ExpressionNode *ForNode::getCondNode() const { return (ExpressionNode *)children[1]; }
+ExpressionNode *ForNode::getStepNode() const { return (ExpressionNode *)children[2]; }
+SyntaxNode *ForNode::getContentNode() const { return children[3]; }
+
+bool ForNode::buildNode(const TokenList &tkList, size_t st, size_t &ed) {
+	ed = tkList[st + 1].data.uint64_v();
+	size_t pos = st + 2, rpos = pos;
+	bool succ = true;
+	auto initNode = buildSingleNode(tkList, pos, rpos);
+	if (initNode == nullptr) succ = false;
+	pos = ++rpos;
+	while (tkList[rpos].type != TokenType::ExprEnd) rpos++;
+	auto condNode = new ExpressionNode(SyntaxNodeType::Expression, tkList[pos]);
+	succ &= condNode->buildNode(tkList, pos, rpos - 1);
+	auto stepNode = new ExpressionNode(SyntaxNodeType::Expression, tkList[rpos + 1]);
+	succ &= stepNode->buildNode(tkList, rpos + 1, ed - 1);
+	addChild(initNode), addChild(condNode), addChild(stepNode);
+	auto contentNode = buildSingleNode(tkList, ed + 1, ed);
+	if (contentNode == nullptr) succ = false;
+	addChild(contentNode);
+	return succ;
+}
+
+ControlNode::ControlNode(SyntaxNodeType type) : SyntaxNode(type) { }
+ControlNode::ControlNode(const Token &tk) : SyntaxNode(tk) {
+	if (tk.type == TokenType::Break) type = SyntaxNodeType::Break;
+	else if (tk.type == TokenType::Continue) type = SyntaxNodeType::Continue;
+	else if (tk.type == TokenType::Return) type = SyntaxNodeType::Return;
+	else type = SyntaxNodeType::Unknown; 
+}
+
+std::string ControlNode::toString() const { 
+	if (type == SyntaxNodeType::Break || type == SyntaxNodeType::Continue) return syntaxNodeTypeString[(int)type];
+	else if (type == SyntaxNodeType::Return) return syntaxNodeTypeString[(int)type] + " " + ((ExpressionNode *)children[0])->toString();
+	else return "Unknown";
+}
+
+bool ControlNode::buildNode(const TokenList &tkList, size_t st, size_t &ed) {
+	ed = st;
+	bool succ = true;
+	switch (type) {
+		case SyntaxNodeType::Break:
+			ed = st + 1;
+			break;
+		case SyntaxNodeType::Continue:
+			ed = st + 1;
+			break;
+		case SyntaxNodeType::Return: {
+			if (tkList[st + 1].type == TokenType::ExprEnd) {
+				addChild(nullptr);
+				ed = st + 1;
+			} else {
+				while (tkList[ed].type != TokenType::ExprEnd) ed++;
+				auto exprNode = new ExpressionNode(SyntaxNodeType::Expression, tkList[st + 1]);
+				succ = exprNode->buildNode(tkList, st + 1, ed - 1);
+				addChild(exprNode);
+			}
+			break;
+		}
+		default:
+			succ = false;
+			break;
+	}
+	return succ;
+}
+
+BlockNode::BlockNode() : SyntaxNode(SyntaxNodeType::Block) { }
+BlockNode::BlockNode(const Token &tk) : SyntaxNode(SyntaxNodeType::Block, tk) { }
+
+std::string BlockNode::toString() const { return syntaxNodeTypeString[(int)type]; }

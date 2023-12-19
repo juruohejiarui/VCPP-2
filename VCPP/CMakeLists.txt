@@ -2,7 +2,7 @@ cmake_minimum_required (VERSION 2.8)
 
 project (VCPP)
 
-set(CXX_SOURCE ../Tools/tools.cpp ../Tools/message.cpp ../VASM/commandlist.cpp tokenlist.cpp syntaxnode.cpp typesystem.cpp main.cpp)
+set(CXX_SOURCE ../Tools/tools.cpp ../Tools/message.cpp ../VASM/commandlist.cpp tokenlist.cpp syntaxnode.cpp typesystem.cpp builderes.cpp main.cpp)
 set(CXX_HEADER ../Tools/tools.h ../Tools/message.h ../VASM/commandlist.h tokenlist.h cpltree.h compiler.h)  
 
 # set_target_properties(${TARGET} PROPERTIES
