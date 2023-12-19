@@ -18,6 +18,69 @@ struct ClassInfo;
 struct NamespaceInfo;
 class SyntaxNode;
 
+struct ExprResType {
+    ClassInfo* cls; // pointer to the class
+    std::string clsName; // name of the class (used when cls == nullptr)
+    int dimc; // number of dimensions
+    
+    ValueTypeModifier valueType; // value type modifier
+    std::vector<ExprResType> genericParams; // parameters for generic classes in cls
+
+    /**
+     * @brief Default constructor for ExprResType.
+     * 
+     * This constructor initializes an instance of ExprResType.
+     */
+    ExprResType();
+    /**
+     * @brief Constructs an ExprResType object.
+     * 
+     * @param cls Pointer to the ClassInfo object.
+     * @param dimc Number of dimensions.
+     * @param valueType Value type modifier.
+     * @param isConst Flag indicating if the object is const.
+     */
+    ExprResType(ClassInfo* cls, int dimc = 0, ValueTypeModifier valueType = ValueTypeModifier::t, bool isConst = false);
+
+    /**
+     * @brief Converts the expression result type to the parent type.
+     * 
+     * This function converts the expression result type to the type of its parent.
+     * 
+     * @return The converted expression result type.
+     */
+    ExprResType convertToParent() const;
+
+    /**
+     * Converts the object to a string representation.
+     *
+     * @return The string representation of the object.
+     */
+    std::string toString() const ;
+
+    /**
+     * Checks if the result type is generic , e.g a generic variable, a generic array, etc.
+     *
+     * @return true if the object is generic, false otherwise.
+     */
+    bool isGeneric() const;
+
+    /**
+     * @brief Checks if the object is a reference.
+     * 
+     * @return true if the object is a reference, false otherwise.
+     */
+    bool isRef() const;
+
+    /**
+     * @brief Checks if the current expression result is equal to another expression result.
+     * 
+     * @param other The other expression result to compare with.
+     * @return true if the expression results are equal, false otherwise.
+     */
+    bool equalTo(const ExprResType &other) const;
+};
+
 /**
  * @brief Array of strings representing syntax node types.
  * 
@@ -35,116 +98,6 @@ extern const std::string syntaxNodeTypeString[];
  */
 extern const int syntaxNodeTypeNumber;
 
-enum class IdentifierType {
-    Variable, Function, VarFunction, Class, Namespace, Unknown,
-};
-/**
- * @brief Array of strings representing identifier types.
- *
- * This array stores the different types of identifiers as strings.
- * The index of each string corresponds to the identifier type.
- * For example, identifierTypeString[0] represents the string for the first identifier type.
- */
-extern const std::string identifierTypeString[];
-/**
- * @brief The number representing the type of identifier.
- */
-extern const int identifierTypeNumber;
-
-/**
- * @brief Determines the type of an identifier.
- * 
- * This function takes a string representing an identifier name and returns the type of the identifier.
- * The type can be one of the following: enum, class, struct, variable, function, or unknown.
- * 
- * @param name The name of the identifier.
- * @return The type of the identifier.
- */
-IdentifierType getIdentifierType(const std::string &name);
-
-struct EResultType {
-    ClassInfo* cls;
-    std::string clsName;
-    int dimc;
-    ValueTypeModifier valueType;
-    bool isConst;
-    // the generic type for each generic class in genericClassList in cls
-    std::vector<EResultType> genericImplList;
-
-    EResultType();
-    EResultType(ClassInfo* cls, int dimc = 0, ValueTypeModifier valueType = ValueTypeModifier::t, bool isConst = false);
-
-    EResultType convertToParent() const;
-
-    std::string toString() const ;
-
-    bool isGeneric() const;
-    bool isRef() const;
-};
-
-struct IdentifierInfo {
-    IdentifierType type;
-    std::string name, fullName;
-    EResultType resultType;
-    IdentifierVisibility visibility;
-    SyntaxNode *defNode;
-
-    IdentifierInfo();
-    IdentifierInfo(const std::string &name);
-    IdentifierInfo(const std::string &name, const std::string &fullName);
-
-    virtual std::string toString() const;
-};
-
-struct VariableInfo : public IdentifierInfo {
-    VariableInfo();
-    VariableInfo(const std::string &name);
-    VariableInfo(const std::string &name, const std::string &fullName);
-    VariableInfo(const std::string &name, const std::string &fullName, const EResultType &resultType);
-    std::string toString() const;
-};
-
-struct FunctionInfo : public IdentifierInfo {
-    std::vector<VariableInfo *> paramList;
-    FunctionInfo(bool isVarFunction = false);
-    FunctionInfo(const std::string &name);
-    FunctionInfo(const std::string &name, const std::string &fullName, bool isVarFunction = false);
-    FunctionInfo(const std::string &name, const std::string &fullName, const EResultType &resultType, bool isVarFunction = false);
-
-    std::string toString() const;
-};
-
-struct ClassInfo : public IdentifierInfo {
-    std::map<std::string, VariableInfo *> varMap;
-    std::map<std::string, FunctionInfo *> funcMap;
-
-    ClassInfo *parent;
-    std::vector<ClassInfo *> genericClassList;
-    // the implementation of generic type for each generic class in genericClassList in parent class
-    std::vector<EResultType> parGenericImplList;
-
-    bool isGenericClass;
-
-    ClassInfo();
-    ClassInfo(const std::string &name);
-    ClassInfo(const std::string &name, const std::string &fullName);
-
-    std::string toString() const;
-};
-
-struct NamespaceInfo : public IdentifierInfo {
-    std::map<std::string, VariableInfo *> varMap;
-    std::map<std::string, FunctionInfo *> funcMap;
-    std::map<std::string, ClassInfo *> clsMap;
-    std::map<std::string, NamespaceInfo *> nspMap;
-
-    NamespaceInfo();
-    NamespaceInfo(const std::string &name);
-    NamespaceInfo(const std::string &name, const std::string &fullName);
-
-    std::string toString() const;
-};
-
 #pragma region Syntax Node
 /**
  * @class SyntaxNode
@@ -152,7 +105,7 @@ struct NamespaceInfo : public IdentifierInfo {
  * 
  * The SyntaxNode class provides a base class for all nodes in the syntax tree.
  * It contains information about the node's type, associated token, and child nodes.
- * Derived classes must implement the checkEResultType() function.
+ * Derived classes must implement the checkExprResType() function.
  */
 class SyntaxNode {
 protected:
@@ -267,7 +220,7 @@ public:
      * @brief Checks the expected result type of the syntax node.
      * @return True if the expected result type is valid, false otherwise.
      */
-    virtual bool checkEResultType() = 0;
+    virtual bool checkExprResType() = 0;
 };
 
 /**
@@ -280,7 +233,7 @@ public:
  */
 class ExpressionNode : public SyntaxNode {
 protected:
-    EResultType resultType; /**< The result type of the expression. */
+    ExprResType resultType; /**< The result type of the expression. */
 public:
     /**
      * @brief Converts the expression node to a string representation.
@@ -305,7 +258,7 @@ public:
      * @brief Gets the result type of the expression.
      * @return The result type of the expression.
      */
-    const EResultType &getResultType() const;
+    const ExprResType &getResultType() const;
 
     /**
      * @brief Builds the expression node from a list of tokens within the specified range.
@@ -335,8 +288,10 @@ public:
      * @brief Checks the result type of the expression.
      * @return True if the result type is valid, false otherwise.
      */
-    virtual bool checkEResultType() override;
+    virtual bool checkExprResType() override;
 };
+
+struct GenericAreaNode;
 /**
  * @class IdentifierNode
  * @brief Represents a node in the abstract syntax tree that represents an identifier.
@@ -348,6 +303,7 @@ class IdentifierNode : public ExpressionNode {
 private:
     std::string name; ///< The name of the identifier.
     uint64 id; ///< The ID of the identifier.
+    int dimc;
 public:
     /**
      * @brief Default constructor for IdentifierNode.
@@ -391,6 +347,19 @@ public:
     const std::string &getName() const;
 
     /**
+     * @brief Get the dimension count.
+     * 
+     * @return int The dimension count.
+     */
+    int getDimc() const;
+    /**
+     * @brief Retrieves the GenericAreaNode associated with this object.
+     * 
+     * @return A pointer to the GenericAreaNode.
+     */
+    GenericAreaNode *getGenericArea() const;
+
+    /**
      * @brief Builds a node in the tree using the given token list.
      * 
      * This function takes a token list, starting index, and an ending index as parameters.
@@ -408,7 +377,7 @@ public:
      * @brief Checks if the expression result type is valid.
      * @return True if the expression result type is valid, false otherwise.
      */
-    virtual bool checkEResultType() override;
+    virtual bool checkExprResType() override;
 };
 
 /**
@@ -434,7 +403,7 @@ public:
      * @brief Checks the expected result type of the method call.
      * @return True if the expected result type is valid, false otherwise.
      */
-    bool checkEResultType() override;
+    bool checkExprResType() override;
 
     /**
      * @brief Converts the MethodCallNode to a string representation.
@@ -496,7 +465,7 @@ public:
      * 
      * @return True if the expression result type is valid, false otherwise.
      */
-    bool checkEResultType() override;
+    bool checkExprResType() override;
 };
 
 class ConstValueNode : public ExpressionNode {
@@ -546,7 +515,7 @@ public:
      * 
      * @return bool True if the expression result type is valid, false otherwise.
      */
-    bool checkEResultType() override;
+    bool checkExprResType() override;
 };
 
 /**
@@ -572,6 +541,14 @@ public:
      * @param tk The token associated with the generic area node.
      */
     GenericAreaNode(const Token &tk);
+
+    /**
+     * @brief Get the parameter at the specified index.
+     * 
+     * @param index The index of the parameter to retrieve.
+     * @return Pointer to the IdentifierNode representing the parameter.
+     */
+    IdentifierNode *getParam(size_t index) const;
     
     /**
      * @brief Builds the generic area node from a list of tokens.
@@ -586,7 +563,7 @@ public:
      * @brief Checks the expression result type of the generic area node.
      * @return True if the expression result type is valid, false otherwise.
      */
-    bool checkEResultType() override;
+    bool checkExprResType() override;
 };
 
 /**
@@ -644,7 +621,7 @@ public:
      * @brief Checks the expression result type of the ConditionNode object.
      * @return True if the expression result type is valid, false otherwise.
      */
-    bool checkEResultType() override;
+    bool checkExprResType() override;
 };
 
 /**
@@ -699,7 +676,7 @@ public:
      * @brief Checks the result type of the expression in the while loop.
      * @return True if the result type is valid, false otherwise.
      */
-    bool checkEResultType() override;
+    bool checkExprResType() override;
 };
 
 /**
@@ -761,7 +738,7 @@ public:
      * @brief Checks the expression result type of the ForNode.
      * @return True if the expression result type is valid, false otherwise.
      */
-    bool checkEResultType() override;
+    bool checkExprResType() override;
 };
 
 /**
@@ -808,7 +785,7 @@ public:
      * 
      * @return True if the expected result type is valid, false otherwise.
      */
-    bool checkEResultType() override;
+    bool checkExprResType() override;
 };
 
 class BlockNode : public SyntaxNode {
@@ -843,7 +820,7 @@ public:
      * @brief Checks the expected result type of the BlockNode.
      * @return True if the expected result type is valid, false otherwise.
      */
-    bool checkEResultType() override;
+    bool checkExprResType() override;
 };
 
 class VarDefNode : public SyntaxNode {
@@ -880,7 +857,7 @@ public:
      * @brief Check the expression result type of the VarDefNode.
      * @return True if the expression result type is valid, false otherwise.
      */
-    bool checkEResultType() override;
+    bool checkExprResType() override;
 
     /**
      * @brief Convert the VarDefNode to a string representation.
@@ -942,7 +919,7 @@ public:
      * @brief Checks the expected result type of the function.
      * @return True if the expected result type is valid, false otherwise.
      */
-    bool checkEResultType() override;
+    bool checkExprResType() override;
 };
 
 class ClsDefNode : public SyntaxNode {
@@ -960,7 +937,7 @@ public:
 
     bool buildNode(const TokenList& tkList, size_t st, size_t& ed) override;
 
-    bool checkEResultType() override;
+    bool checkExprResType() override;
 };
 class NspDefNode : public SyntaxNode {
 private:
@@ -974,6 +951,94 @@ public:
     std::string getName() const;
 
     bool buildNode(const TokenList& tkList, size_t st, size_t& ed) override;
-    bool checkEResultType() override;
+    bool checkExprResType() override;
 };
 #pragma endregion
+
+enum class IdentifierType {
+    Variable, Function, VarFunction, Class, Namespace, Unknown,
+};
+/**
+ * @brief Array of strings representing identifier types.
+ *
+ * This array stores the different types of identifiers as strings.
+ * The index of each string corresponds to the identifier type.
+ * For example, identifierTypeString[0] represents the string for the first identifier type.
+ */
+extern const std::string identifierTypeString[];
+/**
+ * @brief The number representing the type of identifier.
+ */
+extern const int identifierTypeNumber;
+
+/**
+ * @brief Determines the type of an identifier.
+ * 
+ * This function takes a string representing an identifier name and returns the type of the identifier.
+ * The type can be one of the following: enum, class, struct, variable, function, or unknown.
+ * 
+ * @param name The name of the identifier.
+ * @return The type of the identifier.
+ */
+IdentifierType getIdentifierType(const std::string &name);
+
+struct IdentifierInfo {
+    IdentifierType type;
+    std::string name, fullName;
+    ExprResType resType;
+    IdentifierVisibility visibility;
+    SyntaxNode *defNode;
+
+    IdentifierInfo();
+    IdentifierInfo(SyntaxNode *defNode);
+
+    virtual std::string toString() const = 0;
+};
+
+struct VariableInfo : public IdentifierInfo {
+    VariableInfo();
+    VariableInfo(IdentifierNode *nameNode, IdentifierNode *typeNode);
+
+    std::string toString() const override;
+};
+
+struct FunctionInfo : public IdentifierInfo {
+    std::vector<VariableInfo *> paramList;
+    std::vector<ClassInfo *> genericClasses;
+    FunctionInfo(bool isVarFunction = false);
+    FunctionInfo(FuncDefNode *defNode, bool isVarFunction = false);
+
+    std::string toString() const override;
+};
+
+struct ClassInfo : public IdentifierInfo {
+    std::map<std::string, VariableInfo *> varMap;
+    std::map<std::string, FunctionInfo *> funcMap;
+
+    ClassInfo *parent;
+    // the generic class of this class
+    std::vector<ClassInfo *> genericClasses;
+    // the generic type for each generic class in genericClasses in parent
+    std::vector<ExprResType> genericParams;
+
+    bool isGenericIdentifier;
+
+    ClassInfo();
+    ClassInfo(const std::string &name);
+    ClassInfo(const std::string &name, const std::string &fullName);
+
+    std::string toString() const override;
+};
+
+struct NamespaceInfo : public IdentifierInfo {
+    std::map<std::string, VariableInfo *> varMap;
+    std::map<std::string, FunctionInfo *> funcMap;
+    std::map<std::string, ClassInfo *> clsMap;
+    std::map<std::string, NamespaceInfo *> nspMap;
+
+    NamespaceInfo();
+    NamespaceInfo(const std::string &name);
+    NamespaceInfo(const std::string &name, const std::string &fullName);
+
+    std::string toString() const;
+};

@@ -57,7 +57,7 @@ std::string ExpressionNode::toString() const { return std::string("Expression") 
 ExpressionNode::ExpressionNode(SyntaxNodeType type): SyntaxNode(type) { }
 ExpressionNode::ExpressionNode(SyntaxNodeType type, const Token& tk) : SyntaxNode(type, tk) { }
 
-const EResultType& ExpressionNode::getResultType() const { return resultType; }
+const ExprResType& ExpressionNode::getResultType() const { return resultType; }
 
 bool ExpressionNode::buildNode(const TokenList &tkList, size_t st, size_t &ed) {
 	ed = st;
@@ -160,24 +160,33 @@ int32 ExpressionNode::getWeight() const {
 #pragma endregion
 
 #pragma region IdentifierNode
-IdentifierNode::IdentifierNode() : ExpressionNode(SyntaxNodeType::Identifier) { id = 0; }
-IdentifierNode::IdentifierNode(const Token &tk) : ExpressionNode(SyntaxNodeType::Identifier, tk) { name = tk.dataStr; id = 0; }
+IdentifierNode::IdentifierNode() : ExpressionNode(SyntaxNodeType::Identifier) { id = dimc = 0; }
+IdentifierNode::IdentifierNode(const Token &tk) : ExpressionNode(SyntaxNodeType::Identifier, tk) { name = tk.dataStr; id = dimc = 0; }
 
 std::string IdentifierNode::toString() const { return tokenTypeString[(int)type] + " " + name + " " + std::to_string(id) + " " + resultType.toString(); }
 const uint64 &IdentifierNode::getId() const { return id; }
 void IdentifierNode::setId(uint64 id) { this->id = id; }
 const std::string &IdentifierNode::getName() const { return name; }
+int IdentifierNode::getDimc() const { return dimc; }
+GenericAreaNode *IdentifierNode::getGenericArea() const { return (GenericAreaNode *)children[0]; }
 void IdentifierNode::setName(const std::string &name) { this->name = name; }
 
 bool IdentifierNode::buildNode(const TokenList &tkList, size_t st, size_t &ed) {
 	name = tkList[st].dataStr;
 	bool succ = true;
+	// get the generic area
 	if (st + 1 < tkList.size() && tkList[st + 1].type == TokenType::GBrkL) {
 		GenericAreaNode *gaNode = new GenericAreaNode(tkList[st + 1]);
 		succ = gaNode->buildNode(tkList, st + 1, tkList[st + 1].data.uint64_v());
 		addChild(gaNode);
 		ed = tkList[st + 1].data.uint64_v();
 	} else ed = st;
+	// get the dimension
+	while (ed + 1 < tkList.size() && tkList[ed + 1].type == TokenType::MBrkL
+		&& tkList[ed + 1].data.uint64_v() == ed + 2 /* the bracket must be empty */) {
+		dimc++;
+		ed += 2;
+	}
 	return succ;
 }
 #pragma endregion
@@ -220,18 +229,16 @@ std::string ConstValueNode::toString() const {
 GenericAreaNode::GenericAreaNode() : ExpressionNode(SyntaxNodeType::GenericArea) { }
 GenericAreaNode::GenericAreaNode(const Token &tk) : ExpressionNode(SyntaxNodeType::GenericArea, tk) { }
 
+IdentifierNode *GenericAreaNode::getParam(size_t index) const { return (IdentifierNode *)children[index]; }
+
 bool GenericAreaNode::buildNode(const TokenList &tkList, size_t st, size_t ed) {
 	if (st > ed) return true;
 	size_t pos = st + 1;
 	while (pos < ed) {
 		size_t rpos = pos;
-		while (rpos < ed && tkList[rpos].type != TokenType::Comma) {
-			if (isBracketL(tkList[rpos].type)) rpos = tkList[rpos].data.uint64_v();
-			rpos++;
-		}
-		ExpressionNode *argNode = new ExpressionNode(SyntaxNodeType::Expression, tkList[pos]);
-		bool succ = argNode->buildNode(tkList, pos, rpos - 1);
-		pos = rpos + 1;
+		IdentifierNode *argNode = new IdentifierNode(tkList[pos]);
+		bool succ = argNode->buildNode(tkList, pos, rpos);
+		pos = rpos + 2;
 		addChild(argNode);
 	}
 	return false;
