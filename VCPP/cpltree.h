@@ -67,8 +67,9 @@ struct EResultType {
     std::string clsName;
     int dimc;
     ValueTypeModifier valueType;
-    bool isConst, isGeneric;
-    std::vector<EResultType> genericList;
+    bool isConst;
+    // the generic type for each generic class in genericClassList in cls
+    std::vector<EResultType> genericImplList;
 
     EResultType();
     EResultType(ClassInfo* cls, int dimc = 0, ValueTypeModifier valueType = ValueTypeModifier::t, bool isConst = false);
@@ -76,6 +77,9 @@ struct EResultType {
     EResultType convertToParent() const;
 
     std::string toString() const ;
+
+    bool isGeneric() const;
+    bool isRef() const;
 };
 
 struct IdentifierInfo {
@@ -115,7 +119,11 @@ struct ClassInfo : public IdentifierInfo {
     std::map<std::string, FunctionInfo *> funcMap;
 
     ClassInfo *parent;
-    std::vector<EResultType> parentGenericList;
+    std::vector<ClassInfo *> genericClassList;
+    // the implementation of generic type for each generic class in genericClassList in parent class
+    std::vector<EResultType> parGenericImplList;
+
+    bool isGenericClass;
 
     ClassInfo();
     ClassInfo(const std::string &name);
