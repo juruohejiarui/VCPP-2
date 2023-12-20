@@ -4,12 +4,12 @@ const std::string syntaxNodeTypeString[] = {
 	"Identifier", "ConstValue", "String", "GenericArea",
 	"If", "Else", "While", "For", "Break", "Continue", "Return", "Block", 
 	"Expression", "Operator", "MethodCall",
-	"VarDef", "VarFuncDef", "FuncDef", "ClsDef", "NspDef",
+	"VarDef", "VarFuncDef", "FuncDef", "ClsDef", "NspDef", "Using",
 
 	"SourceFile", "DefinitionFile",
 	"Empty", "Unknown",
 };
-const int syntaxNodeTypeNumber = 23;
+const int syntaxNodeTypeNumber = 24;
 
 /**
  * @brief Builds a single syntax node from a given token list.
@@ -635,6 +635,25 @@ bool NspDefNode::buildNode(const TokenList &tkList, size_t st, size_t &ed) {
 	return succ;
 }
 #pragma endregion
+
+#pragma region UsingNode
+UsingNode::UsingNode() : SyntaxNode(SyntaxNodeType::Using) { }
+UsingNode::UsingNode(const Token &tk) : SyntaxNode(SyntaxNodeType::Using, tk) { }
+
+std::string UsingNode::toString() const { return syntaxNodeTypeString[(int)type] + " " + path; }
+std::string UsingNode::getPath() const { return path; }
+void UsingNode::setPath(const std::string &path) { this->path = path; }
+
+bool UsingNode::buildNode(const TokenList &tkList, size_t st, size_t &ed) {
+	ed = st + 1;
+	path = tkList[ed].dataStr;
+	while (tkList[ed + 1].type == TokenType::GetChild) {
+		path += "." + tkList[ed + 2].dataStr;
+		ed += 2;
+	}
+	ed++;
+	return true;
+}
 
 SyntaxNode *buildSingleNode(const TokenList &tkList, size_t st, size_t &ed) {
 	const Token &firTk = tkList[st];

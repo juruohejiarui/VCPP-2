@@ -5,8 +5,7 @@ enum class SyntaxNodeType {
     Identifier, ConstValue, String, GenericArea,
     If, Else, While, For, Break, Continue, Return, Block, 
     Expression, Operator, MethodCall,
-    VarDef, VarFuncDef, FuncDef, ClsDef, NspDef,
-
+    VarDef, VarFuncDef, FuncDef, ClsDef, NspDef, Using,
     SourceFile, DefinitionFile,
     Empty, Unknown,
 };
@@ -956,6 +955,43 @@ public:
     bool buildNode(const TokenList& tkList, size_t st, size_t& ed) override;
     bool checkExprResType() override;
 };
+
+class UsingNode : public SyntaxNode {
+private:
+    std::string path;
+public:
+    /**
+     * @brief Returns a string representation of the UsingNode.
+     * 
+     * @return std::string The string representation of the UsingNode.
+     */
+    std::string toString() const override;
+
+    /**
+     * @brief Default constructor for UsingNode.
+     */
+    UsingNode();
+
+    /**
+     * @brief Constructor for UsingNode with a given token.
+     * 
+     * @param tk The token to initialize the UsingNode with.
+     */
+    UsingNode(const Token &tk);
+
+    std::string getPath() const;
+    void setPath(const std::string &path);
+
+    /**
+     * @brief Builds the UsingNode from a list of tokens.
+     * 
+     * @param tkList The list of tokens.
+     * @param st The starting index in the token list.
+     * @param ed The ending index in the token list (updated by the function).
+     * @return bool True if the UsingNode was successfully built, false otherwise.
+     */
+    bool buildNode(const TokenList &tkList, size_t st, size_t &ed) override;
+};
 #pragma endregion
 
 #pragma region Identifier Info
@@ -1031,6 +1067,7 @@ struct FunctionInfo : public IdentifierInfo {
 struct ClassInfo : public IdentifierInfo {
     std::map<std::string, VariableInfo *> varMap;
     std::map<std::string, std::vector<FunctionInfo *> > funcMap;
+    std::vector<TokenList> requiredOperators;
 
     ClassInfo *parent;
     // the generic class of this class

@@ -222,5 +222,6 @@ std::string NamespaceInfo::toString() const {
 }
 
 bool buildTypeSystem(const std::vector<SyntaxNode *> &roots) {
+    
     return false;
 }
