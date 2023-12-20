@@ -10,7 +10,7 @@ const std::string tokenTypeString[] = {
     "Add", "Sub", "Mul", "Div", "Mod", "And", "Or", "Xor", "Shl", "Shr", "Not", "LogicAnd", "LogicOr", "LogicNot",
     "Equ", "Neq", "Gt", "Ge", "Ls", "Le",
     "Inc", "Dec",
-    "GetMem", "NewObj", "Convert",
+    "GetMem", "NewObj", "Convert", "GetChild",
 
     "TypeHint",
     // keywords
@@ -27,7 +27,7 @@ const std::string tokenTypeString[] = {
 const std::string keywordString[] = {
     "if", "else", "while", "for", "continue", "break", "return", "var", "func", "varfunc", "class", "namespace", "private", "public", "protected", "using",
 };
-const size_t tokenTypeNumber = 67, keywordTokenTypeNumber = 16;
+const size_t tokenTypeNumber = 68, keywordTokenTypeNumber = 16;
 
 
 TokenType getKeyworkType(const std::string str) {
@@ -145,6 +145,12 @@ bool generateTokenList(const std::string &src, TokenList &tkList) {
                     tk.data.uint64_v() = brkStk.top();
                     brkStk.pop();
                 } else tk.type = TokenType::NewObj;
+            } else if (line[l] == ':') {
+                if (l + 1 < line.size() && line[l + 1] == ':') {
+                    r++, tk.type = TokenType::GetChild;
+                } else tk.type = TokenType::TypeHint;
+            } else if (line[l] == '.') {
+                tk.type = TokenType::GetMem;
             } else if (line[l] == '{') {
                 tk.type = TokenType::LBrkL;
                 brkStk.push(tkList.size());

@@ -36,6 +36,8 @@ SyntaxNode::SyntaxNode(SyntaxNodeType type, const Token& tk) {
 }
 SyntaxNode::~SyntaxNode() { for (auto child : children) if (child != nullptr) delete child; }
 
+std::string SyntaxNode::toString() const { return syntaxNodeTypeString[(int)type] + " " + token.toString(); }
+
 SyntaxNodeType SyntaxNode::getType() const { return this->type; }
 
 const Token& SyntaxNode::getToken() const { return token; }
@@ -80,6 +82,10 @@ bool ExpressionNode::buildNode(const TokenList &tkList, size_t st, size_t ed) {
 			}
 			case TokenType::Identifier: {
 				GenericAreaNode *gaNode = nullptr;
+				std::string name = firTk.dataStr;
+				// get the full name
+				for (to = pos; tkList[to + 1].type == TokenType::GetChild; to += 2)
+					name += "." + tkList[to + 2].dataStr;
 				// get the generic area
 				if (to + 1 < ed && tkList[to + 1].type == TokenType::GBrkL) {
 					++to;
@@ -89,7 +95,7 @@ bool ExpressionNode::buildNode(const TokenList &tkList, size_t st, size_t ed) {
 				}
 				// this identifier is a function call
 				if (to + 1 < ed && tkList[to + 1].type == TokenType::SBrkL) {
-					newNode = new MethodCallNode(firTk);
+					newNode = new MethodCallNode(firTk, name);
 					newNode->addChild(gaNode);
 					size_t lpos = to + 2;
 					to = tkList[to + 1].data.uint64_v();
@@ -105,7 +111,7 @@ bool ExpressionNode::buildNode(const TokenList &tkList, size_t st, size_t ed) {
 					}
 				}
 				else {
-					newNode = new IdentifierNode(firTk);
+					newNode = new IdentifierNode(firTk, name);
 					newNode->addChild(gaNode);
 				}
 				break;
@@ -162,6 +168,7 @@ int32 ExpressionNode::getWeight() const {
 #pragma region IdentifierNode
 IdentifierNode::IdentifierNode() : ExpressionNode(SyntaxNodeType::Identifier) { id = dimc = 0; }
 IdentifierNode::IdentifierNode(const Token &tk) : ExpressionNode(SyntaxNodeType::Identifier, tk) { name = tk.dataStr; id = dimc = 0; }
+IdentifierNode::IdentifierNode(const Token &tk, const std::string &name) : ExpressionNode(SyntaxNodeType::Identifier, tk) { this->name = name; id = dimc = 0; }
 
 std::string IdentifierNode::toString() const { return tokenTypeString[(int)type] + " " + name + " " + std::to_string(id) + " " + resultType.toString(); }
 const uint64 &IdentifierNode::getId() const { return id; }
@@ -174,6 +181,9 @@ void IdentifierNode::setName(const std::string &name) { this->name = name; }
 bool IdentifierNode::buildNode(const TokenList &tkList, size_t st, size_t &ed) {
 	name = tkList[st].dataStr;
 	bool succ = true;
+	// get the full name
+	for (ed = st; tkList[ed + 1].type == TokenType::GetChild; ed += 2)
+		name += "." + tkList[ed + 2].dataStr;
 	// get the generic area
 	if (st + 1 < tkList.size() && tkList[st + 1].type == TokenType::GBrkL) {
 		GenericAreaNode *gaNode = new GenericAreaNode(tkList[st + 1]);
@@ -194,6 +204,7 @@ bool IdentifierNode::buildNode(const TokenList &tkList, size_t st, size_t &ed) {
 #pragma region MethodCallNode
 MethodCallNode::MethodCallNode() : IdentifierNode() { type = SyntaxNodeType::MethodCall; }
 MethodCallNode::MethodCallNode(const Token &tk) : IdentifierNode(tk) { type = SyntaxNodeType::MethodCall; }
+MethodCallNode::MethodCallNode(const Token &tk, const std::string &name) : IdentifierNode(tk, name) { type = SyntaxNodeType::MethodCall; }
 
 std::string MethodCallNode::toString() const { return tokenTypeString[(int)type] + " " + getName() + " " + resultType.toString(); }
 #pragma endregion
@@ -204,9 +215,13 @@ OperatorNode::OperatorNode() : ExpressionNode(SyntaxNodeType::Operator) { }
 OperatorNode::OperatorNode(TokenType opType) : ExpressionNode(SyntaxNodeType::Operator) { token.type = opType; }
 OperatorNode::OperatorNode(const Token &tk) : ExpressionNode(SyntaxNodeType::Operator, tk) { }
 
+std::string OperatorNode::toString() const { return syntaxNodeTypeString[(int)type] + " " + token.toString() + " " + resultType.toString(); }
+
 TokenType OperatorNode::getOpType() const { return token.type; }
 
 int32 OperatorNode::getWeight() const { return getOperWeight(token.type); }
+
+bool OperatorNode::buildNode(const TokenList &tkList, size_t st, size_t &ed) { return false; }
 #pragma endregion
 
 #pragma region ConstValueNode
@@ -226,7 +241,7 @@ std::string ConstValueNode::toString() const {
 #pragma endregion
 
 #pragma region GenericAreaNode
-GenericAreaNode::GenericAreaNode() : ExpressionNode(SyntaxNodeType::GenericArea) { }
+GenericAreaNode::GenericAreaNode() : ExpressionNode(SyntaxNodeType::GenericArea) {}
 GenericAreaNode::GenericAreaNode(const Token &tk) : ExpressionNode(SyntaxNodeType::GenericArea, tk) { }
 
 IdentifierNode *GenericAreaNode::getParam(size_t index) const { return (IdentifierNode *)children[index]; }
@@ -242,6 +257,15 @@ bool GenericAreaNode::buildNode(const TokenList &tkList, size_t st, size_t ed) {
 		addChild(argNode);
 	}
 	return false;
+}
+
+std::string GenericAreaNode::toString() const {
+	std::string res = tokenTypeString[(int)type];
+	for (size_t i = 0; i < childrenCount(); i++) {
+		if (i > 0) res += ", ";
+		res += children[i]->toString();
+	}
+	return res;
 }
 #pragma endregion
 

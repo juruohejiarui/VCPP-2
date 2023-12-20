@@ -119,8 +119,11 @@ IdentifierInfo::IdentifierInfo(SyntaxNode *defNode) {
     visibility = IdentifierVisibility::Unknown;
 }
 
-VariableInfo::VariableInfo() : IdentifierInfo() { type = IdentifierType::Variable; }
+IdentifierInfo::~IdentifierInfo() {} 
+
+VariableInfo::VariableInfo() : IdentifierInfo() { offset = 0, type = IdentifierType::Variable; }
 VariableInfo::VariableInfo(IdentifierNode *nameNode, IdentifierNode *typeNode) : IdentifierInfo(nameNode) {
+    offset = 0;
     type = IdentifierType::Variable;
     name = nameNode->getName();
     fullName = "<unknown>";
@@ -128,16 +131,96 @@ VariableInfo::VariableInfo(IdentifierNode *nameNode, IdentifierNode *typeNode) :
     resType = generateExprResType(typeNode);
 }
 
+VariableInfo::~VariableInfo() {}
+
+std::string VariableInfo::toString() const {
+    std::string res = "VariableInfo: " + name + " " + resType.toString() + " offset = " + std::to_string(offset) + "\n";
+    return res;
+}
+
 FunctionInfo::FunctionInfo(bool isVarFunction) : IdentifierInfo() {
+    offset = 0;
     type = isVarFunction ? IdentifierType::VarFunction : IdentifierType::Function;
     name = fullName = "<unknown>";
     visibility = IdentifierVisibility::Unknown;
 }
 
 FunctionInfo::FunctionInfo(FuncDefNode *defNode, bool isVarFunction) : IdentifierInfo(defNode) {
+    offset = 0;
     type = isVarFunction ? IdentifierType::VarFunction : IdentifierType::Function;
     name = defNode->getName();
     fullName = "<unknown>";
+    visibility = defNode->getVisibility();   
+}
+
+FunctionInfo::~FunctionInfo() {
+    for (size_t i = 0; i < params.size(); i++) if (params[i] != nullptr) delete params[i];
+    for (size_t i = 0; i < genericClasses.size(); i++) if (genericClasses[i] != nullptr) delete genericClasses[i];
+}
+
+std::string FunctionInfo::toString() const {
+    std::string res = "FunctionInfo: " + name + " " + resType.toString() + " offset = " + std::to_string(offset) + "\n";
+    return res;
+}
+
+ClassInfo::ClassInfo() : IdentifierInfo() {
+    type = IdentifierType::Class;
+    name = fullName = "<unknown>";
+    visibility = IdentifierVisibility::Unknown;
+    parent = nullptr;
+    isGenericIdentifier = false;
+}
+
+ClassInfo::ClassInfo(ClsDefNode *defNode) : IdentifierInfo(defNode) {
+    type = IdentifierType::Class;
+    name = defNode->getName();
+    fullName = "<unknown>";
     visibility = defNode->getVisibility();
-    
+    parent = nullptr;
+    isGenericIdentifier = false;
+}
+
+ClassInfo::~ClassInfo() {
+    for (auto &pir : varMap) if (pir.second != nullptr) delete pir.second;
+    for (auto &pir : funcMap)
+        for (size_t i = 0; i < pir.second.size(); i++)
+            if (pir.second[i] != nullptr) delete pir.second[i];
+    for (size_t i = 0; i < genericClasses.size(); i++)
+        if (genericClasses[i] != nullptr) delete genericClasses[i];
+}
+
+std::string ClassInfo::toString() const {
+    std::string res = "ClassInfo: " + name + " " + "->" + fullName + "\n";
+    return res;
+}
+
+NamespaceInfo::NamespaceInfo() : IdentifierInfo() {
+    type = IdentifierType::Namespace;
+    name = fullName = "<unknown>";
+    visibility = IdentifierVisibility::Public;
+}
+
+NamespaceInfo::NamespaceInfo(NspDefNode *defNode) : IdentifierInfo(defNode) {
+    type = IdentifierType::Namespace;
+    name = defNode->getName();
+    fullName = "<unknown>";
+    visibility = IdentifierVisibility::Public;
+}
+
+NamespaceInfo::~NamespaceInfo() {
+    for (auto &pir : varMap) if (pir.second != nullptr) delete pir.second;
+    for (auto &pir : funcMap)
+        for (size_t i = 0; i < pir.second.size(); i++)
+            if (pir.second[i] != nullptr) delete pir.second[i];
+    for (auto &pir : clsMap) if (pir.second != nullptr) delete pir.second;
+    for (auto &pir : nspMap) if (pir.second != nullptr) delete pir.second;
+}
+
+std::string NamespaceInfo::toString() const {
+    std::string res = "NamespaceInfo: " + name + " " + "->" + fullName + "\n";
+    return res;
+}
+
+bool buildTypeSystem(const std::vector<SyntaxNode *> &roots) {
+    return false;
 }

@@ -12,7 +12,7 @@ enum class TokenType {
     Add, Sub, Mul, Div, Mod, And, Or, Xor, Shl, Shr, Not, LogicAnd, LogicOr, LogicNot,
     Equ, Neq, Gt, Ge, Ls, Le,
     Inc, Dec,
-    GetMem, NewObj, Convert,
+    GetMem, NewObj, Convert, GetChild, 
 
     TypeHint,
     // keywords

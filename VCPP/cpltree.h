@@ -12,12 +12,9 @@ enum class SyntaxNodeType {
 };
 
 struct IdentifierInfo;
-struct VariableInfo;
-struct FunctionInfo;
 struct ClassInfo;
-struct NamespaceInfo;
-class SyntaxNode;
 
+/// @brief structure that stores the result type of an expression
 struct ExprResType {
     ClassInfo* cls; // pointer to the class
     std::string clsName; // name of the class (used when cls == nullptr)
@@ -317,6 +314,17 @@ public:
     IdentifierNode(const Token &tk);
 
     /**
+     * @brief Represents a node of identifier.
+     *
+     * This class represents a node of identifier. It stores the token and name associated with the identifier.
+     *
+     * @param tk The token associated with the identifier.
+     * @param name The name of the identifier.
+     */
+    IdentifierNode(const Token &tk, const std::string &name);
+
+
+    /**
      * @brief Converts the IdentifierNode to a string representation.
      * @return The string representation of the IdentifierNode.
      */
@@ -398,7 +406,17 @@ public:
      * @param tk The token associated with the method call.
      */
     MethodCallNode(const Token &tk);
-    
+
+    /**
+     * @brief Represents a method call node.
+     *
+     * This class represents a node in the syntax tree that represents a method call.
+     * It stores the token and name of the method being called.
+     *
+     * @param tk The token associated with the method call.
+     * @param name The name of the method being called.
+     */
+    MethodCallNode(const Token &tk, const std::string &name);
     /**
      * @brief Checks the expected result type of the method call.
      * @return True if the expected result type is valid, false otherwise.
@@ -459,6 +477,8 @@ public:
      * @return The weight of the operator.
      */
     int32 getWeight() const;
+
+    bool buildNode(const TokenList &tkList, size_t st, size_t &ed) override;
 
     /**
      * @brief Checks if the operator node has a valid expression result type.
@@ -574,12 +594,6 @@ public:
 class ConditionNode : public SyntaxNode {
 public:
     /**
-     * @brief Converts the ConditionNode object to a string representation.
-     * @return The string representation of the ConditionNode object.
-     */
-    std::string toString() const override;
-
-    /**
      * @brief Default constructor for ConditionNode.
      */
     ConditionNode();
@@ -635,12 +649,6 @@ public:
 class WhileNode : public SyntaxNode {
 public:
     /**
-     * @brief Converts the while loop node to a string representation.
-     * @return The string representation of the while loop node.
-     */
-    std::string toString() const override;
-
-    /**
      * @brief Default constructor for WhileNode.
      */
     WhileNode();
@@ -685,12 +693,6 @@ public:
 class ForNode : public SyntaxNode {
 public:
     /**
-     * @brief Converts the ForNode to a string representation.
-     * @return The string representation of the ForNode.
-     */
-    std::string toString() const override;
-
-    /**
      * @brief Default constructor for ForNode.
      */
     ForNode();
@@ -700,6 +702,7 @@ public:
      * @param tk The token associated with the ForNode.
      */
     ForNode(const Token &tk);
+
 
     /**
      * @brief Gets the initialization node of the ForNode.
@@ -955,6 +958,8 @@ public:
 };
 #pragma endregion
 
+#pragma region Identifier Info
+/// @brief The type of identifier.
 enum class IdentifierType {
     Variable, Function, VarFunction, Class, Namespace, Unknown,
 };
@@ -982,6 +987,7 @@ extern const int identifierTypeNumber;
  */
 IdentifierType getIdentifierType(const std::string &name);
 
+/// @brief The information of an identifier
 struct IdentifierInfo {
     IdentifierType type;
     std::string name, fullName;
@@ -992,28 +998,39 @@ struct IdentifierInfo {
     IdentifierInfo();
     IdentifierInfo(SyntaxNode *defNode);
 
+    virtual ~IdentifierInfo();
+
     virtual std::string toString() const = 0;
 };
 
+/// @brief The information of a variable
 struct VariableInfo : public IdentifierInfo {
+    uint64 offset;
     VariableInfo();
     VariableInfo(IdentifierNode *nameNode, IdentifierNode *typeNode);
+
+    ~VariableInfo();
 
     std::string toString() const override;
 };
 
+/// @brief The information of a function (or a variable function)
 struct FunctionInfo : public IdentifierInfo {
-    std::vector<VariableInfo *> paramList;
+    uint64 offset;
+    std::vector<VariableInfo *> params;
     std::vector<ClassInfo *> genericClasses;
     FunctionInfo(bool isVarFunction = false);
     FunctionInfo(FuncDefNode *defNode, bool isVarFunction = false);
 
+    ~FunctionInfo();
+
     std::string toString() const override;
 };
 
+/// @brief The information of a class (or a generic identifier)
 struct ClassInfo : public IdentifierInfo {
     std::map<std::string, VariableInfo *> varMap;
-    std::map<std::string, FunctionInfo *> funcMap;
+    std::map<std::string, std::vector<FunctionInfo *> > funcMap;
 
     ClassInfo *parent;
     // the generic class of this class
@@ -1024,21 +1041,45 @@ struct ClassInfo : public IdentifierInfo {
     bool isGenericIdentifier;
 
     ClassInfo();
-    ClassInfo(const std::string &name);
+    ClassInfo(ClsDefNode *defNode);
     ClassInfo(const std::string &name, const std::string &fullName);
+
+    ~ClassInfo();
 
     std::string toString() const override;
 };
 
+/// @brief The information of a namespace
 struct NamespaceInfo : public IdentifierInfo {
     std::map<std::string, VariableInfo *> varMap;
-    std::map<std::string, FunctionInfo *> funcMap;
+    std::map<std::string, std::vector<FunctionInfo *> > funcMap;
     std::map<std::string, ClassInfo *> clsMap;
     std::map<std::string, NamespaceInfo *> nspMap;
 
     NamespaceInfo();
-    NamespaceInfo(const std::string &name);
-    NamespaceInfo(const std::string &name, const std::string &fullName);
+    NamespaceInfo(NspDefNode *defNode);
+
+    ~NamespaceInfo();
 
     std::string toString() const;
 };
+#pragma endregion
+
+/**
+ * Builds the type system using the given syntax tree roots.
+ *
+ * @param roots The vector of syntax tree roots.
+ * @return True if the type system was successfully built, false otherwise.
+ */
+bool buildTypeSystem(const std::vector<SyntaxNode *> &roots);
+
+/**
+ * @brief Checks the result type of an expression.
+ * 
+ * This function takes a vector of SyntaxNode pointers representing the roots of an expression tree
+ * and checks the result type of the expression. It returns true if the result type is valid, and false otherwise.
+ * 
+ * @param roots The vector of SyntaxNode pointers representing the roots of the expression tree.
+ * @return true if the result type is valid, false otherwise.
+ */
+bool CheckExprResType(const std::vector<SyntaxNode *> &roots);
