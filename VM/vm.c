@@ -65,7 +65,7 @@ uint32 loadRuntimeBlock(const char *path) {
 /// then the function will call loadRuntimeBlock(path) to load this vobj file.
 /// @param path the path of vobj file
 /// @return the id of runtime block
-uint32 getRBlockId(const char *path) {
+static inline uint32 getRBlockId(const char *path) {
     RuntimeBlock *blk = Trie_get(&vobjPathTrieRoot, path);
     if (blk != NULL) return blk->id;
     return loadRuntimeBlock(path);
@@ -82,7 +82,7 @@ void initVM() {
     initGC();
 }
 
-uint32 getRelyBlkId(int32 relyId) {
+static inline uint32 getRelyBlkId(int32 relyId) {
     if (!relyId) return curRBlock->id;
     if (!curRBlock->relyBlkId[relyId])
         curRBlock->relyBlkId[relyId] = getRBlockId(curRBlock->relyList[relyId]);
@@ -91,7 +91,7 @@ uint32 getRelyBlkId(int32 relyId) {
 /// @brief call the function in rBlocks[blkId], whose offset is OFFSET
 /// @param blkId 
 /// @param offset 
-void callFunc(uint32 blkId, uint64 offset) {
+static inline void callFunc(uint32 blkId, uint64 offset) {
     clStackTop++;
     // keep in the same runtime block
     if (!blkId) clStackTop->blkId = (clStackTop - 1)->blkId;
@@ -103,7 +103,7 @@ void callFunc(uint32 blkId, uint64 offset) {
     clStackTop->var = NULL;
 }
 
-void retFunc() {
+static inline void retFunc() {
     // clean the local variable list
     if (clStackTop->var != NULL) free(clStackTop->var);
     // clean the calculate stack
@@ -113,7 +113,7 @@ void retFunc() {
     curRBlock = &rBlocks[clStackTop->blkId];
 }
 
-void retFuncV() {
+static inline void retFuncV() {
     // clean the local variable list
     if (clStackTop->var != NULL) free(clStackTop->var);
     // return the value in the top of calculate stack
@@ -129,7 +129,7 @@ void retFuncV() {
 /// @brief get true value of the address in top of calculate stack using the modifiers
 /// @param vlmdf value modifier
 /// @param dtmdf data modifier
-void getTrueValue(uint16 vlmdf, uint16 dtmdf) {
+static inline void getTrueValue(uint16 vlmdf, uint16 dtmdf) {
     if (vlmdf >= TrueVal) return ;
     switch(dtmdf) {
         case i8:

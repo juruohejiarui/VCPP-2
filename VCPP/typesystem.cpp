@@ -5,6 +5,11 @@ const std::string identifierTypeString[] = {
 };
 const int identifierTypeNumber = 5;
 
+NamespaceInfo *gloNsp;
+ClassInfo *basicCls, *objectCls, int8Cls, uint8Cls, int16Cls, uint16Cls, int32Cls, uint32Cls, int64Cls, uint64Cls, float32Cls, float64Cls;
+
+std::vector<NamespaceInfo *> usingList;
+
 IdentifierType getIdentifierType(const std::string &name) {
     for (int i = 0; i < identifierTypeNumber; i++)
         if (name == identifierTypeString[i]) return (IdentifierType)i;
@@ -138,6 +143,9 @@ std::string VariableInfo::toString() const {
     return res;
 }
 
+IdentifierNode *VariableInfo::getNameNode() const { return (IdentifierNode *)defNode; }
+IdentifierNode *VariableInfo::getTypeNode() const { return typeNode; }
+
 FunctionInfo::FunctionInfo(bool isVarFunction) : IdentifierInfo() {
     offset = 0;
     type = isVarFunction ? IdentifierType::VarFunction : IdentifierType::Function;
@@ -162,6 +170,8 @@ std::string FunctionInfo::toString() const {
     std::string res = "FunctionInfo: " + name + " " + resType.toString() + " offset = " + std::to_string(offset) + "\n";
     return res;
 }
+
+FuncDefNode *FunctionInfo::getDefNode() const { return (FuncDefNode *)defNode; }
 
 ClassInfo::ClassInfo() : IdentifierInfo() {
     type = IdentifierType::Class;
@@ -194,6 +204,8 @@ std::string ClassInfo::toString() const {
     return res;
 }
 
+ClsDefNode *ClassInfo::getDefNode() const { return (ClsDefNode *)defNode; }
+
 NamespaceInfo::NamespaceInfo() : IdentifierInfo() {
     type = IdentifierType::Namespace;
     name = fullName = "<unknown>";
@@ -221,7 +233,215 @@ std::string NamespaceInfo::toString() const {
     return res;
 }
 
+NspDefNode *NamespaceInfo::getDefNode() const { return (NspDefNode *)defNode; }
+
+NamespaceInfo *curNsp;
+ClassInfo *curCls;
+FunctionInfo *curFunc;
+SyntaxNode *curRoot;
+
+void enterNamespace(NamespaceInfo *nsp) { curNsp = nsp; }
+void leaveNamespace() { curNsp = nullptr; }
+void enterClass(ClassInfo *cls) { curCls = cls; }
+void leaveClass() { curCls = nullptr; }
+void enterFunction(FunctionInfo *func) { curFunc = func; }
+void leaveFunction() { curFunc = nullptr; }
+
+bool buildClass(NamespaceInfo *par, ClsDefNode * defNode) {
+    ClassInfo *cls = new ClassInfo(defNode);
+    cls->fullName = par->fullName + "." + cls->name;
+    cls->visibility = defNode->getVisibility();
+
+    cls->belongRoot = curRoot;
+
+    // 获取泛型符号
+    IdentifierNode *nameNode = defNode->getNameNode();
+    if (nameNode->childrenCount() > 0) {
+        auto genericNode = nameNode->getGenericArea();
+        for (size_t i = 0; i < genericNode->childrenCount(); i++) {
+            auto paramNode = genericNode->getParam(i);
+            ClassInfo *genericCls = new ClassInfo();
+            genericCls->name = paramNode->getName();
+            genericCls->isGenericIdentifier = true;
+            cls->genericClasses.push_back(genericCls);
+        }
+    }
+
+    if (par->clsMap.count(cls->name)) {
+        printError(defNode->getToken().lineId, "class " + cls->name + " is redefined in " + par->fullName);
+        return false;
+    }
+    par->clsMap[cls->name] = cls;
+    return true;
+}
+
+bool buildClass(NamespaceInfo *par, NspDefNode *defNode) {
+    NamespaceInfo *nsp = new NamespaceInfo(defNode);
+    nsp->fullName = par->fullName + "." + nsp->name;
+    nsp->visibility = IdentifierVisibility::Public;
+
+    nsp->belongRoot = curRoot;
+
+    bool succ = true;
+    for (size_t i = 0; i < defNode->childrenCount(); i++) {
+        auto child = (*defNode)[i];
+        if (child->getType() == SyntaxNodeType::NspDef)
+            succ &= buildClass(nsp, (NspDefNode *)child);
+        else if (child->getType() == SyntaxNodeType::ClsDef)
+            succ &= buildClass(nsp, (ClsDefNode *)child);
+    }
+    if (par->nspMap.count(nsp->name)) {
+        printError(defNode->getToken().lineId, "namespace " + nsp->name + " is redefined in " + par->fullName);
+        return false;
+    }
+    par->nspMap[nsp->name] = nsp;
+    return succ;
+}
+
+bool addUsing(const UsingNode *usingNode) {
+    auto *nsp = gloNsp;
+    std::vector<std::string> names;
+    stringSplit(usingNode->getPath(), '.', names);
+    for (size_t i = 0; i < names.size(); i++) {
+        auto ele = nsp->nspMap.find(names[i]);
+        if (ele == nsp->nspMap.end()) {
+            printError(usingNode->getToken().lineId, "namespace " + names[i] + " is not found");
+            return false;
+        }
+        nsp = ele->second;
+    }
+    usingList.push_back(nsp);
+    return true;
+}
+void clearUsing() { usingList.clear(); }
+
+bool loadUsing(const SyntaxNode *root) {
+    bool succ = true;
+    for (size_t i = 0; i < root->childrenCount(); i++) {
+        auto child = (*root)[i];
+        if (child->getType() == SyntaxNodeType::Using)
+            succ &= addUsing((UsingNode *)child);
+    }
+    return succ;
+}
+
+
+/**
+ * @brief Finds a ClassInfo object by name.
+ * 
+ * @param name The name of the class to find.
+ * @return A pointer to the ClassInfo object if found, nullptr otherwise.
+ */
+ClassInfo *findClass(const std::string &name) {
+    std::vector<std::string> names;
+    stringSplit(name, '.', names);
+    // this name may be a generic class name
+    if (names.size() == 1 && curCls != nullptr) {
+        for (size_t i = 0; i < curCls->genericClasses.size(); i++)
+            if (curCls->genericClasses[i]->name == name) return curCls->genericClasses[i];
+    }
+    // search in the current namespace
+    if (curNsp->clsMap.count(names[0])) return curNsp->clsMap[names[0]];
+    if (curNsp->nspMap.count(names[0])) {
+        NamespaceInfo *nsp = curNsp;
+        for (size_t i = 0; i < names.size() - 2; i++) {
+            auto ele = nsp->nspMap.find(names[i]);
+            if (ele == nsp->nspMap.end()) { nsp = nullptr; break;}
+            nsp = ele->second;
+        }
+        if (nsp != nullptr && nsp->clsMap.count(names[names.size() - 1]))
+            return nsp->clsMap[names[names.size() - 1]];
+    }
+    // search in the using list
+    for (size_t i = 0; i < usingList.size(); i++) {
+        NamespaceInfo *nsp = usingList[i];
+        for (size_t j = 0; j < names.size() - 2; j++) {
+            auto ele = nsp->nspMap.find(names[j]);
+            if (ele == nsp->nspMap.end()) { nsp = nullptr; break;}
+            nsp = ele->second;
+        }
+        if (nsp != nullptr && nsp->clsMap.count(names[names.size() - 1]))
+            return nsp->clsMap[names[names.size() - 1]];
+    }
+    // start from the global namespace
+    NamespaceInfo *nsp = gloNsp;
+    for (size_t i = 0; i < names.size() - 2; i++) {
+        auto ele = nsp->nspMap.find(names[i]);
+        if (ele == nsp->nspMap.end()) { nsp = nullptr; break;}
+        nsp = ele->second;
+    }
+    if (nsp != nullptr && nsp->clsMap.count(names[names.size() - 1]))
+        return nsp->clsMap[names[names.size() - 1]];
+    return nullptr;
+}
+
+NamespaceInfo *findNamespace(const std::string &name) {
+    std::vector<std::string> names;
+    stringSplit(name, '.', names);
+    // start from the global namespace
+    NamespaceInfo *nsp = gloNsp;
+    for (size_t i = 0; i < names.size() - 1; i++) {
+        auto ele = nsp->nspMap.find(names[i]);
+        if (ele == nsp->nspMap.end()) { nsp = nullptr; break;}
+        nsp = ele->second;
+    }
+    return nsp;
+}
+
+bool buildClsTree(ClassInfo *cls) {
+    if (cls->getDefNode()->getBaseClassNode() == nullptr) cls->parent = objectCls;
+    else {
+        cls->parent = findClass(cls->getDefNode()->getBaseClassNode()->getName());
+        if (cls->parent == nullptr) {
+            printError(cls->getDefNode()->getToken().lineId, "class " + cls->getDefNode()->getBaseClassNode()->getName() + " is not found");
+            return false;
+        }
+    }
+    cls->derives.push_back(cls);
+    return true;
+}
+
+void buildRootTypeInfo() {
+    gloNsp = new NamespaceInfo();
+    objectCls = new ClassInfo();
+    objectCls->name = objectCls->fullName = "Object";
+}
+
 bool buildTypeSystem(const std::vector<SyntaxNode *> &roots) {
-    
+    bool succ = true;
+    // build the struct of namespace and class
+    for (auto root : roots) {
+        curRoot = root;
+        for (size_t i = 0; i < root->childrenCount(); i++) {
+            auto child = (*root)[i];
+            if (child->getType() == SyntaxNodeType::NspDef)
+                succ &= buildClass(gloNsp, (NspDefNode *)child);
+            else if (child->getType() == SyntaxNodeType::ClsDef)
+                succ &= buildClass(gloNsp, (ClsDefNode *)child);
+        }
+    }
+    // build the content of class
+    for (auto root : roots) {
+        succ &= loadUsing(root);
+        auto recursion = [&](auto &&self, NamespaceInfo *nsp) -> bool {
+            bool succ = true;
+            for (auto &ele : nsp->clsMap)
+                succ &= buildClsTree(ele.second);
+            for (auto &ele : nsp->nspMap)
+                succ &= self(self, ele.second);
+            return succ;
+        };
+        for (size_t i = 0; i < root->childrenCount(); i++) {
+            auto child = (*root)[i];
+            if (child->getType() == SyntaxNodeType::NspDef)
+                succ &= recursion(recursion, findNamespace(((NspDefNode *)child)->getName()));
+            else if (child->getType() == SyntaxNodeType::ClsDef)
+                succ &= buildClsTree(findClass(((ClsDefNode *)child)->getName()));
+        }
+        clearUsing();
+    }
+
+    // build the members of classes in the class tree
+    if (!succ) return false;
     return false;
 }

@@ -475,7 +475,7 @@ bool VarDefNode::buildNode(const TokenList &tkList, size_t st, size_t &ed) {
 #pragma endregion
 
 #pragma region FuncDefNode
-FuncDefNode::FuncDefNode() : SyntaxNode(SyntaxNodeType::FuncDef) { }
+FuncDefNode::FuncDefNode() : SyntaxNode(SyntaxNodeType::FuncDef) {}
 FuncDefNode::FuncDefNode(const Token &tk) : SyntaxNode(SyntaxNodeType::FuncDef, tk) {
 	if (tk.type == TokenType::VarFuncDef) type = SyntaxNodeType::VarFuncDef;
 	else type = SyntaxNodeType::FuncDef;
@@ -485,6 +485,14 @@ std::string FuncDefNode::toString() const { return identifierTypeString[(int)vis
 IdentifierVisibility FuncDefNode::getVisibility() const { return visibility; }
 std::string FuncDefNode::getName() const { return name; }
 
+IdentifierNode *FuncDefNode::getNameNode() const { return (IdentifierNode *)children[0]; }
+IdentifierNode *FuncDefNode::getParamNameNode(size_t index) const { return (IdentifierNode *)children[(index >> 1) + 1]; }
+IdentifierNode *FuncDefNode::getParamTypeNode(size_t index) const { return (IdentifierNode *)children[(index >> 1) + 2]; }
+IdentifierNode *FuncDefNode::getReturnTypeNode() const { return (IdentifierNode *)children[children.size() - 2]; }
+SyntaxNode *FuncDefNode::getContentNode() const { return children[children.size() - 1]; }
+
+size_t FuncDefNode::getParamCount() const { return (children.size() - 3) >> 1; }
+
 bool FuncDefNode::buildNode(const TokenList &tkList, size_t st, size_t &ed) {
 	bool succ = true;
 	varCount = 0;
@@ -492,7 +500,10 @@ bool FuncDefNode::buildNode(const TokenList &tkList, size_t st, size_t &ed) {
 
 	// get the function name
 	ed = st + 1;
-	name = tkList[ed].dataStr;
+	IdentifierNode *nameNode = new IdentifierNode(tkList[ed]);
+	succ &= nameNode->buildNode(tkList, ed, ed);
+	name = nameNode->getName();
+	addChild(nameNode);
 	
 	// get the param list
 	size_t pos = ed + 2;
@@ -539,13 +550,22 @@ std::string ClsDefNode::toString() const { return identifierTypeString[(int)visi
 std::string ClsDefNode::getName() const { return name; }
 IdentifierVisibility ClsDefNode::getVisibility() const { return visibility; }
 
+IdentifierNode *ClsDefNode::getNameNode() const { return (IdentifierNode *)children[0]; }
+IdentifierNode *ClsDefNode::getBaseClassNode() const { return (IdentifierNode *)children[1]; }
+
+size_t ClsDefNode::getContentNodeCount() const { return children.size() - 2; }
+SyntaxNode *ClsDefNode::getContentNode(size_t index) const { return children[index + 2]; }
+
 bool ClsDefNode::buildNode(const TokenList &tkList, size_t st, size_t& ed) {
 	bool succ = true;
 	varCount = 0;
 	if (st > 0 && isVisibility(tkList[st - 1].type)) visibility = ::getVisibility(tkList[st - 1].type);
 	// get the class name
 	ed = st + 1;
-	name = tkList[ed].dataStr;
+	IdentifierNode *nameNode = new IdentifierNode(tkList[ed]);
+	succ &= nameNode->buildNode(tkList, ed, ed);
+	name = nameNode->getName();
+	addChild(nameNode);
 	// get the base class
 	ed++;
 	IdentifierNode *baseClass = nullptr;
@@ -611,6 +631,7 @@ bool NspDefNode::buildNode(const TokenList &tkList, size_t st, size_t &ed) {
 				addChild(varDefNode);
 				break;
 			}
+			case TokenType::VarFuncDef:
 			case TokenType::FuncDef: {
 				FuncDefNode *funcDefNode = new FuncDefNode(tkList[pos]);
 				succ &= funcDefNode->buildNode(tkList, pos, rpos);
@@ -641,7 +662,7 @@ UsingNode::UsingNode() : SyntaxNode(SyntaxNodeType::Using) { }
 UsingNode::UsingNode(const Token &tk) : SyntaxNode(SyntaxNodeType::Using, tk) { }
 
 std::string UsingNode::toString() const { return syntaxNodeTypeString[(int)type] + " " + path; }
-std::string UsingNode::getPath() const { return path; }
+const std::string &UsingNode::getPath() const { return path; }
 void UsingNode::setPath(const std::string &path) { this->path = path; }
 
 bool UsingNode::buildNode(const TokenList &tkList, size_t st, size_t &ed) {

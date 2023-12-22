@@ -885,6 +885,14 @@ public:
      */
     std::string toString() const override;
 
+    IdentifierNode *getNameNode() const;
+    IdentifierNode *getParamNameNode(size_t index) const;
+    IdentifierNode *getParamTypeNode(size_t index) const;
+    IdentifierNode *getReturnTypeNode() const;
+    SyntaxNode *getContentNode() const;
+
+    size_t getParamCount() const;
+
     /**
      * @brief Default constructor for FuncDefNode.
      */
@@ -937,6 +945,12 @@ public:
     std::string getName() const;
     IdentifierVisibility getVisibility() const;
 
+    IdentifierNode *getNameNode() const;
+    IdentifierNode *getBaseClassNode() const;
+    
+    size_t getContentNodeCount() const;
+    SyntaxNode *getContentNode(size_t index) const;
+
     bool buildNode(const TokenList& tkList, size_t st, size_t& ed) override;
 
     bool checkExprResType() override;
@@ -979,7 +993,7 @@ public:
      */
     UsingNode(const Token &tk);
 
-    std::string getPath() const;
+    const std::string &getPath() const;
     void setPath(const std::string &path);
 
     /**
@@ -1031,6 +1045,11 @@ struct IdentifierInfo {
     IdentifierVisibility visibility;
     SyntaxNode *defNode;
 
+    /**
+     * @brief Pointer to the root node that the SyntaxNode belongs to.
+     */
+    SyntaxNode *belongRoot;
+
     IdentifierInfo();
     IdentifierInfo(SyntaxNode *defNode);
 
@@ -1041,6 +1060,8 @@ struct IdentifierInfo {
 
 /// @brief The information of a variable
 struct VariableInfo : public IdentifierInfo {
+    IdentifierNode *typeNode;
+
     uint64 offset;
     VariableInfo();
     VariableInfo(IdentifierNode *nameNode, IdentifierNode *typeNode);
@@ -1048,6 +1069,9 @@ struct VariableInfo : public IdentifierInfo {
     ~VariableInfo();
 
     std::string toString() const override;
+
+    IdentifierNode *getNameNode() const;
+    IdentifierNode *getTypeNode() const;
 };
 
 /// @brief The information of a function (or a variable function)
@@ -1061,6 +1085,8 @@ struct FunctionInfo : public IdentifierInfo {
     ~FunctionInfo();
 
     std::string toString() const override;
+
+    FuncDefNode *getDefNode() const;
 };
 
 /// @brief The information of a class (or a generic identifier)
@@ -1069,6 +1095,7 @@ struct ClassInfo : public IdentifierInfo {
     std::map<std::string, std::vector<FunctionInfo *> > funcMap;
     std::vector<TokenList> requiredOperators;
 
+    std::vector<ClassInfo *> derives;
     ClassInfo *parent;
     // the generic class of this class
     std::vector<ClassInfo *> genericClasses;
@@ -1077,6 +1104,8 @@ struct ClassInfo : public IdentifierInfo {
 
     bool isGenericIdentifier;
 
+    uint64 size;
+
     ClassInfo();
     ClassInfo(ClsDefNode *defNode);
     ClassInfo(const std::string &name, const std::string &fullName);
@@ -1084,6 +1113,8 @@ struct ClassInfo : public IdentifierInfo {
     ~ClassInfo();
 
     std::string toString() const override;
+
+    ClsDefNode *getDefNode() const;
 };
 
 /// @brief The information of a namespace
@@ -1099,8 +1130,20 @@ struct NamespaceInfo : public IdentifierInfo {
     ~NamespaceInfo();
 
     std::string toString() const;
+
+    NspDefNode *getDefNode() const;
 };
 #pragma endregion
+
+bool addUsing(const UsingNode *usingNode);
+/**
+ * Loads the syntax tree using the specified root node.
+ * 
+ * @param root The root node of the syntax tree.
+ * @return True if the syntax tree is successfully loaded, false otherwise.
+ */
+bool loadUsing(const SyntaxNode *root);
+void clearUsing();
 
 /**
  * Builds the type system using the given syntax tree roots.
