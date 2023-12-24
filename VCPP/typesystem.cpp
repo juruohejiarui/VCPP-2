@@ -6,7 +6,9 @@ const std::string identifierTypeString[] = {
 const int identifierTypeNumber = 5;
 
 NamespaceInfo *gloNsp;
-ClassInfo *basicCls, *objectCls, int8Cls, uint8Cls, int16Cls, uint16Cls, int32Cls, uint32Cls, int64Cls, uint64Cls, float32Cls, float64Cls;
+ClassInfo *basicCls, *objectCls, *
+    int8Cls, *uint8Cls, *int16Cls, *uint16Cls, 
+    *int32Cls, *uint32Cls, *int64Cls, *uint64Cls, *float32Cls, *float64Cls;
 
 std::vector<NamespaceInfo *> usingList;
 
@@ -404,7 +406,54 @@ bool buildClsTree(ClassInfo *cls) {
 void buildRootTypeInfo() {
     gloNsp = new NamespaceInfo();
     objectCls = new ClassInfo();
-    objectCls->name = objectCls->fullName = "Object";
+    basicCls = new ClassInfo();
+    int8Cls = new ClassInfo();
+    uint8Cls = new ClassInfo();
+    int16Cls = new ClassInfo();
+    uint16Cls = new ClassInfo();
+    int32Cls = new ClassInfo();
+    uint32Cls = new ClassInfo();
+    int64Cls = new ClassInfo();
+    uint64Cls = new ClassInfo();
+    float32Cls = new ClassInfo();
+    float64Cls = new ClassInfo();
+
+    basicCls->name = basicCls->fullName = "basic", basicCls->size = 0;
+    objectCls->name = objectCls->fullName = "object", objectCls->size = sizeof(uint64), objectCls->parent = basicCls;
+    int8Cls->name = int8Cls->fullName = "char", int8Cls->size = 1, int8Cls->parent = basicCls;
+    uint8Cls->name = uint8Cls->fullName = "uchar", uint8Cls->size = 1, uint8Cls->parent = basicCls;
+    int16Cls->name = int16Cls->fullName = "short", int16Cls->size = 2, int16Cls->parent = basicCls;
+    uint16Cls->name = uint16Cls->fullName = "ushort", uint16Cls->size = 2, uint16Cls->parent = basicCls;
+    int32Cls->name = int32Cls->fullName = "int", int32Cls->size = 4, int32Cls->parent = basicCls;
+    uint32Cls->name = uint32Cls->fullName = "uint", uint32Cls->size = 4, uint32Cls->parent = basicCls;
+    int64Cls->name = int64Cls->fullName = "long", int64Cls->size = 8, int64Cls->parent = basicCls;
+    uint64Cls->name = uint64Cls->fullName = "ulong", uint64Cls->size = 8, uint64Cls->parent = basicCls;
+    float32Cls->name = float32Cls->fullName = "float", float32Cls->size = 4, float32Cls->parent = basicCls;
+    float64Cls->name = float64Cls->fullName = "double", float64Cls->size = 8, float64Cls->parent = basicCls;
+
+    gloNsp->clsMap["object"] = objectCls;
+    gloNsp->clsMap["basic"] = basicCls;
+    gloNsp->clsMap["char"] = int8Cls;
+    gloNsp->clsMap["uchar"] = uint8Cls;
+    gloNsp->clsMap["short"] = int16Cls;
+    gloNsp->clsMap["ushort"] = uint16Cls;
+    gloNsp->clsMap["int"] = int32Cls;
+    gloNsp->clsMap["uint"] = uint32Cls;
+    gloNsp->clsMap["long"] = int64Cls;
+    gloNsp->clsMap["ulong"] = uint64Cls;
+    gloNsp->clsMap["float"] = float32Cls;
+    gloNsp->clsMap["double"] = float64Cls;
+}
+
+bool buildClsMem(ClassInfo *cls) {
+    if (cls->isGenericIdentifier) return true;
+    if (cls->belongRoot != curRoot)
+        clearUsing(), loadUsing(cls->belongRoot), curRoot = cls->belongRoot;
+    // Inherit the members of the parent class
+    for (cls->parent != nullptr) {
+        
+    }
+    return true;
 }
 
 bool buildTypeSystem(const std::vector<SyntaxNode *> &roots) {
@@ -442,6 +491,7 @@ bool buildTypeSystem(const std::vector<SyntaxNode *> &roots) {
     }
 
     // build the members of classes in the class tree
+    succ &= buildClsMem(basicCls);
     if (!succ) return false;
     return false;
 }
