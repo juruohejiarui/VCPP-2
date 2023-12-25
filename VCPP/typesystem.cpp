@@ -10,6 +10,10 @@ ClassInfo *basicCls, *objectCls, *
     int8Cls, *uint8Cls, *int16Cls, *uint16Cls, 
     *int32Cls, *uint32Cls, *int64Cls, *uint64Cls, *float32Cls, *float64Cls;
 
+bool isBasicCls(ClassInfo *cls) {
+    return cls != nullptr && cls->parent == basicCls && cls != objectCls;
+}
+
 std::vector<NamespaceInfo *> usingList;
 
 IdentifierType getIdentifierType(const std::string &name) {
@@ -30,6 +34,12 @@ ExprResType::ExprResType(ClassInfo *cls, int dimc, ValueTypeModifier valueType, 
 	this->dimc = dimc;
 	this->valueType = valueType;
 	this->clsName = cls->name;
+}
+
+uint64 ExprResType::getSize() const {
+    if (dimc > 0) return sizeof(uint64);
+    if (isBasicCls(cls)) return cls->size;
+    return sizeof(uint64);
 }
 
 void SubsititueGeneric(ExprResType &eRes, ClassInfo *genericCls, ExprResType impl) {
@@ -451,7 +461,56 @@ bool buildClsMem(ClassInfo *cls) {
         clearUsing(), loadUsing(cls->belongRoot), curRoot = cls->belongRoot;
     // Inherit the members of the parent class
     for (cls->parent != nullptr) {
-        
+        cls->size = cls->parent->size;
+        for (auto &pir : cls->parent->varMap) 
+            if (pir.second->visibility != IdentifierVisibility::Private)
+                cls->varMap.insert(pir);
+        for (auto &pir : cls->parent->funcMap) {
+            cls->funcMap[pir.first].clear();
+            for (auto func : pir.second)
+                if (func->visibility != IdentifierVisibility::Private)
+                    cls->funcMap[pir.first].push_back(func);
+        }
+    }
+    cls->size += sizeof(uint64) * cls->genericClasses.size();
+    // Add the members of the current class
+    for (size_t i = 0; i < cls->getDefNode()->childrenCount(); i++) {
+        auto child = (*cls->getDefNode())[i];
+        switch (child->getType()) {
+            case SyntaxNodeType::VarDef: {
+                auto varDef = (VarDefNode *)child;
+                for (size_t i = 0; i < varDef->getVarCount(); i++) {
+                    const auto &var = varDef->getVar(i);
+                    VariableInfo *vInfo = new VariableInfo(std::get<0>(var), std::get<1>(var));
+                    vInfo->visibility = varDef->getVisibility();
+                    vInfo->offset = cls->size;
+                    cls->size += vInfo->resType.getSize();
+
+                    cls->varMap[vInfo->name] = vInfo;
+
+                    vInfo->belongRoot = cls->belongRoot;
+                }
+                break;
+            }
+            case SyntaxNodeType::FuncDef: {
+                auto funcDef = (FuncDefNode *)child;
+                for (size_t i = 0; i < funcDef->getVarCount(); i++) {
+                    FunctionInfo *fInfo = new FunctionInfo(funcDef, false);
+                    fInfo->visibility = funcDef->getVisibility();
+
+                    fInfo->belongRoot = cls->belongRoot;
+                }   
+            }
+            case SyntaxNodeType::VarFuncDef: {
+                auto funcDef = (FuncDefNode *)child;
+                for (size_t i = 0; i < funcDef->getVarCount(); i++) {
+                    FunctionInfo *fInfo = new FunctionInfo(funcDef, true);
+                    fInfo->visibility = funcDef->getVisibility(); 
+
+                    fInfo->belongRoot = cls->belongRoot;
+                }
+            }
+        }
     }
     return true;
 }

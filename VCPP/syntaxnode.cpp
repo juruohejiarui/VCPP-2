@@ -439,6 +439,11 @@ VarDefNode::VarDefNode(const Token &tk) : SyntaxNode(SyntaxNodeType::VarDef, tk)
 
 std::string VarDefNode::toString() const { return identifierVisibilityString[(int)visibility] + " " + syntaxNodeTypeString[(int)type]; }
 
+size_t VarDefNode::getVarCount() const { return childrenCount() / 3; }
+std::tuple<IdentifierNode*, IdentifierNode*, ExpressionNode*> VarDefNode::getVar(size_t index) const {
+	return std::make_tuple((IdentifierNode *)children[index * 3], (IdentifierNode *)children[index * 3 + 1], (ExpressionNode *)children[index * 3 + 2]);
+}
+
 bool VarDefNode::buildNode(const TokenList &tkList, size_t st, size_t &ed) {
 	ed = st;
 	bool succ = true;

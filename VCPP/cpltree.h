@@ -68,6 +68,8 @@ struct ExprResType {
      */
     bool isRef() const;
 
+    uint64 getSize() const;
+
     /**
      * @brief Checks if the current expression result is equal to another expression result.
      * 
@@ -854,6 +856,9 @@ public:
      * @return True if the VarDefNode was successfully built, false otherwise.
      */
     bool buildNode(const TokenList &tkList, size_t st, size_t &ed) override;
+
+    size_t getVarCount() const;
+    std::tuple<IdentifierNode*, IdentifierNode*, ExpressionNode*> getVar(size_t index) const;
 
     /**
      * @brief Check the expression result type of the VarDefNode.
