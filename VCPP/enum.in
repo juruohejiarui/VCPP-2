@@ -1,7 +1,0 @@
-Identifier, ConstValue, String, GenericArea,
-If, Else, While, For, Break, Continue, Return, Block, 
-Expression, Operator, MethodCall,
-VarDef, VarFuncDef, FuncDef, ClsDef, NspDef,
-
-SourceFile, DefinitionFile,
-Empty, Unknown,

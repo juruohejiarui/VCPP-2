@@ -1,256 +1,16 @@
 #include "cpltree.h"
 
-const std::string identifierTypeString[] = {
-    "Variable", "Function", "VarFunction", "Class", "Namespace", "Unknown",
-};
-const int identifierTypeNumber = 5;
+NamespaceInfo *curNsp;
+ClassInfo *curCls;
+FunctionInfo *curFunc;
+SyntaxNode *curRoot;
 
 NamespaceInfo *gloNsp;
 ClassInfo *basicCls, *objectCls, *
     int8Cls, *uint8Cls, *int16Cls, *uint16Cls, 
     *int32Cls, *uint32Cls, *int64Cls, *uint64Cls, *float32Cls, *float64Cls;
 
-bool isBasicCls(ClassInfo *cls) {
-    return cls != nullptr && cls->parent == basicCls && cls != objectCls;
-}
-
 std::vector<NamespaceInfo *> usingList;
-
-IdentifierType getIdentifierType(const std::string &name) {
-    for (int i = 0; i < identifierTypeNumber; i++)
-        if (name == identifierTypeString[i]) return (IdentifierType)i;
-    return IdentifierType::Unknown;
-}
-
-ExprResType::ExprResType() {
-    dimc = 0;
-    cls = nullptr;
-    clsName = "<unknown>";
-    valueType = ValueTypeModifier::Unknown;
-}
-
-ExprResType::ExprResType(ClassInfo *cls, int dimc, ValueTypeModifier valueType, bool isConst) {
-    this->cls = cls;
-	this->dimc = dimc;
-	this->valueType = valueType;
-	this->clsName = cls->name;
-}
-
-uint64 ExprResType::getSize() const {
-    if (dimc > 0) return sizeof(uint64);
-    if (isBasicCls(cls)) return cls->size;
-    return sizeof(uint64);
-}
-
-void SubsititueGeneric(ExprResType &eRes, ClassInfo *genericCls, ExprResType impl) {
-    if (eRes.isGeneric()) {
-        if (eRes.cls == genericCls) {
-            size_t tmp = eRes.dimc;
-            eRes = impl, eRes.dimc += tmp;
-        }
-        return ;
-    }
-    for (size_t i = 0; i < eRes.genericParams.size(); i++)
-        SubsititueGeneric(eRes.genericParams[i], genericCls, impl);
-}
-ExprResType ExprResType::convertToParent() const {
-	if (cls == nullptr) return nullptr;
-	if (cls->parent == nullptr) return nullptr;
-    ExprResType result = *this;
-    // copy the basic info
-    result.cls = cls->parent;
-    result.clsName = cls->parent->name;
-    result.dimc = dimc;
-    result.valueType = valueType;
-    // substitute the generic parameters
-    result.genericParams.clear();
-    for (size_t i = 0; i < cls->genericParams.size(); i++) {
-        ExprResType impl = cls->genericParams[i];
-        for (size_t j = 0; j < cls->genericClasses.size(); j++)
-            SubsititueGeneric(impl, cls->genericClasses[j], genericParams[j]);
-        result.genericParams.push_back(impl);
-    }
-    return result;
-}
-
-std::string ExprResType::toString() const {
-    std::string res;
-    if (cls != nullptr) res += cls->name;
-    else res += clsName;
-    if (dimc > 0) res += std::string(dimc, '*');
-    if (isRef()) res += "&";
-    if (genericParams.size() > 0) {
-        res += "<$";
-        for (size_t i = 0; i < genericParams.size(); i++) {
-            if (i > 0) res += ", ";
-            res += genericParams[i].toString();
-        }
-        res += "$>";
-    }
-    return res;
-}
-
-bool ExprResType::isGeneric() const { return cls != nullptr && cls->isGenericIdentifier; }
-bool ExprResType::isRef() const {  return valueType == ValueTypeModifier::r || valueType == ValueTypeModifier::mr; }
-
-bool ExprResType::equalTo(const ExprResType &other) const {
-    bool genericEqual = true;
-    if (genericParams.size() != other.genericParams.size()) genericEqual = false;
-    else for (size_t i = 0; i < genericParams.size(); i++)
-        if (!genericParams[i].equalTo(other.genericParams[i])) genericEqual = false;
-    if (cls == other.cls && dimc == other.dimc && genericEqual) return true;
-    if (cls == nullptr || other.cls == nullptr) return false;
-    return convertToParent().equalTo(other);
-}
-
-/**
- * Generates the expression result type based on the given type node.
- *
- * @param typeNode The identifier node representing the type.
- * @return The expression result type.
- */
-ExprResType generateExprResType(IdentifierNode *typeNode) {
-    ExprResType result;
-    result.clsName = typeNode->getName();
-    result.dimc = typeNode->getDimc();
-    result.valueType = ValueTypeModifier::t;
-    if (typeNode->childrenCount() > 0) {
-        auto genericNode = typeNode->getGenericArea();
-        for (size_t i = 0; i < genericNode->childrenCount(); i++)
-            result.genericParams.push_back(generateExprResType(genericNode->getParam(i)));
-    }
-    return result;
-}
-
-IdentifierInfo::IdentifierInfo() {
-    type = IdentifierType::Unknown;
-    name = fullName = "<unknown>";
-    defNode = nullptr;
-    visibility = IdentifierVisibility::Unknown;
-}
-
-IdentifierInfo::IdentifierInfo(SyntaxNode *defNode) {
-    type = IdentifierType::Unknown;
-    name = fullName = "<unknown>";
-    this->defNode = defNode;
-    visibility = IdentifierVisibility::Unknown;
-}
-
-IdentifierInfo::~IdentifierInfo() {} 
-
-VariableInfo::VariableInfo() : IdentifierInfo() { offset = 0, type = IdentifierType::Variable; }
-VariableInfo::VariableInfo(IdentifierNode *nameNode, IdentifierNode *typeNode) : IdentifierInfo(nameNode) {
-    offset = 0;
-    type = IdentifierType::Variable;
-    name = nameNode->getName();
-    fullName = "<unknown>";
-    visibility = IdentifierVisibility::Unknown;
-    resType = generateExprResType(typeNode);
-}
-
-VariableInfo::~VariableInfo() {}
-
-std::string VariableInfo::toString() const {
-    std::string res = "VariableInfo: " + name + " " + resType.toString() + " offset = " + std::to_string(offset) + "\n";
-    return res;
-}
-
-IdentifierNode *VariableInfo::getNameNode() const { return (IdentifierNode *)defNode; }
-IdentifierNode *VariableInfo::getTypeNode() const { return typeNode; }
-
-FunctionInfo::FunctionInfo(bool isVarFunction) : IdentifierInfo() {
-    offset = 0;
-    type = isVarFunction ? IdentifierType::VarFunction : IdentifierType::Function;
-    name = fullName = "<unknown>";
-    visibility = IdentifierVisibility::Unknown;
-}
-
-FunctionInfo::FunctionInfo(FuncDefNode *defNode, bool isVarFunction) : IdentifierInfo(defNode) {
-    offset = 0;
-    type = isVarFunction ? IdentifierType::VarFunction : IdentifierType::Function;
-    name = defNode->getName();
-    fullName = "<unknown>";
-    visibility = defNode->getVisibility();   
-}
-
-FunctionInfo::~FunctionInfo() {
-    for (size_t i = 0; i < params.size(); i++) if (params[i] != nullptr) delete params[i];
-    for (size_t i = 0; i < genericClasses.size(); i++) if (genericClasses[i] != nullptr) delete genericClasses[i];
-}
-
-std::string FunctionInfo::toString() const {
-    std::string res = "FunctionInfo: " + name + " " + resType.toString() + " offset = " + std::to_string(offset) + "\n";
-    return res;
-}
-
-FuncDefNode *FunctionInfo::getDefNode() const { return (FuncDefNode *)defNode; }
-
-ClassInfo::ClassInfo() : IdentifierInfo() {
-    type = IdentifierType::Class;
-    name = fullName = "<unknown>";
-    visibility = IdentifierVisibility::Unknown;
-    parent = nullptr;
-    isGenericIdentifier = false;
-}
-
-ClassInfo::ClassInfo(ClsDefNode *defNode) : IdentifierInfo(defNode) {
-    type = IdentifierType::Class;
-    name = defNode->getName();
-    fullName = "<unknown>";
-    visibility = defNode->getVisibility();
-    parent = nullptr;
-    isGenericIdentifier = false;
-}
-
-ClassInfo::~ClassInfo() {
-    for (auto &pir : varMap) if (pir.second != nullptr) delete pir.second;
-    for (auto &pir : funcMap)
-        for (size_t i = 0; i < pir.second.size(); i++)
-            if (pir.second[i] != nullptr) delete pir.second[i];
-    for (size_t i = 0; i < genericClasses.size(); i++)
-        if (genericClasses[i] != nullptr) delete genericClasses[i];
-}
-
-std::string ClassInfo::toString() const {
-    std::string res = "ClassInfo: " + name + " " + "->" + fullName + "\n";
-    return res;
-}
-
-ClsDefNode *ClassInfo::getDefNode() const { return (ClsDefNode *)defNode; }
-
-NamespaceInfo::NamespaceInfo() : IdentifierInfo() {
-    type = IdentifierType::Namespace;
-    name = fullName = "<unknown>";
-    visibility = IdentifierVisibility::Public;
-}
-
-NamespaceInfo::NamespaceInfo(NspDefNode *defNode) : IdentifierInfo(defNode) {
-    type = IdentifierType::Namespace;
-    name = defNode->getName();
-    fullName = "<unknown>";
-    visibility = IdentifierVisibility::Public;
-}
-
-NamespaceInfo::~NamespaceInfo() {
-    for (auto &pir : varMap) if (pir.second != nullptr) delete pir.second;
-    for (auto &pir : funcMap)
-        for (size_t i = 0; i < pir.second.size(); i++)
-            if (pir.second[i] != nullptr) delete pir.second[i];
-    for (auto &pir : clsMap) if (pir.second != nullptr) delete pir.second;
-    for (auto &pir : nspMap) if (pir.second != nullptr) delete pir.second;
-}
-
-std::string NamespaceInfo::toString() const {
-    std::string res = "NamespaceInfo: " + name + " " + "->" + fullName + "\n";
-    return res;
-}
-
-NspDefNode *NamespaceInfo::getDefNode() const { return (NspDefNode *)defNode; }
-
-NamespaceInfo *curNsp;
-ClassInfo *curCls;
-FunctionInfo *curFunc;
-SyntaxNode *curRoot;
 
 void enterNamespace(NamespaceInfo *nsp) { curNsp = nsp; }
 void leaveNamespace() { curNsp = nullptr; }
@@ -460,7 +220,7 @@ bool buildClsMem(ClassInfo *cls) {
     if (cls->belongRoot != curRoot)
         clearUsing(), loadUsing(cls->belongRoot), curRoot = cls->belongRoot;
     // Inherit the members of the parent class
-    for (cls->parent != nullptr) {
+    if (cls->parent != nullptr) {
         cls->size = cls->parent->size;
         for (auto &pir : cls->parent->varMap) 
             if (pir.second->visibility != IdentifierVisibility::Private)
@@ -482,7 +242,6 @@ bool buildClsMem(ClassInfo *cls) {
                 for (size_t i = 0; i < varDef->getVarCount(); i++) {
                     const auto &var = varDef->getVar(i);
                     VariableInfo *vInfo = new VariableInfo(std::get<0>(var), std::get<1>(var));
-                    vInfo->visibility = varDef->getVisibility();
                     vInfo->offset = cls->size;
                     cls->size += vInfo->resType.getSize();
 
@@ -494,21 +253,7 @@ bool buildClsMem(ClassInfo *cls) {
             }
             case SyntaxNodeType::FuncDef: {
                 auto funcDef = (FuncDefNode *)child;
-                for (size_t i = 0; i < funcDef->getVarCount(); i++) {
-                    FunctionInfo *fInfo = new FunctionInfo(funcDef, false);
-                    fInfo->visibility = funcDef->getVisibility();
-
-                    fInfo->belongRoot = cls->belongRoot;
-                }   
-            }
-            case SyntaxNodeType::VarFuncDef: {
-                auto funcDef = (FuncDefNode *)child;
-                for (size_t i = 0; i < funcDef->getVarCount(); i++) {
-                    FunctionInfo *fInfo = new FunctionInfo(funcDef, true);
-                    fInfo->visibility = funcDef->getVisibility(); 
-
-                    fInfo->belongRoot = cls->belongRoot;
-                }
+                FunctionInfo *fInfo = new FunctionInfo(funcDef, false);
             }
         }
     }
