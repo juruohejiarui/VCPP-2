@@ -40,12 +40,12 @@ TokenType getTokenType(const std::string& str) {
     return TokenType::Unknown;
 }
 
-int32 operWeight[] = {
+uint32 operWeight[] = {
     1,
     2, 
 };
 
-int32 getOperWeight(TokenType oper) {
+uint32 getOperWeight(TokenType oper) {
     // the weight of []
     if (oper == TokenType::MBrkL || oper == TokenType::MBrkR) return 15;
     if (oper < TokenType::Comma || oper > TokenType::Convert) return -1;

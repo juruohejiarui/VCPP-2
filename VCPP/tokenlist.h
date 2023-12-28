@@ -32,7 +32,7 @@ TokenType getTokenType(const std::string &str);
 /// @brief Get the weight of operator
 /// @param oper the token of operator
 /// @return the weight of operator
-int32 getOperWeight(TokenType oper);
+uint32 getOperWeight(TokenType oper);
 
 struct Token {
     TokenType type;

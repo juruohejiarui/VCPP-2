@@ -4,11 +4,26 @@
 #ifdef _WIN32
 #include <direct.h>
 #include <Windows.h>
-#elif __APPLE__ || __linux__
+#elif __APPLE__
+#include<unistd.h>
+#elif __linux__
 #include<unistd.h>
 #endif
 
-#ifdef __linux__ || __APPLE__
+#ifdef __linux__
+void setColor(MessageType type) {
+    int _c = 0;
+    switch (type) {
+        case MessageType::Error:
+            _c = 0x01; break;
+        case MessageType::Warning:
+            _c = 0x03; break;
+        case MessageType::Log:
+            _c = 0x07; break;
+    }
+    printf("\e[3%cm", _c + '0');
+}
+#elif __APPLE__
 void setColor(MessageType type) {
     int _c = 0;
     switch (type) {
