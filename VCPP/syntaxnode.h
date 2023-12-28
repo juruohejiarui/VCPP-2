@@ -9,14 +9,14 @@ enum SyntaxNodeType {
 };
 
 class SyntaxNode {
-private:
+protected:
     Token token;
     std::vector<SyntaxNode *> children;
     SyntaxNodeType type;
     uint32 localVarCount;
 public:
     SyntaxNode(SyntaxNodeType type);
-    SyntaxNode(SyntaxNodeType type, const Token *token);
+    SyntaxNode(SyntaxNodeType type, const Token &token);
     virtual ~SyntaxNode();
 
     Token &getToken();
@@ -42,7 +42,7 @@ public:
 
     ExpressionNode *getContent() const;
 
-    virtual uint32 getWeight();
+    virtual uint32 getWeight() const;
 };
 
 class OperatorNode : public ExpressionNode {
@@ -53,7 +53,7 @@ public:
     ExpressionNode *getLeft();
     ExpressionNode *getRight();
     
-    uint32 getWeight() override;
+    uint32 getWeight() const override;
 };
 
 class GenericAreaNode;
@@ -65,7 +65,7 @@ public:
 
     GenericAreaNode *getGenericArea();
 
-    uint32 getWeight() override;
+    uint32 getWeight() const override;
 };
 
 class GenericAreaNode : public SyntaxNode {
@@ -82,12 +82,10 @@ public:
     ConstValueNode();
     ConstValueNode(const Token &token);
 
-    uint32 getWeight() override;
+    uint32 getWeight() const override;
 };
 
 class BlockNode : public SyntaxNode {
-private:
-    uint32 locVarCount;
 public:
     BlockNode();
     BlockNode(const Token &token);
@@ -124,9 +122,14 @@ public:
     ExpressionNode *getContent() const;
 };
 class VarDefNode : public BlockNode {
+private:
+    IdentifierVisibility visibility;
 public:
     VarDefNode();
     VarDefNode(const Token &token);
+
+    IdentifierVisibility getVisibility() const;
+    void setVisibility(IdentifierVisibility visibility);
 
     /// @brief get the info of the index-th definition
     /// @param index 
@@ -135,9 +138,26 @@ public:
 };
 
 class FuncDefNode : public BlockNode {
-    
-}
+private:
+    IdentifierVisibility visibility;
+public:
+    FuncDefNode();
+    FuncDefNode(const Token &token);
+
+    IdentifierVisibility getVisibility() const;
+    void setVisibility(IdentifierVisibility visibility);
+
+    IdentifierNode *getNameNode() const ;
+    size_t getParamCount() const;
+    std::pair<IdentifierNode *, IdentifierNode *> getParam(size_t index) const;
+    IdentifierNode *getResNode() const;
+    SyntaxNode *getContent() const;
+};
+
+class VarFuncDefNode : public FuncDefNode {
+public:
+    VarFuncDefNode();
+    VarFuncDefNode(const Token &token);
+};
 
 SyntaxNode *buildNode(const TokenList &tkList, size_t l, size_t &r);
-
-
