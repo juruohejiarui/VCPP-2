@@ -1,24 +1,17 @@
 {
     "configurations": [
         {
-            "name": "Linux",
+            "name": "Mac",
             "includePath": [
                 "${workspaceFolder}/**"
             ],
             "defines": [],
-            "cStandard": "c11",
-            "cppStandard": "c++14",
-            "compilerPath": "/usr/bin/gcc-9"
-        },
-        {
-            "name": "Windows",
-            "includePath": [
-                "${workspaceFolder}/**"
+            "macFrameworkPath": [
+                "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks"
             ],
-            "defines": [],
-            "cStandard": "c11",
-            "cppStandard": "c++14",
-            "compilerPath": "D:\\Program Files\\MSYS64\\ucrt64\\bin\\gcc",
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "macos-clang-arm64",
             "configurationProvider": "ms-vscode.cmake-tools"
         }
     ],

@@ -42,6 +42,8 @@ public:
     size_t getChildrenCount() const;
 
     virtual std::string toString() const;
+
+    uint32 getLocalVarCount() const;
 };
 
 class ExpressionNode : public SyntaxNode {
@@ -77,6 +79,7 @@ public:
     IdentifierNode(const Token &token);
 
     GenericAreaNode *getGenericArea() const ;
+    void setGenericArea(GenericAreaNode *node);
 
     uint32 getWeight() const override;
 
@@ -111,7 +114,6 @@ public:
     BlockNode();
     BlockNode(const Token &token);
 
-    uint32 getLocalVarCount() const;
     void setLocalVarCount(uint32 data);
 };
 

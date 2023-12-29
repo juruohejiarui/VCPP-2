@@ -23,6 +23,9 @@ SyntaxNode *SyntaxNode::at(int index) const { return children[index]; }
 void SyntaxNode::addChild(SyntaxNode *child) { children.push_back(child); }
 
 size_t SyntaxNode::getChildrenCount() const { return children.size(); }
+std::string SyntaxNode::toString() const { return std::string(); }
+
+uint32 SyntaxNode::getLocalVarCount() const { return localVarCount; }
 #pragma endregion
 
 #pragma region ExpressionNode
@@ -50,6 +53,7 @@ IdentifierNode::IdentifierNode() : ExpressionNode() { type = SyntaxNodeType::Ide
 IdentifierNode::IdentifierNode(const Token &token) : ExpressionNode() { type = SyntaxNodeType::Identifier, children.resize(1, nullptr); }
 
 GenericAreaNode *IdentifierNode::getGenericArea() const { return (GenericAreaNode *)at(0); }
+void IdentifierNode::setGenericArea(GenericAreaNode *node) { at(0) = node; }
 
 uint32 IdentifierNode::getWeight() const { return IdentifierWeight; }
 const std::string &IdentifierNode::getName() const { return name; }
@@ -80,7 +84,6 @@ uint32 ConstValueNode::getWeight() const { return IdentifierWeight; }
 BlockNode::BlockNode() : SyntaxNode(SyntaxNodeType::Block) { }
 BlockNode::BlockNode(const Token &token) : SyntaxNode(SyntaxNodeType::Block, token) { }
 
-uint32 BlockNode::getLocalVarCount() const { return localVarCount; }
 void BlockNode::setLocalVarCount(uint32 data) { localVarCount = data; }
 #pragma endregion
 
@@ -221,4 +224,273 @@ void NspDefNode::addChild(SyntaxNode *node) {
 }
 #pragma endregion
 
+#pragma region UsingNode
+UsingNode::UsingNode() : SyntaxNode(SyntaxNodeType::Using) { }
+UsingNode::UsingNode(const Token &token) : SyntaxNode(SyntaxNodeType::Using, token) { }
+
+const std::string UsingNode::getPath() const { return path; }
+void UsingNode::setPath(const std::string &path) { this->path = path; }
 #pragma endregion
+
+#pragma region RootNode
+RootNode::RootNode(SyntaxNodeType type) : SyntaxNode(type) { }
+
+size_t RootNode::getUsingCount() const { return usingIndex.size(); }
+size_t RootNode::getDefCount() const { return defIndex.size(); }
+
+UsingNode *RootNode::getUsing(size_t index) const { return (UsingNode *)at(usingIndex[index]); }
+SyntaxNode *RootNode::getDef(size_t index) const { return at(defIndex[index]); }
+
+void RootNode::addChild(SyntaxNode *node) {
+    switch (node->getType()) {
+        case SyntaxNodeType::Using:
+            usingIndex.push_back(getChildrenCount());
+            break;
+        case SyntaxNodeType::ClsDef:
+        case SyntaxNodeType::VarDef:
+        case SyntaxNodeType::NspDef:
+            defIndex.push_back(getChildrenCount());
+            break;
+    }
+    SyntaxNode::addChild(node);
+}
+#pragma endregion
+
+#pragma endregion
+
+ExpressionNode *buildExpression(const TokenList &tkList, size_t l, size_t r);
+
+IdentifierNode *buildIdentifier(const TokenList &tkList, size_t l, size_t &r) {
+    IdentifierNode *node = new IdentifierNode(tkList[l]);
+    r = l;
+    // have generic area
+    if (l < tkList.size() && tkList[l + 1].type == TokenType::GBrkL) {
+        r = tkList[l + 1].data.uint64_v();
+        node->setGenericArea(new GenericAreaNode());
+        for (size_t pos = l + 2, rpos = pos; pos < r; pos = ++rpos) {
+            IdentifierNode *param = buildIdentifier(tkList, pos, rpos);
+            if (param != nullptr && param->isFuncCall()) {
+                printError(param->getToken().lineId, "Param(s) in generic area cannot be function call");
+                delete node;
+                return nullptr;
+            }
+            node->getGenericArea()->addChild(param);
+            if (rpos + 1 != r && tkList[rpos + 1].type != TokenType::Comma) {
+                printError(tkList[rpos + 1].lineId, "Invalid syntax in generic area");
+                delete node;
+                return nullptr;
+            }
+            rpos++;
+        }
+    }
+    l = r;
+    // is a function call
+    if (l < tkList.size() && tkList[l + 1].type == TokenType::SBrkL) {
+        r = tkList[l + 1].data.uint64_v();
+        for (size_t pos = l + 2, rpos = pos; pos < r; pos = ++rpos) {
+            // get the range of tokens that represents one param
+            while (rpos < r && tkList[rpos].type != TokenType::Comma) {
+                if (isBracketL(tkList[rpos].type)) rpos = tkList[rpos].data.uint64_v();
+                rpos++; 
+            }
+            node->addChild(buildExpression(tkList, pos, rpos - 1));
+        }
+        // add a null pointer to a function call without params
+        if (node->getChildrenCount() == 1) node->addChild(nullptr);
+    }
+    return node;
+}
+
+ConstValueNode *buildConstValue(const TokenList &tkList, size_t l, size_t &r) {
+    r = l;
+    return new ConstValueNode(tkList[l]);
+}
+ExpressionNode *buildExpression(const TokenList &tkList, size_t l, size_t r) {
+    std::vector<ExpressionNode *> nodes;
+    for (size_t pos = l, rpos = l; pos <= r; pos = ++rpos) {
+        const auto &fir = tkList[pos];
+        ExpressionNode *newNode = nullptr;
+        switch (fir.type) {
+            case TokenType::Identifier:
+                newNode = buildIdentifier(tkList, pos, rpos);
+                break;
+            case TokenType::ConstData:
+                newNode = buildConstValue(tkList, pos, rpos);
+                break;
+            case TokenType::SBrkL:
+                newNode = buildExpression(tkList, pos + 1, fir.data.uint64_v() - 1);
+                rpos = fir.data.uint64_v();
+                break;
+            case TokenType::MBrkL: {
+                auto operNode = new OperatorNode(fir);
+                nodes.push_back(operNode);
+                newNode = buildExpression(tkList, pos + 1, fir.data.uint64_v() - 1);
+                break;
+            }
+            default:
+                if (isOperator(fir.type)) newNode = new OperatorNode(fir);
+                break;
+        }
+        if (newNode != nullptr) nodes.push_back(newNode);
+    }
+    auto getRoot = [&tkList, &nodes]() -> ExpressionNode * {
+        auto recursion = [&tkList, &nodes] (auto &&self, size_t l, size_t r) -> ExpressionNode * {
+            if (l > r) return nullptr;
+            if (l == r) return nodes[l];
+            uint32 mn = IdentifierWeight + 1; size_t mnp = nodes.size();
+            for (size_t p = l; p <= r; p++) {
+                uint32 w = nodes[p]->getWeight();
+                if (w <= mn) w = mn, mnp = p;
+            }
+            auto &node = nodes[mnp];
+            node->addChild(self(self, l, mnp - 1));
+            node->addChild(self(self, mnp + 1, r));
+            return node;
+        };
+        return recursion(recursion, 0, nodes.size() - 1);
+    };
+    return getRoot();
+}
+
+BlockNode *buildBlock(const TokenList &tkList, size_t l, size_t &r) {
+    BlockNode *node = new BlockNode(tkList[l]);
+    r = tkList[l].data.uint64_v();
+    uint32 tmpVarCnt = 0;
+    for (size_t pos = l + 1, rpos = pos; pos < r; pos = ++rpos) {
+        SyntaxNode *child = buildNode(tkList, pos, rpos);
+
+        // update local variable count
+        if (child == nullptr) continue;
+        switch (child->getType()) {
+            case SyntaxNodeType::VarDef: {
+                auto varDef = (VarDefNode *)child;
+                tmpVarCnt += varDef->getLocalVarCount();
+                node->setLocalVarCount(std::max(node->getLocalVarCount(), tmpVarCnt));
+                break;
+            }
+            case SyntaxNodeType::If:
+            case SyntaxNodeType::While:
+            case SyntaxNodeType::For:
+            case SyntaxNodeType::Block: {
+                auto subBlock = (BlockNode *)child;
+                node->setLocalVarCount(std::max(node->getLocalVarCount(), tmpVarCnt + subBlock->getLocalVarCount()));
+                break;
+            }
+        }
+    }
+    node->setLocalVarCount(std::max(node->getLocalVarCount(), tmpVarCnt));
+    return node;
+}
+
+IfNode *buildIf(const TokenList &tkList, size_t l, size_t &r) {
+    IfNode *node = new IfNode();
+    r = l;
+    if (tkList[l + 1].type != TokenType::SBrkL) {
+        printError(tkList[l + 1].lineId, "Invalid content in \"if\".");
+        delete node;
+        return nullptr;
+    }
+    ExpressionNode *condNode = buildExpression(tkList, l + 2, tkList[l + 1].data.uint64_v() - 1);
+    node->setCondNode(condNode);
+    r = tkList[l + 1].data.uint64_v();
+
+    SyntaxNode *succNode = buildNode(tkList, r + 1, r), *failNode = nullptr;
+    node->setSuccNode(succNode);
+    if (succNode != nullptr) 
+        node->setLocalVarCount(succNode->getLocalVarCount());
+
+    if (tkList[r + 1].type == TokenType::Else) {
+        failNode = buildNode(tkList, r + 2, r);
+        node->setFailNode(failNode);
+        if (failNode != nullptr) 
+            node->setLocalVarCount(std::max(node->getLocalVarCount(), failNode->getLocalVarCount()));
+    }
+    return node;
+}
+
+LoopNode *buildWhile(const TokenList &tkList, size_t l, size_t &r) {
+    LoopNode *node = new LoopNode(SyntaxNodeType::While);
+    r = l;
+    if (tkList[l + 1].type != TokenType::SBrkL) {
+        printError(tkList[l + 1].lineId, "Invalid content in \"while\".");
+        delete node;
+        return nullptr;
+    }
+    ExpressionNode *condNode = buildExpression(tkList, l + 2, tkList[l + 1].data.uint64_v() - 1);
+    node->setCondNode(condNode);
+    r = tkList[l + 1].data.uint64_v();
+
+    SyntaxNode *content = buildNode(tkList, r + 1, r);
+    node->setContent(content);
+    node->setLocalVarCount(content->getLocalVarCount());
+
+    return node;
+}
+
+LoopNode *buidlFor(const TokenList &tkList, size_t l, size_t &r) {
+    LoopNode *node = new LoopNode(SyntaxNodeType::For);
+    r = l;
+    if (tkList[l + 1].type != TokenType::SBrkL) {
+        printError(tkList[l + 1].lineId, "Invalid content in \"for\".");
+        delete node;
+        return nullptr;
+    }
+    size_t pos = l + 2;
+    SyntaxNode *initNode = nullptr, *content = nullptr;
+    ExpressionNode *condNode = nullptr, *stepNode = nullptr;
+    initNode = buildNode(tkList, pos, pos);
+    if (initNode != nullptr && initNode->getType() != SyntaxNodeType::Expression && initNode->getType() != SyntaxNodeType::VarDef) {
+        printError(tkList[l + 1].lineId, "Initialization part of \"for\" must be definition of variables or expression");
+        delete node;
+        return nullptr;
+    }
+    node->setInitNode(initNode);
+    size_t to = pos + 1;
+    while (tkList[to].type != TokenType::ExprEnd) to++;
+    condNode = buildExpression(tkList, pos + 1, to - 1);
+    stepNode = buildExpression(tkList, to + 1, tkList[l + 1].data.uint64_v() - 1);
+    r = tkList[l + 1].data.uint64_v();
+    content = buildNode(tkList, r + 1, r);
+    node->setCondNode(condNode), node->setStepNode(stepNode), node->setContent(content);
+    return node;
+}
+
+VarDefNode *buildVarDef(const TokenList &tkList, size_t l, size_t &r) {
+    VarDefNode *node = new VarDefNode();
+    if (l && isVisibility(tkList[l - 1].type)) node->setVisibility(getVisibility(tkList[l - 1].type));
+    r = l + 1;
+    while (tkList[r].type != TokenType::ExprEnd) {
+        IdentifierNode *nameNode = new IdentifierNode(tkList[l]), *typeNode = nullptr;
+        ExpressionNode *initNode = nullptr;
+        nameNode->setName(tkList[r].dataStr);
+        size_t to = l;
+        if (tkList[to + 1].type == TokenType::TypeHint)
+            typeNode = buildIdentifier(tkList, l + 2, to);
+        if (tkList[to + 1].type == TokenType::Assign) {
+            size_t to2 = to + 1;
+            while (tkList[to2].type != TokenType::Comma && tkList[to2].type != TokenType::ExprEnd) {
+                if (isBracketL(tkList[to2].type)) to2 = tkList[to2].data.uint64_v();
+                to2++;
+            }
+            initNode = buildExpression(tkList, to + 2, to2 - 1);
+            to = to2 - 1;
+
+            if (initNode == nullptr && nameNode == nullptr) {
+                printError(nameNode->getToken().lineId, "Definition of \"" + nameNode->getName() + "\" is empty.");
+                delete nameNode, delete node;
+                return nullptr;
+            }
+        }
+        node->addChild(nameNode), node->addChild(typeNode), node->addChild(initNode);
+        r = to + 1;
+    }
+    return node;
+}
+
+FuncDefNode *buildFuncDef(const TokenList &tkList, size_t l, size_t &r) {
+    
+}
+
+SyntaxNode *buildNode(const TokenList &tkList, size_t l, size_t &r) {
+    return nullptr;
+}
