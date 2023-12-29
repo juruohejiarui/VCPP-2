@@ -1,4 +1,4 @@
-#include "tokenlist.h"
+#include "syntaxnode.h"
 
 using namespace std;
 
@@ -12,9 +12,16 @@ int main() {
         str.append(line + '\n');
     }
     bool succ = generateTokenList(str, tkList);
-    for (size_t i = 0; i < tkList.size(); i++) {
-        printf("%9d ", i);
-        std::cout << tkList[i].toString() << std::endl;
+    // for (size_t i = 0; i < tkList.size(); i++) {
+        // printf("%9d ", i);
+        // std::cout << tkList[i].toString() << std::endl;
+    // }
+    if (!succ) {
+        printError(0, "Unsucc...");
+        return 0;
     }
+    RootNode *node = buildRootNode(SyntaxNodeType::SourceRoot, tkList);
+    freopen("test.out", "w", stdout);
+    debugPrintTree(node);
     return 0;
 }

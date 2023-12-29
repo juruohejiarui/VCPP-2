@@ -3,6 +3,16 @@
 const uint32 IdentifierWeight = 1000000;
 #pragma region Definition of methods in syntaxnode 
 
+const std::string syntaxNodeTypeString[] = {
+    "Expression", "Identifier", "ConstValue", "Operator", "GenericArea",
+    "Block", "If", "While", "For", "Continue", "Break", "Return",
+    "VarDef", "FuncDef", "VarFuncDef", "ClsDef", "NspDef",
+    "Using",
+    "SourceRoot", "SymbolRoot",
+    "Error", "Empty", "Unknown", 
+};
+const int32 syntaxNodeTypeNumber = 22;
+
 #pragma region SyntaxNode
 SyntaxNode::SyntaxNode(SyntaxNodeType type) { this->type = type, localVarCount = 0; }
 SyntaxNode::SyntaxNode(SyntaxNodeType type, const Token &token) : type(type), token(token) { localVarCount = 0; }
@@ -23,7 +33,7 @@ SyntaxNode *SyntaxNode::at(int index) const { return children[index]; }
 void SyntaxNode::addChild(SyntaxNode *child) { children.push_back(child); }
 
 size_t SyntaxNode::getChildrenCount() const { return children.size(); }
-std::string SyntaxNode::toString() const { return std::string(); }
+std::string SyntaxNode::toString() const { return syntaxNodeTypeString[(int)type]; }
 
 uint32 SyntaxNode::getLocalVarCount() const { return localVarCount; }
 #pragma endregion
@@ -46,6 +56,9 @@ ExpressionNode *&OperatorNode::getRight() { return (ExpressionNode *&)at(1); }
 ExpressionNode *OperatorNode::getRight() const { return (ExpressionNode *)at(1); }
 
 uint32 OperatorNode::getWeight() const { return getOperWeight(token.type); }
+std::string OperatorNode::toString() const {
+    return syntaxNodeTypeString[(int)type] + " " + tokenTypeString[(int)token.type] + " weight = " + std::to_string(getWeight());
+}
 #pragma endregion
 
 #pragma region IdentifierNode
@@ -62,6 +75,7 @@ size_t IdentifierNode::getParamCount() const { return getChildrenCount() - 1; }
 ExpressionNode *IdentifierNode::getParam(size_t index) const { return (ExpressionNode *)at(index + 1); }
 
 bool IdentifierNode::isFuncCall() const { return getChildrenCount() > 1; }
+std::string IdentifierNode::toString() const { return syntaxNodeTypeString[(int)type] + " " + name; }
 #pragma endregion
 
 #pragma region GenericAreaNode
@@ -78,6 +92,7 @@ ConstValueNode::ConstValueNode() : ExpressionNode() { type = SyntaxNodeType::Con
 ConstValueNode::ConstValueNode(const Token &token) : ExpressionNode(token) { type = SyntaxNodeType::ConstValue; }
 
 uint32 ConstValueNode::getWeight() const { return IdentifierWeight; }
+std::string ConstValueNode::toString() const { return syntaxNodeTypeString[(int)type] + " " + token.toString(); }
 #pragma endregion
 
 #pragma region BlockNode
@@ -85,6 +100,7 @@ BlockNode::BlockNode() : SyntaxNode(SyntaxNodeType::Block) { }
 BlockNode::BlockNode(const Token &token) : SyntaxNode(SyntaxNodeType::Block, token) { }
 
 void BlockNode::setLocalVarCount(uint32 data) { localVarCount = data; }
+std::string BlockNode::toString() const { return syntaxNodeTypeString[(int)type] + " varCount = " + std::to_string(getLocalVarCount()); }
 #pragma endregion
 
 #pragma region IfNode
@@ -179,6 +195,10 @@ IdentifierNode *ClsDefNode::getBaseNode() const { return (IdentifierNode *)at(1)
 void ClsDefNode::setBaseNode(IdentifierNode *node) { at(1) = node; }
 
 void ClsDefNode::addChild(SyntaxNode *node) {
+    if (node == nullptr) {
+        SyntaxNode::addChild(node);
+        return ;
+    }
     switch (node->getType()) {
         case SyntaxNodeType::VarDef:
             fieldIndex.push_back(getChildrenCount());
@@ -209,6 +229,10 @@ IdentifierNode *NspDefNode::getNameNode() const { return (IdentifierNode *)at(0)
 void NspDefNode::setNameNode(IdentifierNode *node) { at(0) = node; }
 
 void NspDefNode::addChild(SyntaxNode *node) {
+    if (node == nullptr) {
+        SyntaxNode::addChild(node);
+        return ;
+    }
     switch (node->getType()) {
         case SyntaxNodeType::VarDef:
             varIndex.push_back(getChildrenCount());
@@ -230,6 +254,7 @@ UsingNode::UsingNode(const Token &token) : SyntaxNode(SyntaxNodeType::Using, tok
 
 const std::string UsingNode::getPath() const { return path; }
 void UsingNode::setPath(const std::string &path) { this->path = path; }
+std::string UsingNode::toString() const { return syntaxNodeTypeString[(int)type] + " path = " + path; }
 #pragma endregion
 
 #pragma region RootNode
@@ -242,6 +267,7 @@ UsingNode *RootNode::getUsing(size_t index) const { return (UsingNode *)at(using
 SyntaxNode *RootNode::getDef(size_t index) const { return at(defIndex[index]); }
 
 void RootNode::addChild(SyntaxNode *node) {
+    if (node == nullptr) return ;
     switch (node->getType()) {
         case SyntaxNodeType::Using:
             usingIndex.push_back(getChildrenCount());
@@ -263,8 +289,15 @@ ExpressionNode *buildExpression(const TokenList &tkList, size_t l, size_t r);
 IdentifierNode *buildIdentifier(const TokenList &tkList, size_t l, size_t &r) {
     IdentifierNode *node = new IdentifierNode(tkList[l]);
     r = l;
+    std::string name = tkList[l].dataStr;
+    while (l + 1 < tkList.size() && tkList[l + 1].type == TokenType::GetChild) {
+        name.push_back('.');
+        name.append(tkList[l + 2].dataStr);
+        l += 2;
+    }
+    node->setName(name);
     // have generic area
-    if (l < tkList.size() && tkList[l + 1].type == TokenType::GBrkL) {
+    if (l + 1 < tkList.size() && tkList[l + 1].type == TokenType::GBrkL) {
         r = tkList[l + 1].data.uint64_v();
         node->setGenericArea(new GenericAreaNode());
         for (size_t pos = l + 2, rpos = pos; pos < r; pos = ++rpos) {
@@ -306,6 +339,7 @@ ConstValueNode *buildConstValue(const TokenList &tkList, size_t l, size_t &r) {
     return new ConstValueNode(tkList[l]);
 }
 ExpressionNode *buildExpression(const TokenList &tkList, size_t l, size_t r) {
+    if (r < l) return nullptr;
     std::vector<ExpressionNode *> nodes;
     for (size_t pos = l, rpos = l; pos <= r; pos = ++rpos) {
         const auto &fir = tkList[pos];
@@ -325,6 +359,7 @@ ExpressionNode *buildExpression(const TokenList &tkList, size_t l, size_t r) {
                 auto operNode = new OperatorNode(fir);
                 nodes.push_back(operNode);
                 newNode = buildExpression(tkList, pos + 1, fir.data.uint64_v() - 1);
+                rpos = fir.data.uint64_v();
                 break;
             }
             default:
@@ -334,13 +369,13 @@ ExpressionNode *buildExpression(const TokenList &tkList, size_t l, size_t r) {
         if (newNode != nullptr) nodes.push_back(newNode);
     }
     auto getRoot = [&tkList, &nodes]() -> ExpressionNode * {
-        auto recursion = [&tkList, &nodes] (auto &&self, size_t l, size_t r) -> ExpressionNode * {
+        auto recursion = [&tkList, &nodes] (auto &&self, int l, int r) -> ExpressionNode * {
             if (l > r) return nullptr;
             if (l == r) return nodes[l];
-            uint32 mn = IdentifierWeight + 1; size_t mnp = nodes.size();
-            for (size_t p = l; p <= r; p++) {
+            uint32 mn = IdentifierWeight + 1; int mnp = nodes.size();
+            for (int p = l; p <= r; p++) {
                 uint32 w = nodes[p]->getWeight();
-                if (w <= mn) w = mn, mnp = p;
+                if (w <= mn) mn = w, mnp = p;
             }
             auto &node = nodes[mnp];
             node->addChild(self(self, l, mnp - 1));
@@ -349,7 +384,9 @@ ExpressionNode *buildExpression(const TokenList &tkList, size_t l, size_t r) {
         };
         return recursion(recursion, 0, nodes.size() - 1);
     };
-    return getRoot();
+    ExpressionNode *node = new ExpressionNode(tkList[l]);
+    node->addChild(getRoot());
+    return node;
 }
 
 BlockNode *buildBlock(const TokenList &tkList, size_t l, size_t &r) {
@@ -358,6 +395,7 @@ BlockNode *buildBlock(const TokenList &tkList, size_t l, size_t &r) {
     uint32 tmpVarCnt = 0;
     for (size_t pos = l + 1, rpos = pos; pos < r; pos = ++rpos) {
         SyntaxNode *child = buildNode(tkList, pos, rpos);
+        node->addChild(child);
 
         // update local variable count
         if (child == nullptr) continue;
@@ -427,7 +465,7 @@ LoopNode *buildWhile(const TokenList &tkList, size_t l, size_t &r) {
     return node;
 }
 
-LoopNode *buidlFor(const TokenList &tkList, size_t l, size_t &r) {
+LoopNode *buildFor(const TokenList &tkList, size_t l, size_t &r) {
     LoopNode *node = new LoopNode(SyntaxNodeType::For);
     r = l;
     if (tkList[l + 1].type != TokenType::SBrkL) {
@@ -452,6 +490,25 @@ LoopNode *buidlFor(const TokenList &tkList, size_t l, size_t &r) {
     r = tkList[l + 1].data.uint64_v();
     content = buildNode(tkList, r + 1, r);
     node->setCondNode(condNode), node->setStepNode(stepNode), node->setContent(content);
+
+    uint32 varCount = 0;
+    if (initNode != nullptr) varCount += initNode->getLocalVarCount();
+    if (content != nullptr) varCount += content->getLocalVarCount();
+    node->setLocalVarCount(varCount);
+    return node;
+}
+
+ControlNode *buildControl(const TokenList &tkList, size_t l, size_t &r) {
+    SyntaxNodeType type;
+    if (tkList[l].type == TokenType::Break) type = SyntaxNodeType::Break;
+    else if (tkList[l].type == TokenType::Continue) type = SyntaxNodeType::Continue;
+    else if (tkList[l].type == TokenType::Return) type = SyntaxNodeType::Return;
+    ControlNode *node = new ControlNode(type, tkList[l]);
+    r = l + 1;
+    if (type == SyntaxNodeType::Return) {
+        while (tkList[r].type != TokenType::ExprEnd) r++;
+        node->at(0) = buildExpression(tkList, l + 1, r - 1);
+    }
     return node;
 }
 
@@ -459,13 +516,14 @@ VarDefNode *buildVarDef(const TokenList &tkList, size_t l, size_t &r) {
     VarDefNode *node = new VarDefNode();
     if (l && isVisibility(tkList[l - 1].type)) node->setVisibility(getVisibility(tkList[l - 1].type));
     r = l + 1;
+    uint32 varCount = 0;
     while (tkList[r].type != TokenType::ExprEnd) {
         IdentifierNode *nameNode = new IdentifierNode(tkList[l]), *typeNode = nullptr;
         ExpressionNode *initNode = nullptr;
         nameNode->setName(tkList[r].dataStr);
-        size_t to = l;
+        size_t to = r;
         if (tkList[to + 1].type == TokenType::TypeHint)
-            typeNode = buildIdentifier(tkList, l + 2, to);
+            typeNode = buildIdentifier(tkList, to + 2, to);
         if (tkList[to + 1].type == TokenType::Assign) {
             size_t to2 = to + 1;
             while (tkList[to2].type != TokenType::Comma && tkList[to2].type != TokenType::ExprEnd) {
@@ -482,15 +540,221 @@ VarDefNode *buildVarDef(const TokenList &tkList, size_t l, size_t &r) {
             }
         }
         node->addChild(nameNode), node->addChild(typeNode), node->addChild(initNode);
-        r = to + 1;
+        r = to + 1, varCount++;
     }
+    node->setLocalVarCount(varCount);
     return node;
 }
 
 FuncDefNode *buildFuncDef(const TokenList &tkList, size_t l, size_t &r) {
-    
+    FuncDefNode *node;
+    if (tkList[l].type == TokenType::VarFuncDef) node = new VarFuncDefNode();
+    else node = new FuncDefNode();
+    if (isVisibility(tkList[l - 1].type)) node->setVisibility(getVisibility(tkList[l - 1].type));
+    IdentifierNode *nameNode = new IdentifierNode(tkList[l + 1]);
+    nameNode->setName(tkList[l + 1].dataStr);
+    r = l + 2;
+    GenericAreaNode *gArea = nullptr;
+    // have generic area
+    if (tkList[r].type == TokenType::GBrkL) {
+        gArea = new GenericAreaNode(tkList[r]);
+        nameNode->setGenericArea(gArea);
+        for (size_t pos = r + 1, rpos; pos < tkList[r].data.uint64_v(); pos = ++rpos) {
+            IdentifierNode *gParam = buildIdentifier(tkList, pos, rpos);
+            if (gParam != nullptr && (gParam->getGenericArea() != nullptr || gParam->isFuncCall())) {
+                printError(tkList[pos].lineId, "Invalid syntax of definition of generic identifier.");
+                delete gParam, delete nameNode, delete node;
+                return nullptr;
+            }
+            nameNode->getGenericArea()->addChild(gParam);
+            rpos++; 
+        }
+        r = tkList[r].data.uint64_v() + 1;
+    }
+    node->addChild(nameNode);
+    // get the params
+    if (tkList[r].type != TokenType::SBrkL) {
+        printError(tkList[r].lineId, "Invalid content of definition of function.");
+        delete node;
+        return nullptr;
+    }
+    for (size_t pos = r + 1, rpos = pos; pos < tkList[r].data.uint64_v(); pos = ++rpos) {
+        IdentifierNode *pNameNode = new IdentifierNode(tkList[pos]), *pTypeNode = nullptr;
+        pNameNode->setName(tkList[pos].dataStr);
+        if (tkList[pos + 1].type != TokenType::TypeHint) {
+            printError(tkList[pos + 1].lineId, "Invalid content of param definition of function \"" + nameNode->getName() + "\"");
+            delete pNameNode, delete node;
+            return nullptr;
+        }
+        pTypeNode = buildIdentifier(tkList, pos + 2, rpos);
+        node->addChild(pNameNode), node->addChild(pTypeNode);
+        rpos++;
+    }
+    r = tkList[r].data.uint64_v();
+    // get return type
+    if (tkList[r + 1].type != TokenType::TypeHint) {
+        printError(tkList[r + 1].lineId, "Invalid content of definition funcion");
+        delete node;
+        return nullptr;
+    }
+    IdentifierNode *retNode = buildIdentifier(tkList, r + 2, r);
+    SyntaxNode *content = buildNode(tkList, r + 1, r);
+    node->addChild(retNode), node->addChild(content);
+    node->setLocalVarCount(node->getParamCount() + (content != nullptr ? content->getLocalVarCount() : 0)); 
+    return node;
+}
+
+ClsDefNode *buildClsDef(const TokenList &tkList, size_t l, size_t &r) {
+    ClsDefNode *node = new ClsDefNode(tkList[l]);
+    IdentifierNode *nameNode = buildIdentifier(tkList, l + 1, r);
+    if (nameNode == nullptr || nameNode->isFuncCall()) {
+        printError(node->getToken().lineId, "Invalid syntax of definition of class");
+        if (nameNode != nullptr) delete nameNode;
+        delete node;
+        return nullptr;
+    }
+    node->setNameNode(nameNode);
+    IdentifierNode *baseNode = nullptr;
+    if (tkList[r + 1].type == TokenType::TypeHint) {
+        baseNode = buildIdentifier(tkList, r + 2, r);
+        if (baseNode != nullptr && baseNode->isFuncCall()) {
+            printError(baseNode->getToken().lineId, "Invalid syntax of definition of base class");
+            delete baseNode, delete node;
+            return nullptr;
+        }
+    }
+    node->setBaseNode(baseNode);
+    // just a declaration
+    if (tkList[r + 1].type == TokenType::ExprEnd) node->addChild(new SyntaxNode(SyntaxNodeType::Empty));
+    else if (tkList[r + 1].type == TokenType::LBrkL) {
+        for (size_t pos = r + 2, rpos = pos; pos < tkList[r + 1].data.uint64_v(); pos = ++rpos) {
+            switch (tkList[pos].type) {
+                case TokenType::FuncDef:
+                case TokenType::VarFuncDef:
+                    node->addChild(buildFuncDef(tkList, pos, rpos));
+                    break;
+                case TokenType::VarDef:
+                    node->addChild(buildVarDef(tkList, pos, rpos));
+                    break;
+                default:
+                    if (!isVisibility(tkList[pos].type))
+                        printError(tkList[pos].lineId, "Invalid content of definition of class \"" + node->getNameNode()->getName() + "\"");
+                    break;
+            }
+        }
+    } else {
+        printError(tkList[r + 1].lineId, "Invalid content of definition of class \"" + node->getNameNode()->getName() + "\"");
+        delete node;
+    }
+    return node;
+}
+
+NspDefNode *buildNspDef(const TokenList &tkList, size_t l, size_t &r) {
+    NspDefNode *node = new NspDefNode(tkList[l]);
+    IdentifierNode *nameNode = buildIdentifier(tkList, l + 1, r);
+    node->setNameNode(nameNode);
+    if (tkList[r + 1].type != TokenType::LBrkL) {
+        printError(tkList[r + 1].lineId, "Invalid content of definition of namespace \"" + nameNode->getName() + "\"");
+        delete node;
+        return nullptr;
+    }
+    for (size_t pos = r + 2, rpos = pos; pos < tkList[r + 1].data.uint64_v(); pos = ++rpos) {
+        switch (tkList[pos].type) {
+            case TokenType::VarDef:
+                node->addChild(buildVarDef(tkList, pos, rpos));
+                break;
+            case TokenType::FuncDef:
+                node->addChild(buildFuncDef(tkList, pos, rpos));
+                break;
+            case TokenType::ClsDef:
+                node->addChild(buildClsDef(tkList, pos, rpos));
+                break;
+            default:
+                if (!isVisibility(tkList[pos].type))
+                    printError(tkList[r + 1].lineId, "Invalid content of definition of namespace \"" + nameNode->getName() + "\"");
+                break;
+        }
+    }
+    return node;
+}
+
+UsingNode *buildUsing(const TokenList &tkList, size_t l, size_t &r) {
+    UsingNode *node = new UsingNode(tkList[l]);
+    std::string path = tkList[l + 1].dataStr;
+    r = l + 1;
+    while (tkList[r + 1].type == TokenType::GetChild) {
+        path.push_back('.');
+        path.append(tkList[r + 2].dataStr);
+        r += 2;
+    }
+    if (tkList[r + 1].type != TokenType::ExprEnd) {
+        printError(tkList[r + 1].lineId, "Invalid syntax of using");
+        delete node;
+        return nullptr;
+    }
+    node->setPath(path);
+    return node;
 }
 
 SyntaxNode *buildNode(const TokenList &tkList, size_t l, size_t &r) {
-    return nullptr;
+    SyntaxNode *node = nullptr;
+    r = l;
+    switch (tkList[l].type) {
+        case TokenType::ExprEnd:
+            node = new SyntaxNode(SyntaxNodeType::Empty);
+            break;
+        case TokenType::LBrkL:
+            node = buildBlock(tkList, l, r);
+            break;
+        case TokenType::VarDef:
+            node = buildVarDef(tkList, l, r);
+            break;
+        case TokenType::If:
+            node = buildIf(tkList, l, r);
+            break;
+        case TokenType::For:
+            node = buildFor(tkList, l, r);
+            break;
+        case TokenType::While:
+            node = buildWhile(tkList, l, r);
+            break;
+        case TokenType::Break:
+        case TokenType::Continue:
+        case TokenType::Return:
+            node = buildControl(tkList, l, r);
+            break;
+        case TokenType::FuncDef:
+        case TokenType::VarFuncDef:
+            node = buildFuncDef(tkList, l, r);
+            break;
+        case TokenType::ClsDef:
+            node = buildClsDef(tkList, l, r);
+            break;
+        case TokenType::NspDef:
+            node = buildClsDef(tkList, l, r);
+            break;
+        default:
+            if (isVisibility(tkList[l].type)) break;
+            r = l;
+            while (tkList[r].type != TokenType::ExprEnd) r++;
+            node = buildExpression(tkList, l, r - 1);
+            break;
+    }
+    return node;
+}
+
+RootNode *buildRootNode(SyntaxNodeType type, const TokenList &tkList) {
+    auto node = new RootNode(type);
+    for (size_t pos = 0, rpos = 0; pos < tkList.size(); pos = ++rpos)
+        node->addChild(buildNode(tkList, pos, rpos));
+    return node;
+}
+
+void debugPrintTree(SyntaxNode *node, int dep) {
+    if (node == nullptr) {
+        std::cout << getIndent(dep) << "<NULL>\n";
+        return ;
+    }
+    std::cout << getIndent(dep) << node->toString() << std::endl;
+    for (size_t i = 0; i < node->getChildrenCount(); i++) debugPrintTree(node->at(i), dep + 1);
 }

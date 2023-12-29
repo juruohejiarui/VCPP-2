@@ -1,0 +1,1361 @@
+SourceRoot
+  ClsDef
+    Identifier ArrayLike
+      GenericArea
+        Identifier T
+          <NULL>
+    <NULL>
+    VarFuncDef varCount = 1
+      Identifier get
+        <NULL>
+      Identifier index
+        <NULL>
+      Identifier int
+        <NULL>
+      Identifier T
+        <NULL>
+      Empty
+    VarFuncDef varCount = 2
+      Identifier set
+        <NULL>
+      Identifier index
+        <NULL>
+      Identifier int
+        <NULL>
+      Identifier data
+        <NULL>
+      Identifier ValueT
+        <NULL>
+      Identifier T
+        <NULL>
+      Empty
+    VarFuncDef varCount = 0
+      Identifier getLength
+        <NULL>
+      Identifier uint
+        <NULL>
+      Empty
+    VarFuncDef varCount = 2
+      Identifier swap
+        <NULL>
+      Identifier x
+        <NULL>
+      Identifier int
+        <NULL>
+      Identifier y
+        <NULL>
+      Identifier int
+        <NULL>
+      Identifier void
+        <NULL>
+      Empty
+  Block varCount = 0
+    <NULL>
+    VarFuncDef varCount = 1
+      Identifier get
+        <NULL>
+      Identifier index
+        <NULL>
+      Identifier int
+        <NULL>
+      Identifier T
+        <NULL>
+      Empty
+    <NULL>
+    VarFuncDef varCount = 2
+      Identifier set
+        <NULL>
+      Identifier index
+        <NULL>
+      Identifier int
+        <NULL>
+      Identifier data
+        <NULL>
+      Identifier ValueT
+        <NULL>
+      Identifier T
+        <NULL>
+      Empty
+    <NULL>
+    VarFuncDef varCount = 0
+      Identifier getLength
+        <NULL>
+      Identifier uint
+        <NULL>
+      Empty
+    <NULL>
+    VarFuncDef varCount = 2
+      Identifier swap
+        <NULL>
+      Identifier x
+        <NULL>
+      Identifier int
+        <NULL>
+      Identifier y
+        <NULL>
+      Identifier int
+        <NULL>
+      Identifier void
+        <NULL>
+      Empty
+  ClsDef
+    Identifier MapLike
+      GenericArea
+        Identifier KeyT
+          <NULL>
+        Identifier ValueT
+          <NULL>
+    <NULL>
+    VarFuncDef varCount = 1
+      Identifier get
+        <NULL>
+      Identifier index
+        <NULL>
+      Identifier keyT
+        <NULL>
+      Identifier T
+        <NULL>
+      Empty
+    VarFuncDef varCount = 2
+      Identifier set
+        <NULL>
+      Identifier index
+        <NULL>
+      Identifier keyT
+        <NULL>
+      Identifier data
+        <NULL>
+      Identifier ValueT
+        <NULL>
+      Identifier T
+        <NULL>
+      Empty
+  Block varCount = 0
+    <NULL>
+    VarFuncDef varCount = 1
+      Identifier get
+        <NULL>
+      Identifier index
+        <NULL>
+      Identifier keyT
+        <NULL>
+      Identifier T
+        <NULL>
+      Empty
+    <NULL>
+    VarFuncDef varCount = 2
+      Identifier set
+        <NULL>
+      Identifier index
+        <NULL>
+      Identifier keyT
+        <NULL>
+      Identifier data
+        <NULL>
+      Identifier ValueT
+        <NULL>
+      Identifier T
+        <NULL>
+      Empty
+  ClsDef
+    Identifier String
+      <NULL>
+    Identifier ArrayLike
+      GenericArea
+        Identifier char
+          <NULL>
+    VarFuncDef varCount = 1
+      Identifier get
+        <NULL>
+      Identifier index
+        <NULL>
+      Identifier int
+        <NULL>
+      Identifier char
+        <NULL>
+      Empty
+    VarFuncDef varCount = 2
+      Identifier set
+        <NULL>
+      Identifier index
+        <NULL>
+      Identifier int
+        <NULL>
+      Identifier dt
+        <NULL>
+      Identifier char
+        <NULL>
+      Identifier void
+        <NULL>
+      Empty
+    FuncDef varCount = 0
+      Identifier getLength
+        <NULL>
+      Identifier uint
+        <NULL>
+      Empty
+    FuncDef varCount = 1
+      Identifier resize
+        <NULL>
+      Identifier length
+        <NULL>
+      Identifier int
+        <NULL>
+      Identifier void
+        <NULL>
+      Empty
+    FuncDef varCount = 1
+      Identifier append
+        <NULL>
+      Identifier dt
+        <NULL>
+      Identifier char
+        <NULL>
+      Identifier void
+        <NULL>
+      Empty
+    FuncDef varCount = 0
+      Identifier @constructer
+        <NULL>
+      Identifier void
+        <NULL>
+      Empty
+    FuncDef varCount = 1
+      Identifier @constructer
+        <NULL>
+      Identifier source
+        <NULL>
+      Identifier String
+        <NULL>
+      Identifier void
+        <NULL>
+      Empty
+    VarDef varCount = 3
+      Identifier data
+        <NULL>
+      Identifier char
+        <NULL>
+      <NULL>
+      Identifier 
+        <NULL>
+      <NULL>
+      <NULL>
+      Identifier 
+        <NULL>
+      <NULL>
+      <NULL>
+    VarDef varCount = 3
+      Identifier length
+        <NULL>
+      Identifier uint
+        <NULL>
+      <NULL>
+      Identifier 
+        <NULL>
+      <NULL>
+      <NULL>
+      Identifier capacity
+        <NULL>
+      Identifier uint
+        <NULL>
+      <NULL>
+  Block varCount = 6
+    <NULL>
+    VarFuncDef varCount = 1
+      Identifier get
+        <NULL>
+      Identifier index
+        <NULL>
+      Identifier int
+        <NULL>
+      Identifier char
+        <NULL>
+      Empty
+    <NULL>
+    VarFuncDef varCount = 2
+      Identifier set
+        <NULL>
+      Identifier index
+        <NULL>
+      Identifier int
+        <NULL>
+      Identifier dt
+        <NULL>
+      Identifier char
+        <NULL>
+      Identifier void
+        <NULL>
+      Empty
+    <NULL>
+    FuncDef varCount = 0
+      Identifier getLength
+        <NULL>
+      Identifier uint
+        <NULL>
+      Empty
+    <NULL>
+    FuncDef varCount = 1
+      Identifier resize
+        <NULL>
+      Identifier length
+        <NULL>
+      Identifier int
+        <NULL>
+      Identifier void
+        <NULL>
+      Empty
+    <NULL>
+    FuncDef varCount = 1
+      Identifier append
+        <NULL>
+      Identifier dt
+        <NULL>
+      Identifier char
+        <NULL>
+      Identifier void
+        <NULL>
+      Empty
+    <NULL>
+    FuncDef varCount = 0
+      Identifier @constructer
+        <NULL>
+      Identifier void
+        <NULL>
+      Empty
+    <NULL>
+    FuncDef varCount = 1
+      Identifier @constructer
+        <NULL>
+      Identifier source
+        <NULL>
+      Identifier String
+        <NULL>
+      Identifier void
+        <NULL>
+      Empty
+    <NULL>
+    VarDef varCount = 3
+      Identifier data
+        <NULL>
+      Identifier char
+        <NULL>
+      <NULL>
+      Identifier 
+        <NULL>
+      <NULL>
+      <NULL>
+      Identifier 
+        <NULL>
+      <NULL>
+      <NULL>
+    <NULL>
+    VarDef varCount = 3
+      Identifier length
+        <NULL>
+      Identifier uint
+        <NULL>
+      <NULL>
+      Identifier 
+        <NULL>
+      <NULL>
+      <NULL>
+      Identifier capacity
+        <NULL>
+      Identifier uint
+        <NULL>
+      <NULL>
+  ClsDef
+    Identifier Array
+      GenericArea
+        Identifier T
+          <NULL>
+    Identifier ArrayLike
+      GenericArea
+        Identifier T
+          <NULL>
+    FuncDef varCount = 0
+      Identifier @constructer
+        <NULL>
+      Identifier void
+        <NULL>
+      Block varCount = 0
+    FuncDef varCount = 2
+      Identifier @constructer
+        <NULL>
+      Identifier length
+        <NULL>
+      Identifier int
+        <NULL>
+      Identifier initData
+        <NULL>
+      Identifier T
+        <NULL>
+      Identifier void
+        <NULL>
+      Block varCount = 0
+        While varCount = 0
+          <NULL>
+          Expression
+            Operator Dec weight = 13
+              Identifier length
+                <NULL>
+              <NULL>
+          <NULL>
+          Expression
+            Identifier append
+              <NULL>
+              Expression
+                Identifier initData
+                  <NULL>
+    VarFuncDef varCount = 1
+      Identifier get
+        <NULL>
+      Identifier index
+        <NULL>
+      Identifier int
+        <NULL>
+      Identifier T
+        <NULL>
+      Block varCount = 0
+        Return
+          Expression
+            Operator MBrkL weight = 14
+              Identifier data
+                <NULL>
+              Expression
+                Identifier index
+                  <NULL>
+    VarFuncDef varCount = 2
+      Identifier set
+        <NULL>
+      Identifier index
+        <NULL>
+      Identifier int
+        <NULL>
+      Identifier dt
+        <NULL>
+      Identifier T
+        <NULL>
+      Identifier void
+        <NULL>
+      Block varCount = 0
+        Expression
+          Operator Assign weight = 2
+            Operator MBrkL weight = 14
+              Identifier data
+                <NULL>
+              Expression
+                Identifier index
+                  <NULL>
+            Identifier dt
+              <NULL>
+    VarFuncDef varCount = 0
+      Identifier getLength
+        <NULL>
+      Identifier uint
+        <NULL>
+      Block varCount = 0
+        Return
+          Expression
+            Identifier length
+              <NULL>
+    VarFuncDef varCount = 3
+      Identifier swap
+        <NULL>
+      Identifier x
+        <NULL>
+      Identifier int
+        <NULL>
+      Identifier y
+        <NULL>
+      Identifier int
+        <NULL>
+      Identifier void
+        <NULL>
+      Block varCount = 1
+        VarDef varCount = 1
+          Identifier tmp
+            <NULL>
+          <NULL>
+          Expression
+            Operator MBrkL weight = 14
+              Identifier data
+                <NULL>
+              Expression
+                Identifier x
+                  <NULL>
+        Expression
+          Operator Assign weight = 2
+            Operator MBrkL weight = 14
+              Identifier data
+                <NULL>
+              Expression
+                Identifier x
+                  <NULL>
+            Operator MBrkL weight = 14
+              Identifier data
+                <NULL>
+              Expression
+                Identifier y
+                  <NULL>
+        Expression
+          Operator Assign weight = 2
+            Operator MBrkL weight = 14
+              Identifier data
+                <NULL>
+              Expression
+                Identifier y
+                  <NULL>
+            Identifier tmp
+              <NULL>
+    FuncDef varCount = 4
+      Identifier append
+        <NULL>
+      Identifier dt
+        <NULL>
+      Identifier T
+        <NULL>
+      Identifier void
+        <NULL>
+      Block varCount = 3
+        If varCount = 3
+          Expression
+            Operator Equ weight = 8
+              Identifier length
+                <NULL>
+              Identifier capacity
+                <NULL>
+          Block varCount = 3
+            VarDef varCount = 1
+              Identifier newCapacity
+                <NULL>
+              <NULL>
+              Expression
+                Identifier capacity
+                  <NULL>
+            If varCount = 0
+              Expression
+                Operator Equ weight = 8
+                  Identifier capacity
+                    <NULL>
+                  ConstValue ConstData 0
+              Expression
+                Operator Assign weight = 2
+                  Identifier newCapacity
+                    <NULL>
+                  ConstValue ConstData 1
+              Expression
+                Operator ShlAssign weight = 2
+                  Identifier newCapacity
+                    <NULL>
+                  ConstValue ConstData 1
+            VarDef varCount = 1
+              Identifier newData
+                <NULL>
+              <NULL>
+              Expression
+                Operator MBrkL weight = 14
+                  Identifier T
+                    <NULL>
+                    Identifier new
+                      <NULL>
+                    <NULL>
+                  Expression
+                    Identifier newCapacity
+                      <NULL>
+            For varCount = 1
+              VarDef varCount = 1
+                Identifier i
+                  <NULL>
+                <NULL>
+                Expression
+                  ConstValue ConstData 0
+              Expression
+                Operator Ls weight = 9
+                  Identifier i
+                    <NULL>
+                  Identifier capacity
+                    <NULL>
+              Expression
+                Operator Inc weight = 13
+                  Identifier i
+                    <NULL>
+                  <NULL>
+              Expression
+                Operator Assign weight = 2
+                  Operator MBrkL weight = 14
+                    Identifier newData
+                      <NULL>
+                    Expression
+                      Identifier i
+                        <NULL>
+                  Operator MBrkL weight = 14
+                    Identifier data
+                      <NULL>
+                    Expression
+                      Identifier i
+                        <NULL>
+            Expression
+              Operator Assign weight = 2
+                Identifier data
+                  <NULL>
+                Identifier newData
+                  <NULL>
+          <NULL>
+        Expression
+          Operator Assign weight = 2
+            Operator MBrkL weight = 14
+              Identifier data
+                <NULL>
+              Expression
+                Operator Inc weight = 13
+                  Identifier length
+                    <NULL>
+                  <NULL>
+            Identifier dt
+              <NULL>
+    VarDef varCount = 3
+      Identifier data
+        <NULL>
+      Identifier T
+        <NULL>
+      <NULL>
+      Identifier 
+        <NULL>
+      <NULL>
+      <NULL>
+      Identifier 
+        <NULL>
+      <NULL>
+      <NULL>
+    VarDef varCount = 3
+      Identifier length
+        <NULL>
+      Identifier uint
+        <NULL>
+      <NULL>
+      Identifier 
+        <NULL>
+      <NULL>
+      <NULL>
+      Identifier capacity
+        <NULL>
+      Identifier uint
+        <NULL>
+      <NULL>
+  Block varCount = 6
+    <NULL>
+    FuncDef varCount = 0
+      Identifier @constructer
+        <NULL>
+      Identifier void
+        <NULL>
+      Block varCount = 0
+    <NULL>
+    FuncDef varCount = 2
+      Identifier @constructer
+        <NULL>
+      Identifier length
+        <NULL>
+      Identifier int
+        <NULL>
+      Identifier initData
+        <NULL>
+      Identifier T
+        <NULL>
+      Identifier void
+        <NULL>
+      Block varCount = 0
+        While varCount = 0
+          <NULL>
+          Expression
+            Operator Dec weight = 13
+              Identifier length
+                <NULL>
+              <NULL>
+          <NULL>
+          Expression
+            Identifier append
+              <NULL>
+              Expression
+                Identifier initData
+                  <NULL>
+    <NULL>
+    VarFuncDef varCount = 1
+      Identifier get
+        <NULL>
+      Identifier index
+        <NULL>
+      Identifier int
+        <NULL>
+      Identifier T
+        <NULL>
+      Block varCount = 0
+        Return
+          Expression
+            Operator MBrkL weight = 14
+              Identifier data
+                <NULL>
+              Expression
+                Identifier index
+                  <NULL>
+    <NULL>
+    VarFuncDef varCount = 2
+      Identifier set
+        <NULL>
+      Identifier index
+        <NULL>
+      Identifier int
+        <NULL>
+      Identifier dt
+        <NULL>
+      Identifier T
+        <NULL>
+      Identifier void
+        <NULL>
+      Block varCount = 0
+        Expression
+          Operator Assign weight = 2
+            Operator MBrkL weight = 14
+              Identifier data
+                <NULL>
+              Expression
+                Identifier index
+                  <NULL>
+            Identifier dt
+              <NULL>
+    <NULL>
+    VarFuncDef varCount = 0
+      Identifier getLength
+        <NULL>
+      Identifier uint
+        <NULL>
+      Block varCount = 0
+        Return
+          Expression
+            Identifier length
+              <NULL>
+    <NULL>
+    VarFuncDef varCount = 3
+      Identifier swap
+        <NULL>
+      Identifier x
+        <NULL>
+      Identifier int
+        <NULL>
+      Identifier y
+        <NULL>
+      Identifier int
+        <NULL>
+      Identifier void
+        <NULL>
+      Block varCount = 1
+        VarDef varCount = 1
+          Identifier tmp
+            <NULL>
+          <NULL>
+          Expression
+            Operator MBrkL weight = 14
+              Identifier data
+                <NULL>
+              Expression
+                Identifier x
+                  <NULL>
+        Expression
+          Operator Assign weight = 2
+            Operator MBrkL weight = 14
+              Identifier data
+                <NULL>
+              Expression
+                Identifier x
+                  <NULL>
+            Operator MBrkL weight = 14
+              Identifier data
+                <NULL>
+              Expression
+                Identifier y
+                  <NULL>
+        Expression
+          Operator Assign weight = 2
+            Operator MBrkL weight = 14
+              Identifier data
+                <NULL>
+              Expression
+                Identifier y
+                  <NULL>
+            Identifier tmp
+              <NULL>
+    <NULL>
+    FuncDef varCount = 4
+      Identifier append
+        <NULL>
+      Identifier dt
+        <NULL>
+      Identifier T
+        <NULL>
+      Identifier void
+        <NULL>
+      Block varCount = 3
+        If varCount = 3
+          Expression
+            Operator Equ weight = 8
+              Identifier length
+                <NULL>
+              Identifier capacity
+                <NULL>
+          Block varCount = 3
+            VarDef varCount = 1
+              Identifier newCapacity
+                <NULL>
+              <NULL>
+              Expression
+                Identifier capacity
+                  <NULL>
+            If varCount = 0
+              Expression
+                Operator Equ weight = 8
+                  Identifier capacity
+                    <NULL>
+                  ConstValue ConstData 0
+              Expression
+                Operator Assign weight = 2
+                  Identifier newCapacity
+                    <NULL>
+                  ConstValue ConstData 1
+              Expression
+                Operator ShlAssign weight = 2
+                  Identifier newCapacity
+                    <NULL>
+                  ConstValue ConstData 1
+            VarDef varCount = 1
+              Identifier newData
+                <NULL>
+              <NULL>
+              Expression
+                Operator MBrkL weight = 14
+                  Identifier T
+                    <NULL>
+                    Identifier new
+                      <NULL>
+                    <NULL>
+                  Expression
+                    Identifier newCapacity
+                      <NULL>
+            For varCount = 1
+              VarDef varCount = 1
+                Identifier i
+                  <NULL>
+                <NULL>
+                Expression
+                  ConstValue ConstData 0
+              Expression
+                Operator Ls weight = 9
+                  Identifier i
+                    <NULL>
+                  Identifier capacity
+                    <NULL>
+              Expression
+                Operator Inc weight = 13
+                  Identifier i
+                    <NULL>
+                  <NULL>
+              Expression
+                Operator Assign weight = 2
+                  Operator MBrkL weight = 14
+                    Identifier newData
+                      <NULL>
+                    Expression
+                      Identifier i
+                        <NULL>
+                  Operator MBrkL weight = 14
+                    Identifier data
+                      <NULL>
+                    Expression
+                      Identifier i
+                        <NULL>
+            Expression
+              Operator Assign weight = 2
+                Identifier data
+                  <NULL>
+                Identifier newData
+                  <NULL>
+          <NULL>
+        Expression
+          Operator Assign weight = 2
+            Operator MBrkL weight = 14
+              Identifier data
+                <NULL>
+              Expression
+                Operator Inc weight = 13
+                  Identifier length
+                    <NULL>
+                  <NULL>
+            Identifier dt
+              <NULL>
+    <NULL>
+    VarDef varCount = 3
+      Identifier data
+        <NULL>
+      Identifier T
+        <NULL>
+      <NULL>
+      Identifier 
+        <NULL>
+      <NULL>
+      <NULL>
+      Identifier 
+        <NULL>
+      <NULL>
+      <NULL>
+    <NULL>
+    VarDef varCount = 3
+      Identifier length
+        <NULL>
+      Identifier uint
+        <NULL>
+      <NULL>
+      Identifier 
+        <NULL>
+      <NULL>
+      <NULL>
+      Identifier capacity
+        <NULL>
+      Identifier uint
+        <NULL>
+      <NULL>
+  FuncDef varCount = 9
+    Identifier sort
+      GenericArea
+        Identifier T
+          <NULL>
+    Identifier array
+      <NULL>
+    Identifier ArrayLike
+      GenericArea
+        Identifier T
+          <NULL>
+    Identifier cmp
+      <NULL>
+    Identifier Compare
+      GenericArea
+        Identifier T
+          <NULL>
+    Identifier l
+      <NULL>
+    Identifier uint
+      <NULL>
+    Identifier r
+      <NULL>
+    Identifier uint
+      <NULL>
+    Identifier void
+      <NULL>
+    Block varCount = 5
+      If varCount = 0
+        Expression
+          Operator Le weight = 9
+            Identifier r
+              <NULL>
+            Identifier l
+              <NULL>
+        Return
+          <NULL>
+        <NULL>
+      VarDef varCount = 5
+        Identifier low
+          <NULL>
+        <NULL>
+        Expression
+          Identifier l
+            <NULL>
+        Identifier 
+          <NULL>
+        <NULL>
+        <NULL>
+        Identifier upr
+          <NULL>
+        <NULL>
+        Expression
+          Identifier r
+            <NULL>
+        Identifier 
+          <NULL>
+        <NULL>
+        <NULL>
+        Identifier pdt
+          <NULL>
+        <NULL>
+        Expression
+          Operator MBrkL weight = 14
+            Identifier array
+              <NULL>
+            Expression
+              Identifier l
+                <NULL>
+      While varCount = 0
+        <NULL>
+        Expression
+          Operator Neq weight = 8
+            Identifier low
+              <NULL>
+            Identifier upr
+              <NULL>
+        <NULL>
+        Block varCount = 0
+          While varCount = 0
+            <NULL>
+            Expression
+              Operator LogicAnd weight = 4
+                Operator Ge weight = 9
+                  Operator MBrkL weight = 14
+                    Identifier a
+                      <NULL>
+                    Expression
+                      Identifier upr
+                        <NULL>
+                  Identifier pdt
+                    <NULL>
+                Operator Ls weight = 9
+                  Identifier low
+                    <NULL>
+                  Identifier upr
+                    <NULL>
+            <NULL>
+            Empty
+  FuncDef varCount = 2
+    Identifier sort
+      GenericArea
+        Identifier T
+          <NULL>
+    Identifier array
+      <NULL>
+    Identifier ArrayLike
+      GenericArea
+        Identifier T
+          <NULL>
+    Identifier cmp
+      <NULL>
+    Identifier Compare
+      GenericArea
+        Identifier T
+          <NULL>
+    Identifier void
+      <NULL>
+    Block varCount = 0
+      Expression
+        Identifier sort
+          <NULL>
+          Expression
+            Identifier array
+              <NULL>
+          Expression
+            Identifier cmp
+              <NULL>
+          Expression
+            ConstValue ConstData 0
+          Expression
+            Operator Sub weight = 11
+              Operator GetMem weight = 14
+                Identifier array
+                  <NULL>
+                Identifier getLength
+                  <NULL>
+                  <NULL>
+              ConstValue ConstData 1
+  ClsDef
+    Identifier Compare
+      GenericArea
+        Identifier T
+          <NULL>
+    <NULL>
+    VarFuncDef varCount = 2
+      Identifier compare
+        <NULL>
+      Identifier a
+        <NULL>
+      Identifier T
+        <NULL>
+      Identifier b
+        <NULL>
+      Identifier T
+        <NULL>
+      Identifier int
+        <NULL>
+      Empty
+  Block varCount = 0
+    <NULL>
+    VarFuncDef varCount = 2
+      Identifier compare
+        <NULL>
+      Identifier a
+        <NULL>
+      Identifier T
+        <NULL>
+      Identifier b
+        <NULL>
+      Identifier T
+        <NULL>
+      Identifier int
+        <NULL>
+      Empty
+  ClsDef
+    Identifier IntSmaller
+      <NULL>
+    Identifier Compare
+      GenericArea
+        Identifier int
+          <NULL>
+    VarFuncDef varCount = 2
+      Identifier compare
+        <NULL>
+      Identifier a
+        <NULL>
+      Identifier int
+        <NULL>
+      Identifier b
+        <NULL>
+      Identifier int
+        <NULL>
+      Identifier int
+        <NULL>
+      Block varCount = 0
+        If varCount = 0
+          Expression
+            Operator Equ weight = 8
+              Identifier a
+                <NULL>
+              Identifier b
+                <NULL>
+          Return
+            Expression
+              ConstValue ConstData 0
+          If varCount = 0
+            Expression
+              Operator Gt weight = 9
+                Identifier a
+                  <NULL>
+                Identifier b
+                  <NULL>
+            Return
+              Expression
+                Operator Sub weight = 11
+                  <NULL>
+                  ConstValue ConstData 1
+            Return
+              Expression
+                ConstValue ConstData 1
+  Block varCount = 0
+    <NULL>
+    VarFuncDef varCount = 2
+      Identifier compare
+        <NULL>
+      Identifier a
+        <NULL>
+      Identifier int
+        <NULL>
+      Identifier b
+        <NULL>
+      Identifier int
+        <NULL>
+      Identifier int
+        <NULL>
+      Block varCount = 0
+        If varCount = 0
+          Expression
+            Operator Equ weight = 8
+              Identifier a
+                <NULL>
+              Identifier b
+                <NULL>
+          Return
+            Expression
+              ConstValue ConstData 0
+          If varCount = 0
+            Expression
+              Operator Gt weight = 9
+                Identifier a
+                  <NULL>
+                Identifier b
+                  <NULL>
+            Return
+              Expression
+                Operator Sub weight = 11
+                  <NULL>
+                  ConstValue ConstData 1
+            Return
+              Expression
+                ConstValue ConstData 1
+  ClsDef
+    Identifier UIntSmaller
+      <NULL>
+    Identifier Compare
+      GenericArea
+        Identifier uint
+          <NULL>
+    VarFuncDef varCount = 2
+      Identifier compare
+        <NULL>
+      Identifier a
+        <NULL>
+      Identifier uint
+        <NULL>
+      Identifier b
+        <NULL>
+      Identifier uint
+        <NULL>
+      Identifier uint
+        <NULL>
+      Block varCount = 0
+        If varCount = 0
+          Expression
+            Operator Equ weight = 8
+              Identifier a
+                <NULL>
+              Identifier b
+                <NULL>
+          Return
+            Expression
+              ConstValue ConstData 0
+          If varCount = 0
+            Expression
+              Operator Gt weight = 9
+                Identifier a
+                  <NULL>
+                Identifier b
+                  <NULL>
+            Return
+              Expression
+                Operator Sub weight = 11
+                  <NULL>
+                  ConstValue ConstData 1
+            Return
+              Expression
+                ConstValue ConstData 1
+  Block varCount = 0
+    <NULL>
+    VarFuncDef varCount = 2
+      Identifier compare
+        <NULL>
+      Identifier a
+        <NULL>
+      Identifier uint
+        <NULL>
+      Identifier b
+        <NULL>
+      Identifier uint
+        <NULL>
+      Identifier uint
+        <NULL>
+      Block varCount = 0
+        If varCount = 0
+          Expression
+            Operator Equ weight = 8
+              Identifier a
+                <NULL>
+              Identifier b
+                <NULL>
+          Return
+            Expression
+              ConstValue ConstData 0
+          If varCount = 0
+            Expression
+              Operator Gt weight = 9
+                Identifier a
+                  <NULL>
+                Identifier b
+                  <NULL>
+            Return
+              Expression
+                Operator Sub weight = 11
+                  <NULL>
+                  ConstValue ConstData 1
+            Return
+              Expression
+                ConstValue ConstData 1
+  ClsDef
+    Identifier LongSmaller
+      <NULL>
+    Identifier Compare
+      GenericArea
+        Identifier long
+          <NULL>
+    VarFuncDef varCount = 2
+      Identifier compare
+        <NULL>
+      Identifier a
+        <NULL>
+      Identifier long
+        <NULL>
+      Identifier b
+        <NULL>
+      Identifier long
+        <NULL>
+      Identifier long
+        <NULL>
+      Block varCount = 0
+        If varCount = 0
+          Expression
+            Operator Equ weight = 8
+              Identifier a
+                <NULL>
+              Identifier b
+                <NULL>
+          Return
+            Expression
+              ConstValue ConstData 0
+          If varCount = 0
+            Expression
+              Operator Gt weight = 9
+                Identifier a
+                  <NULL>
+                Identifier b
+                  <NULL>
+            Return
+              Expression
+                Operator Sub weight = 11
+                  <NULL>
+                  ConstValue ConstData 1
+            Return
+              Expression
+                ConstValue ConstData 1
+  Block varCount = 0
+    <NULL>
+    VarFuncDef varCount = 2
+      Identifier compare
+        <NULL>
+      Identifier a
+        <NULL>
+      Identifier long
+        <NULL>
+      Identifier b
+        <NULL>
+      Identifier long
+        <NULL>
+      Identifier long
+        <NULL>
+      Block varCount = 0
+        If varCount = 0
+          Expression
+            Operator Equ weight = 8
+              Identifier a
+                <NULL>
+              Identifier b
+                <NULL>
+          Return
+            Expression
+              ConstValue ConstData 0
+          If varCount = 0
+            Expression
+              Operator Gt weight = 9
+                Identifier a
+                  <NULL>
+                Identifier b
+                  <NULL>
+            Return
+              Expression
+                Operator Sub weight = 11
+                  <NULL>
+                  ConstValue ConstData 1
+            Return
+              Expression
+                ConstValue ConstData 1

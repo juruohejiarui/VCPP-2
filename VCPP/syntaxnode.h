@@ -2,7 +2,7 @@
 #include "../Tools/tools.h"
 #include "tokenlist.h"
 
-extern const int32 IdentifierWeight;
+extern const uint32 IdentifierWeight;
 
 enum class SyntaxNodeType {
     Expression, Identifier, ConstValue, Operator, GenericArea,
@@ -10,7 +10,7 @@ enum class SyntaxNodeType {
     VarDef, FuncDef, VarFuncDef, ClsDef, NspDef,
     Using,
     SourceRoot, SymbolRoot,
-    Error, Unknown, 
+    Error, Empty, Unknown, 
 };
 
 class SyntaxNode {
@@ -67,6 +67,8 @@ public:
     ExpressionNode *getRight() const;
     
     uint32 getWeight() const override;
+
+    std::string toString() const override;
 };
 
 class GenericAreaNode;
@@ -90,6 +92,8 @@ public:
     ExpressionNode *getParam(size_t index) const;
 
     bool isFuncCall() const;
+
+    std::string toString() const override;
 };
 
 class GenericAreaNode : public SyntaxNode {
@@ -107,6 +111,8 @@ public:
     ConstValueNode(const Token &token);
 
     uint32 getWeight() const override;
+
+    std::string toString() const override;
 };
 
 class BlockNode : public SyntaxNode {
@@ -115,6 +121,8 @@ public:
     BlockNode(const Token &token);
 
     void setLocalVarCount(uint32 data);
+
+    std::string toString() const override;
 };
 
 class IfNode : public BlockNode {
@@ -248,6 +256,8 @@ public:
 
     const std::string getPath() const;
     void setPath(const std::string &path);
+
+    std::string toString() const override;
 };
 
 class RootNode : public SyntaxNode {
@@ -267,3 +277,6 @@ public:
 };
 
 SyntaxNode *buildNode(const TokenList &tkList, size_t l, size_t &r);
+RootNode *buildRootNode(SyntaxNodeType type, const TokenList &tkList);
+
+void debugPrintTree(SyntaxNode *node, int dep = 0);

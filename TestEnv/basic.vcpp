@@ -2,7 +2,7 @@ public class ArrayLike<$T$> {
 	public varfunc get(index : int) : T;
 	public varfunc set(index : int, data : ValueT) : T;
 	public varfunc getLength() : uint;
-	public void swap(x : int, y : int) : void;
+	public varfunc swap(x : int, y : int) : void;
 }
 public class MapLike<$KeyT, ValueT$> {
 	public varfunc get(index : keyT) : T;
@@ -13,32 +13,31 @@ public class String : ArrayLike<$char$> {
 	public varfunc get(index : int) : char;
 	public varfunc set(index : int, dt : char) : void;
 	public func getLength() : uint;
-	public func resize(length : int);
-	public func append(dt : char)
-	public constructer();
-	public constructer(source : String);
-	public func __init__(source : char[]);
+	public func resize(length : int) : void;
+	public func append(dt : char) : void;
+	public func @constructer() : void;
+	public func @constructer(source : String) : void;
 	
 	private var data : char[];
 	private var length : uint, capacity : uint;
 }
 
 public class Array<$T$> : ArrayLike<$T$> {
-	public constructer() { }
-	public constructer(int length, T initData) {
+	public func @constructer() : void { }
+	public func @constructer(length : int, initData : T) : void {
 		while (length--) append(initData);
 	}
     public varfunc get(index : int) : T {
 		return data[index];
 	}
-	public varfunc set(index : int, dt : T) : {
+	public varfunc set(index : int, dt : T) : void {
 		data[index] = dt;
 	}
     public varfunc getLength() : uint {
 		return length;
 	}
 	public varfunc swap(x : int, y : int) : void {
-		T tmp = data[x];
+		var tmp = data[x];
 		data[x] = data[y];
 		data[y] = tmp;
 	}
@@ -59,15 +58,15 @@ public class Array<$T$> : ArrayLike<$T$> {
 	private var length : uint, capacity : uint;
 }
 
-public func sort<$T$>(ArrayLike<$T$> array, Compare<$T$> cmp, l : uint, r : uint) {
+public func sort<$T$>(array : ArrayLike<$T$>, cmp : Compare<$T$>, l : uint, r : uint) : void {
 	if (r <= l) return ;
 	var low = l, upr = r, pdt = array[l];
 	while (low != upr) {
-		while (a[upr] >= pdt && low < upr)
+		while (a[upr] >= pdt && low < upr) ;
 	}
 	
 }
-public func sort<$T$>(ArrayLike<$T$> array, Compare<$T$> cmp) {
+public func sort<$T$>(array : ArrayLike<$T$>, cmp : Compare<$T$>) : void {
 	sort(array, cmp, 0, array.getLength() - 1);
 } 
 

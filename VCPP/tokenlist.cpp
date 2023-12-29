@@ -41,13 +41,17 @@ TokenType getTokenType(const std::string& str) {
 }
 
 uint32 operWeight[] = {
-    1,
-    2, 
+    1, /*, */ 
+    2/* = */, 2/*+=*/, 2/*-=*/, 2/**=*/, 2/*/=*/, 2/*%=*/, 2/*&=*/, 2/*|=*/, 2/*^=*/, 2/*<<=*/, 2/*>>=*/,
+    11/*+*/, 11/*-*/, 12/***/, 12/*/*/, 12/*%*/, 7/*&*/, 5/*|*/, 6/*^*/, 10/*<<*/, 10/*>>*/, 13/*~*/, 4/*&&*/, 3/*||*/, 13/*!*/,
+    8/*==*/, 8/*!=*/, 9/*>*/, 9/*>=*/, 9/*<*/, 9/*<=*/,
+    13/*++*/, 13/*--*/,
+    14/*.*/, 14/*$*/, 14/*as*/, 14/*::*/,
 };
 
 uint32 getOperWeight(TokenType oper) {
     // the weight of []
-    if (oper == TokenType::MBrkL || oper == TokenType::MBrkR) return 15;
+    if (oper == TokenType::MBrkL || oper == TokenType::MBrkR) return 14;
     if (oper < TokenType::Comma || oper > TokenType::Convert) return -1;
     return operWeight[(int32)oper - (int32)TokenType::Comma];
 }
@@ -67,8 +71,8 @@ bool generateTokenList(const std::string &src, TokenList &tkList) {
         for (size_t l = pos, r = pos; l < line.size(); l = ++r) {
             Token tk;
             tk.lineId = lId;
-            if (isLetter(line[l])) {
-                while (r + 1 < line.size() && (isLetter(line[r + 1]) || isNumber(line[r + 1])))
+            if (isLetter(line[l]) || line[l] == '@') {
+                while (r + 1 < line.size() && (isLetter(line[r + 1]) || isNumber(line[r + 1]) || line[r + 1] == '@'))
                     r++;
                 tk.dataStr = line.substr(l, r - l + 1);
                 tk.type = getKeyworkType(tk.dataStr);
@@ -79,6 +83,9 @@ bool generateTokenList(const std::string &src, TokenList &tkList) {
                 while (r + 1 < line.size() && (isLetter(line[r + 1]) || isNumber(line[r + 1]))) r++;
                 tk.dataStr = line.substr(l, r - l + 1);
                 tk.data = getUnionData(tk.dataStr);
+            } else if (line[l] == '=') {
+                if (l + 1 < line.size() && line[l + 1] == '=') r++, tk.type = TokenType::Equ;
+                else tk.type = TokenType::Assign;  
             } else if (line[l] == '/') { // hint / /=
                 if (l + 1 < line.size()) {
                     if (line[l + 1] == '/') r = line.size() - 1; // the rest of this line is hint
@@ -149,6 +156,8 @@ bool generateTokenList(const std::string &src, TokenList &tkList) {
                 if (l + 1 < line.size() && line[l + 1] == ':') {
                     r++, tk.type = TokenType::GetChild;
                 } else tk.type = TokenType::TypeHint;
+            } else if (line[l] == ',') {
+                tk.type = TokenType::Comma;
             } else if (line[l] == '.') {
                 tk.type = TokenType::GetMem;
             } else if (line[l] == '{') {
@@ -191,7 +200,7 @@ bool generateTokenList(const std::string &src, TokenList &tkList) {
             if (tk.type != TokenType::Unknown) tkList.emplace_back(tk);
         }
     }
-    return false;
+    return true;
 }
 
 Token::Token() {
