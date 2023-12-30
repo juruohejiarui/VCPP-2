@@ -625,7 +625,7 @@ ClsDefNode *buildClsDef(const TokenList &tkList, size_t l, size_t &r) {
     }
     node->setBaseNode(baseNode);
     // just a declaration
-    if (tkList[r + 1].type == TokenType::ExprEnd) node->addChild(new SyntaxNode(SyntaxNodeType::Empty));
+    if (tkList[r + 1].type == TokenType::ExprEnd) r++, node->addChild(new SyntaxNode(SyntaxNodeType::Empty));
     else if (tkList[r + 1].type == TokenType::LBrkL) {
         for (size_t pos = r + 2, rpos = pos; pos < tkList[r + 1].data.uint64_v(); pos = ++rpos) {
             switch (tkList[pos].type) {
@@ -642,6 +642,7 @@ ClsDefNode *buildClsDef(const TokenList &tkList, size_t l, size_t &r) {
                     break;
             }
         }
+        r = tkList[r + 1].data.uint64_v();
     } else {
         printError(tkList[r + 1].lineId, "Invalid content of definition of class \"" + node->getNameNode()->getName() + "\"");
         delete node;
@@ -731,7 +732,7 @@ SyntaxNode *buildNode(const TokenList &tkList, size_t l, size_t &r) {
             node = buildClsDef(tkList, l, r);
             break;
         case TokenType::NspDef:
-            node = buildClsDef(tkList, l, r);
+            node = buildNspDef(tkList, l, r);
             break;
         default:
             if (isVisibility(tkList[l].type)) break;

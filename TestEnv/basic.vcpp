@@ -1,99 +1,103 @@
-public class ArrayLike<$T$> {
-	public varfunc get(index : int) : T;
-	public varfunc set(index : int, data : ValueT) : T;
-	public varfunc getLength() : uint;
-	public varfunc swap(x : int, y : int) : void;
-}
-public class MapLike<$KeyT, ValueT$> {
-	public varfunc get(index : keyT) : T;
-	public varfunc set(index : keyT, data : ValueT) : T;
-}
-
-public class String : ArrayLike<$char$> {
-	public varfunc get(index : int) : char;
-	public varfunc set(index : int, dt : char) : void;
-	public func getLength() : uint;
-	public func resize(length : int) : void;
-	public func append(dt : char) : void;
-	public func @constructer() : void;
-	public func @constructer(source : String) : void;
-	
-	private var data : char[];
-	private var length : uint, capacity : uint;
-}
-
-public class Array<$T$> : ArrayLike<$T$> {
-	public func @constructer() : void { }
-	public func @constructer(length : int, initData : T) : void {
-		while (length--) append(initData);
+namespace System {
+	public class ArrayLike<$T$> {
+		public varfunc get(index : int) : T;
+		public varfunc set(index : int, data : ValueT) : T;
+		public varfunc getLength() : uint;
+		public varfunc swap(x : int, y : int) : void;
 	}
-    public varfunc get(index : int) : T {
-		return data[index];
-	}
-	public varfunc set(index : int, dt : T) : void {
-		data[index] = dt;
-	}
-    public varfunc getLength() : uint {
-		return length;
-	}
-	public varfunc swap(x : int, y : int) : void {
-		var tmp = data[x];
-		data[x] = data[y];
-		data[y] = tmp;
+	public class MapLike<$KeyT, ValueT$> {
+		public varfunc get(index : keyT) : T;
+		public varfunc set(index : keyT, data : ValueT) : T;
 	}
 
-	public func append(dt : T) : void {
-		if (length == capacity) {
-			var newCapacity = capacity;
-			if (capacity == 0) newCapacity = 1;
-			else newCapacity <<= 1;
-			var newData = new T[newCapacity];
-			for (var i = 0; i < capacity; i++) newData[i] = data[i];
-			data = newData;
+	public class String : ArrayLike<$char$> {
+		public varfunc get(index : int) : char;
+		public varfunc set(index : int, dt : char) : void;
+		public func getLength() : uint;
+		public func resize(length : int) : void;
+		public func append(dt : char) : void;
+		public func @constructer() : void;
+		public func @constructer(source : String) : void;
+		
+		private var data : char[];
+		private var length : uint, capacity : uint;
+	}
+
+	public class Array<$T$> : ArrayLike<$T$> {
+		public func @constructer() : void { }
+		public func @constructer(length : int, initData : T) : void {
+			while (length--) append(initData);
 		}
-		data[length++] = dt;
+		public varfunc get(index : int) : T {
+			return data[index];
+		}
+		public varfunc set(index : int, dt : T) : void {
+			data[index] = dt;
+		}
+		public varfunc getLength() : uint {
+			return length;
+		}
+		public varfunc swap(x : int, y : int) : void {
+			var tmp = data[x];
+			data[x] = data[y];
+			data[y] = tmp;
+		}
+
+		public func append(dt : T) : void {
+			if (length == capacity) {
+				var newCapacity = capacity;
+				if (capacity == 0) newCapacity = 1;
+				else newCapacity <<= 1;
+				var newData = new T[newCapacity];
+				for (var i = 0; i < capacity; i++) newData[i] = data[i];
+				data = newData;
+			}
+			data[length++] = dt;
+		}
+
+		private var data : T[];
+		private var length : uint, capacity : uint;
 	}
 
-    private var data : T[];
-	private var length : uint, capacity : uint;
-}
-
-public func sort<$T$>(array : ArrayLike<$T$>, cmp : Compare<$T$>, l : uint, r : uint) : void {
-	if (r <= l) return ;
-	var low = l, upr = r, pdt = array[l];
-	while (low != upr) {
-		while (a[upr] >= pdt && low < upr) ;
+	public func sort<$T$>(array : ArrayLike<$T$>, cmp : Compare<$T$>, l : uint, r : uint) : void {
+		if (r <= l) return ;
+		// partion
+		var bs = array[l], tl = l, tr = r;
+		while (tl < tr) {
+			while (tl < tr && cmp.compare(array[right], bs) >= 0) tr--;
+			array[left] = array[right];
+			while (tl < tr && cmp.compare(array[left], bs) <= 0) tl++;
+			array[right] = array[left]; 
+		}
+		array[left] = bs;
+		sort(array, l, tl - 1), sort(array, tl + 1, r);
 	}
-	
-}
-public func sort<$T$>(array : ArrayLike<$T$>, cmp : Compare<$T$>) : void {
-	sort(array, cmp, 0, array.getLength() - 1);
-} 
+	public func sort<$T$>(array : ArrayLike<$T$>, cmp : Compare<$T$>) : void {
+		sort(array, cmp, 0, array.getLength() - 1);
+	} 
 
-public class Compare<$T$> {
-	public varfunc compare(a : T, b : T) : int;
-}
-public class IntSmaller : Compare<$int$> {
-	public varfunc compare(a : int, b : int) : int {
-		if (a == b) return 0;
-		else if (a > b) return -1;
-		else return 1;
+	public class Compare<$T$> {
+		public varfunc compare(a : T, b : T) : int;
+	}
+	public class IntCompare : Compare<$int$> {
+		public varfunc compare(a : int, b : int) : int {
+			if (a == b) return 0;
+			else if (a > b) return -1;
+			else return 1;
+		}
+	}
+	public class UIntCompare : Compare<$uint$> {
+		public varfunc compare(a : uint, b : uint) : uint {
+			if (a == b) return 0;
+			else if (a > b) return -1;
+			else return 1;
+		}
+	}
+	public class LongCompare : Compare<$long$> {
+		public varfunc compare(a : long, b : long) : long {
+			if (a == b) return 0;
+			else if (a > b) return -1;
+			else return 1;
+		}
 	}
 }
-public class UIntSmaller : Compare<$uint$> {
-    public varfunc compare(a : uint, b : uint) : uint {
-		if (a == b) return 0;
-		else if (a > b) return -1;
-		else return 1;
-	}
-}
-public class LongSmaller : Compare<$long$> {
-    public varfunc compare(a : long, b : long) : long {
-        if (a == b) return 0;
-        else if (a > b) return -1;
-        else return 1;
-    }
-}
-
-
-
