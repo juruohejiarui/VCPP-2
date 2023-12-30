@@ -2,7 +2,7 @@
 #include "syntaxnode.h"
 
 enum class IdentifierRegion {
-    Local, Member, Global
+    Local, Member, Global, Unknown,
 };
 class VariableInfo;
 class FunctionInfo;
@@ -27,6 +27,8 @@ struct ExprType {
     uint64 getSize() const;
 
     ExprType convertToBase() const;
+
+    std::string toString() const;
 };
 
 ExprType substitute(const ExprType &target, ClassInfo *cls, const ExprType &clsImpl);
@@ -37,7 +39,7 @@ struct VariableInfo {
     FunctionInfo *blgFunc;
     ClassInfo *blgCls;
     NamespaceInfo *blgNsp;
-
+    IdentifierVisibility visibility;
 
     RootNode *blgRoot;
 
@@ -61,6 +63,7 @@ struct FunctionInfo {
     std::vector<ClassInfo *> genericClasses;
     std::vector<VariableInfo *> params;
     ExprType resType;
+    IdentifierVisibility visibility;
 
     ClassInfo *blgCls;
     NamespaceInfo *blgNsp;
@@ -68,11 +71,14 @@ struct FunctionInfo {
     
     FuncDefNode *defNode;
 
+    uint64 offset;
+
     FunctionInfo();
 
-    IdentifierRegion getRegion() const;
+    FuncDefNode *getDefNode() const;
+    void setDefNode(FuncDefNode *defNode);
 
-    bool equalTo(const FunctionInfo &target) const;
+    IdentifierRegion getRegion() const;
 };
 
 typedef std::vector<FunctionInfo *> FunctionList;
@@ -87,10 +93,14 @@ struct ClassInfo {
     std::map<std::string, VariableInfo *> fieldMap;
     std::map<std::string, FunctionList> functionMap;
 
+    IdentifierVisibility visibility;
+
     uint64 size;
 
     NamespaceInfo *blgNsp;
     RootNode *blgRoot;
+
+    bool isGeneric;
 
     ClassInfo();
 };

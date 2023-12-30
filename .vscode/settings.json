@@ -93,6 +93,5 @@
         "valarray": "cpp",
         "variant": "cpp"
     },
-    "cmake.configureOnOpen": true,
     "C_Cpp.default.compilerPath": "/usr/bin/g++"
 }
