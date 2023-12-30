@@ -72,6 +72,7 @@ public:
 };
 
 class GenericAreaNode;
+class ConstValueNode;
 
 class IdentifierNode : public ExpressionNode {
 private:
@@ -82,6 +83,8 @@ public:
 
     GenericAreaNode *getGenericArea() const ;
     void setGenericArea(GenericAreaNode *node);
+    uint32 getDimc() const ;
+    void setDimc(uint32 dimc);
 
     uint32 getWeight() const override;
 

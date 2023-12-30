@@ -62,19 +62,34 @@ std::string OperatorNode::toString() const {
 #pragma endregion
 
 #pragma region IdentifierNode
-IdentifierNode::IdentifierNode() : ExpressionNode() { type = SyntaxNodeType::Identifier, children.resize(1, nullptr); }
-IdentifierNode::IdentifierNode(const Token &token) : ExpressionNode() { type = SyntaxNodeType::Identifier, children.resize(1, nullptr); }
+IdentifierNode::IdentifierNode() : ExpressionNode() {
+    type = SyntaxNodeType::Identifier, children.resize(2, nullptr); 
+    at(1) = new ConstValueNode();
+    at(1)->getToken().type = TokenType::ConstData;
+    at(1)->getToken().data.type = DataTypeModifier::u32;
+    at(1)->getToken().data.uint32_v() = 0u;
+}
+IdentifierNode::IdentifierNode(const Token &token) : ExpressionNode() {
+    type = SyntaxNodeType::Identifier, children.resize(2, nullptr); 
+    at(1) = new ConstValueNode();
+    at(1)->getToken().type = TokenType::ConstData;
+    at(1)->getToken().data.type = DataTypeModifier::u32;
+    at(1)->getToken().data.uint32_v() = 0u;
+}
 
 GenericAreaNode *IdentifierNode::getGenericArea() const { return (GenericAreaNode *)at(0); }
 void IdentifierNode::setGenericArea(GenericAreaNode *node) { at(0) = node; }
 
+uint32 IdentifierNode::getDimc() const { return at(1)->getToken().data.uint32_v(); }
+void IdentifierNode::setDimc(uint32 dimc) { at(1)->getToken().data.uint32_v() = dimc; }
+
 uint32 IdentifierNode::getWeight() const { return IdentifierWeight; }
 const std::string &IdentifierNode::getName() const { return name; }
 void IdentifierNode::setName(const std::string &name) { this->name = name; }
-size_t IdentifierNode::getParamCount() const { return getChildrenCount() - 1; }
-ExpressionNode *IdentifierNode::getParam(size_t index) const { return (ExpressionNode *)at(index + 1); }
+size_t IdentifierNode::getParamCount() const { return getChildrenCount() - 2; }
+ExpressionNode *IdentifierNode::getParam(size_t index) const { return (ExpressionNode *)at(index + 2); }
 
-bool IdentifierNode::isFuncCall() const { return getChildrenCount() > 1; }
+bool IdentifierNode::isFuncCall() const { return getChildrenCount() > 2; }
 std::string IdentifierNode::toString() const { return syntaxNodeTypeString[(int)type] + " " + name; }
 #pragma endregion
 
@@ -330,6 +345,11 @@ IdentifierNode *buildIdentifier(const TokenList &tkList, size_t l, size_t &r) {
         }
         // add a null pointer to a function call without params
         if (node->getChildrenCount() == 1) node->addChild(nullptr);
+    } else if (l < tkList.size() && tkList[l + 1].type == TokenType::MBrkL) {
+        uint32 dimc = 0;
+        while (tkList[r + 1].type == TokenType::MBrkL && tkList[r + 1].data.uint64_v() == r + 2)
+            dimc++, r += 2;
+        node->setDimc(dimc);
     }
     return node;
 }
@@ -531,16 +551,27 @@ VarDefNode *buildVarDef(const TokenList &tkList, size_t l, size_t &r) {
                 to2++;
             }
             initNode = buildExpression(tkList, to + 2, to2 - 1);
-            to = to2 - 1;
+            to = to2;
 
-            if (initNode == nullptr && nameNode == nullptr) {
-                printError(nameNode->getToken().lineId, "Definition of \"" + nameNode->getName() + "\" is empty.");
-                delete nameNode, delete node;
-                return nullptr;
-            }
+            
+        } else to++;
+        if (initNode == nullptr && nameNode == nullptr) {
+            printError(nameNode->getToken().lineId, "Definition of \"" + nameNode->getName() + "\" is empty.");
+            delete nameNode, delete node;
+            return nullptr;
         }
         node->addChild(nameNode), node->addChild(typeNode), node->addChild(initNode);
-        r = to + 1, varCount++;
+        varCount++;
+        r = to;
+        if (tkList[r].type == TokenType::ExprEnd) break;
+        else {
+            if (tkList[r].type != TokenType::Comma) {
+                printError(tkList[r].lineId, "Invalid content of variable definition");
+                delete node;
+                return nullptr;
+            }
+            r++;
+        }
     }
     node->setLocalVarCount(varCount);
     return node;

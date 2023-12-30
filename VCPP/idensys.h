@@ -14,6 +14,8 @@ struct ExprType {
     std::string clsName;
     int dimc;
     ValueTypeModifier vtMdf;
+
+    std::vector<ExprType> genericParams;
     
     ExprType();
     ExprType(const std::string &clsName, int dimc = 0, ValueTypeModifier vtMdf = ValueTypeModifier::t);
@@ -36,8 +38,6 @@ struct VariableInfo {
     ClassInfo *blgCls;
     NamespaceInfo *blgNsp;
 
-    IdentifierNode *nameNode, *typeNode;
-    ExpressionNode *initNode;
 
     RootNode *blgRoot;
 
@@ -45,7 +45,15 @@ struct VariableInfo {
 
     VariableInfo();
 
+    IdentifierNode *getNameNode() const;
+    void setNameNode(IdentifierNode *nameNode);
+    IdentifierNode *getTypeNode() const;
+    void setTypeNode(IdentifierNode *typeNode);
+
     IdentifierRegion getRegion() const;
+private:
+    IdentifierNode *nameNode, *typeNode;
+    ExpressionNode *initNode;
 };
 
 struct FunctionInfo {
@@ -74,7 +82,7 @@ struct ClassInfo {
     ClassInfo *baseCls;
     std::vector<ClassInfo *> genericClasses;
     /// @brief the params for every generic classes in base class
-    std::vector<ExprType *> genericParams;
+    std::vector<ExprType> genericParams;
 
     std::map<std::string, VariableInfo *> fieldMap;
     std::map<std::string, FunctionList> functionMap;
@@ -101,7 +109,7 @@ struct NamespaceInfo {
     NamespaceInfo();
 };
 
-ClassInfo *getBasicCls(const std::string &clsName);
+bool isBasicCls(ClassInfo *cls);
 
 FunctionInfo *getCurFunc();
 void switchCurFunc(FunctionInfo *func);

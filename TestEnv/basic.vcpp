@@ -4,6 +4,12 @@ namespace System {
 		public varfunc set(index : int, data : ValueT) : T;
 		public varfunc getLength() : uint;
 		public varfunc swap(x : int, y : int) : void;
+
+		public varfunc toBasicArray() : T[] {
+			var res = $T[];
+			for (var i = 0u; i < this.getLength(); i++) res[i] = get(i);
+			return res;
+		}
 	}
 	public class MapLike<$KeyT, ValueT$> {
 		public varfunc get(index : keyT) : T;
