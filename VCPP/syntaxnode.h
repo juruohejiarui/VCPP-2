@@ -279,7 +279,7 @@ public:
     void addChild(SyntaxNode *node) override;
 };
 
-typedef std::vector<RootNode> RootList;
+typedef std::vector<RootNode *> RootList;
 
 SyntaxNode *buildNode(const TokenList &tkList, size_t l, size_t &r);
 RootNode *buildRootNode(SyntaxNodeType type, const TokenList &tkList);

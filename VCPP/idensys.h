@@ -27,6 +27,9 @@ struct ExprType {
     uint64 getSize() const;
 
     ExprType convertToBase() const;
+    /// @brief Set the member "cls" using the member "clsName" and the "cls" in "genericParams"
+    /// @return if it is successful
+    bool setCls();
 
     std::string toString() const;
 };
@@ -76,9 +79,17 @@ struct FunctionInfo {
     FunctionInfo();
 
     FuncDefNode *getDefNode() const;
+    /// @brief This function will update the defNode, and the information that stored in defNode excepts the content.
+    /// @param defNode 
     void setDefNode(FuncDefNode *defNode);
 
     IdentifierRegion getRegion() const;
+
+    /// @brief This function will check whether the param list satisfy the type requirements of 
+    /// this function and return the result and the expression type of the return value of this function.
+    /// @param paramList the param list
+    /// @return (Whether the param list satisfy the requirements, the expression type of the return value)
+    std::pair<bool, ExprType> satisfy(const std::vector<ExprType> paramList);
 };
 
 typedef std::vector<FunctionInfo *> FunctionList;
@@ -100,7 +111,11 @@ struct ClassInfo {
     NamespaceInfo *blgNsp;
     RootNode *blgRoot;
 
+    ClsDefNode *defNode;
+
     bool isGeneric;
+
+    std::vector<ClassInfo *> derivedClasses;
 
     ClassInfo();
 };
@@ -114,21 +129,25 @@ struct NamespaceInfo {
     std::map<std::string, NamespaceInfo *> nspMap;
 
     NamespaceInfo *blgNsp;
-    RootNode *blgRoot;
+    
+    std::vector<std::pair<NspDefNode *, RootNode * > > defList;
 
     NamespaceInfo();
 };
 
+extern NamespaceInfo *rootNsp;
+extern ClassInfo *basicCls, *int8Cls, *uint8Cls, *int16Cls, *uint16Cls, *int32Cls, *uint32Cls, *int64Cls, *uint64Cls;
+
 bool isBasicCls(ClassInfo *cls);
 
 FunctionInfo *getCurFunc();
-void switchCurFunc(FunctionInfo *func);
+void setCurFunc(FunctionInfo *func);
 ClassInfo *getCurCls();
-void switchCurCls(ClassInfo *cls);
+void setCurCls(ClassInfo *cls);
 NamespaceInfo *getCurNsp();
-void switchCurNsp(NamespaceInfo *nsp);
+void setCurNsp(NamespaceInfo *nsp);
 RootNode *getCurRoot();
-void switchCurRoot(RootNode *node);
+bool setCurRoot(RootNode *node);
 
 ClassInfo *findCls(const std::string &path);
 FunctionInfo *findFunc(const std::string &path);
