@@ -1,4 +1,5 @@
 #include "syntaxnode.h"
+#include "idensys.h"
 
 using namespace std;
 
@@ -21,7 +22,10 @@ int main() {
         return 0;
     }
     RootNode *node = buildRootNode(SyntaxNodeType::SourceRoot, tkList);
+    RootList roots;
+    roots.push_back(node);
     freopen("test.out", "w", stdout);
-    debugPrintTree(node);
+    if (node != nullptr) succ &= buildIdenSystem(roots);
+    debugPrintNspStruct(rootNsp);
     return 0;
 }

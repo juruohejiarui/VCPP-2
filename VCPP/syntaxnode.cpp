@@ -158,8 +158,8 @@ ExpressionNode *ControlNode::getContent() const {
 #pragma endregion
 
 #pragma region VarDefNode
-VarDefNode::VarDefNode() : BlockNode() { type = SyntaxNodeType::VarDef; }
-VarDefNode::VarDefNode(const Token &token) : BlockNode(token) { type = SyntaxNodeType::VarDef; }
+VarDefNode::VarDefNode() : BlockNode() { type = SyntaxNodeType::VarDef, visibility = IdentifierVisibility::Unknown; }
+VarDefNode::VarDefNode(const Token &token) : BlockNode(token) { type = SyntaxNodeType::VarDef, visibility = IdentifierVisibility::Unknown; }
 
 IdentifierVisibility VarDefNode::getVisibility() const { return visibility; }
 void VarDefNode::setVisibility(IdentifierVisibility visibility) { this->visibility = visibility; }
@@ -170,8 +170,8 @@ std::tuple<IdentifierNode *, IdentifierNode *, ExpressionNode *> VarDefNode::get
 #pragma endregion
 
 #pragma region FuncDef
-FuncDefNode::FuncDefNode() : BlockNode() { type = SyntaxNodeType::FuncDef; }
-FuncDefNode::FuncDefNode(const Token &token) : BlockNode(token) { type = SyntaxNodeType::FuncDef; }
+FuncDefNode::FuncDefNode() : BlockNode() { type = SyntaxNodeType::FuncDef, visibility = IdentifierVisibility::Unknown; }
+FuncDefNode::FuncDefNode(const Token &token) : BlockNode(token) { type = SyntaxNodeType::FuncDef, visibility = IdentifierVisibility::Unknown; }
 
 IdentifierVisibility FuncDefNode::getVisibility() const { return visibility; }
 void FuncDefNode::setVisibility(IdentifierVisibility visibility) { this->visibility = visibility; }
@@ -191,8 +191,8 @@ VarFuncDefNode::VarFuncDefNode(const Token &token) : FuncDefNode(token) { type =
 #pragma endregion
 
 #pragma region ClsDefNode
-ClsDefNode::ClsDefNode() : SyntaxNode(SyntaxNodeType::ClsDef) { children.resize(2, nullptr); }
-ClsDefNode::ClsDefNode(const Token &token) : SyntaxNode(SyntaxNodeType::ClsDef, token) { children.resize(2, nullptr); }
+ClsDefNode::ClsDefNode() : SyntaxNode(SyntaxNodeType::ClsDef) { children.resize(2, nullptr), visibility = IdentifierVisibility::Unknown; }
+ClsDefNode::ClsDefNode(const Token &token) : SyntaxNode(SyntaxNodeType::ClsDef, token) { children.resize(2, nullptr), visibility = IdentifierVisibility::Unknown; }
 
 IdentifierVisibility ClsDefNode::getVisibility() const { return visibility; }
 void ClsDefNode::setVisibility(IdentifierVisibility visibility) { this->visibility = visibility; }
@@ -637,6 +637,7 @@ FuncDefNode *buildFuncDef(const TokenList &tkList, size_t l, size_t &r) {
 
 ClsDefNode *buildClsDef(const TokenList &tkList, size_t l, size_t &r) {
     ClsDefNode *node = new ClsDefNode(tkList[l]);
+    if (isVisibility(tkList[l - 1].type)) node->setVisibility(getVisibility(tkList[l - 1].type));
     IdentifierNode *nameNode = buildIdentifier(tkList, l + 1, r);
     if (nameNode == nullptr || nameNode->isFuncCall()) {
         printError(node->getToken().lineId, "Invalid syntax of definition of class");

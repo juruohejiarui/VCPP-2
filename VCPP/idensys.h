@@ -25,16 +25,28 @@ struct ExprType {
     ExprType(IdentifierNode *node);
 
     uint64 getSize() const;
+    bool isObject() const;
 
     ExprType convertToBase() const;
     /// @brief Set the member "cls" using the member "clsName" and the "cls" in "genericParams"
     /// @return if it is successful
     bool setCls();
 
+    bool operator == (const ExprType &other) const;
+    bool operator != (const ExprType &other) const;
+
     std::string toString() const;
+    std::string toDebugString() const;
 };
 
 ExprType substitute(const ExprType &target, ClassInfo *cls, const ExprType &clsImpl);
+typedef std::map<ClassInfo *, ExprType> GenericSubstitutionMap;
+
+GenericSubstitutionMap makeSubtitutionMap(const std::vector<ClassInfo *> &gClsList, const std::vector<ExprType> &gParamList);
+/// @brief merge the <key and value pair> in SRC into DST, if there are same generic classes in both map, then the param of it will be the one in SRC
+/// @param dst the destination
+/// @param src the source
+void mergeSubtitutionMap(GenericSubstitutionMap &dst, const GenericSubstitutionMap &src);
 
 struct VariableInfo {
     std::string name, fullName;
@@ -54,6 +66,8 @@ struct VariableInfo {
     void setNameNode(IdentifierNode *nameNode);
     IdentifierNode *getTypeNode() const;
     void setTypeNode(IdentifierNode *typeNode);
+    ExpressionNode *getInitNode() const;
+    void setInitNode(ExpressionNode *initNode);
 
     IdentifierRegion getRegion() const;
 private:
@@ -87,9 +101,10 @@ struct FunctionInfo {
 
     /// @brief This function will check whether the param list satisfy the type requirements of 
     /// this function and return the result and the expression type of the return value of this function.
+    /// @param gsMap the subtitution map of generic class in the generic list
     /// @param paramList the param list
     /// @return (Whether the param list satisfy the requirements, the expression type of the return value)
-    std::pair<bool, ExprType> satisfy(const std::vector<ExprType> paramList);
+    std::pair<bool, ExprType> satisfy(const GenericSubstitutionMap &gsMap, const std::vector<ExprType> &paramList);
 };
 
 typedef std::vector<FunctionInfo *> FunctionList;
@@ -106,7 +121,7 @@ struct ClassInfo {
 
     IdentifierVisibility visibility;
 
-    uint64 size;
+    uint64 size, dep;
 
     NamespaceInfo *blgNsp;
     RootNode *blgRoot;
@@ -154,3 +169,6 @@ FunctionInfo *findFunc(const std::string &path);
 VariableInfo *findVar(const std::string &path);
 
 bool buildIdenSystem(const RootList &roots);
+
+void debugPrintNspStruct(NamespaceInfo *nsp, int dep = 0);
+

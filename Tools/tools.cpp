@@ -70,7 +70,7 @@ bool isInteger(DataTypeModifier dtMfr) {
     return dtMfr <= DataTypeModifier::u64 || dtMfr == DataTypeModifier::B;
 }
 bool isReference(ValueTypeModifier vlMfr) {
-    return vlMfr == ValueTypeModifier::mr || vlMfr == ValueTypeModifier::r;
+    return vlMfr == ValueTypeModifier::MemberRef || vlMfr == ValueTypeModifier::r;
 }
 
 void stringSplit(const std::string &str, const std::string &sep, std::vector<std::string> &res)
@@ -135,6 +135,10 @@ std::string toString(const UnionData &data) {
             break;
     }
     return std::string(strBuf);
+}
+
+uint64 alignTo(uint64 value, uint64 base) {
+    return (uint64)ceil(1.0 * value / base) * base;
 }
 
 void readData(std::ifstream &ifs, UnionData &data) {

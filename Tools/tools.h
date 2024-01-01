@@ -7,6 +7,7 @@
 #include <string>
 #include <stack>
 #include <queue>
+#include <cmath>
 #include <map>
 #include <set>
 
@@ -91,7 +92,7 @@ struct UnionData {
 
 
 enum class ValueTypeModifier {
-    mr, r, t, Unknown,
+    MemberRef, r, t, Unknown,
 };
 
 enum class IdentifierVisibility {
@@ -131,3 +132,9 @@ std::string toString(const UnionData &data);
 #define isNumber(ch) ('0' <= (ch) && (ch) <= '9')
 #define toDigtal(ch) (('a' <= (ch) && ch <= 'f') ? ((ch) - 'a' + 10) : (('A' <= (ch) && (ch) <= 'F') ? ((ch) - 'A' + 10) : (ch) - '0'))
 #define isSeparator(ch) ((ch) == ' ' || (ch) == '\t' || (ch) == '\n' || (ch) == '\r') 
+
+/// @brief This function can align the value to multiples of base
+/// @param value the initial value
+/// @param base the base
+/// @return the value after aligned
+uint64 alignTo(uint64 value, uint64 base);
