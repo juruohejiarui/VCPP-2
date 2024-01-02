@@ -1,5 +1,5 @@
 namespace System {
-	public class ArrayLike<$T$> {
+	public class ArrayLike<$T$> : MapLike<$int, T$> {
 		public varfunc get(index : int) : T;
 		public varfunc set(index : int, data : T) : void;
 		public varfunc getLength() : uint;
@@ -65,7 +65,7 @@ namespace System {
 		private var length : uint, capacity : uint;
 	}
 
-	public func sort<$T$>(array : ArrayLike<$T$>, cmp : Compare<$T$>, l : uint, r : uint) : void {
+	public func sort<$T$>(array : ArrayLike<$T$>, @compare : Compare<$T$>, l : uint, r : uint) : void {
 		if (r <= l) return ;
 		// partion
 		var bs = array[l], tl = l, tr = r;
@@ -93,17 +93,27 @@ namespace System {
 		}
 	}
 	public class UIntCompare : Compare<$uint$> {
-		public varfunc compare(a : uint, b : uint) : uint {
+		public varfunc compare(a : uint, b : uint) : int {
 			if (a == b) return 0;
 			else if (a > b) return -1;
 			else return 1;
 		}
 	}
 	public class LongCompare : Compare<$long$> {
-		public varfunc compare(a : long, b : long) : long {
+		public varfunc compare(a : long, b : long) : int {
 			if (a == b) return 0;
 			else if (a > b) return -1;
 			else return 1;
 		}
 	}
+}
+
+class TestA<$T1$> {
+	protected func func1<$T2$>(v1 : T2) : T2;
+	protected func func2<$T2$>(v1 : T2, v2 : T2) : T2;
+}
+
+class TestB<$T$> : TestA<$T$> {
+	protected func func1(v1 : int) : int;
+	protected func func2(v2 : int, v2 : float) : int;
 }

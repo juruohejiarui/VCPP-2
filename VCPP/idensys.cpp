@@ -185,7 +185,7 @@ IdentifierRegion FunctionInfo::getRegion() const {
 
 std::pair<bool, ExprType> FunctionInfo::satisfy(const GenericSubstitutionMap &gsMap, const std::vector<ExprType> &paramList) {
     if (paramList.size() != this->params.size()) return std::make_pair(false, ExprType());
-    auto ngsMap(gsMap);
+    auto ngsMap = gsMap;
     auto tryMatch = [&ngsMap](ExprType src, const ExprType &tgr) -> bool {
         auto recursion = [&ngsMap](auto &&self, ExprType src, const ExprType &tgr) -> bool {
             if (src.dimc != tgr.dimc) return false;
@@ -202,7 +202,7 @@ std::pair<bool, ExprType> FunctionInfo::satisfy(const GenericSubstitutionMap &gs
                 }
             }
             bool succ = false;
-            while (src.cls != basicCls) {
+            while (src.cls != basicCls && src.cls != nullptr && !src.cls->isGeneric) {
                 if (src.cls == tgr.cls) { succ = true; break; }
                 src = src.convertToBase();
             }
@@ -518,9 +518,11 @@ bool buildClsTree(const RootList &roots) {
                     // substitute the generic class of base cls by the generic params provided by derived class
                     for (size_t i = 0; i < bsCls->genericClasses.size(); i++)
                         fInfo->resType = substitute(fInfo->resType, bsCls->genericClasses[i], dCls->genericParams[i]);
-                    for (auto &param : fInfo->params)
+                    for (auto &param : fInfo->params) {
+                        param = new VariableInfo(*param);
                         for (size_t i = 0; i < bsCls->genericClasses.size(); i++)
                             param->type = substitute(param->type, bsCls->genericClasses[i], dCls->genericParams[i]);
+                    }
                 }
                 dCls->functionMap.insert(funcList);
             }
