@@ -39,8 +39,9 @@ struct ExprType {
     std::string toDebugString() const;
 };
 
-ExprType substitute(const ExprType &target, ClassInfo *cls, const ExprType &clsImpl);
 typedef std::map<ClassInfo *, ExprType> GenericSubstitutionMap;
+ExprType substitute(const ExprType &target, ClassInfo *cls, const ExprType &clsImpl);
+ExprType substitute(const ExprType &target, const GenericSubstitutionMap &gsMap);
 
 GenericSubstitutionMap makeSubtitutionMap(const std::vector<ClassInfo *> &gClsList, const std::vector<ExprType> &gParamList);
 /// @brief merge the <key and value pair> in SRC into DST, if there are same generic classes in both map, then the param of it will be the one in SRC
@@ -165,7 +166,7 @@ RootNode *getCurRoot();
 bool setCurRoot(RootNode *node);
 
 ClassInfo *findCls(const std::string &path);
-FunctionInfo *findFunc(const std::string &path);
+const FunctionList &findFunc(const std::string &path);
 VariableInfo *findVar(const std::string &path);
 
 bool buildIdenSystem(const RootList &roots);

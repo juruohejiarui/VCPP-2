@@ -88,6 +88,17 @@ ExprType substitute(const ExprType &target, ClassInfo *cls, const ExprType &clsI
     return res;
 }
 
+ExprType substitute(const ExprType &target, const GenericSubstitutionMap &gsMap) {
+    ExprType res = target;
+    if (res.cls->isGeneric && gsMap.count(res.cls)) {
+        uint32 dimc = res.dimc;
+        res = gsMap.find(res.cls)->second;
+        return res;
+    }
+    for (size_t i = 0; i < res.genericParams.size(); i++) res.genericParams[i] = substitute(res.genericParams[i], gsMap);
+    return res;
+}
+
 VariableInfo::VariableInfo() {
     nameNode = typeNode = nullptr, initNode = nullptr, blgRoot = nullptr;
     blgFunc = nullptr, blgCls = nullptr, blgNsp = nullptr;
@@ -165,12 +176,34 @@ IdentifierRegion FunctionInfo::getRegion() const {
 }
 
 std::pair<bool, ExprType> FunctionInfo::satisfy(const GenericSubstitutionMap &gsMap, const std::vector<ExprType> &paramList) {
+    if (paramList.size() != this->params.size()) return std::make_pair(false, ExprType());
     auto ngsMap(gsMap);
     auto tryMatch = [&](ExprType src, const ExprType &tgr) -> bool {
-        if (src.dimc != tgr.dimc) return false;
-        
+        auto recursion = [&](auto &&self, ExprType src, const ExprType &tgr) -> bool {
+            if (src.dimc != tgr.dimc) return false;
+            if (tgr.cls->isGeneric) {
+                auto iter = ngsMap.find(tgr.cls);
+                if (iter == ngsMap.end()) {
+                    ngsMap.insert(std::make_pair(tgr.cls, src));
+                    ngsMap[tgr.cls].dimc = 0;
+                    return true;
+                } else {
+                    ExprType &gParam = iter->second;
+                    gParam.dimc = tgr.dimc;
+                    return recursion(recursion, src, gParam);
+                }
+            }
+            if (src.cls->dep < tgr.cls->dep) return false;
+            while (src.cls->dep > tgr.cls->dep) src = src.convertToBase();
+            if (src.cls != tgr.cls || src.genericParams.size() != tgr.genericParams.size()) return false;
+            for (size_t i = 0; i < src.genericParams.size(); i++)
+                if (!recursion(recursion, src.genericParams[i], tgr.genericParams[i])) return false;
+            return true;
+        };
+        return recursion(recursion, src, tgr);
     };
-    return std::make_pair(false, ExprType());
+    for (size_t i = 0; i < paramList.size(); i++) if (!tryMatch(paramList[i], params[i]->type)) return std::make_pair(false, ExprType());
+    return std::make_pair(true, substitute(this->resType, ngsMap));
 }
 
 ClassInfo::ClassInfo() {
