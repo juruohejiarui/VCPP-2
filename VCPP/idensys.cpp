@@ -645,6 +645,57 @@ bool buildCls(const RootList &roots) {
 }
 
 bool buildGlo(const RootList &roots) {
+    std::map<RootNode *, uint64> vOffset;
+    auto buildGloVar = [&](VarDefNode *varDef, NamespaceInfo *blgNsp, RootNode *blgRoot) -> bool {
+        IdentifierVisibility visibility = (varDef->getVisibility() == IdentifierVisibility::Unknown ?
+                                            IdentifierVisibility::Private : varDef->getVisibility());
+        bool succ = true;
+        for (size_t i = 0; i < varDef->getLocalVarCount(); i++) {
+            auto tpl = varDef->getVariable(i);
+            VariableInfo *vInfo = new VariableInfo();
+            vInfo->blgNsp = blgNsp, vInfo->blgRoot = blgRoot;
+            vInfo->setNameNode(std::get<0>(tpl));
+            vInfo->setTypeNode(std::get<1>(tpl));
+            if (blgNsp->varMap.count(vInfo->name)) {
+                printError(vInfo->getNameNode()->getToken().lineId, "Redefinition of variable " + vInfo->fullName);
+                delete vInfo;
+                succ = false;
+                continue;
+            }
+            if (vOffset.count(blgRoot))
+                vInfo->offset = vOffset[blgRoot], vOffset[blgRoot] += sizeof(vInfo->type.getSize());
+            vInfo->visibility = visibility;
+        }
+        return succ;
+    };
+    auto buildGloFunc = [&](FuncDefNode *funcDef, NamespaceInfo *blgNsp, RootNode *blgRoot) -> bool {
+        FunctionInfo *fInfo = new FunctionInfo();
+        fInfo->blgNsp = blgNsp, fInfo->blgRoot = blgRoot;
+        
+    };
+    auto scanNsp = [&](NspDefNode *nspDef, RootNode *blgRoot) -> bool {
+
+    };
+    bool succ = true;
+    for (auto &root : roots) {
+        setCurRoot(root);
+        if (root->getType() == SyntaxNodeType::SourceRoot)
+            vOffset.insert(std::make_pair(root, 0));
+        for (size_t i = 0; i < root->getDefCount(); i++) {
+            switch (root->getDef(i)->getType()) {
+                case SyntaxNodeType::VarDef:
+                    succ &= buildGloVar((VarDefNode *)root->getDef(i), rootNsp, root);
+                    break;
+                case SyntaxNodeType::FuncDef:
+                    succ &= buildGloFunc((FuncDefNode *)root->getDef(i), rootNsp, root);
+                    break;
+                case SyntaxNodeType::NspDef:
+                    succ &= scanNsp((NspDefNode *)root->getDef(i), root);
+                    break;
+            }
+        }
+    }
+    return succ;
 }
 
 bool buildIdenSystem(const RootList &roots) {
