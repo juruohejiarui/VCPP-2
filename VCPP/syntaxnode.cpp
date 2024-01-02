@@ -218,11 +218,9 @@ void ClsDefNode::addChild(SyntaxNode *node) {
         case SyntaxNodeType::VarDef:
             fieldIndex.push_back(getChildrenCount());
             break;
+        case SyntaxNodeType::VarFuncDef:
         case SyntaxNodeType::FuncDef:
             funcIndex.push_back(getChildrenCount());
-            break;
-        case SyntaxNodeType::VarFuncDef:
-            varFuncIndex.push_back(getChildrenCount());
             break;
     }
     SyntaxNode::addChild(node);

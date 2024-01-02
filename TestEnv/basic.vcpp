@@ -1,7 +1,7 @@
 namespace System {
 	public class ArrayLike<$T$> {
 		public varfunc get(index : int) : T;
-		public varfunc set(index : int, data : ValueT) : T;
+		public varfunc set(index : int, data : T) : void;
 		public varfunc getLength() : uint;
 		public varfunc swap(x : int, y : int) : void;
 
@@ -12,14 +12,14 @@ namespace System {
 		}
 	}
 	public class MapLike<$KeyT, ValueT$> {
-		public varfunc get(index : keyT) : T;
-		public varfunc set(index : keyT, data : ValueT) : T;
+		public varfunc get(index : KeyT) : ValueT;
+		public varfunc set(index : KeyT, data : ValueT) : void;
 	}
 
 	public class String : ArrayLike<$char$> {
 		public varfunc get(index : int) : char;
 		public varfunc set(index : int, dt : char) : void;
-		public func getLength() : uint;
+		public varfunc getLength() : uint;
 		public func resize(length : int) : void;
 		public func append(dt : char) : void;
 		public func @constructer() : void;

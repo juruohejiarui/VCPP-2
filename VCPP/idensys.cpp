@@ -2,7 +2,7 @@
 
 const std::string unknownName = "<unknown>", constructerName = "@constructer";
 NamespaceInfo *rootNsp;
-ClassInfo *basicCls, *int8Cls, *uint8Cls, *int16Cls, *uint16Cls, *int32Cls, *uint32Cls, *int64Cls, *uint64Cls, *float32Cls, *float64Cls, *objectCls, *basicTypeCls[12];
+ClassInfo *voidCls, *basicCls, *int8Cls, *uint8Cls, *int16Cls, *uint16Cls, *int32Cls, *uint32Cls, *int64Cls, *uint64Cls, *float32Cls, *float64Cls, *objectCls, *basicTypeCls[13];
 
 #pragma region definition of member functions
 ExprType::ExprType() {
@@ -54,6 +54,14 @@ bool ExprType::setCls() {
     for (auto &param : genericParams) succ &= param.setCls();
     return succ;
 }
+
+bool ExprType::operator==(const ExprType &other) const {
+    if (dimc != other.dimc || cls != other.cls || genericParams.size() != other.genericParams.size()) return false;
+    for (size_t i = 0; i < genericParams.size(); i++) if (genericParams[i] != other.genericParams[i]) return false;
+    return true;
+}
+
+bool ExprType::operator!=(const ExprType &other) const { return !(*this == other); }
 
 std::string ExprType::toString() const
 {
@@ -178,8 +186,8 @@ IdentifierRegion FunctionInfo::getRegion() const {
 std::pair<bool, ExprType> FunctionInfo::satisfy(const GenericSubstitutionMap &gsMap, const std::vector<ExprType> &paramList) {
     if (paramList.size() != this->params.size()) return std::make_pair(false, ExprType());
     auto ngsMap(gsMap);
-    auto tryMatch = [&](ExprType src, const ExprType &tgr) -> bool {
-        auto recursion = [&](auto &&self, ExprType src, const ExprType &tgr) -> bool {
+    auto tryMatch = [&ngsMap](ExprType src, const ExprType &tgr) -> bool {
+        auto recursion = [&ngsMap](auto &&self, ExprType src, const ExprType &tgr) -> bool {
             if (src.dimc != tgr.dimc) return false;
             if (tgr.cls->isGeneric) {
                 auto iter = ngsMap.find(tgr.cls);
@@ -190,14 +198,18 @@ std::pair<bool, ExprType> FunctionInfo::satisfy(const GenericSubstitutionMap &gs
                 } else {
                     ExprType &gParam = iter->second;
                     gParam.dimc = tgr.dimc;
-                    return recursion(recursion, src, gParam);
+                    return self(self, src, gParam);
                 }
             }
-            if (src.cls->dep < tgr.cls->dep) return false;
-            while (src.cls->dep > tgr.cls->dep) src = src.convertToBase();
-            if (src.cls != tgr.cls || src.genericParams.size() != tgr.genericParams.size()) return false;
+            bool succ = false;
+            while (src.cls != basicCls) {
+                if (src.cls == tgr.cls) { succ = true; break; }
+                src = src.convertToBase();
+            }
+            if (!succ) return false;
+            if (src.genericParams.size() != tgr.genericParams.size()) return false;
             for (size_t i = 0; i < src.genericParams.size(); i++)
-                if (!recursion(recursion, src.genericParams[i], tgr.genericParams[i])) return false;
+                if (!self(self, src.genericParams[i], tgr.genericParams[i])) return false;
             return true;
         };
         return recursion(recursion, src, tgr);
@@ -319,6 +331,7 @@ ClassInfo *findCls(const std::string &path) {
 void buildRootInfo() {
     rootNsp = new NamespaceInfo();
     basicCls = new ClassInfo(), basicCls->size = 0;
+    voidCls = new ClassInfo(), voidCls->name = voidCls->fullName = "void", voidCls->size = 0;
     int8Cls = new ClassInfo(), int8Cls->name = int8Cls->fullName = "char", int8Cls->size = sizeof(char);
     uint8Cls = new ClassInfo(), uint8Cls->name = uint8Cls->fullName = "byte", uint8Cls->size = sizeof(unsigned char);
     int16Cls = new ClassInfo(), int16Cls->name = int16Cls->fullName = "short", int16Cls->size = sizeof(short);
@@ -331,13 +344,14 @@ void buildRootInfo() {
     float64Cls = new ClassInfo(), float64Cls->name = float64Cls->fullName = "double", float64Cls->size = sizeof(double);
     objectCls = new ClassInfo(), objectCls->name = objectCls->fullName = "object", objectCls->size = sizeof(uint64);
 
-    basicTypeCls[0] = int8Cls, basicTypeCls[1] = uint8Cls, basicTypeCls[2] = int16Cls, basicTypeCls[3] = uint16Cls;
-    basicTypeCls[4] = int32Cls, basicTypeCls[5] = uint32Cls, basicTypeCls[6] = int64Cls, basicTypeCls[7] = uint64Cls;
-    basicTypeCls[8] = float32Cls, basicTypeCls[9] = float64Cls, basicTypeCls[10] = objectCls, basicTypeCls[11] = basicCls;
+    basicTypeCls[0] = voidCls;
+    basicTypeCls[1] = int8Cls, basicTypeCls[2] = uint8Cls, basicTypeCls[3] = int16Cls, basicTypeCls[4] = uint16Cls;
+    basicTypeCls[5] = int32Cls, basicTypeCls[6] = uint32Cls, basicTypeCls[7] = int64Cls, basicTypeCls[8] = uint64Cls;
+    basicTypeCls[9] = float32Cls, basicTypeCls[10] = float64Cls, basicTypeCls[11] = objectCls, basicTypeCls[12] = basicCls;
 
-    for (int i = 0; i < 12; i++) 
+    for (int i = 0; i < 13; i++) 
         rootNsp->clsMap[basicTypeCls[i]->name] = basicTypeCls[i], basicTypeCls[i]->blgNsp = rootNsp;
-    for (int i = 0; i < 11; i++) 
+    for (int i = 0; i < 12; i++) 
         basicTypeCls[i]->baseCls = basicCls, basicCls->derivedClasses.push_back(basicTypeCls[i]),
         basicTypeCls[i]->visibility = IdentifierVisibility::Public;
 }
@@ -480,16 +494,12 @@ bool buildClsTree(const RootList &roots) {
     std::queue<ClassInfo *> que;
     que.push(objectCls);
     while (!que.empty()) {
-        auto bsCls = que.front(); que.pop();
-        for (auto dCls : bsCls->derivedClasses) {
-            if (dCls->size > 0) {
-                printError(0, "Ring inheritance!!");
-                return false;
-            }
+        ClassInfo *bsCls = que.front(); que.pop();
+        for (ClassInfo *dCls : bsCls->derivedClasses) {
             dCls->size = bsCls->size + dCls->genericClasses.size() * sizeof(uint8);
             dCls->dep = bsCls->dep + 1;
             // set identifier environment
-            setCurNsp(dCls->blgNsp), setCurRoot(dCls->blgRoot);
+            setCurNsp(dCls->blgNsp), setCurRoot(dCls->blgRoot), setCurCls(dCls);
             // use memory align to modify the offset of object members
             // inherit the members from base class
             for (auto &fld : bsCls->fieldMap) {
@@ -558,17 +568,28 @@ bool buildClsTree(const RootList &roots) {
                 setCurFunc(fInfo);
                 // set classes for all the expression type of this fInfo
                 succ &= fInfo->resType.setCls();
+                if (!succ) {
+                    printError(fDef->getToken().lineId, "Definition of function " + fInfo->fullName + " has error in expression type param and return value checking");
+                    delete fInfo;
+                    continue;
+                }
                 std::vector<ExprType> paramTypeList;
                 for (size_t i = 0; i < fInfo->params.size(); i++) {
                     succ &= fInfo->params[i]->type.setCls();
                     paramTypeList.push_back(fInfo->params[i]->type);
                 }
-                
+                if (!succ) {
+                    printError(fDef->getToken().lineId, "Definition of function " + fInfo->fullName + " has error in expression type param and return value checking");
+                    delete fInfo;
+                    continue;
+                }
                 // insert this function
                 // find whether there is a function which is inherited from base and has the same param list
                 bool cover = false;
                 if (dCls->functionMap.count(fInfo->name)) {
-                    for (auto &bsFunc : dCls->functionMap[fInfo->name]) {
+                    auto &fList = dCls->functionMap[fInfo->name];
+                    for (size_t i = 0; i < fList.size(); i++) {
+                        auto &bsFunc = fList[i];
                         if (bsFunc->blgCls == dCls) continue;
                         // substitute all the generic params into the functions in base class
                         auto chkRes = bsFunc->satisfy(gsMap, paramTypeList);
@@ -586,10 +607,10 @@ bool buildClsTree(const RootList &roots) {
                                     } else {
                                         // just cover the function
                                         fInfo->offset = bsFunc->offset;
-                                        bsFunc = fInfo;
+                                        fList[i] = fInfo;
                                     }
                                     
-                                } else bsFunc = fInfo; // simply cover the function
+                                } else fList[i] = fInfo; // simply cover the function
                             }
                             cover = true;
                             break;
@@ -652,6 +673,34 @@ void debugPrintClsStruct(ClassInfo *cls, int dep = 0) {
     }
     std::cout << std::endl;
     std::cout << getIndent(dep + 1) << "<size> = " << cls->size << std::endl;
+    for (auto &varPair : cls->fieldMap) {
+        std::cout << getIndent(dep + 1) << varPair.first
+         << "->" << varPair.second->fullName << " " << varPair.second->type.toDebugString() << " offset=" << varPair.second->offset << std::endl;
+    }
+    for (auto &funcPair : cls->functionMap) {
+        std::cout << getIndent(dep + 1) << funcPair.first
+         << "->" << std::endl;
+        for (auto &func : funcPair.second) {
+            std::cout << getIndent(dep + 2) << func->name << " " << func->fullName;
+            if (func->genericClasses.size() > 0) {
+                std::cout << "<$";
+                for (size_t i = 0; i < func->genericClasses.size(); i++) {
+                    if (i > 0) std::cout << ", ";
+                    std::cout << func->genericClasses[i]->name;
+                }
+                std::cout << "$>";
+            }
+            std::cout << "(";
+            for (size_t i = 0; i < func->params.size(); i++) {
+                if (i > 0) std::cout << ", ";
+                std::cout << func->params[i]->name << ":" << func->params[i]->type.toDebugString();
+            }
+            std::cout << ") : " << func->resType.toDebugString();
+            std::cout << std::endl;
+            if (func->defNode->getType() == SyntaxNodeType::VarFuncDef)
+                std::cout << getIndent(dep + 2) << "<offset> = " << func->offset << std::endl;
+        }
+    }
 }
 
 void debugPrintNspStruct(NamespaceInfo *nsp, int dep) {
