@@ -6,7 +6,7 @@
 #include "rflsys.h"
 
 enum DataTypeModifier {
-    i8, u8, i16, u16, i32, u32, i64, u64, f32, f64, o, B, dtMdfUnknown,
+    i8, u8, i16, u16, i32, u32, i64, u64, f32, f64, o, v0, v1, v2, v3, v4, dtMdfUnknown,
 };
 enum ValueTypeModifier {
     MemberRef, VarRef, TrueVal, vlMdfUnknown,

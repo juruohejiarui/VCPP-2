@@ -644,10 +644,14 @@ bool buildCls(const RootList &roots) {
     return succ;
 }
 
+bool buildGlo(const RootList &roots) {
+}
+
 bool buildIdenSystem(const RootList &roots) {
     bool succ = true;
     buildRootInfo();
     succ &= buildCls(roots);
+    succ &= buildGlo(roots);
     return succ;
 }
 

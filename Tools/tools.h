@@ -39,7 +39,7 @@ union Data {
 };
 
 enum class DataTypeModifier {
-    c, b, i16, u16, i32, u32, i64, u64, f32, f64, o, B, unknown,
+    c, b, i16, u16, i32, u32, i64, u64, f32, f64, o, v0, v1, v2, v3, v4, unknown,
 };
 
 struct UnionData {

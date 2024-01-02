@@ -1,9 +1,9 @@
 #include "tools.h"
 
-const std::string dataTypeModifierString[] = {"c", "b", "i16", "u16", "i32", "u32", "i64", "u64", "f32", "f64", "o", "B", "unknown"};
+const std::string dataTypeModifierString[] = {"c", "b", "i16", "u16", "i32", "u32", "i64", "u64", "f32", "f64", "o", "v0", "v1", "v2", "v3", "v4", "unknown"};
 const std::string valueTypeModifierString[] = {"mr", "r", "t", "unknown"};
 const std::string identifierVisibilityString[] = {"public", "private", "protected", "unknown"};
-const int dataTypeModifierNumber = 12, valueTypeModifierNumber = 3, identifierVisibilityNumber = 3;
+const int dataTypeModifierNumber = 16, valueTypeModifierNumber = 3, identifierVisibilityNumber = 3;
 
 UnionData::UnionData() { type = (DataTypeModifier)dataTypeModifierNumber, data.uint64_v = 0; }
 UnionData::UnionData(DataTypeModifier type) { this->type = type, data.uint64_v = 0; }
@@ -67,7 +67,7 @@ IdentifierVisibility getIdentifierVisibility(const std::string &name) {
 }
 
 bool isInteger(DataTypeModifier dtMfr) {
-    return dtMfr <= DataTypeModifier::u64 || dtMfr == DataTypeModifier::B;
+    return dtMfr <= DataTypeModifier::u64;
 }
 bool isReference(ValueTypeModifier vlMfr) {
     return vlMfr == ValueTypeModifier::MemberRef || vlMfr == ValueTypeModifier::r;
