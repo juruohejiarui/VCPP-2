@@ -140,7 +140,7 @@ struct NamespaceInfo {
     std::string name, fullName;
     
     std::map<std::string, VariableInfo *> varMap;
-    std::map<std::string, FunctionList> functionMap;
+    std::map<std::string, FunctionList> funcMap;
     std::map<std::string, ClassInfo *> clsMap;
     std::map<std::string, NamespaceInfo *> nspMap;
 

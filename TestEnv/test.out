@@ -2,116 +2,119 @@
   System System
     Array System.Array<$T$>     : System.ArrayLike<$T$>
       <size> = 72
-      capacity->System.Array.capacity uint offset=68
-      data->System.Array.data T[] offset=56
-      length->System.Array.length uint offset=64
+      public capacity->System.Array.capacity uint offset=68
+      public data->System.Array.data T[] offset=56
+      public length->System.Array.length uint offset=64
       @constructer->
-        @constructer System.Array.@constructer() : void
-        @constructer System.Array.@constructer@int_DIMC0@T_DIMC0(length:int, initData:T) : void
+        unknown @constructer System.Array.@constructer() : void
+        unknown @constructer System.Array.@constructer@int_DIMC0@T_DIMC0(length:int, initData:T) : void
       append->
-        append System.Array.append@T_DIMC0(dt:T) : void
+        unknown append System.Array.append@T_DIMC0(dt:T) : void
       get->
-        get System.Array.get@int_DIMC0(index:int) : T
+        unknown get System.Array.get@int_DIMC0(index:int) : T
         <offset> = 10
       getLength->
-        getLength System.Array.getLength() : uint
+        unknown getLength System.Array.getLength() : uint
         <offset> = 27
       set->
-        set System.Array.set@int_DIMC0@T_DIMC0(index:int, dt:T) : void
+        unknown set System.Array.set@int_DIMC0@T_DIMC0(index:int, dt:T) : void
         <offset> = 18
       swap->
-        swap System.Array.swap@int_DIMC0@int_DIMC0(x:int, y:int) : void
+        unknown swap System.Array.swap@int_DIMC0@int_DIMC0(x:int, y:int) : void
         <offset> = 35
       toBasicArray->
-        toBasicArray System.ArrayLike.toBasicArray() : T[]
+        unknown toBasicArray System.ArrayLike.toBasicArray() : T[]
         <offset> = 43
     ArrayLike System.ArrayLike<$T$>     : System.MapLike<$int, T$>
       <size> = 51
       get->
-        get System.ArrayLike.get@int_DIMC0(index:int) : T
+        unknown get System.ArrayLike.get@int_DIMC0(index:int) : T
         <offset> = 10
       getLength->
-        getLength System.ArrayLike.getLength() : uint
+        unknown getLength System.ArrayLike.getLength() : uint
         <offset> = 27
       set->
-        set System.ArrayLike.set@int_DIMC0@T_DIMC0(index:int, data:T) : void
+        unknown set System.ArrayLike.set@int_DIMC0@T_DIMC0(index:int, data:T) : void
         <offset> = 18
       swap->
-        swap System.ArrayLike.swap@int_DIMC0@int_DIMC0(x:int, y:int) : void
+        unknown swap System.ArrayLike.swap@int_DIMC0@int_DIMC0(x:int, y:int) : void
         <offset> = 35
       toBasicArray->
-        toBasicArray System.ArrayLike.toBasicArray() : T[]
+        unknown toBasicArray System.ArrayLike.toBasicArray() : T[]
         <offset> = 43
     Compare System.Compare<$T$>     : object
       <size> = 17
       compare->
-        compare System.Compare.compare@T_DIMC0@T_DIMC0(a:T, b:T) : int
+        unknown compare System.Compare.compare@T_DIMC0@T_DIMC0(a:T, b:T) : int
         <offset> = 9
     IntCompare System.IntCompare     : System.Compare<$int$>
       <size> = 17
       compare->
-        compare System.IntCompare.compare@int_DIMC0@int_DIMC0(a:int, b:int) : int
+        unknown compare System.IntCompare.compare@int_DIMC0@int_DIMC0(a:int, b:int) : int
         <offset> = 9
     LongCompare System.LongCompare     : System.Compare<$long$>
       <size> = 17
       compare->
-        compare System.LongCompare.compare@long_DIMC0@long_DIMC0(a:long, b:long) : int
+        unknown compare System.LongCompare.compare@long_DIMC0@long_DIMC0(a:long, b:long) : int
         <offset> = 9
     MapLike System.MapLike<$KeyT, ValueT$>     : object
       <size> = 26
       get->
-        get System.MapLike.get@KeyT_DIMC0(index:KeyT) : ValueT
+        unknown get System.MapLike.get@KeyT_DIMC0(index:KeyT) : ValueT
         <offset> = 10
       set->
-        set System.MapLike.set@KeyT_DIMC0@ValueT_DIMC0(index:KeyT, data:ValueT) : void
+        unknown set System.MapLike.set@KeyT_DIMC0@ValueT_DIMC0(index:KeyT, data:ValueT) : void
         <offset> = 18
     String System.String     : System.ArrayLike<$char$>
       <size> = 72
-      capacity->System.String.capacity uint offset=68
-      data->System.String.data char[] offset=56
-      length->System.String.length uint offset=64
+      public capacity->System.String.capacity uint offset=68
+      public data->System.String.data char[] offset=56
+      public length->System.String.length uint offset=64
       @constructer->
-        @constructer System.String.@constructer() : void
-        @constructer System.String.@constructer@String_DIMC0(source:System.String) : void
+        unknown @constructer System.String.@constructer() : void
+        unknown @constructer System.String.@constructer@String_DIMC0(source:System.String) : void
       append->
-        append System.String.append@char_DIMC0(dt:char) : void
+        unknown append System.String.append@char_DIMC0(dt:char) : void
       get->
-        get System.String.get@int_DIMC0(index:int) : char
+        unknown get System.String.get@int_DIMC0(index:int) : char
         <offset> = 10
       getLength->
-        getLength System.String.getLength() : uint
+        unknown getLength System.String.getLength() : uint
         <offset> = 27
       resize->
-        resize System.String.resize@int_DIMC0(length:int) : void
+        unknown resize System.String.resize@int_DIMC0(length:int) : void
       set->
-        set System.String.set@int_DIMC0@char_DIMC0(index:int, dt:char) : void
+        unknown set System.String.set@int_DIMC0@char_DIMC0(index:int, dt:char) : void
         <offset> = 18
       swap->
-        swap System.ArrayLike.swap@int_DIMC0@int_DIMC0(x:int, y:int) : void
+        unknown swap System.ArrayLike.swap@int_DIMC0@int_DIMC0(x:int, y:int) : void
         <offset> = 35
       toBasicArray->
-        toBasicArray System.ArrayLike.toBasicArray() : T[]
+        unknown toBasicArray System.ArrayLike.toBasicArray() : T[]
         <offset> = 43
     UIntCompare System.UIntCompare     : System.Compare<$uint$>
       <size> = 17
       compare->
-        compare System.UIntCompare.compare@uint_DIMC0@uint_DIMC0(a:uint, b:uint) : int
+        unknown compare System.UIntCompare.compare@uint_DIMC0@uint_DIMC0(a:uint, b:uint) : int
         <offset> = 9
+    sort->
+      unknownSystem.sort@ArrayLike_DIMC0@Compare_DIMC0@uint_DIMC0@uint_DIMC0<$T$>(array:System.ArrayLike<$T$>, @compare:System.Compare<$T$>, l:uint, r:uint) : void
+      unknownSystem.sort@ArrayLike_DIMC0@Compare_DIMC0<$T$>(array:System.ArrayLike<$T$>, @compare:System.Compare<$T$>) : void
   <unknown> <unknown>
     <size> = 0
   TestA TestA<$T1$>   : object
     <size> = 9
     func1->
-      func1 TestA.func1@T2_DIMC0<$T2$>(v1:T2) : T2
+      unknown func1 TestA.func1@T2_DIMC0<$T2$>(v1:T2) : T2
     func2->
-      func2 TestA.func2@T2_DIMC0@T2_DIMC0<$T2$>(v1:T2, v2:T2) : T2
+      unknown func2 TestA.func2@T2_DIMC0@T2_DIMC0<$T2$>(v1:T2, v2:T2) : T2
   TestB TestB<$T$>   : TestA<$T$>
     <size> = 10
     func1->
-      func1 TestB.func1@int_DIMC0(v1:int) : int
+      unknown func1 TestB.func1@int_DIMC0(v1:int) : int
     func2->
-      func2 TestA.func2@T2_DIMC0@T2_DIMC0<$T2$>(v1:T2, v2:T2) : T2
-      func2 TestB.func2@int_DIMC0@float_DIMC0(v2:int, v2:float) : int
+      unknown func2 TestA.func2@T2_DIMC0@T2_DIMC0<$T2$>(v1:T2, v2:T2) : T2
+      unknown func2 TestB.func2@int_DIMC0@float_DIMC0(v2:int, v2:float) : int
   byte byte   : <unknown>
     <size> = 1
   char char   : <unknown>

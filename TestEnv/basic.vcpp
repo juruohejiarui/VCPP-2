@@ -70,16 +70,16 @@ namespace System {
 		// partion
 		var bs = array[l], tl = l, tr = r;
 		while (tl < tr) {
-			while (tl < tr && cmp.compare(array[right], bs) >= 0) tr--;
+			while (tl < tr && array[right] >= bs) tr--;
 			array[left] = array[right];
-			while (tl < tr && cmp.compare(array[left], bs) <= 0) tl++;
+			while (tl < tr && array[left] <= bs) tl++;
 			array[right] = array[left]; 
 		}
 		array[left] = bs;
 		sort(array, l, tl - 1), sort(array, tl + 1, r);
 	}
-	public func sort<$T$>(array : ArrayLike<$T$>, cmp : Compare<$T$>) : void {
-		sort(array, cmp, 0, array.getLength() - 1);
+	public func sort<$T$>(array : ArrayLike<$T$>, @compare : Compare<$T$>) : void {
+		sort(array, @compare, 0, array.getLength() - 1);
 	} 
 
 	public class Compare<$T$> {

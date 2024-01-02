@@ -650,12 +650,14 @@ bool buildGlo(const RootList &roots) {
         IdentifierVisibility visibility = (varDef->getVisibility() == IdentifierVisibility::Unknown ?
                                             IdentifierVisibility::Private : varDef->getVisibility());
         bool succ = true;
+        setCurNsp(blgNsp);
         for (size_t i = 0; i < varDef->getLocalVarCount(); i++) {
             auto tpl = varDef->getVariable(i);
             VariableInfo *vInfo = new VariableInfo();
             vInfo->blgNsp = blgNsp, vInfo->blgRoot = blgRoot;
             vInfo->setNameNode(std::get<0>(tpl));
             vInfo->setTypeNode(std::get<1>(tpl));
+            vInfo->setInitNode(std::get<2>(tpl));
             if (blgNsp->varMap.count(vInfo->name)) {
                 printError(vInfo->getNameNode()->getToken().lineId, "Redefinition of variable " + vInfo->fullName);
                 delete vInfo;
@@ -671,10 +673,47 @@ bool buildGlo(const RootList &roots) {
     auto buildGloFunc = [&](FuncDefNode *funcDef, NamespaceInfo *blgNsp, RootNode *blgRoot) -> bool {
         FunctionInfo *fInfo = new FunctionInfo();
         fInfo->blgNsp = blgNsp, fInfo->blgRoot = blgRoot;
-        
+        fInfo->setDefNode(funcDef);
+        setCurFunc(fInfo);
+        setCurNsp(blgNsp);
+        // build the expression type of params and return value, then check if conflict
+        bool succ = true;
+        std::vector<ExprType> paramTypeList;
+        for (size_t i = 0; i < fInfo->params.size(); i++) {
+            succ &= fInfo->params[i]->type.setCls();
+            paramTypeList.push_back(fInfo->params[i]->type);
+        }
+        succ &= fInfo->resType.setCls();
+        if (!succ) {
+            printError(fInfo->defNode->getToken().lineId, "Expression Type error occured in function \"" + fInfo->fullName + "\"");
+            delete fInfo;
+            return false;
+        }
+        // check whether this function conflicts with the existed ones.
+        if (blgNsp->funcMap.count(fInfo->name)) {
+            auto &fList = blgNsp->funcMap[fInfo->name];
+            for (size_t i = 0; i < fList.size(); i++) {
+                auto *otherFunc = fList[i];
+                auto chkRes = otherFunc->satisfy(GenericSubstitutionMap(), paramTypeList);
+                if (chkRes.first) {
+                    printError(funcDef->getToken().lineId, "Definition of function \"" + fInfo->fullName + "\" conflicts with function \"" + otherFunc->fullName + "\"");
+                    delete fInfo;
+                    return false;
+                } 
+            }
+        }
+        blgNsp->funcMap[fInfo->name].push_back(fInfo);
+        return true;
     };
     auto scanNsp = [&](NspDefNode *nspDef, RootNode *blgRoot) -> bool {
-
+        NamespaceInfo *nsp = rootNsp;
+        std::vector<std::string> path;
+        stringSplit(nspDef->getNameNode()->getName(), '.', path);
+        for (size_t i = 0; i < path.size(); i++) nsp = nsp->nspMap[path[i]];
+        bool succ = true;
+        for (size_t i = 0; i < nspDef->getVarCount(); i++) succ &= buildGloVar(nspDef->getVarDef(i), nsp, blgRoot);
+        for (size_t i = 0; i < nspDef->getFuncCount(); i++) succ &= buildGloFunc(nspDef->getFuncDef(i), nsp, blgRoot);
+        return succ;
     };
     bool succ = true;
     for (auto &root : roots) {
@@ -731,14 +770,14 @@ void debugPrintClsStruct(ClassInfo *cls, int dep = 0) {
     std::cout << std::endl;
     std::cout << getIndent(dep + 1) << "<size> = " << cls->size << std::endl;
     for (auto &varPair : cls->fieldMap) {
-        std::cout << getIndent(dep + 1) << varPair.first
+        std::cout << getIndent(dep + 1) << identifierVisibilityString[(int)varPair.second->visibility] << " " << varPair.first
          << "->" << varPair.second->fullName << " " << varPair.second->type.toDebugString() << " offset=" << varPair.second->offset << std::endl;
     }
     for (auto &funcPair : cls->functionMap) {
         std::cout << getIndent(dep + 1) << funcPair.first
          << "->" << std::endl;
         for (auto &func : funcPair.second) {
-            std::cout << getIndent(dep + 2) << func->name << " " << func->fullName;
+            std::cout << getIndent(dep + 2) << identifierVisibilityString[(int)func->visibility] << " " << func->name << " " << func->fullName;
             if (func->genericClasses.size() > 0) {
                 std::cout << "<$";
                 for (size_t i = 0; i < func->genericClasses.size(); i++) {
@@ -765,5 +804,29 @@ void debugPrintNspStruct(NamespaceInfo *nsp, int dep) {
     std::cout << getIndent(dep) << nsp->name << " " << nsp->fullName << std::endl;
     for (auto &pir : nsp->nspMap) debugPrintNspStruct(pir.second, dep + 1);
     for (auto &pir : nsp->clsMap) debugPrintClsStruct(pir.second, dep + 1);
+    for (auto &pir : nsp->varMap)
+        std::cout << getIndent(dep + 1) << identifierVisibilityString[(int)pir.second->visibility] << " "
+             << pir.first << " "
+             << pir.second->fullName << " : " << pir.second->type.toDebugString() << " <offset>=" << pir.second->offset << std::endl;
+    for (auto &pir : nsp->funcMap) {
+        std::cout << getIndent(dep + 1) << pir.first << "->" << std::endl;
+        for (auto &func : pir.second) {
+            std::cout << getIndent(dep + 2) << identifierVisibilityString[(int)func->visibility] << func->fullName;
+            if (func->genericClasses.size() > 0) {
+                std::cout << "<$";
+                for (size_t i = 0; i < func->genericClasses.size(); i++) {
+                    if (i > 0) std::cout << ", ";
+                    std::cout << func->genericClasses[i]->name;
+                }
+                std::cout << "$>";
+            }
+            std::cout << "(";
+            for (size_t i = 0; i < func->params.size(); i++) {
+                if (i > 0) std::cout << ", ";
+                std::cout << func->params[i]->name << ":" << func->params[i]->type.toDebugString();
+            }
+            std::cout << ") : " << func->resType.toDebugString() << std::endl;
+        }
+    }
 }
 
