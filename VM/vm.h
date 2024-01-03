@@ -6,7 +6,7 @@
 #include "rflsys.h"
 
 enum DataTypeModifier {
-    i8, u8, i16, u16, i32, u32, i64, u64, f32, f64, o, v0, v1, v2, v3, v4, dtMdfUnknown,
+    i8, u8, i16, u16, i32, u32, i64, u64, f32, f64, o, gv0, gv1, gv2, gv3, gv4, dtMdfUnknown,
 };
 enum ValueTypeModifier {
     MemberRef, VarRef, TrueVal, vlMdfUnknown,
@@ -19,7 +19,7 @@ typedef enum TCommand {
     ge        , ls        , le        , cvt       , pop       , push      , pvar      , pglo      , cpy       , setlocal  , 
     getarg    , _new      , arrnew    , gvl       , mem       , vmem      , arrmem    , call      , vcall     , jmp       , 
     jz        , jp        , setarg    , ret       , vret      , catostr   , strtoca   , getcls    , getmtds   , getflds   , 
-    getctrs   , sys       ,
+    getctrs   , sys       , setgtbl   , getgtbl   ,
     tCmdUnknown,
 };
 
@@ -37,10 +37,10 @@ typedef struct tmpCallFrame {
     uint64 offset;
     uint32 blkId;
     uint64 *var;
-    uint64 cStack[16], *cStackTop;
-    Object *oStack[16], **oStackTop;
+    uint64 genericTable[5];
+    uint64 cStack[12], *cStackTop;
+    Object *oStack[12], **oStackTop;
 } CallFrame;
 
 int VM(const char *vobjPath);
-
 #endif

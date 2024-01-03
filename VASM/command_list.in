@@ -34,3 +34,5 @@ getcls
 getmtds
 getflds
 getctrs
+setgtbl
+getgtbl

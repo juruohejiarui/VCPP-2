@@ -244,6 +244,7 @@ GenericSubstitutionMap makeSubtitutionMap(const std::vector<ClassInfo *> &gClsLi
 }
 void mergeSubtitutionMap(GenericSubstitutionMap &dst, const GenericSubstitutionMap &src) { for (auto pir : src) dst[pir.first] = pir.second; }
 
+#pragma region Symbol Search
 std::vector<ClassInfo *> clsList;
 
 FunctionInfo *curFunc;
@@ -282,6 +283,8 @@ bool setCurRoot(RootNode *node) {
     curRoot = node;
     return succ;
 }
+
+const std::vector<NamespaceInfo *> &getUsingList() { return usingList; }
 
 ClassInfo *findCls(const std::string &path) {
     std::vector<std::string> prts;
@@ -327,7 +330,53 @@ ClassInfo *findCls(const std::string &path) {
         else return nullptr;
     }
 }
+VariableInfo *findVar(const std::string &path) {
+    std::vector<std::string> pth;
+    stringSplit(path, '.', pth);
+    if (pth.size() == 1) {
+        if (curCls != nullptr && curCls->fieldMap.count(pth[0]))
+            return curCls->fieldMap[pth[0]];
+        else if (curNsp != nullptr && curNsp->varMap.count(pth[0]))
+            return curNsp->varMap[pth[0]];
+        for (auto nsp : usingList)
+            if (nsp != nullptr && nsp->varMap.count(pth[0]) && nsp->varMap[pth[0]]->visibility == IdentifierVisibility::Public)
+                return nsp->varMap[pth[0]];
+        if (rootNsp->varMap.count(pth[0]) && rootNsp->varMap[pth[0]]->visibility == IdentifierVisibility::Public)
+            return rootNsp->varMap[pth[0]];
+        return nullptr;
+    } else {
+        NamespaceInfo *st = rootNsp;
+        if (curNsp->nspMap.count(pth[0])) st = curNsp;
+        else {
+            for (auto *nsp : usingList) if (nsp->nspMap.count(pth[0])) {
+                st = nsp;
+                break;
+            }
+        }
+        for (size_t i = 0; i < pth.size() - 1; i++)
+            if (!st->nspMap.count(pth[i])) return nullptr;
+            else st = st->nspMap[pth[i]];
+        auto iter = st->varMap.find(pth.back());
+        if (iter == st->varMap.end() || iter->second->visibility != IdentifierVisibility::Public) return nullptr;
+        else return iter->second;
+    }
+}
+std::pair<FunctionInfo *, ExprType> *findFunc(const std::string &path, const std::vector<ExprType> &paramList) {
+    auto scanFuncList = [&](const FunctionList &fList) {
+        for (auto func : fList) {
+            
+        }
+    };
+    std::vector<std::string> prt;
+    stringSplit(path, '.', prt);
+    if (prt.size() == 1) {
+        
+    }
+}
 
+#pragma endregion
+
+/// @brief this function helps to build the root of namespace and class tree
 void buildRootInfo() {
     rootNsp = new NamespaceInfo();
     basicCls = new ClassInfo(), basicCls->size = 0;
@@ -439,9 +488,9 @@ bool buildClsSymbol(const RootList &roots) {
     return succ;
 }
 
-/// @brief This function will build the inheritance structure of classes and build the member structure of each class.
+/// @brief This function will build the inheritance structure of classes
 /// @param roots 
-/// @return 
+/// @return if it is successful
 bool buildClsTree(const RootList &roots) {
     bool succ = true;
     // build the inheritance structure
@@ -489,7 +538,13 @@ bool buildClsTree(const RootList &roots) {
         baseCls->derivedClasses.push_back(cls);
         cls->baseCls = baseCls;
     }
-    if (!succ) return false;
+    return succ;
+}
+
+/// @brief this function can scan the class tree and build the symbols of members of each class
+/// @return if it is successful.
+bool buildClsMem() {
+    bool succ = true;
     // build the member structure for each class
     std::queue<ClassInfo *> que;
     que.push(objectCls);
@@ -641,10 +696,14 @@ bool buildCls(const RootList &roots) {
     succ &= buildClsSymbol(roots);
     // build inheritation tree
     succ &= buildClsTree(roots);
+    succ &= buildClsMem();
     return succ;
 }
 
-bool buildGlo(const RootList &roots) {
+/// @brief This function can build the functions and variables in the global scope, then return the usage of global memory
+/// @param roots the roots that contain global functions and global variables
+/// @return <if it is successful, the usage of global memeory>
+std::pair<bool, uint64> buildGlo(const RootList &roots) {
     std::map<RootNode *, uint64> vOffset;
     auto buildGloVar = [&](VarDefNode *varDef, NamespaceInfo *blgNsp, RootNode *blgRoot) -> bool {
         IdentifierVisibility visibility = (varDef->getVisibility() == IdentifierVisibility::Unknown ?
@@ -734,15 +793,20 @@ bool buildGlo(const RootList &roots) {
             }
         }
     }
-    return succ;
+    if (succ) {
+        uint64 glomem = 0;
+        for (auto &dt : vOffset) glomem += dt.second;
+        return std::make_pair(true, glomem);
+    } else std::make_pair(false, 0);
 }
 
-bool buildIdenSystem(const RootList &roots) {
+std::pair<bool, uint64> buildIdenSystem(const RootList &roots) {
     bool succ = true;
     buildRootInfo();
     succ &= buildCls(roots);
-    succ &= buildGlo(roots);
-    return succ;
+    auto res = buildGlo(roots);
+    succ &= res.first;
+    return std::make_pair(succ, res.second);
 }
 
 void debugPrintClsStruct(ClassInfo *cls, int dep = 0) {

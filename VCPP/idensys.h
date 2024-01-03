@@ -156,6 +156,7 @@ extern ClassInfo *basicCls, *int8Cls, *uint8Cls, *int16Cls, *uint16Cls, *int32Cl
 
 bool isBasicCls(ClassInfo *cls);
 
+#pragma region Symbol Search
 FunctionInfo *getCurFunc();
 void setCurFunc(FunctionInfo *func);
 ClassInfo *getCurCls();
@@ -164,12 +165,21 @@ NamespaceInfo *getCurNsp();
 void setCurNsp(NamespaceInfo *nsp);
 RootNode *getCurRoot();
 bool setCurRoot(RootNode *node);
+const std::vector<NamespaceInfo *> &getUsingList();
 
 ClassInfo *findCls(const std::string &path);
-const FunctionList &findFunc(const std::string &path);
 VariableInfo *findVar(const std::string &path);
+/// @brief Find the function that satisfies the requirements of name, and expression type of params
+/// @param path the path to the function
+/// @param paramList the expression type of params
+/// @return the pointer to the function and the return value
+std::pair<FunctionInfo *, ExprType> *findFunc(const std::string &path, const std::vector<ExprType> &paramList);
+#pragma endregion
 
-bool buildIdenSystem(const RootList &roots);
+/// @brief This function can build the structures of classes, functions and variables 
+/// @param roots the roots of contain the structures
+/// @return <if it is successful, the usage of global memory>
+std::pair<bool, uint64> buildIdenSystem(const RootList &roots);
 
 void debugPrintNspStruct(NamespaceInfo *nsp, int dep = 0);
 

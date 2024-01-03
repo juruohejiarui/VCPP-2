@@ -126,6 +126,9 @@ static inline void retFuncV() {
     curRBlock = &rBlocks[clStackTop->blkId];
 }
 
+inline uint16 getRealMdf(uint16 dtmdf) {
+    return dtmdf >= gv0 ? min(clStackTop->genericTable[dtmdf - gv0], 10) : dtmdf;
+}
 /// @brief get true value of the address in top of calculate stack using the modifiers
 /// @param vlmdf value modifier
 /// @param dtmdf data modifier
@@ -176,8 +179,8 @@ void mainLoop() {
         // printf("offset = %#018llx vcode = %x, tmd = %d\n", clStackTop->offset, vcode, tcmd);
         clStackTop->offset += sizeof(uint32);
 
-        uint16  dtmdf1 = (vcode >> 16) & 15,
-            dtmdf2 = (vcode >> 20) & 15,
+        uint16  dtmdf1 = getRealMdf((vcode >> 16) & 15),
+            dtmdf2 = getRealMdf((vcode >> 20) & 15),
             vlmdf1 = (vcode >> 24) & 3,
             vlmdf2 = (vcode >> 26) & 3;
 
@@ -987,6 +990,19 @@ void mainLoop() {
                         break;
                     }
                 }
+                break;
+            }
+            case setgtbl : {
+                uint64 size = *(uint64 *) &curRBlock->vcode[clStackTop->offset];
+                clStackTop->offset += sizeof(uint64);
+                for (int i = size - 1; i >= 0; i--)
+                    (clStackTop + 1)->genericTable[i] = *(clStackTop->cStackTop--);
+                break;
+            }
+            case getgtbl : {
+                uint64 id = *(uint64 *) &curRBlock->vcode[clStackTop->offset];
+                clStackTop->offset += sizeof(uint64);
+                *(++clStackTop->cStackTop) = clStackTop->genericTable[id];
                 break;
             }
             default:

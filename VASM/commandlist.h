@@ -304,7 +304,8 @@ enum class Command {
     getflds            , 
     getctrs            , 
     sys                ,
-    
+    setgtbl            ,
+    getgtbl            ,
     unknown
 };
 
@@ -315,7 +316,7 @@ enum class TCommand {
     ge        , ls        , le        , cvt       , pop       , push      , pvar      , pglo      , cpy       , setlocal  , 
     getarg    , _new      , arrnew    , gvl       , mem       , vmem      , arrmem    , call      , vcall     , jmp       , 
     jz        , jp        , setarg    , ret       , vret      , catostr   , strtoca   , getcls    , getmtds   , getflds   , 
-    getctrs   , sys       ,
+    getctrs   , sys       , setgtbl   , getgtbl   ,
     unknown,
 };
 
