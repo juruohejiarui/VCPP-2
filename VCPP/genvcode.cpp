@@ -1,16 +1,17 @@
 #include "gen.h"
 
 #pragma region operator candies
-const int operNameNumber = 12;
-const std::string operNames[] = {"@add", "@sub", "@mul", "@div", "@mul", "@mod", "@shl", "@shr", "@and", "@or", "@xor", "@compare"};
-const std::string operCls[operNameNumber];
+/// @brief the number of overridable operators
+const int operNumber = 12;
+const std::string operNames[operNumber] = {"@add", "@sub", "@mul", "@div", "@mul", "@mod", "@shl", "@shr", "@and", "@or", "@xor", "@compare"};
+const ClassInfo *operCls[operNumber];
 
 std::map<std::string, std::vector<VariableInfo *> > operMap[3];
 /// @brief Load the syntax candies for operator
 /// @return if it is successful
 bool OperatorCandy() {
     auto tryInsert = [&](VariableInfo *vInfo, std::map<std::string, std::vector<VariableInfo *> > &operMap) -> void {
-        for (int j = 0; j < operNameNumber; j++) {
+        for (int j = 0; j < operNumber; j++) {
             if (vInfo->name.size() < operNames[j].size()
              || vInfo->name.substr(0, operNames[j].size()) != operNames[j])
                 continue;
@@ -54,6 +55,13 @@ bool OperatorCandy() {
 }
 
 VariableInfo *findOperCandy(const std::string &name, const ExprType &expr) {
+    int id = -1;
+    for (int i = 0; i < operNumber; i++) if (name == operNames[i]) { id = i; break; }
+    if (id == -1) return nullptr;
+    ExprType req = ExprType(operCls);
+    for (int i = 0; i < 3; i++) {
+
+    }
     return nullptr;
 }
 #pragma endregion
