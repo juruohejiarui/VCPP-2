@@ -601,7 +601,7 @@ bool buildClsMem() {
                     dCls->fieldMap.insert(std::make_pair(vInfo->name, vInfo));
                 }
             }
-            auto gsMap = makeSubstMap(bsCls->generCls, dCls->generParams);
+            gsMap = makeSubstMap(bsCls->generCls, dCls->generParams);
             for (size_t i = 0; i < dCls->defNode->getFuncCount(); i++) {
                 auto fDef = dCls->defNode->getFuncDef(i);
                 // set basic information
@@ -693,7 +693,7 @@ bool buildCls(const RootList &roots) {
 /// @param roots the roots that contain global functions and global variables
 /// @return <if it is successful, the usage of global memeory>
 std::pair<bool, uint64> buildGlo(const RootList &roots) {
-    std::map<RootNode *, uint64> vOffset;
+    uint64 vOffset = 0;
     auto buildGloVar = [&](VarDefNode *varDef, NamespaceInfo *blgNsp, RootNode *blgRoot) -> bool {
         IdenVisibility visibility = (varDef->getVisibility() == IdenVisibility::Unknown ?
                                             IdenVisibility::Private : varDef->getVisibility());
@@ -712,8 +712,8 @@ std::pair<bool, uint64> buildGlo(const RootList &roots) {
                 succ = false;
                 continue;
             }
-            if (vOffset.count(blgRoot))
-                vInfo->offset = vOffset[blgRoot], vOffset[blgRoot] += sizeof(vInfo->type.getSize());
+            if (blgRoot->getType() == SyntaxNodeType::SourceRoot)
+                vInfo->offset = vOffset, vOffset += sizeof(vInfo->type.getSize());
             vInfo->visibility = visibility;
         }
         return succ;
@@ -767,8 +767,6 @@ std::pair<bool, uint64> buildGlo(const RootList &roots) {
     bool succ = true;
     for (auto &root : roots) {
         setCurRoot(root);
-        if (root->getType() == SyntaxNodeType::SourceRoot)
-            vOffset.insert(std::make_pair(root, 0));
         for (size_t i = 0; i < root->getDefCount(); i++) {
             switch (root->getDef(i)->getType()) {
                 case SyntaxNodeType::VarDef:
@@ -783,11 +781,8 @@ std::pair<bool, uint64> buildGlo(const RootList &roots) {
             }
         }
     }
-    if (succ) {
-        uint64 glomem = 0;
-        for (auto &dt : vOffset) glomem += dt.second;
-        return std::make_pair(true, glomem);
-    } else std::make_pair(false, 0);
+    if (succ) return std::make_pair(true, vOffset);
+    else std::make_pair(false, 0);
 }
 
 std::pair<bool, uint64> buildIdenSystem(const RootList &roots) {

@@ -337,3 +337,16 @@ PretreatCommand getPretreatCommand(const std::string &name) {
     for (int i = 0; i < pretreatCommandNumber; i++) if (name == pretreatCommandString[i]) return (PretreatCommand)i;
     return (PretreatCommand)pretreatCommandNumber;
 }
+
+Command wrap(TCommand tcmd, ValueTypeModifier vlMdf) {
+    return getCommand(valueTypeModifierStr[(int)vlMdf] + "_" + tCommandString[(int)tcmd]);
+}
+Command wrap(TCommand tcmd, ValueTypeModifier vlMdf, DataTypeModifier dtMdf) {
+    return getCommand(valueTypeModifierStr[(int)vlMdf] + "_" + dataTypeModifierStr[(int)dtMdf] + "_" + tCommandString[(int)tcmd]);
+}
+Command wrap(TCommand tcmd, ValueTypeModifier vlMdf1, ValueTypeModifier vlMdf2, DataTypeModifier dtMdf) {
+    return getCommand(valueTypeModifierStr[(int)vlMdf1] + "_" + valueTypeModifierStr[(int)vlMdf1] + "_" + dataTypeModifierStr[(int)dtMdf] + "_" + tCommandString[(int)tcmd]);
+}
+Command wrap(TCommand tcmd, ValueTypeModifier vlMdf, DataTypeModifier dtMdf1, DataTypeModifier dtMdf2) {
+    return getCommand(valueTypeModifierStr[(int)vlMdf] + "_" + dataTypeModifierStr[(int)dtMdf1] + "_" + dataTypeModifierStr[(int)dtMdf2] + "_" + tCommandString[(int)tcmd])
+}

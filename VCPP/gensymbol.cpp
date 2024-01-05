@@ -3,12 +3,14 @@
 static std::ofstream oStream;
 
 void generateVar(VariableInfo *var, int dep = 0) {
+    if (var->blgRoot->getType() == SyntaxNodeType::SymbolRoot) return ;
     oStream << getIndent(dep) << "V " << var->name;
     oStream << " v " << idenVisibilityStr[(int)var->visibility] << " " << toString(var->offset, 16);
     oStream << " : " << var->type.toVtdString() << std::endl;
 }
 
 void generateFunc(FunctionInfo *func, int dep = 0) {
+    if (func->blgRoot->getType() == SyntaxNodeType::SymbolRoot) return ;
     oStream << getIndent(dep) << "F " << func->nameWithParam;
     oStream << " v " << idenVisibilityStr[(int)func->visibility] << " : " <<  func->resType.toVtdString();
     oStream << "{";
@@ -25,7 +27,7 @@ void generateFunc(FunctionInfo *func, int dep = 0) {
 }
 
 void generateCls(ClassInfo *cls, int dep = 0) {
-    if (isBasicCls(cls) || cls == basicCls || cls == objectCls) return ;
+    if (isBasicCls(cls) || cls == basicCls || cls == objectCls || cls->blgRoot->getType() == SyntaxNodeType::SymbolRoot) return ;
     oStream << getIndent(dep) << "C " << cls->name;
     oStream << " v " << idenVisibilityStr[(int)cls->visibility];
     oStream << " " << toString(cls->size, 16) << " {" << std::endl;

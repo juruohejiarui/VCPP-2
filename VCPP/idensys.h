@@ -41,20 +41,19 @@ struct ExprType {
     std::string toVtdString() const;
     std::string toDebugString() const;
 };
-
-struct GTableData {
-    ExprType etype[5];
-    uint8 size;
-    ExprType &operator [] (uint8 index) { return etype[index]; }
-    const ExprType &operator [] (uint8 index) const;
-    void insert(const std::vector<ClassInfo *> gClsList, const GenerSubstMap &gsMap);
-    GTableData();
-};
-
 typedef std::map<ClassInfo *, ExprType> GenerSubstMap;
 ExprType subst(const ExprType &target, ClassInfo *cls, const ExprType &clsImpl);
 ExprType subst(const ExprType &target, const GenerSubstMap &gsMap);
 std::vector<ExprType> subst(const std::vector<ExprType> &target, const GenerSubstMap &gsMap);
+
+struct GTableData {
+    ExprType etype[5];
+    uint8 size;
+    ExprType &operator [] (uint8 index);
+    const ExprType &operator [] (uint8 index) const;
+    void insert(const std::vector<ClassInfo *> gClsList, const GenerSubstMap &gsMap);
+    GTableData();
+};
 
 GenerSubstMap makeSubstMap(const std::vector<ClassInfo *> &gClsList, const std::vector<ExprType> &gParamList);
 /// @brief merge the <key and value pair> in SRC into DST, if there are same generic classes in both map, then the param of it will be the one in SRC
