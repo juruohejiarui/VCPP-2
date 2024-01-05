@@ -1,10 +1,10 @@
 #include "syntaxnode.h"
-#include "idensys.h"
+#include "gen.h"
 
 using namespace std;
 
 int main() {
-    std::ifstream ifs("basic.vcpp", std::ios::in);
+    std::ifstream ifs("./builtin/basic.vcpp", std::ios::in);
     TokenList tkList;
     std::string str = "";
     while (!ifs.eof()) {
@@ -25,7 +25,10 @@ int main() {
     RootList roots;
     roots.push_back(node);
     freopen("test.out", "w", stdout);
-    if (node != nullptr) succ &= buildIdenSystem(roots);
-    debugPrintNspStruct(rootNsp);
+    if (node != nullptr) {
+        auto res = buildIdenSystem(roots);
+        debugPrintNspStruct(rootNsp);
+        generateSymbol("./builtin/basic.vdt", "./builtin/basic.vdef");
+    }
     return 0;
 }

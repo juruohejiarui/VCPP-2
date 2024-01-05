@@ -1,7 +1,7 @@
 #pragma once
 #include "syntaxnode.h"
 
-enum class IdentifierRegion {
+enum class IdenRegion {
     Local, Member, Global, Unknown,
 };
 class VariableInfo;
@@ -15,7 +15,7 @@ struct ExprType {
     int dimc;
     ValueTypeModifier vtMdf;
 
-    std::vector<ExprType> genericParams;
+    std::vector<ExprType> generParams;
     
     ExprType();
     ExprType(const std::string &clsName, int dimc = 0, ValueTypeModifier vtMdf = ValueTypeModifier::t);
@@ -25,6 +25,8 @@ struct ExprType {
     ExprType(IdentifierNode *node);
 
     uint64 getSize() const;
+    /// @brief this function helps to check whether this expression type represents an object. PS : generic classes will be treat as objects
+    /// @return the result of checking
     bool isObject() const;
 
     ExprType convertToBase() const;
@@ -36,18 +38,29 @@ struct ExprType {
     bool operator != (const ExprType &other) const;
 
     std::string toString() const;
+    std::string toVtdString() const;
     std::string toDebugString() const;
 };
 
-typedef std::map<ClassInfo *, ExprType> GenericSubstitutionMap;
-ExprType substitute(const ExprType &target, ClassInfo *cls, const ExprType &clsImpl);
-ExprType substitute(const ExprType &target, const GenericSubstitutionMap &gsMap);
+struct GTableData {
+    ExprType etype[5];
+    uint8 size;
+    ExprType &operator [] (uint8 index) { return etype[index]; }
+    const ExprType &operator [] (uint8 index) const;
+    void insert(const std::vector<ClassInfo *> gClsList, const GenerSubstMap &gsMap);
+    GTableData();
+};
 
-GenericSubstitutionMap makeSubtitutionMap(const std::vector<ClassInfo *> &gClsList, const std::vector<ExprType> &gParamList);
+typedef std::map<ClassInfo *, ExprType> GenerSubstMap;
+ExprType subst(const ExprType &target, ClassInfo *cls, const ExprType &clsImpl);
+ExprType subst(const ExprType &target, const GenerSubstMap &gsMap);
+std::vector<ExprType> subst(const std::vector<ExprType> &target, const GenerSubstMap &gsMap);
+
+GenerSubstMap makeSubstMap(const std::vector<ClassInfo *> &gClsList, const std::vector<ExprType> &gParamList);
 /// @brief merge the <key and value pair> in SRC into DST, if there are same generic classes in both map, then the param of it will be the one in SRC
 /// @param dst the destination
 /// @param src the source
-void mergeSubtitutionMap(GenericSubstitutionMap &dst, const GenericSubstitutionMap &src);
+void mergeSubstMap(GenerSubstMap &dst, const GenerSubstMap &src);
 
 struct VariableInfo {
     std::string name, fullName;
@@ -55,7 +68,7 @@ struct VariableInfo {
     FunctionInfo *blgFunc;
     ClassInfo *blgCls;
     NamespaceInfo *blgNsp;
-    IdentifierVisibility visibility;
+    IdenVisibility visibility;
 
     RootNode *blgRoot;
 
@@ -70,7 +83,7 @@ struct VariableInfo {
     ExpressionNode *getInitNode() const;
     void setInitNode(ExpressionNode *initNode);
 
-    IdentifierRegion getRegion() const;
+    IdenRegion getRegion() const;
 private:
     IdentifierNode *nameNode, *typeNode;
     ExpressionNode *initNode;
@@ -78,10 +91,10 @@ private:
 
 struct FunctionInfo {
     std::string name, nameWithParam, fullName;
-    std::vector<ClassInfo *> genericClasses;
+    std::vector<ClassInfo *> generCls;
     std::vector<VariableInfo *> params;
     ExprType resType;
-    IdentifierVisibility visibility;
+    IdenVisibility visibility;
 
     ClassInfo *blgCls;
     NamespaceInfo *blgNsp;
@@ -98,14 +111,14 @@ struct FunctionInfo {
     /// @param defNode 
     void setDefNode(FuncDefNode *defNode);
 
-    IdentifierRegion getRegion() const;
+    IdenRegion getRegion() const;
 
     /// @brief This function will check whether the param list satisfy the type requirements of 
     /// this function and return the result and the expression type of the return value of this function.
     /// @param gsMap the subtitution map of generic class in the generic list
     /// @param paramList the param list
-    /// @return (Whether the param list satisfy the requirements, the expression type of the return value)
-    std::pair<bool, ExprType> satisfy(const GenericSubstitutionMap &gsMap, const std::vector<ExprType> &paramList);
+    /// @return <Whether the param list satisfy the requirements, the expression type of the return value, GTableData>
+    std::tuple<bool, ExprType, GTableData> satisfy(const GenerSubstMap &gsMap, const std::vector<ExprType> &paramList);
 };
 
 typedef std::vector<FunctionInfo *> FunctionList;
@@ -113,14 +126,14 @@ typedef std::vector<FunctionInfo *> FunctionList;
 struct ClassInfo {
     std::string name, fullName;
     ClassInfo *baseCls;
-    std::vector<ClassInfo *> genericClasses;
+    std::vector<ClassInfo *> generCls;
     /// @brief the params for every generic classes in base class
-    std::vector<ExprType> genericParams;
+    std::vector<ExprType> generParams;
 
     std::map<std::string, VariableInfo *> fieldMap;
-    std::map<std::string, FunctionList> functionMap;
+    std::map<std::string, FunctionList> funcMap;
 
-    IdentifierVisibility visibility;
+    IdenVisibility visibility;
 
     uint64 size, dep;
 
@@ -131,10 +144,16 @@ struct ClassInfo {
 
     bool isGeneric;
 
-    std::vector<ClassInfo *> derivedClasses;
+    std::vector<ClassInfo *> derivedCls;
 
     ClassInfo();
 };
+
+/// @brief Check if bsCls is the base class of dCls
+/// @param bsCls ...
+/// @param dCls ...
+/// @return the result
+bool isBaseCls(ClassInfo *bsCls, ClassInfo *dCls);
 
 struct NamespaceInfo {
     std::string name, fullName;
@@ -152,7 +171,7 @@ struct NamespaceInfo {
 };
 
 extern NamespaceInfo *rootNsp;
-extern ClassInfo *basicCls, *int8Cls, *uint8Cls, *int16Cls, *uint16Cls, *int32Cls, *uint32Cls, *int64Cls, *uint64Cls;
+extern ClassInfo *basicCls, *int8Cls, *uint8Cls, *int16Cls, *uint16Cls, *int32Cls, *uint32Cls, *int64Cls, *uint64Cls, *float32Cls, *float64Cls, *objectCls;
 
 bool isBasicCls(ClassInfo *cls);
 
@@ -168,12 +187,6 @@ bool setCurRoot(RootNode *node);
 const std::vector<NamespaceInfo *> &getUsingList();
 
 ClassInfo *findCls(const std::string &path);
-VariableInfo *findVar(const std::string &path);
-/// @brief Find the function that satisfies the requirements of name, and expression type of params
-/// @param path the path to the function
-/// @param paramList the expression type of params
-/// @return the pointer to the function and the return value
-std::pair<FunctionInfo *, ExprType> *findFunc(const std::string &path, const std::vector<ExprType> &paramList);
 #pragma endregion
 
 /// @brief This function can build the structures of classes, functions and variables 

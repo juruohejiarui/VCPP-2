@@ -16,7 +16,7 @@ const std::string tokenTypeString[] = {
     // keywords
     "If", "Else", "While", "For", "Continue", "Break", "Return", 
     "VarDef", "FuncDef", "VarFuncDef", "ClsDef", "NspDef",
-    "Private", "Public", "Protected", "Using", 
+    "Private", "Protected", "Public", "Using", 
 
     // pretreat command
     "Vasm", 
@@ -25,7 +25,7 @@ const std::string tokenTypeString[] = {
 };
 
 const std::string keywordString[] = {
-    "if", "else", "while", "for", "continue", "break", "return", "var", "func", "varfunc", "class", "namespace", "private", "public", "protected", "using",
+    "if", "else", "while", "for", "continue", "break", "return", "var", "func", "varfunc", "class", "namespace", "private", "protected", "public", "using",
 };
 const size_t tokenTypeNumber = 68, keywordTokenTypeNumber = 16;
 
@@ -40,7 +40,7 @@ TokenType getTokenType(const std::string& str) {
     return TokenType::Unknown;
 }
 
-uint32 operWeight[] = {
+const uint32 operWeight[] = {
     1, /*, */ 
     2/* = */, 2/*+=*/, 2/*-=*/, 2/**=*/, 2/*/=*/, 2/*%=*/, 2/*&=*/, 2/*|=*/, 2/*^=*/, 2/*<<=*/, 2/*>>=*/,
     11/*+*/, 11/*-*/, 12/***/, 12/*/*/, 12/*%*/, 7/*&*/, 5/*|*/, 6/*^*/, 10/*<<*/, 10/*>>*/, 13/*~*/, 4/*&&*/, 3/*||*/, 13/*!*/,
@@ -222,9 +222,9 @@ bool isBracketR(TokenType type) { return type == TokenType::LBrkR || type == Tok
 bool isOperator(TokenType type) { return type >= TokenType::Comma && type <= TokenType::Convert; }
 bool isVisibility(TokenType type) { return type == TokenType::Private || type == TokenType::Public || type == TokenType::Protected; }
 
-IdentifierVisibility getVisibility(TokenType type) {
-    if (type == TokenType::Private) return IdentifierVisibility::Private;
-    if (type == TokenType::Public) return IdentifierVisibility::Public;
-    if (type == TokenType::Protected) return IdentifierVisibility::Protected;
-    return IdentifierVisibility::Unknown;
+IdenVisibility getVisibility(TokenType type) {
+    if (type == TokenType::Private) return IdenVisibility::Private;
+    if (type == TokenType::Public) return IdenVisibility::Public;
+    if (type == TokenType::Protected) return IdenVisibility::Protected;
+    return IdenVisibility::Unknown;
 }

@@ -18,7 +18,7 @@ enum class TokenType {
     // keywords
     If, Else, While, For, Continue, Break, Return, 
     VarDef, FuncDef, VarFuncDef, ClsDef, NspDef,
-    Private, Public, Protected, Using, 
+    Private, Protected, Public, Using, 
     
     // pretreat command
     Vasm, 
@@ -59,4 +59,4 @@ bool isBracketR(TokenType type);
 bool isOperator(TokenType type);
 bool isVisibility(TokenType type);
 
-IdentifierVisibility getVisibility(TokenType type);
+IdenVisibility getVisibility(TokenType type);

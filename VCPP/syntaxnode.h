@@ -165,13 +165,13 @@ public:
 };
 class VarDefNode : public BlockNode {
 private:
-    IdentifierVisibility visibility;
+    IdenVisibility visibility;
 public:
     VarDefNode();
     VarDefNode(const Token &token);
 
-    IdentifierVisibility getVisibility() const;
-    void setVisibility(IdentifierVisibility visibility);
+    IdenVisibility getVisibility() const;
+    void setVisibility(IdenVisibility visibility);
 
     /// @brief get the info of the index-th definition
     /// @param index 
@@ -181,13 +181,13 @@ public:
 
 class FuncDefNode : public BlockNode {
 private:
-    IdentifierVisibility visibility;
+    IdenVisibility visibility;
 public:
     FuncDefNode();
     FuncDefNode(const Token &token);
 
-    IdentifierVisibility getVisibility() const;
-    void setVisibility(IdentifierVisibility visibility);
+    IdenVisibility getVisibility() const;
+    void setVisibility(IdenVisibility visibility);
 
     IdentifierNode *getNameNode() const ;
     size_t getParamCount() const;
@@ -204,14 +204,14 @@ public:
 
 class ClsDefNode : public SyntaxNode {
 private:
-    IdentifierVisibility visibility;
+    IdenVisibility visibility;
     std::vector<size_t> fieldIndex, funcIndex, varFuncIndex;
 public:
     ClsDefNode();
     ClsDefNode(const Token &token);
 
-    IdentifierVisibility getVisibility() const;
-    void setVisibility(IdentifierVisibility visibility); 
+    IdenVisibility getVisibility() const;
+    void setVisibility(IdenVisibility visibility); 
 
     size_t getFieldCount() const;
     size_t getFuncCount() const;

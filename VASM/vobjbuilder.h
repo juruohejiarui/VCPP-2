@@ -15,7 +15,7 @@ struct VASMPackage {
     uint64 vcodeSize, mainAddr;
     std::map<std::string, uint64> labelOffset;
     std::vector< std::pair<uint32, std::string> > hints;
-    std::vector<std::string> stringList;
+    std::vector<std::string> strList;
     /// @brief the map of exposed identifier : identifier -> offset
     // std::map<std::string, uint32> exposeMap;
     // std::vector<std::string> relyList;
@@ -39,21 +39,21 @@ private:
 
 struct ClassTypeData;
 struct VariableTypeData {
-    IdentifierVisibility visibility;
+    IdenVisibility visibility;
     std::string name;
     std::string type;
 
     uint64 offset;
 };
 struct MethodTypeData {
-    IdentifierVisibility visibility;
+    IdenVisibility visibility;
     std::string name;
     std::string resultType;
     uint64 offset;
     std::vector<std::string> argumentType;
 };
 struct ClassTypeData {
-    IdentifierVisibility visibility;
+    IdenVisibility visibility;
     std::string name, fullName;
     uint64 offset, size;
     uint8 *dataTemplate;

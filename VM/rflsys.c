@@ -104,3 +104,8 @@ uint8 *generateDataTemplate(NamespaceTypeData *root) {
     List_clear(&clsListStart, &clsListEnd);
     return dtTemplate;
 }
+
+ClassTypeData *findClass(const char *fullName) {
+    NamespaceTypeData *rootNsp;
+
+}

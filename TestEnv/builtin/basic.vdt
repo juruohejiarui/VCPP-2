@@ -1,0 +1,119 @@
+{
+  C TestA v private 0x10 {
+    F func1@T2_DIMC0 v protected : object{ : object}
+    F func2@T2_DIMC0@T2_DIMC0 v protected : object{ : object : object}
+  }
+  C TestB v private 0x18 {
+    F func1@int_DIMC0 v protected : int{ : int}
+    F func2@T2_DIMC0@T2_DIMC0 v protected : object{ : object : object}
+    F func2@int_DIMC0@float_DIMC0 v protected : int{ : int : float}
+    0x10 0x8
+  }
+  N System{
+    F sort@ArrayLike_DIMC0@Compare_DIMC0@uint_DIMC0@uint_DIMC0 v public : void{ : System.ArrayLike : System.Compare : uint : uint}
+    F sort@ArrayLike_DIMC0@Compare_DIMC0 v public : void{ : System.ArrayLike : System.Compare}
+    C Array v public 0x60 {
+      V capacity v private 0x5C : uint
+      V data v private 0x50 : object[]
+      V length v private 0x58 : uint
+      F @constructer v public : void{}
+      F @constructer@int_DIMC0@T_DIMC0 v public : void{ : int : object}
+      F append@T_DIMC0 v public : void{ : object}
+      F get@KeyT_DIMC0 v public : object{ : int}
+      V get@KeyT_DIMC0 v public 0x18 : object
+      F getLength v public : uint{}
+      V getLength v public 0x30 : uint
+      F set@KeyT_DIMC0@ValueT_DIMC0 v public : void{ : int : object}
+      V set@KeyT_DIMC0@ValueT_DIMC0 v public 0x20 : void
+      F swap@int_DIMC0@int_DIMC0 v public : void{ : int : int}
+      V swap@int_DIMC0@int_DIMC0 v public 0x38 : void
+      F toBasicArray v public : object[]{}
+      V toBasicArray v public 0x40 : object[]
+      0x18 F System.Array.get@int_DIMC0
+      0x30 F System.Array.getLength
+      0x20 F System.Array.set@int_DIMC0@T_DIMC0
+      0x38 F System.Array.swap@int_DIMC0@int_DIMC0
+      0x40 F System.ArrayLike.toBasicArray
+      0x48 0x8
+      0x28 0x4
+      0x30 0x8
+    }
+    C ArrayLike v public 0x48 {
+      F get@KeyT_DIMC0 v public : object{ : int}
+      V get@KeyT_DIMC0 v public 0x18 : object
+      F getLength v public : uint{}
+      V getLength v public 0x30 : uint
+      F set@KeyT_DIMC0@ValueT_DIMC0 v public : void{ : int : object}
+      V set@KeyT_DIMC0@ValueT_DIMC0 v public 0x20 : void
+      F swap@int_DIMC0@int_DIMC0 v public : void{ : int : int}
+      V swap@int_DIMC0@int_DIMC0 v public 0x38 : void
+      F toBasicArray v public : object[]{}
+      V toBasicArray v public 0x40 : object[]
+      0x18 F System.ArrayLike.get@int_DIMC0
+      0x30 F System.ArrayLike.getLength
+      0x20 F System.ArrayLike.set@int_DIMC0@T_DIMC0
+      0x38 F System.ArrayLike.swap@int_DIMC0@int_DIMC0
+      0x40 F System.ArrayLike.toBasicArray
+      0x28 0x4
+      0x30 0x8
+    }
+    C Compare v public 0x18 {
+      F compare@T_DIMC0@T_DIMC0 v public : int{ : object : object}
+      V compare@T_DIMC0@T_DIMC0 v public 0x10 : int
+      0x10 F System.Compare.compare@T_DIMC0@T_DIMC0
+    }
+    C IntCompare v public 0x18 {
+      F compare@T_DIMC0@T_DIMC0 v public : int{ : int : int}
+      V compare@T_DIMC0@T_DIMC0 v public 0x10 : int
+      0x10 F System.IntCompare.compare@int_DIMC0@int_DIMC0
+      0x18 0x4
+    }
+    C LongCompare v public 0x18 {
+      F compare@T_DIMC0@T_DIMC0 v public : int{ : long : long}
+      V compare@T_DIMC0@T_DIMC0 v public 0x10 : int
+      0x10 F System.LongCompare.compare@long_DIMC0@long_DIMC0
+      0x18 0x8
+    }
+    C MapLike v public 0x28 {
+      F get@KeyT_DIMC0 v public : object{ : object}
+      V get@KeyT_DIMC0 v public 0x18 : object
+      F set@KeyT_DIMC0@ValueT_DIMC0 v public : void{ : object : object}
+      V set@KeyT_DIMC0@ValueT_DIMC0 v public 0x20 : void
+      0x18 F System.MapLike.get@KeyT_DIMC0
+      0x20 F System.MapLike.set@KeyT_DIMC0@ValueT_DIMC0
+    }
+    C String v public 0x58 {
+      V capacity v private 0x54 : uint
+      V data v private 0x48 : char[]
+      V length v private 0x50 : uint
+      F @constructer v public : void{}
+      F @constructer@String_DIMC0 v public : void{ : System.String}
+      F append@char_DIMC0 v public : void{ : char}
+      F get@KeyT_DIMC0 v public : char{ : int}
+      V get@KeyT_DIMC0 v public 0x18 : char
+      F getLength v public : uint{}
+      V getLength v public 0x30 : uint
+      F resize@int_DIMC0 v public : void{ : int}
+      F set@KeyT_DIMC0@ValueT_DIMC0 v public : void{ : int : char}
+      V set@KeyT_DIMC0@ValueT_DIMC0 v public 0x20 : void
+      F swap@int_DIMC0@int_DIMC0 v public : void{ : int : int}
+      V swap@int_DIMC0@int_DIMC0 v public 0x38 : void
+      F toBasicArray v public : object[]{}
+      V toBasicArray v public 0x40 : object[]
+      0x18 F System.String.get@int_DIMC0
+      0x30 F System.String.getLength
+      0x20 F System.String.set@int_DIMC0@char_DIMC0
+      0x38 F System.ArrayLike.swap@int_DIMC0@int_DIMC0
+      0x40 F System.ArrayLike.toBasicArray
+      0x48 0x1
+      0x28 0x4
+      0x30 0x1
+    }
+    C UIntCompare v public 0x18 {
+      F compare@T_DIMC0@T_DIMC0 v public : int{ : uint : uint}
+      V compare@T_DIMC0@T_DIMC0 v public 0x10 : int
+      0x10 F System.UIntCompare.compare@uint_DIMC0@uint_DIMC0
+      0x18 0x4
+    }
+  }
+}

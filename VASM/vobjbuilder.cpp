@@ -32,7 +32,7 @@ bool VASMPackage::generate(const std::string &srcPath, bool ignoreHint) {
     std::cout << "hints: \n";
     for (auto &pir : hints) std::cout << "Offset 0x" << std::setfill('0') << std::setbase(16) << std::setw(8) << pir.first << " : " << pir.second << std::endl;  
     std::cout << "strings \n";
-    for (auto &pir : stringList) std::cout << pir << std::endl;  
+    for (auto &pir : strList) std::cout << pir << std::endl;  
     // std::cout << "expose labels: \n";
     // for (auto &pir : exposeMap) std::cout << pir.first << std::endl; 
     // std::cout << "rely paths: \n";
@@ -307,7 +307,7 @@ bool getTypeDataTokenList(std::vector<TypeDataToken> &tkList, const std::string 
             r += 2;
             while (r + 1 < text.size() - 1 && (isLetter(text[r + 1]))) r++;
             token.type = TypeDataTokenType::Visibility;
-            token.data.data.uint32_v = (uint32)getIdentifierVisibility(text.substr(l + 2, r - l - 1));
+            token.data.data.uint32_v = (uint32)getIdenVisibility(text.substr(l + 2, r - l - 1));
         } else if (ch == ':') {
             r += 2;
             while (r + 1 < text.size() - 1 && (isLetter(text[r + 1]) || text[r + 1] == '.' || text[r + 1] == '[' || text[r + 1] == ']')) r++;
@@ -327,7 +327,7 @@ bool getTypeDataTokenList(std::vector<TypeDataToken> &tkList, const std::string 
     return succ;
 }
 bool compileTypeDataFile(VariableTypeData *var, const std::vector<TypeDataToken> &tkList, uint32 l, uint32 &r) {
-    var->visibility = (IdentifierVisibility)tkList[l + 1].data.data.uint32_v;
+    var->visibility = (IdenVisibility)tkList[l + 1].data.data.uint32_v;
     var->offset = tkList[l + 2].data.data.uint64_v;
     var->type = tkList[l + 3].dataString;
     r = l + 3;
@@ -335,7 +335,7 @@ bool compileTypeDataFile(VariableTypeData *var, const std::vector<TypeDataToken>
 }
 bool compileTypeDataFile(MethodTypeData *mtd, const std::vector<TypeDataToken> &tkList, uint32 l, uint32 &r) {
     // get the visibility and result type
-    mtd->visibility = (IdentifierVisibility)tkList[l + 1].data.data.uint32_v;
+    mtd->visibility = (IdenVisibility)tkList[l + 1].data.data.uint32_v;
     mtd->resultType = tkList[l + 2].dataString, mtd->offset = 0;
     r = tkList[l + 3].data.data.uint32_v;
     // get the arguement list
@@ -344,7 +344,7 @@ bool compileTypeDataFile(MethodTypeData *mtd, const std::vector<TypeDataToken> &
 }
 bool compileTypeDataFile(ClassTypeData *cls, const std::vector<TypeDataToken> &tkList, uint32 l, uint32 &r) {
     // get the size and visibility
-    cls->visibility = (IdentifierVisibility)tkList[l + 1].data.data.uint32_v;
+    cls->visibility = (IdenVisibility)tkList[l + 1].data.data.uint32_v;
     cls->size = tkList[l + 2].data.data.uint64_v, cls->offset = 0;
     r = tkList[l + 3].data.data.uint32_v;
     uint32 fr = l + 4, to = fr;
@@ -353,8 +353,7 @@ bool compileTypeDataFile(ClassTypeData *cls, const std::vector<TypeDataToken> &t
         auto &tk = tkList[fr];
         switch (tk.type) {
             case TypeDataTokenType::Data: {
-                cls->offsetMap.push_back(std::make_pair(tk.data.data.uint64_v, tkList[fr + 1].dataString));
-                to = fr + 1;
+                cls->offsetMap.push_back(std::make_pair(tk.data.uint64_v(), tkList[fr + 1].dataString));
                 break;
             }
             case TypeDataTokenType::Function: {
@@ -428,20 +427,20 @@ bool compileTypeDataFile(DataTypePackage *dtPkg, const std::vector<TypeDataToken
 #ifndef NDEBUG
 void debugPrintTypeData(VariableTypeData *var, int dep) {
     std::cout << getIndent(dep) << "variable : " << var->name << std::endl;
-    std::cout << getIndent(dep + 1) << "visibility : " << identifierVisibilityString[(uint32)var->visibility] << std::endl;
+    std::cout << getIndent(dep + 1) << "visibility : " << idenVisibilityStr[(uint32)var->visibility] << std::endl;
     std::cout << getIndent(dep + 1) << "type       : " << var->type << std::endl;
     std::cout << getIndent(dep + 1) << "offset     : 0x" << var->offset << std::endl;  
 }
 void debugPrintTypeData(MethodTypeData *mtd, int dep) {
     std::cout << getIndent(dep) << "function : " << mtd->name << std::endl;
-    std::cout << getIndent(dep + 1) << "visibility  : " << identifierVisibilityString[(uint32)mtd->visibility] << std::endl;
+    std::cout << getIndent(dep + 1) << "visibility  : " << idenVisibilityStr[(uint32)mtd->visibility] << std::endl;
     std::cout << getIndent(dep + 1) << "result type : " << mtd->resultType << std::endl;
     std::cout << getIndent(dep + 1) << "offset      : 0x" << std::setbase(16) << mtd->offset << std::endl;
     for (auto &arg : mtd->argumentType) std::cout << getIndent(dep + 1) << arg << std::endl;
 }
 void debugPrintTypeData(ClassTypeData *cls, int dep) {
     std::cout << getIndent(dep) << "class : " << cls->name << std::endl;
-    std::cout << getIndent(dep + 1) << "visibility : " << identifierVisibilityString[(uint32)cls->visibility] << std::endl;
+    std::cout << getIndent(dep + 1) << "visibility : " << idenVisibilityStr[(uint32)cls->visibility] << std::endl;
     std::cout << getIndent(dep + 1) << "size       : 0x" << std::setbase(16) << cls->size << std::endl;
     std::cout << getIndent(dep + 1) << "offset     : 0x" << std::setbase(16) << cls->offset << std::endl;
     for (auto &pir : cls->methods) debugPrintTypeData(pir.second, dep + 1);
@@ -495,7 +494,7 @@ bool VOBJPackage::read(const std::string &path) {
         auto readVar = [&]() -> VariableTypeData * {
             VariableTypeData *var = new VariableTypeData;
             readString(ifs, var->name);
-            dt.type = DataTypeModifier::u32, readData(ifs, dt), var->visibility = (IdentifierVisibility)dt.uint32_v();
+            dt.type = DataTypeModifier::u32, readData(ifs, dt), var->visibility = (IdenVisibility)dt.uint32_v();
             dt.type = DataTypeModifier::u64, readData(ifs, dt), var->offset = dt.uint64_v();
             readString(ifs, var->type);
             return var;
@@ -503,7 +502,7 @@ bool VOBJPackage::read(const std::string &path) {
         auto readMtd = [&]() -> MethodTypeData * {
             MethodTypeData *mtd = new MethodTypeData;
             readString(ifs, mtd->name);
-            dt.type = DataTypeModifier::u32, readData(ifs, dt), mtd->visibility = (IdentifierVisibility)dt.uint32_v();
+            dt.type = DataTypeModifier::u32, readData(ifs, dt), mtd->visibility = (IdenVisibility)dt.uint32_v();
             dt.type = DataTypeModifier::u64, readData(ifs, dt), mtd->offset = dt.uint64_v();
             readString(ifs, mtd->resultType);
             readData(ifs, dt), mtd->argumentType.resize(dt.uint64_v(), "");
@@ -513,7 +512,7 @@ bool VOBJPackage::read(const std::string &path) {
         auto readCls = [&]() -> ClassTypeData * {
             ClassTypeData *cls = new ClassTypeData;
             readString(ifs, cls->name);
-            dt.type = DataTypeModifier::u32, readData(ifs, dt), cls->visibility = (IdentifierVisibility)dt.uint32_v();
+            dt.type = DataTypeModifier::u32, readData(ifs, dt), cls->visibility = (IdenVisibility)dt.uint32_v();
             dt.type = DataTypeModifier::u64;
             readData(ifs, dt), cls->size = dt.uint64_v();
             readData(ifs, dt), cls->offset = dt.uint64_v();
@@ -626,7 +625,9 @@ bool getOffset(VOBJPackage &vobjPkg, std::map<std::string, uint64> &mOffset, std
                 cls->dataTemplate = new uint8[cls->size];
                 std::sort(cls->offsetMap.begin(), cls->offsetMap.end(), [](std::pair<uint64, std::string> &a, std::pair<uint64, std::string> &b) { return a.first < b.first; });
                 for (auto &pir : cls->offsetMap)
-                    *((uint64*)&cls->dataTemplate[pir.first]) = cls->methods[pir.second]->offset;
+                    if (pir.second[0] == '0')
+                        *((uint64*)&cls->dataTemplate[pir.first]) = getUnionData(pir.second).uint64_v();
+                    else *((uint64*)&cls->dataTemplate[pir.first]) = cls->methods[pir.second]->offset;
             }
             return succ;
         };
@@ -803,8 +804,8 @@ bool writeVObj(uint8 type, VOBJPackage &vobjPkg, const std::vector<std::string> 
     if (vobjPkg.vasmPackage.labelOffset.count("main"))
         writeData(ofs, UnionData(vobjPkg.vasmPackage.labelOffset["main"]));
     else writeData(ofs, UnionData((uint64)0));
-    writeData(ofs, UnionData((uint64)vobjPkg.vasmPackage.stringList.size()));
-    for (auto &str : vobjPkg.vasmPackage.stringList) writeString(ofs, str);
+    writeData(ofs, UnionData((uint64)vobjPkg.vasmPackage.strList.size()));
+    for (auto &str : vobjPkg.vasmPackage.strList) writeString(ofs, str);
     writeData(ofs, UnionData(vobjPkg.vasmPackage.globalMemory));
     writeData(ofs, UnionData(vobjPkg.vasmPackage.vcodeSize));
     for (auto &cmd : vobjPkg.vasmPackage.commandList) {

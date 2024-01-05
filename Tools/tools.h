@@ -95,17 +95,17 @@ enum class ValueTypeModifier {
     MemberRef, r, t, Unknown,
 };
 
-enum class IdentifierVisibility {
-    Private, Public, Protected, Unknown
+enum class IdenVisibility {
+    Private, Protected, Public, Unknown
 };
 DataTypeModifier getDataTypeModifier(const std::string &name);
 ValueTypeModifier getValueTypeModifier(const std::string &name);
-IdentifierVisibility getIdentifierVisibility(const std::string &name);
-extern const std::string dataTypeModifierString[], valueTypeModifierString[], identifierVisibilityString[];
+IdenVisibility getIdenVisibility(const std::string &name);
+extern const std::string dataTypeModifierStr[], valueTypeModifierStr[], idenVisibilityStr[];
 extern const int dataTypeModifierNumber, valueTypeModifierNumber, identifierVisibilityNumber;
 
 bool isInteger(DataTypeModifier dtMfr);
-bool isRefereence(ValueTypeModifier vlMfr);
+bool isReference(ValueTypeModifier vlMfr);
 
 /// @brief separate STR using SEP and return RES
 /// @param str 
@@ -127,6 +127,7 @@ UnionData getUnionData(const std::string &str);
 std::string getString(const std::string &str, int st, int &ed);
 
 std::string toString(const UnionData &data);
+std::string toString(uint64 data, int base);
 
 #define isLetter(ch) (('a' <= (ch) && (ch) <= 'z') || ('A' <= (ch) && (ch) <= 'Z') || (ch) == '_')
 #define isNumber(ch) ('0' <= (ch) && (ch) <= '9')

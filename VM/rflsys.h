@@ -2,8 +2,8 @@
 #define __RFLSYS_H__
 #include "tools.h"
 
-typedef enum IdentifierVisibility {
-    Public, Private, Protected
+typedef enum IdenVisibility {
+    Private, Protected, Public
 };
 typedef struct tmpVariableTypeData {
     char *name, *type;
@@ -27,6 +27,13 @@ typedef struct tmpNamespaceTypeData {
     char *name;
     uint64 dataTemplateSize;
 } NamespaceTypeData;
+
+typedef struct tmpMethodList {
+    char *name;
+    uint64 listSize;
+    MethodTypeData **funcList;
+} MethodList;
+
 /// @brief Load the type data from the file and return the root of type data
 /// @param fPtr the pointer of the file
 /// @return the root of type data
@@ -37,7 +44,7 @@ NamespaceTypeData *loadTypeData(FILE *fPtr);
 uint8 *generateDataTemplate(NamespaceTypeData *root);
 
 ClassTypeData *findClass(const char *fullName);
-MethodTypeData *findMethod(const char *fullName); 
+MethodTypeData *findMethod(const char *fullName);
 VariableTypeData *findVariable(const char *fullName);
 
 /// @brief find the class named NAME in NSP, if cannot find this class, then return NULL 
@@ -45,5 +52,8 @@ VariableTypeData *findVariable(const char *fullName);
 /// @param name the name of the class (not the full name)
 /// @return the type data of the class
 ClassTypeData *findClass_nsp(NamespaceTypeData *nsp, const char *name);
-MethodTypeData *findMethod_nsp(NamespaceTypeData *nsp, const char *name);
+MethodTypeData *findMethod_nsp(NamespaceTypeData *nsp, const char *fullName);
+MethodList *findMethods_nsp(NamespaceTypeData *nsp, const char *name);
+MethodList *findMethods_cls(ClassTypeData *nsp, const char *name);
+
 #endif

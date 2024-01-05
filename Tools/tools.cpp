@@ -1,8 +1,8 @@
 #include "tools.h"
 
-const std::string dataTypeModifierString[] = {"c", "b", "i16", "u16", "i32", "u32", "i64", "u64", "f32", "f64", "o", "gv0", "gv1", "gv2", "gv3", "gv4", "unknown"};
-const std::string valueTypeModifierString[] = {"mr", "r", "t", "unknown"};
-const std::string identifierVisibilityString[] = {"public", "private", "protected", "unknown"};
+const std::string dataTypeModifierStr[] = {"c", "b", "i16", "u16", "i32", "u32", "i64", "u64", "f32", "f64", "o", "gv0", "gv1", "gv2", "gv3", "gv4", "unknown"};
+const std::string valueTypeModifierStr[] = {"mr", "r", "t", "unknown"};
+const std::string idenVisibilityStr[] = {"private", "protected", "public", "unknown"};
 const int dataTypeModifierNumber = 16, valueTypeModifierNumber = 3, identifierVisibilityNumber = 3;
 
 UnionData::UnionData() { type = (DataTypeModifier)dataTypeModifierNumber, data.uint64_v = 0; }
@@ -52,18 +52,18 @@ float64 UnionData::float64_v() const { return data.float64_v; }
 
 DataTypeModifier getDataTypeModifier(const std::string &name)
 {
-    for (int i = 0; i < dataTypeModifierNumber; i++) if (name == dataTypeModifierString[i]) return (DataTypeModifier)i;
+    for (int i = 0; i < dataTypeModifierNumber; i++) if (name == dataTypeModifierStr[i]) return (DataTypeModifier)i;
     return DataTypeModifier::unknown;
 }
 
 ValueTypeModifier getValueTypeModifier(const std::string &name)
 {
-    for (int i = 0; i < valueTypeModifierNumber; i++) if (name == valueTypeModifierString[i]) return (ValueTypeModifier)i;
+    for (int i = 0; i < valueTypeModifierNumber; i++) if (name == valueTypeModifierStr[i]) return (ValueTypeModifier)i;
     return ValueTypeModifier::Unknown;
 }
-IdentifierVisibility getIdentifierVisibility(const std::string &name) {
-    for (int i = 0; i < identifierVisibilityNumber; i++) if (name == identifierVisibilityString[i]) return (IdentifierVisibility)i;
-    return IdentifierVisibility::Unknown;
+IdenVisibility getIdenVisibility(const std::string &name) {
+    for (int i = 0; i < identifierVisibilityNumber; i++) if (name == idenVisibilityStr[i]) return (IdenVisibility)i;
+    return IdenVisibility::Unknown;
 }
 
 bool isInteger(DataTypeModifier dtMfr) {
@@ -135,6 +135,23 @@ std::string toString(const UnionData &data) {
             break;
     }
     return std::string(strBuf);
+}
+
+std::string toString(uint64 data, int base) {
+    std::string res;
+    if (!data) res.append("0");
+    else {
+        while (data) {
+            uint64 t = data % base; char ch;
+            if (t >= 10) ch = t - 10 + 'A';
+            else ch = t + '0';
+            res.push_back(ch);
+            data /= base;
+        }
+    }
+    std::reverse(res.begin(), res.end());
+    if (base == 16) return "0x" + res;
+    return res;
 }
 
 uint64 alignTo(uint64 value, uint64 base) {

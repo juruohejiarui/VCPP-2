@@ -2,8 +2,8 @@ cmake_minimum_required (VERSION 2.8)
 
 project (VCPP)
 
-set(CXX_SOURCE ../Tools/tools.cpp ../Tools/message.cpp ../VASM/commandlist.cpp tokenlist.cpp syntaxnode.cpp idensys.cpp vcodegen.cpp main.cpp)
-set(CXX_HEADER ../Tools/tools.h ../Tools/message.h ../VASM/commandlist.h tokenlist.h idensys.h vcodegen.h syntaxnode.h)  
+set(CXX_SOURCE ../Tools/tools.cpp ../Tools/message.cpp ../VASM/commandlist.cpp tokenlist.cpp syntaxnode.cpp idensys.cpp gensymbol.cpp genvcode.cpp main.cpp)
+set(CXX_HEADER ../Tools/tools.h ../Tools/message.h ../VASM/commandlist.h tokenlist.h idensys.h gen.h syntaxnode.h)  
 
 # set_target_properties(${TARGET} PROPERTIES
 #     COMPILE_FLAGS "-pthread"

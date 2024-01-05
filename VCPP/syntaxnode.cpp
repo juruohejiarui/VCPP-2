@@ -158,11 +158,11 @@ ExpressionNode *ControlNode::getContent() const {
 #pragma endregion
 
 #pragma region VarDefNode
-VarDefNode::VarDefNode() : BlockNode() { type = SyntaxNodeType::VarDef, visibility = IdentifierVisibility::Unknown; }
-VarDefNode::VarDefNode(const Token &token) : BlockNode(token) { type = SyntaxNodeType::VarDef, visibility = IdentifierVisibility::Unknown; }
+VarDefNode::VarDefNode() : BlockNode() { type = SyntaxNodeType::VarDef, visibility = IdenVisibility::Unknown; }
+VarDefNode::VarDefNode(const Token &token) : BlockNode(token) { type = SyntaxNodeType::VarDef, visibility = IdenVisibility::Unknown; }
 
-IdentifierVisibility VarDefNode::getVisibility() const { return visibility; }
-void VarDefNode::setVisibility(IdentifierVisibility visibility) { this->visibility = visibility; }
+IdenVisibility VarDefNode::getVisibility() const { return visibility; }
+void VarDefNode::setVisibility(IdenVisibility visibility) { this->visibility = visibility; }
 
 std::tuple<IdentifierNode *, IdentifierNode *, ExpressionNode *> VarDefNode::getVariable(size_t index) const {
     return std::make_tuple((IdentifierNode *)at(index * 3), (IdentifierNode *)at(index * 3 + 1), (ExpressionNode *)at(index * 3 + 2));
@@ -170,11 +170,11 @@ std::tuple<IdentifierNode *, IdentifierNode *, ExpressionNode *> VarDefNode::get
 #pragma endregion
 
 #pragma region FuncDef
-FuncDefNode::FuncDefNode() : BlockNode() { type = SyntaxNodeType::FuncDef, visibility = IdentifierVisibility::Unknown; }
-FuncDefNode::FuncDefNode(const Token &token) : BlockNode(token) { type = SyntaxNodeType::FuncDef, visibility = IdentifierVisibility::Unknown; }
+FuncDefNode::FuncDefNode() : BlockNode() { type = SyntaxNodeType::FuncDef, visibility = IdenVisibility::Unknown; }
+FuncDefNode::FuncDefNode(const Token &token) : BlockNode(token) { type = SyntaxNodeType::FuncDef, visibility = IdenVisibility::Unknown; }
 
-IdentifierVisibility FuncDefNode::getVisibility() const { return visibility; }
-void FuncDefNode::setVisibility(IdentifierVisibility visibility) { this->visibility = visibility; }
+IdenVisibility FuncDefNode::getVisibility() const { return visibility; }
+void FuncDefNode::setVisibility(IdenVisibility visibility) { this->visibility = visibility; }
 
 IdentifierNode *FuncDefNode::getNameNode() const { return (IdentifierNode *)at(0); }
 size_t FuncDefNode::getParamCount() const { return (getChildrenCount() - 3) / 2; }
@@ -191,11 +191,11 @@ VarFuncDefNode::VarFuncDefNode(const Token &token) : FuncDefNode(token) { type =
 #pragma endregion
 
 #pragma region ClsDefNode
-ClsDefNode::ClsDefNode() : SyntaxNode(SyntaxNodeType::ClsDef) { children.resize(2, nullptr), visibility = IdentifierVisibility::Unknown; }
-ClsDefNode::ClsDefNode(const Token &token) : SyntaxNode(SyntaxNodeType::ClsDef, token) { children.resize(2, nullptr), visibility = IdentifierVisibility::Unknown; }
+ClsDefNode::ClsDefNode() : SyntaxNode(SyntaxNodeType::ClsDef) { children.resize(2, nullptr), visibility = IdenVisibility::Unknown; }
+ClsDefNode::ClsDefNode(const Token &token) : SyntaxNode(SyntaxNodeType::ClsDef, token) { children.resize(2, nullptr), visibility = IdenVisibility::Unknown; }
 
-IdentifierVisibility ClsDefNode::getVisibility() const { return visibility; }
-void ClsDefNode::setVisibility(IdentifierVisibility visibility) { this->visibility = visibility; }
+IdenVisibility ClsDefNode::getVisibility() const { return visibility; }
+void ClsDefNode::setVisibility(IdenVisibility visibility) { this->visibility = visibility; }
 
 size_t ClsDefNode::getFieldCount() const { return fieldIndex.size(); }
 size_t ClsDefNode::getFuncCount() const { return funcIndex.size(); }

@@ -23,7 +23,7 @@ ExprType::ExprType(IdentifierNode *node) {
     this->clsName = node->getName();
     if (node->getGenericArea() != nullptr)
         for (size_t i = 0; i < node->getGenericArea()->getParamCount(); i++)
-            genericParams.push_back(ExprType(node->getGenericArea()->getParam(i)));
+            generParams.push_back(ExprType(node->getGenericArea()->getParam(i)));
 }
 
 uint64 ExprType::getSize() const {
@@ -37,34 +37,27 @@ ExprType ExprType::convertToBase() const {
     ExprType res;
     res.cls = cls->baseCls, res.clsName = cls->baseCls->fullName;
     res.dimc = dimc;
-    for (size_t i = 0; i < res.cls->genericClasses.size(); i++) {
-        ExprType res = cls->genericParams[i];
-        // substitute the params in THIS into the param classes of cls
-        for (size_t j = 0; j < cls->genericClasses.size(); j++)
-            res = substitute(res, cls->genericClasses[i], res.genericParams[i]);
-        res.genericParams.emplace_back(res);
-    }
+    res.generParams = subst(cls->generParams, makeSubstMap(cls->generCls, generParams));
     return res;
 }
 
 bool ExprType::setCls() {
     cls = findCls(clsName);
-    if (cls == nullptr || cls->genericClasses.size() != genericParams.size()) return false;
+    if (cls == nullptr || cls->generCls.size() != generParams.size()) return false;
     bool succ = true;
-    for (auto &param : genericParams) succ &= param.setCls();
+    for (auto &param : generParams) succ &= param.setCls();
     return succ;
 }
 
 bool ExprType::operator==(const ExprType &other) const {
-    if (dimc != other.dimc || cls != other.cls || genericParams.size() != other.genericParams.size()) return false;
-    for (size_t i = 0; i < genericParams.size(); i++) if (genericParams[i] != other.genericParams[i]) return false;
+    if (dimc != other.dimc || cls != other.cls || generParams.size() != other.generParams.size()) return false;
+    for (size_t i = 0; i < generParams.size(); i++) if (generParams[i] != other.generParams[i]) return false;
     return true;
 }
 
 bool ExprType::operator!=(const ExprType &other) const { return !(*this == other); }
 
-std::string ExprType::toString() const
-{
+std::string ExprType::toString() const {
     std::string str;
     if (cls != nullptr) str = cls->fullName;
     else str = clsName;
@@ -72,15 +65,26 @@ std::string ExprType::toString() const
     return str;
 }
 
+std::string ExprType::toVtdString() const {
+    std::string str;
+    if (cls != nullptr) {
+        if (cls->isGeneric) str = "object";
+        else str = cls->fullName;
+    }
+    else str = clsName;
+    for (size_t i = 0; i < dimc; i++) str.append("[]");
+    return str;
+}
+
 std::string ExprType::toDebugString() const {
     std::string str;
     if (cls != nullptr) str = cls->fullName;
     else str = clsName;
-    if (genericParams.size() > 0) {
+    if (generParams.size() > 0) {
         str.append("<$");
-        for (size_t i = 0; i < genericParams.size(); i++) {
+        for (size_t i = 0; i < generParams.size(); i++) {
             if (i > 0) str.append(", ");
-            str.append(genericParams[i].toDebugString());
+            str.append(generParams[i].toDebugString());
         }
         str.append("$>");
     }
@@ -88,22 +92,40 @@ std::string ExprType::toDebugString() const {
     return str;
 }
 
-ExprType substitute(const ExprType &target, ClassInfo *cls, const ExprType &clsImpl) {
+ExprType &GTableData::operator[](uint8 index) { return etype[index]; }
+const ExprType &GTableData::operator[](uint8 index) const { return etype[index]; }
+void GTableData::insert(const std::vector<ClassInfo *> gClsList, const GenerSubstMap &gsMap) {
+    for (auto gCls : gClsList) {
+        size++;
+        auto iter = gsMap.find(gCls);
+        if (iter != gsMap.end()) etype[size] = iter->second;
+        else etype[size] = ExprType();
+    }
+}
+GTableData::GTableData() { size = 0; }
+
+ExprType subst(const ExprType &target, ClassInfo *cls, const ExprType &clsImpl) {
     if (target.cls == cls) return clsImpl;
     ExprType res = target;
-    for (size_t i = 0; i < res.genericParams.size(); i++)
-        res.genericParams[i] = substitute(res.genericParams[i], cls, clsImpl);
+    for (size_t i = 0; i < res.generParams.size(); i++)
+        res.generParams[i] = subst(res.generParams[i], cls, clsImpl);
     return res;
 }
 
-ExprType substitute(const ExprType &target, const GenericSubstitutionMap &gsMap) {
+ExprType subst(const ExprType &target, const GenerSubstMap &gsMap) {
     ExprType res = target;
     if (res.cls->isGeneric && gsMap.count(res.cls)) {
         uint32 dimc = res.dimc;
         res = gsMap.find(res.cls)->second;
         return res;
     }
-    for (size_t i = 0; i < res.genericParams.size(); i++) res.genericParams[i] = substitute(res.genericParams[i], gsMap);
+    for (size_t i = 0; i < res.generParams.size(); i++) res.generParams[i] = subst(res.generParams[i], gsMap);
+    return res;
+}
+
+std::vector<ExprType> subst(const std::vector<ExprType> &target, const GenerSubstMap &gsMap) {
+    std::vector<ExprType> res;
+    for (size_t i = 0; i < target.size(); i++) res.push_back(subst(target[i], gsMap));
     return res;
 }
 
@@ -111,7 +133,7 @@ VariableInfo::VariableInfo() {
     nameNode = typeNode = nullptr, initNode = nullptr, blgRoot = nullptr;
     blgFunc = nullptr, blgCls = nullptr, blgNsp = nullptr;
     name = fullName = unknownName;
-    visibility = IdentifierVisibility::Unknown;
+    visibility = IdenVisibility::Unknown;
     offset = 0;
 }
 
@@ -129,18 +151,18 @@ void VariableInfo::setTypeNode(IdentifierNode *typeNode) { this->typeNode = type
 ExpressionNode *VariableInfo::getInitNode() const { return initNode; }
 void VariableInfo::setInitNode(ExpressionNode *initNode) { this->initNode = initNode; }
 
-IdentifierRegion VariableInfo::getRegion() const {
-    if (blgFunc != nullptr) return IdentifierRegion::Local;
-    else if (blgCls != nullptr) return IdentifierRegion::Member;
-    else if (blgNsp != nullptr) return IdentifierRegion::Global;
-    return IdentifierRegion::Unknown;
+IdenRegion VariableInfo::getRegion() const {
+    if (blgFunc != nullptr) return IdenRegion::Local;
+    else if (blgCls != nullptr) return IdenRegion::Member;
+    else if (blgNsp != nullptr) return IdenRegion::Global;
+    return IdenRegion::Unknown;
 }
 
 FunctionInfo::FunctionInfo() {
     blgCls = nullptr, blgNsp = nullptr, blgRoot = nullptr;
     defNode = nullptr;
     name = fullName = nameWithParam = unknownName;
-    visibility = IdentifierVisibility::Unknown;
+    visibility = IdenVisibility::Unknown;
     offset = 0;
 }
 
@@ -149,7 +171,7 @@ void FunctionInfo::setDefNode(FuncDefNode *defNode) {
     this->defNode = defNode;
     name = nameWithParam = defNode->getNameNode()->getName();
     // get the generic params
-    genericClasses.clear();
+    generCls.clear();
     if (defNode->getNameNode()->getGenericArea() != nullptr) {
         for (size_t i = 0; i < defNode->getNameNode()->getGenericArea()->getParamCount(); i++) {
             IdentifierNode *gClsNode = defNode->getNameNode()->getGenericArea()->getParam(i);
@@ -157,7 +179,7 @@ void FunctionInfo::setDefNode(FuncDefNode *defNode) {
             gCls->isGeneric = true;
             gCls->fullName = gCls->name = gClsNode->getName();
             gCls->blgNsp = blgNsp, gCls->blgRoot = blgRoot;
-            genericClasses.push_back(gCls);
+            generCls.push_back(gCls);
         }
     }
     // get the param list
@@ -177,14 +199,14 @@ void FunctionInfo::setDefNode(FuncDefNode *defNode) {
     else fullName = unknownName;
 }
 
-IdentifierRegion FunctionInfo::getRegion() const {
-    if (blgCls != nullptr) return IdentifierRegion::Member;
-    else if (blgNsp != nullptr) return IdentifierRegion::Global;
-    return IdentifierRegion::Unknown;
+IdenRegion FunctionInfo::getRegion() const {
+    if (blgCls != nullptr) return IdenRegion::Member;
+    else if (blgNsp != nullptr) return IdenRegion::Global;
+    return IdenRegion::Unknown;
 }
 
-std::pair<bool, ExprType> FunctionInfo::satisfy(const GenericSubstitutionMap &gsMap, const std::vector<ExprType> &paramList) {
-    if (paramList.size() != this->params.size()) return std::make_pair(false, ExprType());
+std::tuple<bool, ExprType, GTableData> FunctionInfo::satisfy(const GenerSubstMap &gsMap, const std::vector<ExprType> &paramList) {
+    if (paramList.size() != this->params.size()) return std::make_tuple(false, ExprType(), GTableData());
     auto ngsMap = gsMap;
     auto tryMatch = [&ngsMap](ExprType src, const ExprType &tgr) -> bool {
         auto recursion = [&ngsMap](auto &&self, ExprType src, const ExprType &tgr) -> bool {
@@ -207,22 +229,25 @@ std::pair<bool, ExprType> FunctionInfo::satisfy(const GenericSubstitutionMap &gs
                 src = src.convertToBase();
             }
             if (!succ) return false;
-            if (src.genericParams.size() != tgr.genericParams.size()) return false;
-            for (size_t i = 0; i < src.genericParams.size(); i++)
-                if (!self(self, src.genericParams[i], tgr.genericParams[i])) return false;
+            if (src.generParams.size() != tgr.generParams.size()) return false;
+            for (size_t i = 0; i < src.generParams.size(); i++)
+                if (!self(self, src.generParams[i], tgr.generParams[i])) return false;
             return true;
         };
         return recursion(recursion, src, tgr);
     };
-    for (size_t i = 0; i < paramList.size(); i++) if (!tryMatch(paramList[i], params[i]->type)) return std::make_pair(false, ExprType());
-    return std::make_pair(true, substitute(this->resType, ngsMap));
+    for (size_t i = 0; i < paramList.size(); i++) if (!tryMatch(paramList[i], params[i]->type)) return std::make_tuple(false, ExprType(), GTableData());
+    GTableData data;
+    data.insert(blgCls->generCls, ngsMap);
+    data.insert(generCls, ngsMap);
+    return std::make_tuple(true, subst(resType, ngsMap), data);
 }
 
 ClassInfo::ClassInfo() {
     blgNsp = nullptr, blgRoot = nullptr;
     baseCls = nullptr;
     name = fullName = unknownName;
-    visibility = IdentifierVisibility::Unknown;
+    visibility = IdenVisibility::Unknown;
     size = dep = 0;
 }
 
@@ -232,17 +257,23 @@ NamespaceInfo::NamespaceInfo() {
 }
 #pragma endregion
 
+bool isBaseCls(ClassInfo *bsCls, ClassInfo *dCls) {
+    if (bsCls->isGeneric || bsCls->isGeneric) return false;
+    while (dCls->dep > bsCls->dep) dCls = dCls->baseCls;
+    return dCls == bsCls;
+}
+
 bool isBasicCls(ClassInfo *cls) {
-    for (size_t i = 0; i < 10; i++) if (cls == basicTypeCls[i]) return true;
+    for (size_t i = 0; i < 13; i++) if (cls == basicTypeCls[i]) return true;
     return false;
 }
 
-GenericSubstitutionMap makeSubtitutionMap(const std::vector<ClassInfo *> &gClsList, const std::vector<ExprType> &gParamList) {
-    GenericSubstitutionMap gsMap;
+GenerSubstMap makeSubstMap(const std::vector<ClassInfo *> &gClsList, const std::vector<ExprType> &gParamList) {
+    GenerSubstMap gsMap;
     for (size_t i = 0; i < gClsList.size(); i++) gsMap[gClsList[i]] = gParamList[i];
     return gsMap;
 }
-void mergeSubtitutionMap(GenericSubstitutionMap &dst, const GenericSubstitutionMap &src) { for (auto pir : src) dst[pir.first] = pir.second; }
+void mergeSubstMap(GenerSubstMap &dst, const GenerSubstMap &src) { for (auto pir : src) dst[pir.first] = pir.second; }
 
 #pragma region Symbol Search
 std::vector<ClassInfo *> clsList;
@@ -292,23 +323,23 @@ ClassInfo *findCls(const std::string &path) {
     if (prts.size() == 1) {
         // it can be a generic class
         if (curFunc != nullptr) {
-            for (size_t i = 0; i < curFunc->genericClasses.size(); i++)
-                if (curFunc->genericClasses[i] != nullptr && curFunc->genericClasses[i]->name == prts[0])
-                    return curFunc->genericClasses[i];
+            for (size_t i = 0; i < curFunc->generCls.size(); i++)
+                if (curFunc->generCls[i] != nullptr && curFunc->generCls[i]->name == prts[0])
+                    return curFunc->generCls[i];
         }
         if (curCls != nullptr) {
-            for (size_t i = 0; i < curCls->genericClasses.size(); i++)
-                if (curCls->genericClasses[i] != nullptr && curCls->genericClasses[i]->name == prts[0])
-                    return curCls->genericClasses[i];
+            for (size_t i = 0; i < curCls->generCls.size(); i++)
+                if (curCls->generCls[i] != nullptr && curCls->generCls[i]->name == prts[0])
+                    return curCls->generCls[i];
         }
         // or a class in curNsp
         if (curNsp != nullptr && curNsp->clsMap.count(prts[0])) return curNsp->clsMap[prts[0]];
         // or a class in using list
         for (auto nsp : usingList)
-            if (nsp != nullptr && nsp->clsMap.count(prts[0]) && nsp->clsMap[prts[0]]->visibility == IdentifierVisibility::Public)
+            if (nsp != nullptr && nsp->clsMap.count(prts[0]) && nsp->clsMap[prts[0]]->visibility == IdenVisibility::Public)
                 return nsp->clsMap[prts[0]];
         // or a class in root namespace
-        if (rootNsp->clsMap.count(prts[0]) && rootNsp->clsMap[prts[0]]->visibility == IdentifierVisibility::Public)
+        if (rootNsp->clsMap.count(prts[0]) && rootNsp->clsMap[prts[0]]->visibility == IdenVisibility::Public)
             return rootNsp->clsMap[prts[0]];
         return nullptr;
     } else {
@@ -325,55 +356,11 @@ ClassInfo *findCls(const std::string &path) {
             if (st->nspMap.count(prts[0])) st = st->nspMap[prts[0]];
             else return nullptr;
         }
-        if (st->clsMap.count(prts.back()) && st->clsMap[prts.back()]->visibility == IdentifierVisibility::Public)
+        if (st->clsMap.count(prts.back()) && st->clsMap[prts.back()]->visibility == IdenVisibility::Public)
             return st->clsMap[prts.back()];
         else return nullptr;
     }
 }
-VariableInfo *findVar(const std::string &path) {
-    std::vector<std::string> pth;
-    stringSplit(path, '.', pth);
-    if (pth.size() == 1) {
-        if (curCls != nullptr && curCls->fieldMap.count(pth[0]))
-            return curCls->fieldMap[pth[0]];
-        else if (curNsp != nullptr && curNsp->varMap.count(pth[0]))
-            return curNsp->varMap[pth[0]];
-        for (auto nsp : usingList)
-            if (nsp != nullptr && nsp->varMap.count(pth[0]) && nsp->varMap[pth[0]]->visibility == IdentifierVisibility::Public)
-                return nsp->varMap[pth[0]];
-        if (rootNsp->varMap.count(pth[0]) && rootNsp->varMap[pth[0]]->visibility == IdentifierVisibility::Public)
-            return rootNsp->varMap[pth[0]];
-        return nullptr;
-    } else {
-        NamespaceInfo *st = rootNsp;
-        if (curNsp->nspMap.count(pth[0])) st = curNsp;
-        else {
-            for (auto *nsp : usingList) if (nsp->nspMap.count(pth[0])) {
-                st = nsp;
-                break;
-            }
-        }
-        for (size_t i = 0; i < pth.size() - 1; i++)
-            if (!st->nspMap.count(pth[i])) return nullptr;
-            else st = st->nspMap[pth[i]];
-        auto iter = st->varMap.find(pth.back());
-        if (iter == st->varMap.end() || iter->second->visibility != IdentifierVisibility::Public) return nullptr;
-        else return iter->second;
-    }
-}
-std::pair<FunctionInfo *, ExprType> *findFunc(const std::string &path, const std::vector<ExprType> &paramList) {
-    auto scanFuncList = [&](const FunctionList &fList) {
-        for (auto func : fList) {
-            
-        }
-    };
-    std::vector<std::string> prt;
-    stringSplit(path, '.', prt);
-    if (prt.size() == 1) {
-        
-    }
-}
-
 #pragma endregion
 
 /// @brief this function helps to build the root of namespace and class tree
@@ -401,8 +388,8 @@ void buildRootInfo() {
     for (int i = 0; i < 13; i++) 
         rootNsp->clsMap[basicTypeCls[i]->name] = basicTypeCls[i], basicTypeCls[i]->blgNsp = rootNsp;
     for (int i = 0; i < 12; i++) 
-        basicTypeCls[i]->baseCls = basicCls, basicCls->derivedClasses.push_back(basicTypeCls[i]),
-        basicTypeCls[i]->visibility = IdentifierVisibility::Public;
+        basicTypeCls[i]->baseCls = basicCls, basicCls->derivedCls.push_back(basicTypeCls[i]),
+        basicTypeCls[i]->visibility = IdenVisibility::Public;
 }
 
 /// @brief This function can scan and build the namespace structure and build the symbols of classes, generate the generic classes of each class.
@@ -426,7 +413,7 @@ bool buildClsSymbol(const RootList &roots) {
             return false;
         }
         // set the visibility
-        if (clsNode->getVisibility() == IdentifierVisibility::Unknown) cls->visibility = IdentifierVisibility::Private;
+        if (clsNode->getVisibility() == IdenVisibility::Unknown) cls->visibility = IdenVisibility::Private;
         else cls->visibility = clsNode->getVisibility();
         cls->isGeneric = false;
         // build the generic classes
@@ -437,7 +424,7 @@ bool buildClsSymbol(const RootList &roots) {
                 gCls->name = gCls->fullName = gArea->getParam(i)->getName();
                 gCls->isGeneric = true;
                 gCls->blgNsp = blgNsp, gCls->blgRoot = root;
-                cls->genericClasses.push_back(gCls);
+                cls->generCls.push_back(gCls);
             }
         }
         // Install this class
@@ -510,13 +497,13 @@ bool buildClsTree(const RootList &roots) {
                 continue;
             }
             // check the genericDefinition
-            if ((cls->defNode->getBaseNode()->getGenericArea() == nullptr && baseCls->genericClasses.size() > 0)
-                || (cls->defNode->getBaseNode()->getGenericArea()->getParamCount() != baseCls->genericClasses.size())) {
+            if ((cls->defNode->getBaseNode()->getGenericArea() == nullptr && baseCls->generCls.size() > 0)
+                || (cls->defNode->getBaseNode()->getGenericArea()->getParamCount() != baseCls->generCls.size())) {
                 printError(cls->defNode->getBaseNode()->getToken().lineId, "Miss the definition of generic class(es) for base class " + baseCls->fullName);
                 succ = false;
                 continue;
             }
-            if (cls->defNode->getBaseNode()->getGenericArea() != nullptr && baseCls->genericClasses.size() == 0) {
+            if (cls->defNode->getBaseNode()->getGenericArea() != nullptr && baseCls->generCls.size() == 0) {
                 printError(cls->defNode->getBaseNode()->getToken().lineId, "Base class " + baseCls->fullName + " has no generic class");
                 succ = false;
                 continue;
@@ -528,14 +515,14 @@ bool buildClsTree(const RootList &roots) {
                 for (size_t i = 0; i < gArea->getParamCount(); i++) {
                     auto param = ExprType(gArea->getParam(i));
                     succ &= param.setCls();
-                    cls->genericParams.push_back(param);
+                    cls->generParams.push_back(param);
                 }
                 if (!succ) printError(gArea->getToken().lineId, "Failed to set the generic params for base class");
             }
         }
         
         // build the tree
-        baseCls->derivedClasses.push_back(cls);
+        baseCls->derivedCls.push_back(cls);
         cls->baseCls = baseCls;
     }
     return succ;
@@ -550,43 +537,42 @@ bool buildClsMem() {
     que.push(objectCls);
     while (!que.empty()) {
         ClassInfo *bsCls = que.front(); que.pop();
-        for (ClassInfo *dCls : bsCls->derivedClasses) {
-            dCls->size = bsCls->size + dCls->genericClasses.size() * sizeof(uint8);
+        for (ClassInfo *dCls : bsCls->derivedCls) {
+            dCls->size = bsCls->size + dCls->generCls.size() * sizeof(uint64);
             dCls->dep = bsCls->dep + 1;
             // set identifier environment
             setCurNsp(dCls->blgNsp), setCurRoot(dCls->blgRoot), setCurCls(dCls);
             // use memory align to modify the offset of object members
             // inherit the members from base class
+            auto gsMap = makeSubstMap(bsCls->generCls, dCls->generParams);
             for (auto &fld : bsCls->fieldMap) {
-                if (fld.second->visibility == IdentifierVisibility::Private) continue;
+                if (fld.second->visibility == IdenVisibility::Private) continue;
                 VariableInfo *vInfo = new VariableInfo(*fld.second);
                 // substitute the generic class of base cls by the generic params provided by derived class
-                for (size_t i = 0; i < bsCls->genericClasses.size(); i++)
-                    vInfo->type = substitute(vInfo->type, bsCls->genericClasses[i], dCls->genericParams[i]);
+                vInfo->type = subst(vInfo->type, gsMap);
                 dCls->fieldMap[vInfo->name] = vInfo;
             }
-            for (auto &funcList : bsCls->functionMap) {
+            for (auto &funcList : bsCls->funcMap) {
+                // the constructer will not be inherited
                 if (funcList.first == "@constructer") continue;
                 for (auto func : funcList.second) {
                     FunctionInfo *fInfo = new FunctionInfo(*func);
-                    if (fInfo->visibility == IdentifierVisibility::Private) continue;
+                    if (fInfo->visibility == IdenVisibility::Private) continue;
                     // substitute the generic class of base cls by the generic params provided by derived class
-                    for (size_t i = 0; i < bsCls->genericClasses.size(); i++)
-                        fInfo->resType = substitute(fInfo->resType, bsCls->genericClasses[i], dCls->genericParams[i]);
+                    fInfo->resType = subst(fInfo->resType, gsMap);
                     for (auto &param : fInfo->params) {
                         param = new VariableInfo(*param);
-                        for (size_t i = 0; i < bsCls->genericClasses.size(); i++)
-                            param->type = substitute(param->type, bsCls->genericClasses[i], dCls->genericParams[i]);
+                        param->type = subst(param->type, gsMap);
                     }
                 }
-                dCls->functionMap.insert(funcList);
+                dCls->funcMap.insert(funcList);
             }
             // then build the functions and fields of this class
             for (size_t i = 0; i < dCls->defNode->getFieldCount(); i++) {
                 auto vDef = dCls->defNode->getFieldDef(i);
                 // get the visibility of these variables
-                IdentifierVisibility visibility = (vDef->getVisibility() == IdentifierVisibility::Unknown
-                                                     ? IdentifierVisibility::Private : vDef->getVisibility());
+                IdenVisibility visibility = (vDef->getVisibility() == IdenVisibility::Unknown
+                                                     ? IdenVisibility::Private : vDef->getVisibility());
                 for (size_t i = 0; i < vDef->getLocalVarCount(); i++) {
                     VariableInfo *vInfo = new VariableInfo();
                     auto tpl = vDef->getVariable(i);
@@ -615,12 +601,13 @@ bool buildClsMem() {
                     dCls->fieldMap.insert(std::make_pair(vInfo->name, vInfo));
                 }
             }
-            auto gsMap = makeSubtitutionMap(bsCls->genericClasses, dCls->genericParams);
+            auto gsMap = makeSubstMap(bsCls->generCls, dCls->generParams);
             for (size_t i = 0; i < dCls->defNode->getFuncCount(); i++) {
                 auto fDef = dCls->defNode->getFuncDef(i);
                 // set basic information
                 FunctionInfo *fInfo = new FunctionInfo();
                 fInfo->blgCls = dCls, fInfo->blgNsp = dCls->blgNsp, fInfo->blgRoot = dCls->blgRoot;
+                fInfo->visibility = (fDef->getVisibility() == IdenVisibility::Unknown ? IdenVisibility::Private : fDef->getVisibility());
                 fInfo->setDefNode(fDef);
                 setCurFunc(fInfo);
                 // set classes for all the expression type of this fInfo
@@ -643,26 +630,28 @@ bool buildClsMem() {
                 // insert this function
                 // find whether there is a function which is inherited from base and has the same param list
                 bool cover = false;
-                if (dCls->functionMap.count(fInfo->name)) {
-                    auto &fList = dCls->functionMap[fInfo->name];
+                if (dCls->funcMap.count(fInfo->name)) {
+                    auto &fList = dCls->funcMap[fInfo->name];
                     for (size_t i = 0; i < fList.size(); i++) {
                         auto &bsFunc = fList[i];
                         if (bsFunc->blgCls == dCls) continue;
                         // substitute all the generic params into the functions in base class
                         auto chkRes = bsFunc->satisfy(gsMap, paramTypeList);
                         // this function need to cover the function with the same name in the base class
-                        if (chkRes.first) {
+                        if (std::get<0>(chkRes)) {
                             if (bsFunc->getDefNode()->getType() != fDef->getType()) {
-                                printError(fDef->getToken().lineId, "The types of functions that have the same name and param list in both base class and derived class should be the same.");
+                                printError(fDef->getToken().lineId, 
+                                    "The types of functions that have the same name and param list in both base class and derived class should be the same.");
                                 succ = false;
                             } else {
                                 if (fDef->getType() == SyntaxNodeType::VarFuncDef) {
                                     // if it is a varfunc, then the return value should have the same expression type and visibility
-                                    if (chkRes.second != fInfo->resType || fInfo->visibility != bsFunc->visibility) {
+                                    if (std::get<1>(chkRes) != fInfo->resType || fInfo->visibility != bsFunc->visibility) {
                                         printError(fDef->getToken().lineId, "The expression type of return value of function \"" + fInfo->fullName + "\" is invalid.");
                                         succ = false;
                                     } else {
                                         // just cover the function
+                                        fInfo->nameWithParam = bsFunc->nameWithParam;
                                         fInfo->offset = bsFunc->offset;
                                         fList[i] = fInfo;
                                     }
@@ -680,7 +669,7 @@ bool buildClsMem() {
                         // create a variable to store the offset
                         fInfo->offset = dCls->size, dCls->size += sizeof(uint64);
                     }
-                    dCls->functionMap[fInfo->name].push_back(fInfo);
+                    dCls->funcMap[fInfo->name].push_back(fInfo);
                 }
             }
             // push dCls into queue
@@ -706,8 +695,8 @@ bool buildCls(const RootList &roots) {
 std::pair<bool, uint64> buildGlo(const RootList &roots) {
     std::map<RootNode *, uint64> vOffset;
     auto buildGloVar = [&](VarDefNode *varDef, NamespaceInfo *blgNsp, RootNode *blgRoot) -> bool {
-        IdentifierVisibility visibility = (varDef->getVisibility() == IdentifierVisibility::Unknown ?
-                                            IdentifierVisibility::Private : varDef->getVisibility());
+        IdenVisibility visibility = (varDef->getVisibility() == IdenVisibility::Unknown ?
+                                            IdenVisibility::Private : varDef->getVisibility());
         bool succ = true;
         setCurNsp(blgNsp);
         for (size_t i = 0; i < varDef->getLocalVarCount(); i++) {
@@ -732,6 +721,7 @@ std::pair<bool, uint64> buildGlo(const RootList &roots) {
     auto buildGloFunc = [&](FuncDefNode *funcDef, NamespaceInfo *blgNsp, RootNode *blgRoot) -> bool {
         FunctionInfo *fInfo = new FunctionInfo();
         fInfo->blgNsp = blgNsp, fInfo->blgRoot = blgRoot;
+        fInfo->visibility = (funcDef->getVisibility() == IdenVisibility::Unknown ? IdenVisibility::Private : funcDef->getVisibility());
         fInfo->setDefNode(funcDef);
         setCurFunc(fInfo);
         setCurNsp(blgNsp);
@@ -753,8 +743,8 @@ std::pair<bool, uint64> buildGlo(const RootList &roots) {
             auto &fList = blgNsp->funcMap[fInfo->name];
             for (size_t i = 0; i < fList.size(); i++) {
                 auto *otherFunc = fList[i];
-                auto chkRes = otherFunc->satisfy(GenericSubstitutionMap(), paramTypeList);
-                if (chkRes.first) {
+                auto chkRes = otherFunc->satisfy(GenerSubstMap(), paramTypeList);
+                if (std::get<0>(chkRes)) {
                     printError(funcDef->getToken().lineId, "Definition of function \"" + fInfo->fullName + "\" conflicts with function \"" + otherFunc->fullName + "\"");
                     delete fInfo;
                     return false;
@@ -812,21 +802,21 @@ std::pair<bool, uint64> buildIdenSystem(const RootList &roots) {
 void debugPrintClsStruct(ClassInfo *cls, int dep = 0) {
     if (cls == nullptr) return ;
     std::cout << getIndent(dep) << cls->name << " " << cls->fullName;
-    if (cls->genericClasses.size() > 0) {
+    if (cls->generCls.size() > 0) {
         std::cout << "<$";
-        for (size_t i = 0; i < cls->genericClasses.size(); i++) {
+        for (size_t i = 0; i < cls->generCls.size(); i++) {
             if (i > 0) std::cout << ", ";
-            std::cout << cls->genericClasses[i]->name;
+            std::cout << cls->generCls[i]->name;
         }
         std::cout << "$>";
     }
     if (cls->baseCls != nullptr) {
         std::cout << getIndent(dep) << " : " << cls->baseCls->fullName;
-        if (cls->genericParams.size() > 0) {
+        if (cls->generParams.size() > 0) {
             std::cout << "<$";
-            for (size_t i = 0; i < cls->genericParams.size(); i++) {
+            for (size_t i = 0; i < cls->generParams.size(); i++) {
                 if (i > 0) std::cout << ", ";
-                std::cout << cls->genericParams[i].toDebugString();
+                std::cout << cls->generParams[i].toDebugString();
             }
             std::cout << "$>";
         }
@@ -834,19 +824,19 @@ void debugPrintClsStruct(ClassInfo *cls, int dep = 0) {
     std::cout << std::endl;
     std::cout << getIndent(dep + 1) << "<size> = " << cls->size << std::endl;
     for (auto &varPair : cls->fieldMap) {
-        std::cout << getIndent(dep + 1) << identifierVisibilityString[(int)varPair.second->visibility] << " " << varPair.first
+        std::cout << getIndent(dep + 1) << idenVisibilityStr[(int)varPair.second->visibility] << " " << varPair.first
          << "->" << varPair.second->fullName << " " << varPair.second->type.toDebugString() << " offset=" << varPair.second->offset << std::endl;
     }
-    for (auto &funcPair : cls->functionMap) {
+    for (auto &funcPair : cls->funcMap) {
         std::cout << getIndent(dep + 1) << funcPair.first
          << "->" << std::endl;
         for (auto &func : funcPair.second) {
-            std::cout << getIndent(dep + 2) << identifierVisibilityString[(int)func->visibility] << " " << func->name << " " << func->fullName;
-            if (func->genericClasses.size() > 0) {
+            std::cout << getIndent(dep + 2) << idenVisibilityStr[(int)func->visibility] << " " << func->name << " " << func->fullName;
+            if (func->generCls.size() > 0) {
                 std::cout << "<$";
-                for (size_t i = 0; i < func->genericClasses.size(); i++) {
+                for (size_t i = 0; i < func->generCls.size(); i++) {
                     if (i > 0) std::cout << ", ";
-                    std::cout << func->genericClasses[i]->name;
+                    std::cout << func->generCls[i]->name;
                 }
                 std::cout << "$>";
             }
@@ -869,18 +859,18 @@ void debugPrintNspStruct(NamespaceInfo *nsp, int dep) {
     for (auto &pir : nsp->nspMap) debugPrintNspStruct(pir.second, dep + 1);
     for (auto &pir : nsp->clsMap) debugPrintClsStruct(pir.second, dep + 1);
     for (auto &pir : nsp->varMap)
-        std::cout << getIndent(dep + 1) << identifierVisibilityString[(int)pir.second->visibility] << " "
+        std::cout << getIndent(dep + 1) << idenVisibilityStr[(int)pir.second->visibility] << " "
              << pir.first << " "
              << pir.second->fullName << " : " << pir.second->type.toDebugString() << " <offset>=" << pir.second->offset << std::endl;
     for (auto &pir : nsp->funcMap) {
         std::cout << getIndent(dep + 1) << pir.first << "->" << std::endl;
         for (auto &func : pir.second) {
-            std::cout << getIndent(dep + 2) << identifierVisibilityString[(int)func->visibility] << func->fullName;
-            if (func->genericClasses.size() > 0) {
+            std::cout << getIndent(dep + 2) << idenVisibilityStr[(int)func->visibility] << func->fullName;
+            if (func->generCls.size() > 0) {
                 std::cout << "<$";
-                for (size_t i = 0; i < func->genericClasses.size(); i++) {
+                for (size_t i = 0; i < func->generCls.size(); i++) {
                     if (i > 0) std::cout << ", ";
-                    std::cout << func->genericClasses[i]->name;
+                    std::cout << func->generCls[i]->name;
                 }
                 std::cout << "$>";
             }
