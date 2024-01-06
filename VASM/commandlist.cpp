@@ -338,15 +338,15 @@ PretreatCommand getPretreatCommand(const std::string &name) {
     return (PretreatCommand)pretreatCommandNumber;
 }
 
-Command wrap(TCommand tcmd, ValueTypeModifier vlMdf) {
-    return getCommand(valueTypeModifierStr[(int)vlMdf] + "_" + tCommandString[(int)tcmd]);
+Command wrap(TCommand tcmd, DataTypeModifier dtMdf) {
+    return getCommand(dataTypeModifierStr[(int)dtMdf] + "_" + tCommandString[(int)tcmd]);
 }
-Command wrap(TCommand tcmd, ValueTypeModifier vlMdf, DataTypeModifier dtMdf) {
-    return getCommand(valueTypeModifierStr[(int)vlMdf] + "_" + dataTypeModifierStr[(int)dtMdf] + "_" + tCommandString[(int)tcmd]);
+Command wrap(TCommand tcmd,  DataTypeModifier dtMdf, ValueTypeModifier vlMdf) {
+    return getCommand(dataTypeModifierStr[(int)dtMdf] + "_" + valueTypeModifierStr[(int)vlMdf] + "_" + tCommandString[(int)tcmd]);
 }
-Command wrap(TCommand tcmd, ValueTypeModifier vlMdf1, ValueTypeModifier vlMdf2, DataTypeModifier dtMdf) {
-    return getCommand(valueTypeModifierStr[(int)vlMdf1] + "_" + valueTypeModifierStr[(int)vlMdf1] + "_" + dataTypeModifierStr[(int)dtMdf] + "_" + tCommandString[(int)tcmd]);
+Command wrap(TCommand tcmd, DataTypeModifier dtMdf, ValueTypeModifier vtMdf1, ValueTypeModifier vtMdf2) {
+    return getCommand(dataTypeModifierStr[(int)dtMdf] + "_" + valueTypeModifierStr[(int)vtMdf1] + "_" + valueTypeModifierStr[(int)vtMdf2] + "_" + tCommandString[(int)tcmd]);
 }
-Command wrap(TCommand tcmd, ValueTypeModifier vlMdf, DataTypeModifier dtMdf1, DataTypeModifier dtMdf2) {
-    return getCommand(valueTypeModifierStr[(int)vlMdf] + "_" + dataTypeModifierStr[(int)dtMdf1] + "_" + dataTypeModifierStr[(int)dtMdf2] + "_" + tCommandString[(int)tcmd])
+Command wrap(TCommand tcmd,  DataTypeModifier dtMdf1, DataTypeModifier dtMdf2, ValueTypeModifier vtMdf) {
+    return getCommand(dataTypeModifierStr[(int)dtMdf1] + "_" + dataTypeModifierStr[(int)dtMdf1] + "_" + valueTypeModifierStr[(int)vtMdf] + "_" + tCommandString[(int)tcmd]);
 }

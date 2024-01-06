@@ -7,7 +7,7 @@ set(CXX_SOURCE
     tokenlist.cpp
     syntaxnode.cpp
     idensys.cpp
-    gensymbol.cpp genvcode.cpp genhelper.cpp searchsymbol.cpp chketype.cpp
+    gensymbol.cpp genvcode.cpp genhelper.cpp searchsymbol.cpp chketype.cpp syntaxcandy.cpp
     main.cpp)
 set(CXX_HEADER ../Tools/tools.h ../Tools/message.h ../VASM/commandlist.h tokenlist.h idensys.h gen.h geninner.h syntaxnode.h)  
 

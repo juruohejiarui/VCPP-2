@@ -58,15 +58,15 @@ bool updOperCandy() {
             if (vPair.second->visibility == IdenVisibility::Public)
                 tryInsert(vPair.second, operMap[2]);
     }
+    return true;
 }
 
 VariableInfo *findOperCandy(const std::string &name, const ExprType &expr1, const ExprType &expr2) {
     int id = -1;
     for (int i = 0; i < operNumber; i++) if (name == operNames[i]) { id = i; break; }
     if (id == -1) return nullptr;
-    ExprType req = ExprType(operCls[id]->fullName);
+    ExprType req = ExprType(operCls[id]);
     req.generParams.push_back(expr1), req.generParams.push_back(expr2);
-    req.cls = operCls[id];
     for (int i = 0; i < 3; i++) {
         auto iter = operMap[i].find(name);
         if (iter == operMap[i].end()) continue;

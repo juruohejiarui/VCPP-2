@@ -15,6 +15,8 @@ void writeVCode(Command tcmd, const UnionData &data1, const UnionData &data2);
 void writeVCode(Command tcmd, const std::string &str);
 void writeVCode(const std::string &cmdStr, const std::string &str);
 
+DataTypeModifier getDtMdf(const ExprType &etype);
+
 struct LocalVarFrame {
 private:
     std::map<std::string, VariableInfo *> varMap;
@@ -55,6 +57,8 @@ std::tuple<FunctionInfo *, ExprType, GTableData> findFunc(const std::string &nam
 /// @param node the root of the expression
 /// @return <If this expression is valid, the result of this expression>
 std::tuple<bool, ExprType> chkEType(ExpressionNode *node);
+
+const ExprType &getEType(ExpressionNode *node);
 
 void initOperCandy();
 /// @brief Load the syntax candies for operator

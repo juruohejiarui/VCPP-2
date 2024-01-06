@@ -26,6 +26,11 @@ ExprType::ExprType(IdentifierNode *node) {
             generParams.push_back(ExprType(node->getGenericArea()->getParam(i)));
 }
 
+ExprType::ExprType(ClassInfo *cls) {
+    clsName = cls->fullName, this->cls = cls;
+    dimc = 0, vtMdf = ValueTypeModifier::t;
+}
+
 uint64 ExprType::getSize() const {
     if (dimc > 0 || !isBasicCls(cls)) return sizeof(uint64);
     return cls->size;

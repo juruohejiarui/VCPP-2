@@ -2,6 +2,8 @@
 
 std::map<ExpressionNode *, ExprType> eTypeMap;
 
+const ExprType &getEType(ExpressionNode *node) { return eTypeMap[node]; }
+
 std::tuple<bool, ExprType> chkEType(ExpressionNode *node);
 
 std::tuple<bool, ExprType> chkEType_Operator(OperatorNode *node) {

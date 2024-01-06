@@ -24,6 +24,8 @@ struct ExprType {
     /// @param node the source of information
     ExprType(IdentifierNode *node);
 
+    ExprType(ClassInfo *cls);
+
     uint64 getSize() const;
     /// @brief this function helps to check whether this expression type represents an object. PS : generic classes will be treat as objects
     /// @return the result of checking

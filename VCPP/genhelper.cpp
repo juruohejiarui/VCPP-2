@@ -24,3 +24,30 @@ void writeVCode(Command tcmd, const UnionData &data1, const UnionData &data2) {
 }
 void writeVCode(Command tcmd, const std::string &str) { writeVCode(tCommandString[(int)tcmd] + " " + str); }
 void writeVCode(const std::string &cmdStr, const std::string &str) { writeVCode(cmdStr + " " + str); }
+
+DataTypeModifier getDtMdf(const ExprType &etype) {
+    if (etype.cls->isGeneric) {
+        uint64 shift = 0;
+        if (getCurCls() != nullptr) {
+            shift = getCurCls()->generCls.size();
+            for (size_t i = 0; i < getCurCls()->generCls.size(); i++)
+                if (getCurCls()->generCls[i] == etype.cls) return (DataTypeModifier)((size_t)DataTypeModifier::gv0 + i);
+        }
+        for (size_t i = 0; i < getCurFunc()->generCls.size(); i++)
+            if (getCurFunc()->generCls.size(); i++)
+                if (getCurFunc()->generCls[i] == etype.cls) return (DataTypeModifier)((size_t)DataTypeModifier::gv0 + i + shift);
+    }
+    if (isBasicCls(etype.cls)) return DataTypeModifier::o;
+    else if (etype.cls == int8Cls) return DataTypeModifier::c;
+    else if (etype.cls == uint8Cls) return DataTypeModifier::b;
+    else if (etype.cls == int16Cls) return DataTypeModifier::i16;
+    else if (etype.cls == uint16Cls) return DataTypeModifier::u16;
+    else if (etype.cls == int32Cls) return DataTypeModifier::i32;
+    else if (etype.cls == uint32Cls) return DataTypeModifier::u32;
+    else if (etype.cls == int64Cls) return DataTypeModifier::i64;
+    else if (etype.cls == uint64Cls) return DataTypeModifier::u64;
+    else if (etype.cls == float32Cls) return DataTypeModifier::f32;
+    else if (etype.cls == float64Cls) return DataTypeModifier::f64;
+    
+    return DataTypeModifier::unknown;
+}
