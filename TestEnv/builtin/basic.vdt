@@ -10,8 +10,8 @@
     0x10 0x8
   }
   N System{
-    F sort@ArrayLike_DIMC0@Compare_DIMC0@uint_DIMC0@uint_DIMC0 v public : void{ : System.ArrayLike : System.Compare : uint : uint}
-    F sort@ArrayLike_DIMC0@Compare_DIMC0 v public : void{ : System.ArrayLike : System.Compare}
+    F sort@ArrayLike_DIMC0@@T_DIMC0@@@Compare_DIMC0@@T_DIMC0@@@uint_DIMC0@uint_DIMC0 v public : void{ : System.ArrayLike : System.Compare : uint : uint}
+    F sort@ArrayLike_DIMC0@@T_DIMC0@@@Compare_DIMC0@@T_DIMC0@@ v public : void{ : System.ArrayLike : System.Compare}
     C Array v public 0x60 {
       V capacity v private 0x5C : uint
       V data v private 0x50 : object[]

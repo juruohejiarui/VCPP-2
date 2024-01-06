@@ -50,12 +50,14 @@ struct MethodTypeData {
     std::string name;
     std::string resultType;
     uint64 offset;
+    uint8 gtblSize;
     std::vector<std::string> argumentType;
 };
 struct ClassTypeData {
     IdenVisibility visibility;
     std::string name, fullName;
-    uint64 offset, size;
+    uint64 offset, gtblOffset, size;
+    uint8 gtblSize;
     uint8 *dataTemplate;
     std::vector<std::pair<uint64, std::string> > offsetMap;
     std::map<std::string, VariableTypeData *> fields;

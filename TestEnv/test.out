@@ -98,8 +98,8 @@
         public compare System.UIntCompare.compare@uint_DIMC0@uint_DIMC0(a:uint, b:uint) : int
         <offset> = 16
     sort->
-      publicSystem.sort@ArrayLike_DIMC0@Compare_DIMC0@uint_DIMC0@uint_DIMC0<$T$>(array:System.ArrayLike<$T$>, @compare:System.Compare<$T$>, l:uint, r:uint) : void
-      publicSystem.sort@ArrayLike_DIMC0@Compare_DIMC0<$T$>(array:System.ArrayLike<$T$>, @compare:System.Compare<$T$>) : void
+      publicSystem.sort@ArrayLike_DIMC0@@T_DIMC0@@@Compare_DIMC0@@T_DIMC0@@@uint_DIMC0@uint_DIMC0<$T$>(array:System.ArrayLike<$T$>, @compare:System.Compare<$T$>, l:uint, r:uint) : void
+      publicSystem.sort@ArrayLike_DIMC0@@T_DIMC0@@@Compare_DIMC0@@T_DIMC0@@<$T$>(array:System.ArrayLike<$T$>, @compare:System.Compare<$T$>) : void
   <unknown> <unknown>
     <size> = 0
   TestA TestA<$T1$>   : object

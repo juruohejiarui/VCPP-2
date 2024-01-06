@@ -67,6 +67,11 @@ std::string ExprType::toString() const {
     if (cls != nullptr) str = cls->fullName;
     else str = clsName;
     str += "_DIMC" + std::to_string(dimc);
+    if (generParams.size()) {
+        str.append("@@");
+        for (size_t i = 0; i < generParams.size(); i++) str.append(generParams[i].toString());
+        str.append("@@");
+    }
     return str;
 }
 

@@ -32,6 +32,7 @@ bool LocalVarFrame::insertVar(VariableInfo *vInfo) {
     if (varMap.count(vInfo->name)) return false;
     varMap[vInfo->name] = vInfo;
     varCount++;
+    return true;
 }
 
 uint32 LocalVarFrame::getVarCount() const { return varCount; }

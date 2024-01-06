@@ -89,15 +89,6 @@ bool VASMPackage::generateLine(const std::string &line, int lineId, bool ignoreH
             return false;
         }
         switch (cmd) {
-            // case PretreatCommand::EXPOSE:
-            //     exposeMap[lst[2]] = 0; break;
-            // case PretreatCommand::EXTERN:
-            //     if (!externMap.count(lst[2])) 
-            //         externMap.insert(std::make_pair(lst[2], externMap.size()));
-            //     break;
-            // case PretreatCommand::RELY:
-            //     relyList.push_back(lst[2]);
-            //     break;
             case PretreatCommand::GLOMEM:
                 globalMemory += getUnionData(lst[2]).data.uint64_v;
                 break;
@@ -196,6 +187,8 @@ bool VASMPackage::generateLine(const std::string &line, int lineId, bool ignoreH
         
         switch (tcmd) {
             case TCommand::setlocal:
+            case TCommand::getgtbl:
+            case TCommand::setgtbl:
             case TCommand::getarg:
             case TCommand::setarg:
             case TCommand::arrnew:
@@ -337,7 +330,8 @@ bool compileTypeDataFile(MethodTypeData *mtd, const std::vector<TypeDataToken> &
     // get the visibility and result type
     mtd->visibility = (IdenVisibility)tkList[l + 1].data.data.uint32_v;
     mtd->resultType = tkList[l + 2].dataString, mtd->offset = 0;
-    r = tkList[l + 3].data.data.uint32_v;
+    mtd->gtblSize = tkList[l + 3].data.uint64_v();
+    r = tkList[l + 4].data.data.uint32_v;
     // get the arguement list
     for (int i = l + 4; i < r; i++) mtd->argumentType.push_back(tkList[i].dataString);
     return true;
@@ -345,9 +339,11 @@ bool compileTypeDataFile(MethodTypeData *mtd, const std::vector<TypeDataToken> &
 bool compileTypeDataFile(ClassTypeData *cls, const std::vector<TypeDataToken> &tkList, uint32 l, uint32 &r) {
     // get the size and visibility
     cls->visibility = (IdenVisibility)tkList[l + 1].data.data.uint32_v;
-    cls->size = tkList[l + 2].data.data.uint64_v, cls->offset = 0;
-    r = tkList[l + 3].data.data.uint32_v;
-    uint32 fr = l + 4, to = fr;
+    cls->size = tkList[l + 2].data.uint64_v(), cls->offset = 0;
+    cls->gtblSize = tkList[l + 3].data.uint64_v();
+    cls->gtblOffset = tkList[l + 4].data.uint64_v();
+    r = tkList[l + 5].data.data.uint32_v;
+    uint32 fr = l + 6, to = fr;
     bool succ = true;
     while (to < r) {
         auto &tk = tkList[fr];
@@ -505,6 +501,7 @@ bool VOBJPackage::read(const std::string &path) {
             dt.type = DataTypeModifier::u32, readData(ifs, dt), mtd->visibility = (IdenVisibility)dt.uint32_v();
             dt.type = DataTypeModifier::u64, readData(ifs, dt), mtd->offset = dt.uint64_v();
             readString(ifs, mtd->resultType);
+            readData(ifs, dt), mtd->gtblSize = dt.uint64_v();
             readData(ifs, dt), mtd->argumentType.resize(dt.uint64_v(), "");
             for (auto &arg : mtd->argumentType) readString(ifs, arg);
             return mtd;
@@ -516,6 +513,8 @@ bool VOBJPackage::read(const std::string &path) {
             dt.type = DataTypeModifier::u64;
             readData(ifs, dt), cls->size = dt.uint64_v();
             readData(ifs, dt), cls->offset = dt.uint64_v();
+            readData(ifs, dt), cls->gtblSize = dt.uint64_v();
+            readData(ifs, dt), cls->gtblOffset = dt.uint64_v();
             cls->dataTemplate = new uint8[cls->size];
             ifs.read((char *)cls->dataTemplate, sizeof(uint8) * cls->size);
             uint64 mtdCnt = 0, fldCnt = 0;
@@ -768,6 +767,7 @@ bool writeVObj(uint8 type, VOBJPackage &vobjPkg, const std::vector<std::string> 
             writeData(ofs, UnionData((uint32)mtd->visibility));
             writeData(ofs, UnionData(mtd->offset));
             writeString(ofs, mtd->resultType);
+            writeData(ofs, UnionData((uint64)mtd->gtblSize));
             writeData(ofs, UnionData((uint64)mtd->argumentType.size()));
             for (auto &arg : mtd->argumentType) writeString(ofs, arg);
         };
@@ -776,6 +776,8 @@ bool writeVObj(uint8 type, VOBJPackage &vobjPkg, const std::vector<std::string> 
             writeData(ofs, UnionData((uint32)cls->visibility));
             writeData(ofs, UnionData(cls->size));
             writeData(ofs, UnionData(cls->offset));
+            writeData(ofs, UnionData((uint64)cls->gtblSize));
+            writeData(ofs, UnionData((uint64)cls->gtblOffset));
             ofs.write((char *)cls->dataTemplate, sizeof(uint8) * cls->size);
             writeData(ofs, UnionData((uint64)cls->methods.size()));
             writeData(ofs, UnionData((uint64)cls->fields.size()));

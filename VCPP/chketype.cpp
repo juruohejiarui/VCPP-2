@@ -1,8 +1,12 @@
-#include "gen.h"
+#include "geninner.h"
 
 std::map<ExpressionNode *, ExprType> eTypeMap;
+std::map<IdentifierNode *, FuncCallInfo> funcCallMap;
+std::map<IdentifierNode *, VarCallInfo> varCallMap;
 
 const ExprType &getEType(ExpressionNode *node) { return eTypeMap[node]; }
+const FuncCallInfo &getFuncCallInfo(IdentifierNode *node) { return funcCallMap[node]; }
+const VarCallInfo &getVarCallInfo(IdentifierNode *node) { return varCallMap[node]; }
 
 std::tuple<bool, ExprType> chkEType(ExpressionNode *node);
 

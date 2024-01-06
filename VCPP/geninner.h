@@ -15,6 +15,9 @@ void writeVCode(Command tcmd, const UnionData &data1, const UnionData &data2);
 void writeVCode(Command tcmd, const std::string &str);
 void writeVCode(const std::string &cmdStr, const std::string &str);
 
+/// @brief Get the data type modifier using "etype" PS: this function will ignore the member "dimc" of "etype"
+/// @param etype the expression type
+/// @return the data type modifier
 DataTypeModifier getDtMdf(const ExprType &etype);
 
 struct LocalVarFrame {
@@ -42,16 +45,21 @@ LocalVarFrame *locVarStkTop();
 void locVarStkPop(bool writeVCode = false);
 void locVarStkPush();
 
+/// @brief the information for calling a variable
+typedef std::tuple<VariableInfo *, ExprType> VarCallInfo;
+/// @brief the information for calling a function
+typedef std::tuple<FunctionInfo *, ExprType, GTableData> FuncCallInfo;
+
 /// @brief Find a variable and get the expression type of it under the current symbol environment
 /// @param name the name/path of this variable
 /// @return <the pointer to this variable, the expression type of this variale>
-std::tuple<VariableInfo *, ExprType> findVar(const std::string &name);
+VarCallInfo findVar(const std::string &name);
 
 /// @brief Find a function and get the information of it
 /// @param name the name/path of this function
 /// @param params the list of params
 /// @return <the pointer to this function, the return value of this function, the GTableData for the function call> 
-std::tuple<FunctionInfo *, ExprType, GTableData> findFunc(const std::string &name, const std::vector<ExprType> &params);
+FuncCallInfo findFunc(const std::string &name, const std::vector<ExprType> &params);
 
 /// @brief This function will check the expression type of an expression and handle all the syntax candies in this expression 
 /// @param node the root of the expression
@@ -59,6 +67,8 @@ std::tuple<FunctionInfo *, ExprType, GTableData> findFunc(const std::string &nam
 std::tuple<bool, ExprType> chkEType(ExpressionNode *node);
 
 const ExprType &getEType(ExpressionNode *node);
+const FuncCallInfo &getFuncCallInfo(IdentifierNode *node);
+const VarCallInfo &getVarCallInfo(IdentifierNode *node);
 
 void initOperCandy();
 /// @brief Load the syntax candies for operator
