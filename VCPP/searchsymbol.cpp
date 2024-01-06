@@ -1,4 +1,4 @@
-#include "gen.h"
+#include "geninner.h"
 
 LocalVarFrame::LocalVarFrame(LocalVarFrame *prev, uint32 varCount) {
     this->prev = prev;
@@ -40,6 +40,8 @@ LocalVarFrame *LocalVarFrame::getPrev() { return prev; }
 
 void LocalVarFrame::clear(bool writeVCode) {
     if (writeVCode) this->writeCleanVCode();
+    if (prev != nullptr) 
+        for (auto iter : varMap) delete iter.second;
     varMap.clear();
 }
 

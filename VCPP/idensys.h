@@ -170,7 +170,7 @@ struct NamespaceInfo {
 };
 
 extern NamespaceInfo *rootNsp;
-extern ClassInfo *basicCls, *int8Cls, *uint8Cls, *int16Cls, *uint16Cls, *int32Cls, *uint32Cls, *int64Cls, *uint64Cls, *float32Cls, *float64Cls, *objectCls;
+extern ClassInfo *basicCls, *int8Cls, *uint8Cls, *int16Cls, *uint16Cls, *int32Cls, *uint32Cls, *int64Cls, *uint64Cls, *float32Cls, *float64Cls, *objectCls, *voidCls;
 
 bool isBasicCls(ClassInfo *cls);
 

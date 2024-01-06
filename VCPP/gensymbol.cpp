@@ -1,4 +1,4 @@
-#include "gen.h"
+#include "geninner.h"
 
 static std::ofstream oStream;
 

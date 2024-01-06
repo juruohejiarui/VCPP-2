@@ -4,8 +4,12 @@ project (VCPP)
 
 set(CXX_SOURCE 
     ../Tools/tools.cpp ../Tools/message.cpp ../VASM/commandlist.cpp 
-    tokenlist.cpp syntaxnode.cpp idensys.cpp gensymbol.cpp genvcode.cpp genhelper.cpp searchsymbol.cpp main.cpp)
-set(CXX_HEADER ../Tools/tools.h ../Tools/message.h ../VASM/commandlist.h tokenlist.h idensys.h gen.h syntaxnode.h)  
+    tokenlist.cpp
+    syntaxnode.cpp
+    idensys.cpp
+    gensymbol.cpp genvcode.cpp genhelper.cpp searchsymbol.cpp chketype.cpp
+    main.cpp)
+set(CXX_HEADER ../Tools/tools.h ../Tools/message.h ../VASM/commandlist.h tokenlist.h idensys.h gen.h geninner.h syntaxnode.h)  
 
 # set_target_properties(${TARGET} PROPERTIES
 #     COMPILE_FLAGS "-pthread"
