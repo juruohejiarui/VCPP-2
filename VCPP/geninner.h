@@ -31,6 +31,9 @@ public:
     void writeCleanVCode();
 
     VariableInfo *getVar(const std::string &name);
+    /// @brief insert the variable, modify the offset of this variable and return whether it is successful
+    /// @param vInfo the information of this variable
+    /// @return whether it is successful
     bool insertVar(VariableInfo *vInfo);
 
     uint32 getVarCount() const;

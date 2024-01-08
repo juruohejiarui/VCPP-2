@@ -19,6 +19,7 @@ protected:
     std::vector<SyntaxNode *> children;
     SyntaxNodeType type;
     uint32 localVarCount;
+    SyntaxNode *parent;
 public:
     SyntaxNode(SyntaxNodeType type);
     SyntaxNode(SyntaxNodeType type, const Token &token);
@@ -34,12 +35,28 @@ public:
     SyntaxNode *&operator [] (int index);
     SyntaxNode *operator [] (int index) const;
 
-    SyntaxNode *&at(int index);
-    SyntaxNode *at(int index) const;
+    SyntaxNode *&get(int index);
+    SyntaxNode *get(int index) const;
 
     virtual void addChild(SyntaxNode *child);
 
     size_t getChildrenCount() const;
+
+    /// @brief clear the children of this node PS: this function will not delete the children
+    void clearChildren();
+    /// @brief remove the child at INDEX PS: this function will not delete the child
+    /// @param index 
+    void removeChild(size_t index);
+    /// @brief remove the child CHILD PS: this function will not delete the child
+    /// @param child
+    void removeChild(SyntaxNode *child);
+    void insertChild(size_t index, SyntaxNode *child);
+    /// @brief replace the child at INDEX with CHILD PS: this function will not delete the old child
+    void replaceChild(size_t index, SyntaxNode *child);
+    /// @brief replace the child OLDCHILD with NEWCHILD PS: this function will not delete the old child
+    void replaceChild(SyntaxNode *oldChild, SyntaxNode *newChild);
+
+    SyntaxNode *getParent() const;
 
     virtual std::string toString() const;
 

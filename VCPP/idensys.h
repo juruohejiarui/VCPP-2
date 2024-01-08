@@ -18,7 +18,7 @@ struct ExprType {
     std::vector<ExprType> generParams;
     
     ExprType();
-    ExprType(const std::string &clsName, int dimc = 0, ValueTypeModifier vtMdf = ValueTypeModifier::t);
+    ExprType(const std::string &clsName, int dimc = 0, ValueTypeModifier vtMdf = ValueTypeModifier::TrueValue);
     
     /// @brief initialize this expression type using the information from NODE
     /// @param node the source of information
@@ -194,6 +194,9 @@ ClassInfo *findCls(const std::string &path);
 /// @param roots the roots of contain the structures
 /// @return <if it is successful, the usage of global memory>
 std::pair<bool, uint64> buildIdenSystem(const RootList &roots);
+
+bool isIntegerCls(ClassInfo *cls);
+bool isFloatCls(ClassInfo *cls);
 
 void debugPrintNspStruct(NamespaceInfo *nsp, int dep = 0);
 

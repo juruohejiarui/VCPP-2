@@ -228,3 +228,36 @@ IdenVisibility getVisibility(TokenType type) {
     if (type == TokenType::Protected) return IdenVisibility::Protected;
     return IdenVisibility::Unknown;
 }
+
+TCommand getTCommand(TokenType tk) {
+    switch (tk) {
+        case TokenType::Add: return TCommand::add;
+        case TokenType::Sub: return TCommand::sub;
+        case TokenType::Mul: return TCommand::mul;
+        case TokenType::Div: return TCommand::div;
+        case TokenType::Mod: return TCommand::mod;
+        case TokenType::Shl: return TCommand::shl;
+        case TokenType::Shr: return TCommand::shr;
+        case TokenType::And: return TCommand::_and;
+        case TokenType::Or: return TCommand::_or;
+        case TokenType::Xor: return TCommand::_xor;
+        case TokenType::Equ: return TCommand::eq;
+        case TokenType::Neq: return TCommand::ne;
+        case TokenType::Gt: return TCommand::gt;
+        case TokenType::Ge: return TCommand::ge;
+        case TokenType::Ls: return TCommand::ls;
+        case TokenType::Le: return TCommand::le;
+        case TokenType::AddAssign: return TCommand::addmov;
+        case TokenType::SubAssign: return TCommand::submov;
+        case TokenType::MulAssign: return TCommand::mulmov;
+        case TokenType::DivAssign: return TCommand::divmov;
+        case TokenType::ModAssign: return TCommand::modmov;
+        case TokenType::ShlAssign: return TCommand::shlmov;
+        case TokenType::ShrAssign: return TCommand::shrmov;
+        case TokenType::AndAssign: return TCommand::andmov;
+        case TokenType::OrAssign: return TCommand::ormov;
+        case TokenType::XorAssign: return TCommand::xormov;
+        case TokenType::Assign: return TCommand::mov;
+    }
+    return TCommand::unknown;
+}

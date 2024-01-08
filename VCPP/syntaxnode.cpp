@@ -27,10 +27,22 @@ SyntaxNodeType SyntaxNode::getType() const { return type; }
 
 SyntaxNode *&SyntaxNode::operator[](int index) { return children[index]; }
 SyntaxNode *SyntaxNode::operator[](int index) const { return children[index]; }
-SyntaxNode *&SyntaxNode::at(int index) { return children[index]; }
-SyntaxNode *SyntaxNode::at(int index) const { return children[index]; }
+SyntaxNode *&SyntaxNode::get(int index) { return children[index]; }
+SyntaxNode *SyntaxNode::get(int index) const { return children[index]; }
 
 void SyntaxNode::addChild(SyntaxNode *child) { children.push_back(child); }
+
+void SyntaxNode::clearChildren() { children.clear(); }
+void SyntaxNode::removeChild(size_t index) { children.erase(children.begin() + index); }
+void SyntaxNode::removeChild(SyntaxNode *child) { children.erase(std::find(children.begin(), children.end(), child)); }
+void SyntaxNode::insertChild(size_t index, SyntaxNode *child) { children.insert(children.begin() + index, child); }
+void SyntaxNode::replaceChild(size_t index, SyntaxNode *child) { children[index] = child; }
+void SyntaxNode::replaceChild(SyntaxNode *oldChild, SyntaxNode *newChild) { 
+    auto iter = std::find(children.begin(), children.end(), oldChild);
+    if (iter != children.end()) *iter = newChild;
+}
+
+SyntaxNode *SyntaxNode::getParent() const { return parent; }
 
 size_t SyntaxNode::getChildrenCount() const { return children.size(); }
 std::string SyntaxNode::toString() const { return syntaxNodeTypeString[(int)type]; }
@@ -42,7 +54,7 @@ uint32 SyntaxNode::getLocalVarCount() const { return localVarCount; }
 ExpressionNode::ExpressionNode() : SyntaxNode(SyntaxNodeType::Expression) { }
 ExpressionNode::ExpressionNode(const Token &token) : SyntaxNode(SyntaxNodeType::Expression, token) { }
 
-ExpressionNode *ExpressionNode::getContent() const { return (ExpressionNode *)at(0); }
+ExpressionNode *ExpressionNode::getContent() const { return (ExpressionNode *)get(0); }
 uint32 ExpressionNode::getWeight() const { return IdentifierWeight; }
 #pragma endregion
 
@@ -50,10 +62,10 @@ uint32 ExpressionNode::getWeight() const { return IdentifierWeight; }
 OperatorNode::OperatorNode() : ExpressionNode() { type = SyntaxNodeType::Operator; }
 OperatorNode::OperatorNode(const Token &token) : ExpressionNode(token) { type = SyntaxNodeType::Operator; }
 
-ExpressionNode *&OperatorNode::getLeft() { return (ExpressionNode *&)at(0); }
-ExpressionNode *OperatorNode::getLeft() const { return (ExpressionNode *)at(0); }
-ExpressionNode *&OperatorNode::getRight() { return (ExpressionNode *&)at(1); }
-ExpressionNode *OperatorNode::getRight() const { return (ExpressionNode *)at(1); }
+ExpressionNode *&OperatorNode::getLeft() { return (ExpressionNode *&)get(0); }
+ExpressionNode *OperatorNode::getLeft() const { return (ExpressionNode *)get(0); }
+ExpressionNode *&OperatorNode::getRight() { return (ExpressionNode *&)get(1); }
+ExpressionNode *OperatorNode::getRight() const { return (ExpressionNode *)get(1); }
 
 uint32 OperatorNode::getWeight() const { return getOperWeight(token.type); }
 std::string OperatorNode::toString() const {
@@ -64,30 +76,30 @@ std::string OperatorNode::toString() const {
 #pragma region IdentifierNode
 IdentifierNode::IdentifierNode() : ExpressionNode() {
     type = SyntaxNodeType::Identifier, children.resize(2, nullptr); 
-    at(1) = new ConstValueNode();
-    at(1)->getToken().type = TokenType::ConstData;
-    at(1)->getToken().data.type = DataTypeModifier::u32;
-    at(1)->getToken().data.uint32_v() = 0u;
+    get(1) = new ConstValueNode();
+    get(1)->getToken().type = TokenType::ConstData;
+    get(1)->getToken().data.type = DataTypeModifier::u32;
+    get(1)->getToken().data.uint32_v() = 0u;
 }
 IdentifierNode::IdentifierNode(const Token &token) : ExpressionNode() {
     type = SyntaxNodeType::Identifier, children.resize(2, nullptr); 
-    at(1) = new ConstValueNode();
-    at(1)->getToken().type = TokenType::ConstData;
-    at(1)->getToken().data.type = DataTypeModifier::u32;
-    at(1)->getToken().data.uint32_v() = 0u;
+    get(1) = new ConstValueNode();
+    get(1)->getToken().type = TokenType::ConstData;
+    get(1)->getToken().data.type = DataTypeModifier::u32;
+    get(1)->getToken().data.uint32_v() = 0u;
 }
 
-GenericAreaNode *IdentifierNode::getGenericArea() const { return (GenericAreaNode *)at(0); }
-void IdentifierNode::setGenericArea(GenericAreaNode *node) { at(0) = node; }
+GenericAreaNode *IdentifierNode::getGenericArea() const { return (GenericAreaNode *)get(0); }
+void IdentifierNode::setGenericArea(GenericAreaNode *node) { get(0) = node; }
 
-uint32 IdentifierNode::getDimc() const { return at(1)->getToken().data.uint32_v(); }
-void IdentifierNode::setDimc(uint32 dimc) { at(1)->getToken().data.uint32_v() = dimc; }
+uint32 IdentifierNode::getDimc() const { return get(1)->getToken().data.uint32_v(); }
+void IdentifierNode::setDimc(uint32 dimc) { get(1)->getToken().data.uint32_v() = dimc; }
 
 uint32 IdentifierNode::getWeight() const { return IdentifierWeight; }
 const std::string &IdentifierNode::getName() const { return name; }
 void IdentifierNode::setName(const std::string &name) { this->name = name; }
 size_t IdentifierNode::getParamCount() const { return getChildrenCount() - 2; }
-ExpressionNode *IdentifierNode::getParam(size_t index) const { return (ExpressionNode *)at(index + 2); }
+ExpressionNode *IdentifierNode::getParam(size_t index) const { return (ExpressionNode *)get(index + 2); }
 
 bool IdentifierNode::isFuncCall() const { return getChildrenCount() > 2; }
 std::string IdentifierNode::toString() const { return syntaxNodeTypeString[(int)type] + " " + name; }
@@ -99,7 +111,7 @@ GenericAreaNode::GenericAreaNode(const Token &token) : SyntaxNode(SyntaxNodeType
 
 size_t GenericAreaNode::getParamCount() const { return children.size(); }
 
-IdentifierNode *GenericAreaNode::getParam(size_t index) const { return (IdentifierNode *)at(index); }
+IdentifierNode *GenericAreaNode::getParam(size_t index) const { return (IdentifierNode *)get(index); }
 #pragma endregion
 
 #pragma region ConstValueNode
@@ -122,26 +134,26 @@ std::string BlockNode::toString() const { return syntaxNodeTypeString[(int)type]
 IfNode::IfNode() : BlockNode() { type = SyntaxNodeType::If, children.resize(3, nullptr); }
 IfNode::IfNode(const Token &token) : BlockNode(token) { type = SyntaxNodeType::If, children.resize(3, nullptr); }
 
-ExpressionNode *IfNode::getCondNode() const { return (ExpressionNode *)at(0); }
-void IfNode::setCondNode(ExpressionNode *node) { at(0) = node; }
-SyntaxNode *IfNode::getSuccNode() const { return at(1); }
-void IfNode::setSuccNode(SyntaxNode *node) { at(1) = node; }
-SyntaxNode *IfNode::getFailNode() const { return at(2); }
-void IfNode::setFailNode(SyntaxNode *node) { at(2) = node; }
+ExpressionNode *IfNode::getCondNode() const { return (ExpressionNode *)get(0); }
+void IfNode::setCondNode(ExpressionNode *node) { get(0) = node; }
+SyntaxNode *IfNode::getSuccNode() const { return get(1); }
+void IfNode::setSuccNode(SyntaxNode *node) { get(1) = node; }
+SyntaxNode *IfNode::getFailNode() const { return get(2); }
+void IfNode::setFailNode(SyntaxNode *node) { get(2) = node; }
 #pragma endregion
 
 #pragma region LoopNode
 LoopNode::LoopNode(SyntaxNodeType type) : BlockNode() { this->type = type, children.resize(4, nullptr); }
 LoopNode::LoopNode(SyntaxNodeType type, const Token &token) : BlockNode(token) { this->type = type, children.resize(4, nullptr); }
 
-SyntaxNode *LoopNode::getInitNode() const { return at(0); }
-void LoopNode::setInitNode(SyntaxNode *node) { at(0) = node; }
-ExpressionNode *LoopNode::getCondNode() const { return (ExpressionNode *)at(1); }
-void LoopNode::setCondNode(ExpressionNode *node) { at(1) = node; }
-ExpressionNode *LoopNode::getStepNode() const { return (ExpressionNode *)at(2); }
-void LoopNode::setStepNode(ExpressionNode *node) { at(2) = node; }
-SyntaxNode *LoopNode::getContent() const { return at(3); }
-void LoopNode::setContent(SyntaxNode *node) { at(3) = node; }
+SyntaxNode *LoopNode::getInitNode() const { return get(0); }
+void LoopNode::setInitNode(SyntaxNode *node) { get(0) = node; }
+ExpressionNode *LoopNode::getCondNode() const { return (ExpressionNode *)get(1); }
+void LoopNode::setCondNode(ExpressionNode *node) { get(1) = node; }
+ExpressionNode *LoopNode::getStepNode() const { return (ExpressionNode *)get(2); }
+void LoopNode::setStepNode(ExpressionNode *node) { get(2) = node; }
+SyntaxNode *LoopNode::getContent() const { return get(3); }
+void LoopNode::setContent(SyntaxNode *node) { get(3) = node; }
 #pragma endregion
 
 #pragma region ControlNode
@@ -153,7 +165,7 @@ ControlNode::ControlNode(SyntaxNodeType type, const Token &token) : SyntaxNode(t
 }
 ExpressionNode *ControlNode::getContent() const {
     if (type != SyntaxNodeType::Return) return nullptr;
-    return (ExpressionNode *)at(0);
+    return (ExpressionNode *)get(0);
 }
 #pragma endregion
 
@@ -165,7 +177,7 @@ IdenVisibility VarDefNode::getVisibility() const { return visibility; }
 void VarDefNode::setVisibility(IdenVisibility visibility) { this->visibility = visibility; }
 
 std::tuple<IdentifierNode *, IdentifierNode *, ExpressionNode *> VarDefNode::getVariable(size_t index) const {
-    return std::make_tuple((IdentifierNode *)at(index * 3), (IdentifierNode *)at(index * 3 + 1), (ExpressionNode *)at(index * 3 + 2));
+    return std::make_tuple((IdentifierNode *)get(index * 3), (IdentifierNode *)get(index * 3 + 1), (ExpressionNode *)get(index * 3 + 2));
 }
 #pragma endregion
 
@@ -176,13 +188,13 @@ FuncDefNode::FuncDefNode(const Token &token) : BlockNode(token) { type = SyntaxN
 IdenVisibility FuncDefNode::getVisibility() const { return visibility; }
 void FuncDefNode::setVisibility(IdenVisibility visibility) { this->visibility = visibility; }
 
-IdentifierNode *FuncDefNode::getNameNode() const { return (IdentifierNode *)at(0); }
+IdentifierNode *FuncDefNode::getNameNode() const { return (IdentifierNode *)get(0); }
 size_t FuncDefNode::getParamCount() const { return (getChildrenCount() - 3) / 2; }
 std::pair<IdentifierNode *, IdentifierNode *> FuncDefNode::getParam(size_t index) const {
-    return std::make_pair((IdentifierNode *)at(index * 2 + 1), (IdentifierNode *)at(index * 2 + 2));
+    return std::make_pair((IdentifierNode *)get(index * 2 + 1), (IdentifierNode *)get(index * 2 + 2));
 }
-IdentifierNode *FuncDefNode::getResNode() const { return (IdentifierNode *)at(getChildrenCount() - 2); }
-SyntaxNode *FuncDefNode::getContent() const { return at(getChildrenCount()); }
+IdentifierNode *FuncDefNode::getResNode() const { return (IdentifierNode *)get(getChildrenCount() - 2); }
+SyntaxNode *FuncDefNode::getContent() const { return get(getChildrenCount()); }
 #pragma endregion
 
 #pragma region VarFuncDefNode
@@ -200,14 +212,14 @@ void ClsDefNode::setVisibility(IdenVisibility visibility) { this->visibility = v
 size_t ClsDefNode::getFieldCount() const { return fieldIndex.size(); }
 size_t ClsDefNode::getFuncCount() const { return funcIndex.size(); }
 size_t ClsDefNode::getVarFuncCount() const { return varFuncIndex.size(); }
-VarDefNode *ClsDefNode::getFieldDef(size_t index) const { return (VarDefNode *)at(fieldIndex[index]); }
-FuncDefNode *ClsDefNode::getFuncDef(size_t index) const { return (FuncDefNode *)at(funcIndex[index]); }
-VarFuncDefNode *ClsDefNode::getVarFuncDef(size_t index) const { return (VarFuncDefNode *)at(varFuncIndex[index]); }
+VarDefNode *ClsDefNode::getFieldDef(size_t index) const { return (VarDefNode *)get(fieldIndex[index]); }
+FuncDefNode *ClsDefNode::getFuncDef(size_t index) const { return (FuncDefNode *)get(funcIndex[index]); }
+VarFuncDefNode *ClsDefNode::getVarFuncDef(size_t index) const { return (VarFuncDefNode *)get(varFuncIndex[index]); }
 
-IdentifierNode *ClsDefNode::getNameNode() const { return (IdentifierNode *)at(0); }
-void ClsDefNode::setNameNode(IdentifierNode *node) { at(0) = node; }
-IdentifierNode *ClsDefNode::getBaseNode() const { return (IdentifierNode *)at(1); }
-void ClsDefNode::setBaseNode(IdentifierNode *node) { at(1) = node; }
+IdentifierNode *ClsDefNode::getNameNode() const { return (IdentifierNode *)get(0); }
+void ClsDefNode::setNameNode(IdentifierNode *node) { get(0) = node; }
+IdentifierNode *ClsDefNode::getBaseNode() const { return (IdentifierNode *)get(1); }
+void ClsDefNode::setBaseNode(IdentifierNode *node) { get(1) = node; }
 
 void ClsDefNode::addChild(SyntaxNode *node) {
     if (node == nullptr) {
@@ -234,12 +246,12 @@ NspDefNode::NspDefNode(const Token &token) : SyntaxNode(SyntaxNodeType::NspDef, 
 size_t NspDefNode::getVarCount() const { return varIndex.size(); }
 size_t NspDefNode::getFuncCount() const { return funcIndex.size(); }
 size_t NspDefNode::getClsCount() const { return clsIndex.size(); }
-VarDefNode *NspDefNode::getVarDef(size_t index) const { return (VarDefNode *)at(varIndex[index]); }
-FuncDefNode *NspDefNode::getFuncDef(size_t index) const { return (FuncDefNode *)at(funcIndex[index]); }
-ClsDefNode *NspDefNode::getClsDef(size_t index) const { return (ClsDefNode *)at(clsIndex[index]); }
+VarDefNode *NspDefNode::getVarDef(size_t index) const { return (VarDefNode *)get(varIndex[index]); }
+FuncDefNode *NspDefNode::getFuncDef(size_t index) const { return (FuncDefNode *)get(funcIndex[index]); }
+ClsDefNode *NspDefNode::getClsDef(size_t index) const { return (ClsDefNode *)get(clsIndex[index]); }
 
-IdentifierNode *NspDefNode::getNameNode() const { return (IdentifierNode *)at(0); }
-void NspDefNode::setNameNode(IdentifierNode *node) { at(0) = node; }
+IdentifierNode *NspDefNode::getNameNode() const { return (IdentifierNode *)get(0); }
+void NspDefNode::setNameNode(IdentifierNode *node) { get(0) = node; }
 
 void NspDefNode::addChild(SyntaxNode *node) {
     if (node == nullptr) {
@@ -276,8 +288,8 @@ RootNode::RootNode(SyntaxNodeType type) : SyntaxNode(type) { }
 size_t RootNode::getUsingCount() const { return usingIndex.size(); }
 size_t RootNode::getDefCount() const { return defIndex.size(); }
 
-UsingNode *RootNode::getUsing(size_t index) const { return (UsingNode *)at(usingIndex[index]); }
-SyntaxNode *RootNode::getDef(size_t index) const { return at(defIndex[index]); }
+UsingNode *RootNode::getUsing(size_t index) const { return (UsingNode *)get(usingIndex[index]); }
+SyntaxNode *RootNode::getDef(size_t index) const { return get(defIndex[index]); }
 
 void RootNode::addChild(SyntaxNode *node) {
     if (node == nullptr) return ;
@@ -525,7 +537,7 @@ ControlNode *buildControl(const TokenList &tkList, size_t l, size_t &r) {
     r = l + 1;
     if (type == SyntaxNodeType::Return) {
         while (tkList[r].type != TokenType::ExprEnd) r++;
-        node->at(0) = buildExpression(tkList, l + 1, r - 1);
+        node->get(0) = buildExpression(tkList, l + 1, r - 1);
     }
     return node;
 }
@@ -787,5 +799,5 @@ void debugPrintTree(SyntaxNode *node, int dep) {
         return ;
     }
     std::cout << getIndent(dep) << node->toString() << std::endl;
-    for (size_t i = 0; i < node->getChildrenCount(); i++) debugPrintTree(node->at(i), dep + 1);
+    for (size_t i = 0; i < node->getChildrenCount(); i++) debugPrintTree(node->get(i), dep + 1);
 }

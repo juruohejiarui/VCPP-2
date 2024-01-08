@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../Tools/tools.h"
+#include "../VASM/commandlist.h"
 
 enum class TokenType {
     Identifier, ConstData, String,
@@ -60,3 +61,5 @@ bool isOperator(TokenType type);
 bool isVisibility(TokenType type);
 
 IdenVisibility getVisibility(TokenType type);
+
+TCommand getTCommand(TokenType tk);

@@ -70,7 +70,7 @@ bool isInteger(DataTypeModifier dtMfr) {
     return dtMfr <= DataTypeModifier::u64;
 }
 bool isReference(ValueTypeModifier vlMfr) {
-    return vlMfr == ValueTypeModifier::MemberRef || vlMfr == ValueTypeModifier::r;
+    return vlMfr == ValueTypeModifier::MemberRef || vlMfr == ValueTypeModifier::Ref;
 }
 
 void stringSplit(const std::string &str, const std::string &sep, std::vector<std::string> &res)

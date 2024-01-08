@@ -92,7 +92,7 @@ struct UnionData {
 
 
 enum class ValueTypeModifier {
-    MemberRef, r, t, Unknown,
+    MemberRef, Ref, TrueValue, Unknown,
 };
 
 enum class IdenVisibility {

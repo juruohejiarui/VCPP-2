@@ -2,13 +2,13 @@
 
 const std::string unknownName = "<unknown>", constructerName = "@constructer";
 NamespaceInfo *rootNsp;
-ClassInfo *voidCls, *basicCls, *int8Cls, *uint8Cls, *int16Cls, *uint16Cls, *int32Cls, *uint32Cls, *int64Cls, *uint64Cls, *float32Cls, *float64Cls, *objectCls, *basicTypeCls[13];
+ClassInfo *voidCls, *int8Cls, *uint8Cls, *int16Cls, *uint16Cls, *int32Cls, *uint32Cls, *int64Cls, *uint64Cls, *float32Cls, *float64Cls, *objectCls, *basicCls, *basicTypeCls[13];
 
 #pragma region definition of member functions
 ExprType::ExprType() {
     cls = nullptr, clsName = unknownName;
     dimc = 0;
-    vtMdf = ValueTypeModifier::t;
+    vtMdf = ValueTypeModifier::TrueValue;
 }
 
 ExprType::ExprType(const std::string &clsName, int dimc, ValueTypeModifier vtMdf) {
@@ -19,7 +19,7 @@ ExprType::ExprType(const std::string &clsName, int dimc, ValueTypeModifier vtMdf
 
 ExprType::ExprType(IdentifierNode *node) {
     cls = nullptr, dimc = node->getDimc();
-    this->vtMdf = ValueTypeModifier::t;
+    this->vtMdf = ValueTypeModifier::TrueValue;
     this->clsName = node->getName();
     if (node->getGenericArea() != nullptr)
         for (size_t i = 0; i < node->getGenericArea()->getParamCount(); i++)
@@ -28,7 +28,7 @@ ExprType::ExprType(IdentifierNode *node) {
 
 ExprType::ExprType(ClassInfo *cls) {
     clsName = cls->fullName, this->cls = cls;
-    dimc = 0, vtMdf = ValueTypeModifier::t;
+    dimc = 0, vtMdf = ValueTypeModifier::TrueValue;
 }
 
 uint64 ExprType::getSize() const {
@@ -275,6 +275,16 @@ bool isBaseCls(ClassInfo *bsCls, ClassInfo *dCls) {
 
 bool isBasicCls(ClassInfo *cls) {
     for (size_t i = 0; i < 13; i++) if (cls == basicTypeCls[i]) return true;
+    return false;
+}
+
+bool isIntegerCls(ClassInfo *cls) {
+    for (size_t i = 1; i < 8; i++) if (cls == basicTypeCls[i]) return true;
+    return false;
+}
+
+bool isFloatCls(ClassInfo *cls) {
+    for (size_t i = 9; i < 10; i++) if (cls == basicTypeCls[i]) return true;
     return false;
 }
 
