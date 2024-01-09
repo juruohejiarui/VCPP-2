@@ -31,6 +31,7 @@ VariableInfo *LocalVarFrame::getVar(const std::string &name) {
 bool LocalVarFrame::insertVar(VariableInfo *vInfo) {
     if (varMap.count(vInfo->name)) return false;
     varMap[vInfo->name] = vInfo;
+    vInfo->type.vtMdf = ValueTypeModifier::Ref;
     varCount++;
     return true;
 }
@@ -61,12 +62,11 @@ void locVarStkPop(bool writeVCode) {
 }
 
 void locVarStkPush() {
-    locVarStk[locVarStkSize + 1] = LocalVarFrame(locVarStkTop(), locVarStkTop()->getVarCount());
+    locVarStk[locVarStkSize + 1] = LocalVarFrame(locVarStkTop(), (locVarStkTop() != nullptr ? locVarStkTop()->getVarCount() : 0));
     locVarStkSize++;
 }
 
-std::tuple<VariableInfo *, ExprType> findVar(const std::string &name)
-{
+std::tuple<VariableInfo *, ExprType> findVar(const std::string &name) {
     static auto failRes = std::make_tuple(nullptr, ExprType());
     std::vector<std::string> prt;
     stringSplit(name, '.', prt);
@@ -132,13 +132,13 @@ std::tuple<VariableInfo *, ExprType> findVar(const std::string &name)
     return failRes;
 }
 
-std::tuple<FunctionInfo *, ExprType, GTableData> findFunc(const std::string &name, const std::vector<ExprType> &params) {
-    static auto failRes = std::make_tuple(nullptr, ExprType(), GTableData());
+FuncCallInfo findFunc(const std::string &name, const std::vector<ExprType> &params) {
+    static FuncCallInfo failRes = std::make_tuple(nullptr, ExprType(), GTableData());
     std::vector<std::string> prt;
     stringSplit(name, '.', prt);
     GenerSubstMap gsMap;
     auto searchList = [&gsMap, &params](const FunctionList &fList, IdenVisibility visRequire)
-         -> std::tuple<FunctionInfo *, ExprType, GTableData> {
+         -> FuncCallInfo {
         for (auto func : fList) if (func->visibility >= visRequire) {
             auto chkRes = func->satisfy(gsMap, params);
             if (std::get<0>(chkRes)) return std::make_tuple(func, std::get<1>(chkRes), std::get<2>(chkRes));

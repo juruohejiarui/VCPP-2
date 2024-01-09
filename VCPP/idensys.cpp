@@ -224,6 +224,7 @@ std::tuple<bool, ExprType, GTableData> FunctionInfo::satisfy(const GenerSubstMap
             if (tgr.cls->isGeneric) {
                 auto iter = ngsMap.find(tgr.cls);
                 if (iter == ngsMap.end()) {
+                    if (src == ExprType(tgr.cls)) return true;
                     ngsMap.insert(std::make_pair(tgr.cls, src));
                     ngsMap[tgr.cls].dimc = 0;
                     return true;
@@ -246,7 +247,8 @@ std::tuple<bool, ExprType, GTableData> FunctionInfo::satisfy(const GenerSubstMap
         };
         return recursion(recursion, src, tgr);
     };
-    for (size_t i = 0; i < paramList.size(); i++) if (!tryMatch(paramList[i], params[i]->type)) return std::make_tuple(false, ExprType(), GTableData());
+    for (size_t i = 0; i < paramList.size(); i++) if (!tryMatch(paramList[i], params[i]->type)) 
+        return std::make_tuple(false, ExprType(), GTableData());
     GTableData data;
     data.insert(blgCls->generCls, ngsMap);
     data.insert(generCls, ngsMap);
@@ -316,6 +318,7 @@ bool setCurRoot(RootNode *node) {
     if (curRoot == node) return true;
     usingList.clear();
     bool succ = true;
+    if (node == nullptr) return true;
     for (size_t i = 0; i < node->getUsingCount(); i++) {
         std::vector<std::string> path;
         stringSplit(node->getUsing(i)->getPath(), '.', path);
@@ -802,7 +805,7 @@ std::pair<bool, uint64> buildGlo(const RootList &roots) {
         }
     }
     if (succ) return std::make_pair(true, vOffset);
-    else std::make_pair(false, 0);
+    else return std::make_pair(false, 0);
 }
 
 std::pair<bool, uint64> buildIdenSystem(const RootList &roots) {

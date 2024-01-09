@@ -29,6 +29,7 @@ int main() {
         auto res = buildIdenSystem(roots);
         debugPrintNspStruct(rootNsp);
         generateSymbol("./builtin/basic.vdt", "./builtin/basic.vdef");
+        generateVCode("./builtin/basic.vasm");
     }
     return 0;
 }

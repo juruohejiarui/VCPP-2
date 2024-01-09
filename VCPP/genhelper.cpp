@@ -11,18 +11,18 @@ void closeOutputStream() { oStream.close(); }
 
 static int32 indent;
 void indentInc() { indent++; }
-void indentDec() { indent = std::max(0, indent--); }
+void indentDec() { indent = std::max(0, --indent); }
 int32 getIndentDep() { return indent; }
 
 void writeVCode(std::string text) {
     oStream << getIndent(getIndentDep()) << text << std::endl;
 }
-void writeVCode(Command tcmd) { writeVCode(tCommandString[(int)tcmd]); }
-void writeVCode(Command tcmd, const UnionData &data) { writeVCode(tCommandString[(int)tcmd] + " " + toString(data.uint64_v(), 16)); }
+void writeVCode(Command tcmd) { writeVCode(commandString[(int)tcmd]); }
+void writeVCode(Command tcmd, const UnionData &data) { writeVCode(commandString[(int)tcmd] + " " + toString(data.uint64_v(), 16)); }
 void writeVCode(Command tcmd, const UnionData &data1, const UnionData &data2) {
-    writeVCode(tCommandString[(int)tcmd] + " " + toString(data1.uint64_v(), 16) + " " + toString(data2.uint64_v(), 16));
+    writeVCode(commandString[(int)tcmd] + " " + toString(data1.uint64_v(), 16) + " " + toString(data2.uint64_v(), 16));
 }
-void writeVCode(Command tcmd, const std::string &str) { writeVCode(tCommandString[(int)tcmd] + " " + str); }
+void writeVCode(Command tcmd, const std::string &str) { writeVCode(commandString[(int)tcmd] + " " + str); }
 void writeVCode(const std::string &cmdStr, const std::string &str) { writeVCode(cmdStr + " " + str); }
 
 DataTypeModifier getDtMdf(const ExprType &etype) {
@@ -37,7 +37,7 @@ DataTypeModifier getDtMdf(const ExprType &etype) {
             if (getCurFunc()->generCls.size(); i++)
                 if (getCurFunc()->generCls[i] == etype.cls) return (DataTypeModifier)((size_t)DataTypeModifier::gv0 + i + shift);
     }
-    if (isBasicCls(etype.cls)) return DataTypeModifier::o;
+    if (!isBasicCls(etype.cls)) return DataTypeModifier::o;
     else if (etype.cls == int8Cls) return DataTypeModifier::c;
     else if (etype.cls == uint8Cls) return DataTypeModifier::b;
     else if (etype.cls == int16Cls) return DataTypeModifier::i16;

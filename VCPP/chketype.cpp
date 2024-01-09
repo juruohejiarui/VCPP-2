@@ -205,17 +205,101 @@ std::tuple<bool, ExprType> chkEType_NewObj(OperatorNode *node) {
 
 std::tuple<bool, ExprType> chkEType_GetMem(OperatorNode *node) {
     if (node == nullptr) return std::make_tuple(true, ExprType());
-    
+    auto chkResL = chkEType(node->getLeft());
+    if (!std::get<0>(chkResL) || std::get<1>(chkResL).dimc > 0) {
+        printError(node->getLeft()->getToken().lineId, "invalid left operand of \".\"");
+        return std::tuple(false, ExprType());
+    }
+    if (node->getRight()->getType() != SyntaxNodeType::Identifier) {
+        printError(node->getRight()->getToken().lineId, "the right operand of \".\" must be an identifier");
+        return std::tuple(false, ExprType());
+    }
+    const ExprType &etypeL = std::get<1>(chkResL);
+    ExprType etype;
+    IdentifierNode *mem = (IdentifierNode *)node->getRight();
+    // if the left operand is "@this" , it is valid to call the protected or private members
+    bool res = true, 
+        isThis = (node->getType() == SyntaxNodeType::Identifier
+                 && ((IdentifierNode *)node->getLeft())->getName() == "@this");
+    // a variable member
+    if (!mem->isFuncCall()) {
+        auto vIter = etypeL.cls->fieldMap.find(mem->getName());
+        // if a valid member is found
+        if (vIter != etypeL.cls->fieldMap.end()
+         && (vIter->second->visibility == IdenVisibility::Public || isThis)) {
+            etype = vIter->second->type;
+            etype.vtMdf = ValueTypeModifier::MemberRef;
+            varCallMap[mem] = std::make_tuple(vIter->second, etype);
+        }
+        else res = false;
+    } else {
+        auto fIter = etype.cls->funcMap.find(mem->getName());
+        auto gsMap = makeSubstMap(etype.cls->generCls, etype.generParams);
+        // search for the function list
+        if (fIter == etype.cls->funcMap.end()) res = false;
+        else {
+            std::vector<ExprType> paramList;
+            for (size_t i = 0; i < mem->getParamCount(); i++)
+                if (mem->getParam(i) != nullptr) {
+                    auto chkResP = chkEType(mem->getParam(i));
+                    if (!std::get<0>(chkResP)) res = false;
+                    paramList.push_back(std::get<1>(chkResP));
+                }
+            FunctionInfo *tgFunc = nullptr;
+            FuncCallInfo clInfo;
+            for (auto &func : fIter->second) {
+                auto chkResF = func->satisfy(gsMap, paramList);
+                if (!std::get<0>(chkResF)) continue;
+                tgFunc = func;
+                funcCallMap[mem] = clInfo = std::make_tuple(func, std::get<1>(chkResF), std::get<2>(chkResF));
+                break;
+            }
+            if (tgFunc == nullptr) {
+                funcCallMap[mem] = std::make_tuple(nullptr, ExprType(), GTableData());
+                printError(mem->getToken().lineId, "can not find function that satisfies the param list");
+                return std::make_tuple(false, ExprType());
+            }
+            etype = std::get<1>(clInfo);
+            // if this function is a common func, then change this expression into func(obj, ...)
+            if (tgFunc->getDefNode()->getType() == SyntaxNodeType::FuncDef) {
+                node->getParent()->replaceChild(node, mem);
+                mem->insertChild(2, node);
+            }
+        }
+    }
+    return std::make_tuple(res, etype);
+}
+
+std::tuple<bool, ExprType> chkEType_Convert(OperatorNode *node) {
+    auto chkResL = chkEType(node->getLeft());
+    if (!std::get<0>(chkResL)) return std::make_tuple(false, ExprType());
+    ExprType etypeR((IdentifierNode *)node->getRight());
+    if (isNumberEType(std::get<1>(chkResL)) && isNumberEType(etypeR))
+        return std::tuple(true, etypeR);
+    if (!isBaseCls(etypeR.cls, std::get<1>(chkResL).cls)) {
+        printError(node->getToken().lineId, "You can only convert the value of derived class into base class");
+        return std::make_tuple(false, ExprType());
+    }
+    ExprType etypeT = std::get<1>(chkResL);
+    while (etypeT.cls != etypeR.cls) etypeT = etypeT.convertToBase();
+    if (etypeT != etypeR) {
+        printError(node->getToken().lineId, "Unable to convert " + std::get<1>(chkResL).toDebugString() + " into " + etypeR.toDebugString());
+        return std::make_tuple(false, ExprType());
+    }
+    return std::make_tuple(true, etypeR);
 }
 
 std::tuple<bool, ExprType> chkEType_Operator(OperatorNode *node) {
     if (node == nullptr) return std::make_tuple(true, ExprType());
-    // the operator "=" must be handled specially, since that it can be used as a function call "mapLikeObj.set(index, value)" if the left expression is calling an element of an array-like object using "[]"
-    if (node->getToken().type == TokenType::Assign) return chkEType_Assign(node);
-    // the operator "$" must be handled specially, since that meaning of this operator relates to the operand of this opeator: 1. a new object with params 2. new array with size
-    else if (node->getToken().type == TokenType::NewObj) return chkEType_NewObj(node);
-    else if (node->getToken().type == TokenType::GetMem) return chkEType_GetMem(node);
-    ExprType eType;
+    switch (node->getToken().type) {
+        // the operator "=" must be handled specially, since that it can be used as a function call "mapLikeObj.set(index, value)" if the left expression is calling an element of an array-like object using "[]"
+        case TokenType::Assign: return chkEType_Assign(node);
+        // the operator "$" must be handled specially, since that meaning of this operator relates to the operand of this opeator: 1. a new object with params 2. new array with size
+        case TokenType::NewObj: return chkEType_NewObj(node);
+        case TokenType::GetMem: return chkEType_GetMem(node);
+        case TokenType::Convert: return chkEType_Convert(node);
+    }    
+    ExprType etype;
     bool res = true;
     auto chkResL = chkEType(node->getLeft()), chkResR = chkEType(node->getRight());
     if (!std::get<0>(chkResL) || !std::get<0>(chkResR)) return std::make_tuple(true, ExprType());
@@ -237,9 +321,9 @@ std::tuple<bool, ExprType> chkEType_Operator(OperatorNode *node) {
                 delete node;
                 return chkEType(operCandy);
             } else {
-                eType = getExprType(etypeL, etypeR);
-                eType.vtMdf = ValueTypeModifier::TrueValue;
-                if (eType == ExprType()) res = false, printError(node->getToken().lineId, "invalid operand type");
+                etype = getExprType(etypeL, etypeR);
+                etype.vtMdf = ValueTypeModifier::TrueValue;
+                if (etype == ExprType()) res = false, printError(node->getToken().lineId, "invalid operand type");
             }
             break;
         }
@@ -248,7 +332,7 @@ std::tuple<bool, ExprType> chkEType_Operator(OperatorNode *node) {
         case TokenType::And:
         case TokenType::Or:
         case TokenType::Xor:
-        case TokenType::Mod:
+        case TokenType::Mod: {
             auto vInfo = findOperCandy("@mod", etypeL, etypeR);
             // modify this expression into "operVar.calculate(left expression, right expression)"
             if (vInfo != nullptr) {
@@ -259,12 +343,27 @@ std::tuple<bool, ExprType> chkEType_Operator(OperatorNode *node) {
             } else {
                 if (!isInteger(etypeL) || !isInteger(etypeR)) 
                     res = false, printError(node->getToken().lineId, "invalid operand type");
-                eType = getExprType(etypeL, etypeR);
-                eType.vtMdf = ValueTypeModifier::TrueValue;
-                if (eType == ExprType()) res = false, printError(node->getToken().lineId, "invalid operand type");
+                etype = getExprType(etypeL, etypeR);
+                etype.vtMdf = ValueTypeModifier::TrueValue;
+                if (etype == ExprType()) res = false, printError(node->getToken().lineId, "invalid operand type");
             }
             break;
+        }
         #pragma endregion
+        case TokenType::Dec:
+        case TokenType::Inc: {
+            if ((node->getLeft() == nullptr) == (node->getRight() == nullptr))
+                res = false, printError(node->getToken().lineId, "This operator has only one operand");
+            else {
+                etype = (node->getLeft() == nullptr ? etypeR : etypeL);
+                if (etype.vtMdf == ValueTypeModifier::TrueValue)
+                    res = false, printError(node->getToken().lineId, "This operator needs reference value");
+                else if (!isInteger(etype))
+                    res = false, printError(node->getToken().lineId, "This operator needs integer value");
+                else etype.vtMdf = ValueTypeModifier::TrueValue;
+            }
+            break;
+        }
         #pragma region basic operator for compare
         case TokenType::Equ: 
         case TokenType::Neq: 
@@ -285,7 +384,7 @@ std::tuple<bool, ExprType> chkEType_Operator(OperatorNode *node) {
             } else {
                 if (!isNumberEType(etypeL) || !isNumberEType(etypeR)) 
                     res = false, printError(node->getToken().lineId, "invalid operand type");
-                eType = ExprType(int32Cls);
+                etype = ExprType(int32Cls);
             }
             break;
         }
@@ -295,13 +394,13 @@ std::tuple<bool, ExprType> chkEType_Operator(OperatorNode *node) {
         case TokenType::LogicOr: {
             if (!isInteger(etypeL) || !isInteger(etypeR)) 
                 res = false, printError(node->getToken().lineId, "invalid operand type");
-            eType = ExprType(int32Cls);
+            etype = ExprType(int32Cls);
             break;
         }
         case TokenType::LogicNot: {
             if (!isInteger(etypeR)) 
                 res = false, printError(node->getToken().lineId, "invalid operand type");
-            eType = ExprType(int32Cls);
+            etype = ExprType(int32Cls);
             break;
         }
         #pragma endregion
@@ -310,8 +409,8 @@ std::tuple<bool, ExprType> chkEType_Operator(OperatorNode *node) {
             if (etypeL.dimc > 0) {
                 if (!isInteger(etypeR)) 
                     res = false, printError(node->getToken().lineId, "invalid operand type");
-                eType = etypeL, etypeL.dimc--;
-                eType.vtMdf = ValueTypeModifier::MemberRef;
+                etype = etypeL, etypeL.dimc--;
+                etype.vtMdf = ValueTypeModifier::MemberRef;
             } else {
                 // the candy of this operator is "mapLikeObj.get(index)"
                 ClassInfo *cls = etypeL.cls;
@@ -340,12 +439,88 @@ std::tuple<bool, ExprType> chkEType_Operator(OperatorNode *node) {
             break;
         }
     }
-    eTypeMap[node] = eType;
-    return std::make_tuple(res, eType);
+    eTypeMap[node] = etype;
+    return std::make_tuple(res, etype);
+}
+
+std::tuple<bool, ExprType> chkEType_Iden(IdentifierNode *node) {
+    auto genThis = []() -> IdentifierNode * {
+        IdentifierNode *idenThis = new IdentifierNode();
+        idenThis->setName("@this");
+        ExprType etypeThis = ExprType(getCurCls());
+        etypeThis.vtMdf = ValueTypeModifier::Ref;
+        eTypeMap[idenThis] = etypeThis;
+        varCallMap[idenThis] = findVar("@this");
+        return idenThis;
+    };
+    ExprType etype;
+    bool res = true;
+    if (node->isFuncCall()) {
+        std::vector<ExprType> paramList;
+        for (size_t i = 0; i < node->getParamCount(); i++)
+            if (node->getParam(i) != nullptr) {
+                auto chkResP = chkEType(node->getParam(i));
+                if (!std::get<0>(chkResP)) res = false;
+                paramList.push_back(std::get<1>(chkResP));
+            }
+        FuncCallInfo clInfo = findFunc(node->getName(), paramList);
+        if (std::get<0>(clInfo) == nullptr) {
+            printError(node->getToken().lineId, "can not find function that satisfies the param list");
+            funcCallMap[node] = std::make_tuple(nullptr, ExprType(), GTableData());
+            return std::make_tuple(false, ExprType());
+        }
+        funcCallMap[node] = clInfo;
+        etype = std::get<1>(clInfo);
+        const FunctionInfo *func = std::get<0>(clInfo);
+        // a member function
+        if (func->blgCls != nullptr) {
+            // generate an identifier "@this"
+            IdentifierNode *idenThis = genThis();
+            // a function of itself
+            if (func->blgCls == getCurCls()) {
+                // if this is a varfunc, then add a preffix : "@this." and check again
+                if (func->getDefNode()->getType() == SyntaxNodeType::VarFuncDef) {
+                    OperatorNode *getMem = new OperatorNode();
+                    getMem->getToken().type = TokenType::GetMem;
+                    node->getParent()->replaceChild(node, getMem);
+                    getMem->addChild(idenThis), getMem->addChild(node);
+                    eTypeMap[getMem] = std::get<1>(clInfo);
+                } else { // if this ia a common function, then add a param "@this"
+                    node->insertChild(2, idenThis);
+                    eTypeMap[node] = std::get<1>(clInfo);
+                }
+            } else { // a function of base class
+                node->insertChild(2, idenThis);
+                eTypeMap[node] = std::get<1>(clInfo);
+            }
+        } 
+        // if it is a global function, then the expression not need to be changed.
+    } else { // this identifier is a variable
+        VarCallInfo clInfo = findVar(node->getName());
+        if (std::get<0>(clInfo) == nullptr) {
+            printError(node->getToken().lineId, "can not find variable \"" + node->getName() + "\"");
+            varCallMap[node] = std::make_tuple(nullptr, ExprType());
+            return std::make_tuple(false, ExprType());
+        }
+        VariableInfo *vInfo = std::get<0>(clInfo);
+        etype = std::get<1>(clInfo);
+        varCallMap[node] = clInfo;
+        // member variable
+        if (vInfo->blgFunc == nullptr && vInfo->blgCls != nullptr) {
+            IdentifierNode *idenThis = genThis();
+            OperatorNode *getMem = new OperatorNode();
+            getMem->getToken().type = TokenType::GetMem;
+            node->getParent()->replaceChild(node, getMem);
+            getMem->addChild(idenThis), getMem->addChild(node);
+            eTypeMap[getMem] = std::get<1>(clInfo);
+        } else eTypeMap[node] = etype;
+    }
+    return std::make_tuple(res, etype);
 }
 
 std::tuple<bool, ExprType> chkEType(ExpressionNode *node) {
     if (eTypeMap.find(node) != eTypeMap.end()) return std::make_tuple(true, eTypeMap[node]);
+    if (node == nullptr) return std::make_tuple(true, ExprType());
     ExprType eType;
     bool res = true;
     switch (node->getType()) {
@@ -357,6 +532,8 @@ std::tuple<bool, ExprType> chkEType(ExpressionNode *node) {
         }
         case SyntaxNodeType::Operator:
             return chkEType_Operator((OperatorNode *)node);
+        case SyntaxNodeType::Identifier:
+            return chkEType_Iden((IdentifierNode *)node);
     }
     eTypeMap[node] = eType;
     return std::make_tuple(res, eType);

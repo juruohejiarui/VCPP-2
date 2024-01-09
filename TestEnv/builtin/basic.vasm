@@ -1,0 +1,78 @@
+#LABEL TestA.func1@T2_DIMC0
+  setlocal 0x2
+  getarg 0x2
+  o_pvar 0x0
+  i64_push 0x0
+  o_r_t_mov
+  o_pvar 0x1
+  i64_push 0x0
+  o_r_t_mov
+vret
+#LABEL TestA.func2@T2_DIMC0@T2_DIMC0
+  setlocal 0x3
+  getarg 0x3
+  o_pvar 0x0
+  i64_push 0x0
+  o_r_t_mov
+  o_pvar 0x1
+  i64_push 0x0
+  o_r_t_mov
+  o_pvar 0x2
+  i64_push 0x0
+  o_r_t_mov
+vret
+#LABEL TestB.func1@int_DIMC0
+  setlocal 0x2
+  getarg 0x2
+  o_pvar 0x0
+  i64_push 0x0
+  o_r_t_mov
+  i64_pvar 0x1
+  i64_push 0x0
+  i64_r_t_mov
+vret
+#LABEL TestA.func2@T2_DIMC0@T2_DIMC0
+  setlocal 0x3
+  getarg 0x3
+  o_pvar 0x0
+  i64_push 0x0
+  o_r_t_mov
+  o_pvar 0x1
+  i64_push 0x0
+  o_r_t_mov
+  o_pvar 0x2
+  i64_push 0x0
+  o_r_t_mov
+vret
+#LABEL TestB.func2@int_DIMC0@float_DIMC0
+  setlocal 0x3
+  getarg 0x3
+  o_pvar 0x0
+  i64_push 0x0
+  o_r_t_mov
+  i64_pvar 0x1
+  i64_push 0x0
+  i64_r_t_mov
+vret
+#LABEL System.Array.@constructer
+  setlocal 0x1
+  setarg 0x1
+  o_pvar 0x0
+  i64_r_mem 0x48
+  getgtbl 0x0
+  i64_mr_t_mov
+o_pvar 0x0
+i64_push 0x0
+o_r_t_mov
+ret
+#LABEL System.Array.@constructer@int_DIMC0@T_DIMC0
+  setlocal 0x3
+  setarg 0x3
+  o_pvar 0x0
+  i64_r_mem 0x48
+  getgtbl 0x0
+  i64_mr_t_mov
+    #LABEL @LOOP_START0
+    i32_pvar 0x1
+    i32_r_sdec
+    t_jz @LOOP_END0

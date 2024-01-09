@@ -338,6 +338,7 @@ Command getCommand(const std::string &name);
 TCommand getTCommand(const std::string &name);
 PretreatCommand getPretreatCommand(const std::string &name);
 
+Command wrap(TCommand tcmd, ValueTypeModifier vtMdf);
 Command wrap(TCommand tcmd, DataTypeModifier dtMdf);
 Command wrap(TCommand tcmd,  DataTypeModifier dtMdf, ValueTypeModifier vlMdf);
 Command wrap(TCommand tcmd, DataTypeModifier dtMdf, ValueTypeModifier vtMdf1, ValueTypeModifier vtMdf2);

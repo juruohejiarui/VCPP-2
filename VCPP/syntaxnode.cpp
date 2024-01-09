@@ -30,16 +30,39 @@ SyntaxNode *SyntaxNode::operator[](int index) const { return children[index]; }
 SyntaxNode *&SyntaxNode::get(int index) { return children[index]; }
 SyntaxNode *SyntaxNode::get(int index) const { return children[index]; }
 
-void SyntaxNode::addChild(SyntaxNode *child) { children.push_back(child); }
+void SyntaxNode::addChild(SyntaxNode *child) { 
+    if (child != nullptr) child->parent = this;
+    children.push_back(child);
+}
 
-void SyntaxNode::clearChildren() { children.clear(); }
-void SyntaxNode::removeChild(size_t index) { children.erase(children.begin() + index); }
-void SyntaxNode::removeChild(SyntaxNode *child) { children.erase(std::find(children.begin(), children.end(), child)); }
-void SyntaxNode::insertChild(size_t index, SyntaxNode *child) { children.insert(children.begin() + index, child); }
-void SyntaxNode::replaceChild(size_t index, SyntaxNode *child) { children[index] = child; }
+void SyntaxNode::clearChildren() { 
+    for (auto child : children) if (child != nullptr) child->parent = nullptr;
+    children.clear(); 
+}
+void SyntaxNode::removeChild(size_t index) {
+    if (children[index] != nullptr) children[index]->parent = nullptr;
+    children.erase(children.begin() + index); 
+}
+void SyntaxNode::removeChild(SyntaxNode *child) { 
+    auto iter = std::find(children.begin(), children.end(), child);
+    if (iter == children.end()) return ;
+    (*iter)->parent = nullptr;
+    children.erase(iter); 
+}
+void SyntaxNode::insertChild(size_t index, SyntaxNode *child) { 
+    child->parent = this;
+    children.insert(children.begin() + index, child); 
+}
+void SyntaxNode::replaceChild(size_t index, SyntaxNode *child) { 
+    if (children[index] != nullptr) children[index]->parent = nullptr;
+    child->parent = this, children[index] = child; 
+}
 void SyntaxNode::replaceChild(SyntaxNode *oldChild, SyntaxNode *newChild) { 
     auto iter = std::find(children.begin(), children.end(), oldChild);
-    if (iter != children.end()) *iter = newChild;
+    if (iter != children.end()) {
+        (*iter)->parent = nullptr;
+        newChild->parent = this, (*iter) = newChild;
+    }
 }
 
 SyntaxNode *SyntaxNode::getParent() const { return parent; }
@@ -194,7 +217,7 @@ std::pair<IdentifierNode *, IdentifierNode *> FuncDefNode::getParam(size_t index
     return std::make_pair((IdentifierNode *)get(index * 2 + 1), (IdentifierNode *)get(index * 2 + 2));
 }
 IdentifierNode *FuncDefNode::getResNode() const { return (IdentifierNode *)get(getChildrenCount() - 2); }
-SyntaxNode *FuncDefNode::getContent() const { return get(getChildrenCount()); }
+SyntaxNode *FuncDefNode::getContent() const { return get(getChildrenCount() - 1); }
 #pragma endregion
 
 #pragma region VarFuncDefNode

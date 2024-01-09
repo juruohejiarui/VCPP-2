@@ -139,26 +139,3 @@
     <size> = 2
   void void   : <unknown>
     <size> = 0
-<unknown>
-TestA
-TestB
-byte
-char
-double
-float
-int
-long
-object
-short
-uint
-ulong
-ushort
-void
-Array
-ArrayLike
-Compare
-IntCompare
-LongCompare
-MapLike
-String
-UIntCompare

@@ -43,10 +43,13 @@ bool writeSetGTable(const GTableData &gtbl) {
 }
 
 bool writeGvl(const ExprType &etype) {
-    if (etype.vtMdf == ValueTypeModifier::TrueValue) return ;
+    if (etype.vtMdf == ValueTypeModifier::TrueValue) return false;
     writeVCode(wrap(TCommand::gvl, getRealDtMdf(etype), etype.vtMdf));
     return true;
 }
+
+bool buildVCode(SyntaxNode *node);
+bool buildExpression(ExpressionNode *node);
 
 bool writePushArg(IdentifierNode *idenNode, uint64 &argCount) {
     bool res = true;
@@ -104,9 +107,9 @@ bool buildOperNode(OperatorNode *operNode) {
                         end = "@LOGIC_END" + std::to_string(id);
             auto etypeL = getEType(operNode->getLeft()), etypeR = getEType(operNode->getRight());
             buildExpression(operNode->getLeft());
-            writeVCode(wrap(TCommand::jz, getRealDtMdf(etypeL), etypeL.vtMdf), fail);
+            writeVCode(wrap(TCommand::jz, etypeL.vtMdf), fail);
             buildExpression(operNode->getRight());
-            writeVCode(wrap(TCommand::jz, getRealDtMdf(etypeR), etypeR.vtMdf), fail);
+            writeVCode(wrap(TCommand::jz, etypeR.vtMdf), fail);
             writeVCode(Command::i64_push, UnionData(1ull));
             writeVCode(Command::jmp, end);
             writeVCode("#LABEL", fail);
@@ -213,9 +216,9 @@ bool buildOperNode(OperatorNode *operNode) {
             TCommand tcmd = TCommand::unknown;
             ExpressionNode *subExpr = nullptr;
             if (operNode->getLeft() != nullptr)
-                subExpr = operNode->getLeft(), tcmd = TCommand::pinc;
+                subExpr = operNode->getLeft(), tcmd = TCommand::sinc;
             else if (operNode->getRight() != nullptr)
-                subExpr = operNode->getRight(), tcmd = TCommand::sinc;
+                subExpr = operNode->getRight(), tcmd = TCommand::pinc;
             else return false;
             res &= buildExpression(subExpr);
             const ExprType &etype = getEType(subExpr);
@@ -227,9 +230,9 @@ bool buildOperNode(OperatorNode *operNode) {
             TCommand tcmd = TCommand::unknown;
             ExpressionNode *subExpr = nullptr;
             if (operNode->getLeft() != nullptr)
-                subExpr = operNode->getLeft(), tcmd = TCommand::pdec;
+                subExpr = operNode->getLeft(), tcmd = TCommand::sdec;
             else if (operNode->getRight() != nullptr)
-                subExpr = operNode->getRight(), tcmd = TCommand::sdec;
+                subExpr = operNode->getRight(), tcmd = TCommand::pdec;
             else return false;
             res &= buildExpression(subExpr);
             const ExprType &etype = getEType(subExpr);
@@ -283,7 +286,7 @@ bool buildIf(IfNode *node) {
         printError(node->getCondNode()->getToken().lineId, "The condition of if statement must be a boolean expression");
     }
     res &= buildExpression(node->getCondNode());
-    writeVCode(wrap(TCommand::jz, getDtMdf(std::get<1>(chkInfo)), std::get<1>(chkInfo).vtMdf), elseLabel);
+    writeVCode(wrap(TCommand::jz, std::get<1>(chkInfo).vtMdf), elseLabel);
     indentInc();
     res &= buildVCode(node->getSuccNode());
     indentDec();
@@ -314,8 +317,10 @@ bool buildLoop(LoopNode *node) {
     }
     res &= buildVCode(node->getInitNode());
     writeVCode("#LABEL", start);
-    res &= buildExpression(node->getCondNode());
-    writeVCode(wrap(TCommand::jz, getDtMdf(std::get<1>(chkInfo)), std::get<1>(chkInfo).vtMdf), end);
+    if (std::get<0>(chkInfo)) {
+        res &= buildExpression(node->getCondNode());
+        writeVCode(wrap(TCommand::jz, std::get<1>(chkInfo).vtMdf), end);
+    }
     indentInc();
     res &= buildVCode(node->getContent());
     indentDec();
@@ -467,7 +472,6 @@ bool buildConstructer(FunctionInfo *func) {
     writeVCode(Command::setlocal, UnionData(func->getDefNode()->getLocalVarCount() + 1));
 
     // set the param list in the local variable stack
-    locVarStkPop(true);
     for (size_t i = 0; i < func->params.size(); i++)
         func->params[i]->offset = i + 1, res &= locVarStkTop()->insertVar(func->params[i]);
     {
@@ -499,7 +503,7 @@ bool buildConstructer(FunctionInfo *func) {
     
     if (func->resType.cls != voidCls) writeVCode(Command::vret);
     else writeVCode(Command::ret);
-
+    indentDec();
     return res;
 }
 bool buildFunc(FunctionInfo *func) {
@@ -518,7 +522,6 @@ bool buildFunc(FunctionInfo *func) {
     indentInc();
     locVarStkPush();
     writeVCode(Command::setlocal, UnionData(func->getDefNode()->getLocalVarCount() + isMember));
-    indentDec();
 
     // get the gtable
     uint64 gtableSize = func->generCls.size() + (isMember ? func->blgCls->generCls.size() : 0);
@@ -544,6 +547,7 @@ bool buildFunc(FunctionInfo *func) {
     setCurFunc(nullptr);
     updOperCandy();
     locVarStkPop(true);
+    indentDec();
     
     if (func->resType.cls != voidCls) writeVCode(Command::vret);
     else writeVCode(Command::ret);
@@ -552,6 +556,7 @@ bool buildFunc(FunctionInfo *func) {
 }
 
 bool scanCls(ClassInfo *cls) {
+    if (isBasicCls(cls)) return true;
     setCurNsp(cls->blgNsp), setCurCls(cls), setCurRoot(cls->blgRoot);
     bool res = updOperCandy();
     if (isBasicCls(cls) || cls == basicCls || cls->blgRoot->getType() != SyntaxNodeType::SourceRoot) return true;
@@ -568,11 +573,12 @@ bool scanNsp(NamespaceInfo *nsp) {
         for (auto func : fPair.second) res &= buildFunc(func);
     return res;
 }
-bool generateVCode(const std::string &vasmPath, const std::vector<std::string> &relyPath) {
+bool generateVCode(const std::string &vasmPath) {
     initOperCandy();
 
     bool res = setOutputStream(vasmPath);
     if (!res) return false;
     res = scanNsp(rootNsp);
-    
+    closeOutputStream();
+    return res;
 }

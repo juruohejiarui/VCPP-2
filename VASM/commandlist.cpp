@@ -303,6 +303,7 @@ const std::string commandString[] = {
     "getctrs"          , 
     "sys"              ,
     "setgtbl"          ,
+    "getgtbl"          ,
     "unknown"
 };
 
@@ -337,6 +338,8 @@ PretreatCommand getPretreatCommand(const std::string &name) {
     for (int i = 0; i < pretreatCommandNumber; i++) if (name == pretreatCommandString[i]) return (PretreatCommand)i;
     return (PretreatCommand)pretreatCommandNumber;
 }
+
+Command wrap(TCommand tcmd, ValueTypeModifier vtMdf) { return getCommand(valueTypeModifierStr[(int)vtMdf] + "_" + tCommandString[(int)tcmd]); }
 
 Command wrap(TCommand tcmd, DataTypeModifier dtMdf) {
     return getCommand(dataTypeModifierStr[(int)dtMdf] + "_" + tCommandString[(int)tcmd]);

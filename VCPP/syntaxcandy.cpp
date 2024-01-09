@@ -2,8 +2,8 @@
 
 #pragma region operator candies
 /// @brief the number of overridable operators
-const int operNumber = 12;
-const std::string operNames[operNumber] = {"@add", "@sub", "@mul", "@div", "@mul", "@mod", "@shl", "@shr", "@and", "@or", "@xor", "@compare"},
+const int operNumber = 11;
+const std::string operNames[operNumber] = {"@add", "@sub", "@mul", "@div", "@mod", "@shl", "@shr", "@and", "@or", "@xor", "@compare"},
     operClsName[operNumber] = { "System.Add", "System.Sub", "System.Mul", "System.Div", "System.Mod", 
                                 "System.Shl", "System.Shr", "System.And", "System.Or", "System.Xor", "System.Compare"};
 ClassInfo *operCls[operNumber];
