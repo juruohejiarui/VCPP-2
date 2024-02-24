@@ -1,0 +1,25 @@
+{
+  "name": "vscode-highlight",
+  "displayName": "VCPP-highlight",
+  "description": "A simple highlight extension for vcpp files",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.86.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [{
+      "id": "vcpp",
+      "aliases": ["VCPP", "vcpp"],
+      "extensions": [".vcpp"],
+      "configuration": "./language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "vcpp",
+      "scopeName": "source.vcpp",
+      "path": "./syntaxes/vcpp.tmLanguage.json"
+    }]
+  }
+}

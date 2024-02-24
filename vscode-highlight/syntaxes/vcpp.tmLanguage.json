@@ -1,0 +1,86 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "VCPP",
+	"patterns": [
+		{
+			"include": "#keywords"
+		},
+		{
+			"include": "#strings"
+		},
+		{
+			"include": "#character"
+		},
+		{
+			"include": "#lineComments"
+		}
+	],
+	"repository": {
+		"keywords": {
+			"patterns": [{
+				"name": "keyword.control.vcpp",
+				"match": "\\b(if|while|for|return|for|break|continue|using|else)\\b"
+			},
+			{
+				"name": "keyword",
+				"match": "\\b(var|varfunc|func|class|namespace|private|public|protected)\\b"
+			},
+			{
+				"name": "keyword.operator",
+				"match": "@(compare|add|sub|mul|div|shl|shr|and|or|xor)(\\w)*(?=\\b)"
+			},
+			{
+				"name": "keyword.operator",
+				"match": "(\\bas\\b|\\$|\\+|-|\\*|\\\\|\\&|<|>|=|\\!|\\%|~|/|\\|)(?!/)"
+			},
+			{
+				"name": "entity.name.class",
+				"match": "(?<=((:|\\$)(\\s)*|class(\\s)+|namespace(\\s)+|using\\b(\\s)*|as(\\s)+))(\\w)+"
+			},
+			{
+				"name": "entity.name.class",
+				"match": "(?<=(<\\$(\\w|,|\\s)*))(\\w)+(?=((\\s|\\w|,)*\\$>))"
+			},
+			{
+				"name": "entity.name.section",
+				"match": "(?<=((namespace\\b|::)(\\s)*))(\\w)+"
+			},
+			{
+				"name": "entity.name.function",
+				"match": "(?<!\\$\\s*)@?(\\w)+(?=((<\\$(\\w|\\s|,)*\\$>){0,1}(\\s)*\\())"
+			},
+			{
+				"name": "constant.numeric",
+				"match": "(?<!\\w)[0-9][0-9a-fA-F]*(.[0-9]*f?|u|l|i|)"
+			}]
+		},
+		"strings": {
+			"name": "string.quoted.double.vcpp",
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.vcpp",
+					"match": "\\\\."
+				}
+			]
+		},
+		"character": {
+			"name": "string.quoted.single.vcpp",
+			"begin": "'",
+			"end": "'",
+			"patterns": [
+				{
+					"name": "constant.character.escape.vcpp",
+					"match": "\\\\."
+				}
+			]
+		},
+		"lineComments": {
+			"name": "comment.line.double-slash",
+			"begin": "//",
+			"end": "\n"
+		}
+	},
+	"scopeName": "source.vcpp"
+}
