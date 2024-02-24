@@ -1,0 +1,22 @@
+namespace System::Math {
+	public func max(a : int, b : int) : int {
+		if (a > b) return a;
+		else return b;
+	}
+	public func min(a : int, b : int) : int {
+		if (a > b) return b;
+		else return a;
+	}
+    public func pow(a : long, b : long) : long {
+        var res = 1ll;
+        while (b > 0ll) {
+            if (b & 1ll) res *= a;
+            a *= a, b >>= 1ll;
+        }
+        return res;
+    }
+    public func gcd(a : long, b : long) : long {
+        if (b > 0ll) return gcd(b, a % b);
+        else return a;
+    }
+}

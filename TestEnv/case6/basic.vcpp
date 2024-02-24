@@ -1,0 +1,24 @@
+namespace System {
+	public func getTime() : long { @vasm("\nsys 8\nvret\n"); }
+}
+
+public class Compare<$T1, T2$> {
+	public func @constructer() : void { @base(); }
+	public varfunc calculate(a : T1, b : T2) : int;
+}
+public class IntCompare : Compare<$int, int$> {
+	public func @constructer() : void { @base(); }
+	public varfunc calculate(a : int, b : int) : int {
+		if (a > b) return 1;
+		else if (a == b) return 0;
+		else return 0 - 1;
+	}
+}
+public class FloatCompare : Compare<$float, float$> {
+	public func @constructer() : void { @base(); }
+	public varfunc calculate(a : float, b : float) : int {
+		if (a > b) return 1;
+		else if (a == b) return 0;
+		else return 0 - 1;
+	}
+}

@@ -1,0 +1,22 @@
+private var n : int;
+private func dp(u : Node) : void;
+public func main() : void;
+private class Node : System::Container::ArrayLike<$Node$>{
+  public var child : System::Container::Array<$Node$>;
+  public var f0 : int;
+  public var f1 : int;
+  public func @constructer() : void;
+  public func addChild(node : Node) : void;
+  public varfunc get(index : uint) : Node;
+  public varfunc getLength() : uint;
+}
+namespace System{
+}
+namespace System::Algorithm{
+}
+namespace System::Console{
+}
+namespace System::Container{
+}
+namespace System::Math{
+}

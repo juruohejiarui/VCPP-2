@@ -1,0 +1,37 @@
+using System::Container;
+using System;
+namespace System::Algorithm {
+    private func sort<$T$>(array : ArrayLike<$T$>, @compare : Compare<$T, T$>, l : int, r : int) : void {
+		if (l >= r) return ;
+		var low = l, hi = r;
+		array.swap(l as uint, getRand(l, r) as uint);
+		while (low < hi) {
+			while (low < r && array[low as uint] <= array[l as uint]) low++;
+			while (hi > l && array[hi as uint] >= array[l as uint]) hi--;
+			if (low < hi) array.swap(low as uint, hi as uint);
+		}
+		array.swap(l as uint, hi as uint);
+		sort(array, @compare, l, hi - 1), sort(array, @compare, hi + 1, r);
+	}
+	public func sort<$T$>(array : ArrayLike<$T$>, @compare : Compare<$T, T$>) : void {
+		if (randSeed == 0l) initRand(getTime());
+		sort(array, @compare, 0, array.getLength() as int - 1);
+	}
+    public func reverse<$T$>(array : ArrayLike<$T$>, l : uint, r : uint) : void {
+		while (l < r) {
+			array.swap(l, r);
+			l++, r--;
+		}
+	}
+	public func reverse<$T$>(array : ArrayLike<$T$>) : void { reverse(array, 0u, array.getLength() - 1u); }
+    private var randSeed : long;
+	public func initRand(seed : long) : void { if (randSeed == 0l) randSeed = seed; }
+	public func getRand() : long {
+    	randSeed = (25214903917l * randSeed) & ((1l << 48) - 1);
+    	return randSeed; 
+	}
+	public func getRand(l : int, r : int) : int {
+		randSeed = (25214903917l * randSeed) & ((1l << 48) - 1);
+		return randSeed as int % (r - l + 1) + l;
+	}
+}

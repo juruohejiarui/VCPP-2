@@ -1,0 +1,28 @@
+namespace System::Console {
+    public func putchar(ch : char) : void {
+        @vasm("\nc_pvar 0\nsys 0\ni32_pop\n");
+    }
+    public func getchar() : char {
+        @vasm("\nsys 1\nvret\n");
+    }
+    public func print(x : int) : void {
+        @vasm("\ni32_pvar 0\nsys 2\ni32_pop\n");
+    }
+    public func print(x : float) : void {
+        @vasm("\nf32_pvar 0\nsys 10\ni32_pop\n");
+    }
+    public func print(str : char[]) : void {
+        for (var i = 0; str[i] != '\0'; i++) putchar(str[i]);
+    }
+    public func inputInt() : int {
+        var x = 0, m = 1, ch = getchar();
+        while (ch < '0' || ch > '9') {
+            if (ch == '-') m = 0-1;
+            ch = getchar();
+        }
+        while ('0' <= ch && ch <= '9') 
+            x = (x << 3) + (x << 1) + (ch - '0') as int,
+            ch = getchar();
+        return x * m;
+    }
+}

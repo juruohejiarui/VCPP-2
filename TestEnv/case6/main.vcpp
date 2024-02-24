@@ -1,0 +1,48 @@
+using System::Console;
+using System::Algorithm;
+using System::Container;
+using System::Math;
+var n : int;
+class Node : ArrayLike<$Node$> {
+    public var child : Array<$Node$>;
+    public var f0 : int, f1 : int;
+    public func @constructer() : void { @base(); child = $Array<$Node$>(); }
+    public func addChild(node : Node) : void { child.append(node); }
+    public varfunc get(index : uint) : Node { return child[index]; }
+    public varfunc getLength() : uint { return child.getLength(); }
+}
+
+func dp(u : Node) : void {
+    for (var i = 0u; i < u.getLength(); i++) {
+        dp(u[i]);
+        u.f0 += max(u[i].f0, u[i].f1);
+        u.f1 += u[i].f0;
+    }
+}
+
+public func main() : void {
+    n = inputInt();
+    var isc = $int[n + 1], nodes = $Node[n + 1];
+    for (var i = 1; i <= n; i++) nodes[i] = $Node(), nodes[i].f1 = inputInt();
+    while (1) {
+        var d1 = inputInt(), d2 = inputInt();
+        if (d1 == 0 && d2 == 0) break;
+        nodes[d2].addChild(nodes[d1]);
+        isc[d1] = 1;
+    }
+    for (var i = 1; i <= n; i++) if (isc[i] == 0) {
+        dp(nodes[i]);
+        print(max(nodes[i].f0, nodes[i].f1));
+        break;
+    }
+    putchar('\n');
+
+    var farr = $Array<$float$>();
+    print(2.0f);
+    farr.append(1.0f);
+    farr.append(3.0f);
+    farr.append(5.0f);
+    farr.append(1.8f);
+    // sort(farr, $FloatCompare());
+    // for (var i = 0u; i < farr.getLength(); i++) print(farr[i]), putchar(' ');
+}

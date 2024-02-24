@@ -1,0 +1,23 @@
+func call(id : int, v1 : int, v2 : int) : int {
+    return v1 * id + v2;
+}
+
+func qpow(x : int, y : int, mod : int) : int {
+    var res = 1;
+    while (y) {
+        if (y & 1) res = res * x % mod;
+        x = x * x % mod, y >>= 1;
+    }
+    return res;
+}
+
+func calcF(i : int) : int {
+    if (i <= 1) return 1;
+    else return calcF(i - 1) + calcF(i - 2);
+}
+public func main() : void {
+    var n = 100000000, arr = $int[n + 1];
+    arr[0] = calcF(4), arr[1] = calcF(5);
+    for (var i = 2; i <= n; i++)
+        arr[i] = call(arr[i - 1], qpow(3, i - 1, 1000000007), arr[i - 2]);
+}

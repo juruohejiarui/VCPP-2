@@ -1,0 +1,27 @@
+func qpow(x : float, y : int) : float {
+    var res = 1.0f;
+    while (y) {
+        if (y & 1) res *= x;
+        x *= x, y >>= 1;
+    }
+    return res;
+}
+
+func Q_sqrt(number : float) : float {
+	var i = 0l, x2 = 0.0f, y = 0.0f, threehalfs = 1.5f;
+
+	x2 = number * 0.5f;
+	y  = number;
+	i  = y as long;
+	i  = 0x5f3759df - ( i >> 1 );
+	y  = i as float;
+	y  = y * ( threehalfs - ( x2 * y * y ) );
+
+	return y;
+}
+public func main() : void {
+    var n = 100000000, arr = $float[n + 1];
+    arr[0] = 1.0f, arr[1] = 2.0f;
+    for (var i = 2; i <= n; i++)
+        arr[i] = qpow(Q_sqrt(arr[i - 2] * 4.0f), i - 1) + arr[i - 1];
+}

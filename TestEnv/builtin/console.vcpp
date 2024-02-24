@@ -1,0 +1,22 @@
+namespace System::Console {
+    public func print(data : int) : void {
+        
+    }
+    public func print(data : long) : void {
+        
+    }
+    public func inputInt() : int {
+
+    }
+    public func inputLong() : long {
+    }
+    public func getchar() : char {
+
+    }
+    public func putchar(ch : char) : void {
+        
+    }
+    public func print(str : char[]) : void {
+        for (var i = 0; str[i] != '\0'; i++) putchar(str[i]);
+    }
+}

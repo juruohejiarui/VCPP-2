@@ -1,0 +1,80 @@
+namespace System::Container {
+    public class ArrayLike<$T$> : MapLike<$uint, T$> {
+		public func @constructer() : void {
+			@base();
+		}
+		public varfunc get(index : uint) : T {}
+		public varfunc set(index : uint, data : T) : void {}
+		public varfunc getLength() : uint;
+		public varfunc swap(x : uint, y : uint) : void {}
+		public varfunc toBasicArray() : T[] {
+			var res = $T[getLength()];
+			for (var i = 0u; i < @this.getLength(); i++) res[i] = get(i);
+			return res;
+		}
+	}
+	public class MapLike<$KeyT, ValueT$> {
+		public func @constructer() : void {
+			@base();
+		}
+		public varfunc get(index : KeyT) : ValueT {}
+		public varfunc set(index : KeyT, data : ValueT) : void {}
+	}
+	public class String : Array<$char$> {
+		public func @constructer() : void {
+			@base();
+		}
+		public func @constructer(length : uint, initChar : char) : void {
+			@base(length, initChar);
+		}
+		public func @constructer(source : String) : void {
+			@base();
+			for (var i = 0u; i < source.getLength(); i++) append(source[i]);
+		}
+		public varfunc toBasicArray() : char[] {
+			var res = $char[getLength() + 1];
+			for (var i = 0u; i < @this.getLength(); i++) res[i] = get(i);
+			res[getLength()] = 0 as char;
+			return res;
+		}
+		private var data : char[];
+		private var length : uint, capacity : uint;
+	}
+	public class Array<$T$> : ArrayLike<$T$> {
+		public func @constructer() : void {
+			@base();
+		}
+		public func @constructer(length : uint, initData : T) : void {
+			@base();
+			while (length--) append(initData);
+		}
+		public varfunc get(index : uint) : T {
+			return data[index];
+		}
+		public varfunc set(index : uint, dt : T) : void {
+			data[index] = dt;
+		}
+		public varfunc getLength() : uint {
+			return length;
+		}
+		public varfunc swap(x : uint, y : uint) : void {
+			var tmp = data[x];
+			data[x] = data[y];
+			data[y] = tmp;
+		}
+		public func append(dt : T) : void {
+			if (length == capacity) {
+				var newCapacity = capacity;
+				if (capacity == 0u) newCapacity = 1u;
+				else newCapacity <<= 1u;
+				var newData = $T[newCapacity];
+				for (var i = 0u; i < capacity; i++) newData[i] = data[i];
+				data = newData, capacity = newCapacity;
+			}
+			data[length++] = dt;
+		}
+
+		private var data : T[];
+		private var length : uint, capacity : uint;
+	}
+}

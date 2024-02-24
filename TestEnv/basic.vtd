@@ -1,0 +1,92 @@
+{
+  C Compare C object v public 0x20 0x2 0x10{
+    F @constructer F Compare.@constructer v public 0x0 : void {}
+    F calculate@T1_DIMC0@T2_DIMC0 F Compare.calculate@T1_DIMC0@T2_DIMC0 v public 0x0 : int { : object : object}
+    V calculate@T1_DIMC0@T2_DIMC0 v public : ulong 0x18
+  }
+  C FloatCompare C Compare v public 0x20 0x0 0x20{
+    F @constructer F FloatCompare.@constructer v public 0x0 : void {}
+    F calculate@T1_DIMC0@T2_DIMC0 F FloatCompare.calculate@float_DIMC0@float_DIMC0 v public 0x0 : int { : float : float}
+    V calculate@T1_DIMC0@T2_DIMC0 v public : ulong 0x18
+  }
+  C IntCompare C Compare v public 0x20 0x0 0x20{
+    F @constructer F IntCompare.@constructer v public 0x0 : void {}
+    F calculate@T1_DIMC0@T2_DIMC0 F IntCompare.calculate@int_DIMC0@int_DIMC0 v public 0x0 : int { : int : int}
+    V calculate@T1_DIMC0@T2_DIMC0 v public : ulong 0x18
+  }
+  N System{
+    F getTime F System.getTime v public 0x0 : long {}
+    N Algorithm{
+      V randSeed v private : long 0x0
+      F getRand F System.Algorithm.getRand v public 0x0 : long {}
+      F getRand@int_DIMC0@int_DIMC0 F System.Algorithm.getRand@int_DIMC0@int_DIMC0 v public 0x0 : int { : int : int}
+      F initRand@long_DIMC0 F System.Algorithm.initRand@long_DIMC0 v public 0x0 : void { : long}
+      F reverse@@T@@@System.Container.ArrayLike_DIMC0@@T_DIMC0@@@uint_DIMC0@uint_DIMC0 F System.Algorithm.reverse@@T@@@System.Container.ArrayLike_DIMC0@@T_DIMC0@@@uint_DIMC0@uint_DIMC0 v public 0x1 : void { : System.Container.ArrayLike : uint : uint}
+      F reverse@@T@@@System.Container.ArrayLike_DIMC0@@T_DIMC0@@ F System.Algorithm.reverse@@T@@@System.Container.ArrayLike_DIMC0@@T_DIMC0@@ v public 0x1 : void { : System.Container.ArrayLike}
+      F sort@@T@@@System.Container.ArrayLike_DIMC0@@T_DIMC0@@@Compare_DIMC0@@T_DIMC0T_DIMC0@@@int_DIMC0@int_DIMC0 F System.Algorithm.sort@@T@@@System.Container.ArrayLike_DIMC0@@T_DIMC0@@@Compare_DIMC0@@T_DIMC0T_DIMC0@@@int_DIMC0@int_DIMC0 v private 0x1 : void { : System.Container.ArrayLike : Compare : int : int}
+      F sort@@T@@@System.Container.ArrayLike_DIMC0@@T_DIMC0@@@Compare_DIMC0@@T_DIMC0T_DIMC0@@ F System.Algorithm.sort@@T@@@System.Container.ArrayLike_DIMC0@@T_DIMC0@@@Compare_DIMC0@@T_DIMC0T_DIMC0@@ v public 0x1 : void { : System.Container.ArrayLike : Compare}
+    }
+    N Console{
+      F getchar F System.Console.getchar v public 0x0 : char {}
+      F inputInt F System.Console.inputInt v public 0x0 : int {}
+      F print@int_DIMC0 F System.Console.print@int_DIMC0 v public 0x0 : void { : int}
+      F print@float_DIMC0 F System.Console.print@float_DIMC0 v public 0x0 : void { : float}
+      F print@char_DIMC1 F System.Console.print@char_DIMC1 v public 0x0 : void { : char[]}
+      F putchar@char_DIMC0 F System.Console.putchar@char_DIMC0 v public 0x0 : void { : char}
+    }
+    N Container{
+      C Array C System.Container.ArrayLike v public 0x60 0x1 0x48{
+        V capacity v private : uint 0x5C
+        V data v private : object[] 0x50
+        V length v private : uint 0x58
+        F @constructer F System.Container.Array.@constructer v public 0x0 : void {}
+        F @constructer@uint_DIMC0@T_DIMC0 F System.Container.Array.@constructer@uint_DIMC0@T_DIMC0 v public 0x0 : void { : uint : object}
+        F append@T_DIMC0 F System.Container.Array.append@T_DIMC0 v public 0x0 : void { : object}
+        F get@KeyT_DIMC0 F System.Container.Array.get@uint_DIMC0 v public 0x0 : object { : uint}
+        V get@KeyT_DIMC0 v public : ulong 0x18
+        F getLength F System.Container.Array.getLength v public 0x0 : uint {}
+        V getLength v public : ulong 0x30
+        F set@KeyT_DIMC0@ValueT_DIMC0 F System.Container.Array.set@uint_DIMC0@T_DIMC0 v public 0x0 : void { : uint : object}
+        V set@KeyT_DIMC0@ValueT_DIMC0 v public : ulong 0x20
+        F swap@uint_DIMC0@uint_DIMC0 F System.Container.Array.swap@uint_DIMC0@uint_DIMC0 v public 0x0 : void { : uint : uint}
+        V swap@uint_DIMC0@uint_DIMC0 v public : ulong 0x38
+      }
+      C ArrayLike C System.Container.MapLike v public 0x48 0x1 0x28{
+        F @constructer F System.Container.ArrayLike.@constructer v public 0x0 : void {}
+        F get@KeyT_DIMC0 F System.Container.ArrayLike.get@uint_DIMC0 v public 0x0 : object { : uint}
+        V get@KeyT_DIMC0 v public : ulong 0x18
+        F getLength F System.Container.ArrayLike.getLength v public 0x0 : uint {}
+        V getLength v public : ulong 0x30
+        F set@KeyT_DIMC0@ValueT_DIMC0 F System.Container.ArrayLike.set@uint_DIMC0@T_DIMC0 v public 0x0 : void { : uint : object}
+        V set@KeyT_DIMC0@ValueT_DIMC0 v public : ulong 0x20
+        F swap@uint_DIMC0@uint_DIMC0 F System.Container.ArrayLike.swap@uint_DIMC0@uint_DIMC0 v public 0x0 : void { : uint : uint}
+        V swap@uint_DIMC0@uint_DIMC0 v public : ulong 0x38
+        F toBasicArray F System.Container.ArrayLike.toBasicArray v public 0x0 : object[] {}
+        V toBasicArray v public : ulong 0x40
+      }
+      C MapLike C object v public 0x28 0x2 0x10{
+        F @constructer F System.Container.MapLike.@constructer v public 0x0 : void {}
+        F get@KeyT_DIMC0 F System.Container.MapLike.get@KeyT_DIMC0 v public 0x0 : object { : object}
+        V get@KeyT_DIMC0 v public : ulong 0x18
+        F set@KeyT_DIMC0@ValueT_DIMC0 F System.Container.MapLike.set@KeyT_DIMC0@ValueT_DIMC0 v public 0x0 : void { : object : object}
+        V set@KeyT_DIMC0@ValueT_DIMC0 v public : ulong 0x20
+      }
+      C String C System.Container.Array v public 0x70 0x0 0x60{
+        V capacity v private : uint 0x6C
+        V data v private : char[] 0x60
+        V length v private : uint 0x68
+        F @constructer F System.Container.String.@constructer v public 0x0 : void {}
+        F @constructer@uint_DIMC0@char_DIMC0 F System.Container.String.@constructer@uint_DIMC0@char_DIMC0 v public 0x0 : void { : uint : char}
+        F @constructer@System.Container.String_DIMC0 F System.Container.String.@constructer@System.Container.String_DIMC0 v public 0x0 : void { : System.Container.String}
+        F toBasicArray F System.Container.String.toBasicArray v public 0x0 : char[] {}
+        V toBasicArray v public : ulong 0x40
+      }
+    }
+    N Math{
+      F gcd@long_DIMC0@long_DIMC0 F System.Math.gcd@long_DIMC0@long_DIMC0 v public 0x0 : long { : long : long}
+      F max@int_DIMC0@int_DIMC0 F System.Math.max@int_DIMC0@int_DIMC0 v public 0x0 : int { : int : int}
+      F min@int_DIMC0@int_DIMC0 F System.Math.min@int_DIMC0@int_DIMC0 v public 0x0 : int { : int : int}
+      F pow@long_DIMC0@long_DIMC0 F System.Math.pow@long_DIMC0@long_DIMC0 v public 0x0 : long { : long : long}
+    }
+  }
+}
