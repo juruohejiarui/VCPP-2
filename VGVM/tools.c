@@ -8,6 +8,7 @@ void Debug_printJITCode(uint8 *instBlk, uint64 size) {
 }
 
 void Debug_saveJITCode(uint8 *instBlk, uint64 size, char *logPath) {
+    AlignRsp
     FILE *fPtr = fopen("test.bin", "wb");
     fwrite(instBlk, sizeof(uint8), size, fPtr);
     fclose(fPtr);

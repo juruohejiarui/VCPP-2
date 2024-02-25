@@ -14,17 +14,17 @@ void printHelp() {
 
 int main(int argc, char **argv) {
     if (argc == 1) {
-        // addSource("./builtin/basic.vcpp");
-        // compile(1, "basic.vobj");
-        // addSource("./builtin/console.vcpp");
+        addSource("./case6/main.vcpp");
+        addRely("basic.vobj");
+        compile(1, "main.vobj");
         // addRely("./basic.vobj");
         // compile(0, "console.vobj");
-        addSource("./case6/algorithm.vcpp");
-        addSource("./case6/array.vcpp");
-        addSource("./case6/basic.vcpp");
-        addSource("./case6/console.vcpp");
-        addSource("./case6/math.vcpp");
-        compile(0, "basic.vobj");
+        // addSource("./case6/algorithm.vcpp");
+        // addSource("./case6/array.vcpp");
+        // addSource("./case6/basic.vcpp");
+        // addSource("./case6/console.vcpp");
+        // addSource("./case6/math.vcpp");
+        // compile(0, "basic.vobj");
         return 0;
     }
     std::vector<std::string> argList(argc - 1);

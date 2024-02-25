@@ -208,7 +208,7 @@ public:
 
     IdentifierNode *getNameNode() const ;
     size_t getParamCount() const;
-    std::pair<IdentifierNode *, IdentifierNode *> getParam(size_t index) const;
+    std::tuple<IdentifierNode *, IdentifierNode *, ConstValueNode *> getParam(size_t index) const;
     IdentifierNode *getResNode() const;
     SyntaxNode *getContent() const;
 };

@@ -37,8 +37,6 @@ namespace System::Container {
 			res[getLength()] = 0 as char;
 			return res;
 		}
-		private var data : char[];
-		private var length : uint, capacity : uint;
 	}
 	public class Array<$T$> : ArrayLike<$T$> {
 		public func @constructer() : void {
@@ -75,6 +73,6 @@ namespace System::Container {
 		}
 
 		private var data : T[];
-		private var length : uint, capacity : uint;
+		private var : uint length, capacity;
 	}
 }

@@ -94,6 +94,7 @@ struct FunctionInfo {
     std::string name, nameWithParam, fullName;
     std::vector<ClassInfo *> generCls;
     std::vector<VariableInfo *> params;
+    std::vector<ConstValueNode *> defaultVals;
     ExprType resType;
     IdenVisibility visibility;
 
@@ -110,7 +111,7 @@ struct FunctionInfo {
     FuncDefNode *getDefNode() const;
     /// @brief This function will update the defNode, and the information that stored in defNode excepts the content.
     /// @param defNode 
-    void setDefNode(FuncDefNode *defNode);
+    bool setDefNode(FuncDefNode *defNode);
 
     IdenRegion getRegion() const;
 

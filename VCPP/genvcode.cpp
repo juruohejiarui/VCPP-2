@@ -61,6 +61,9 @@ bool writePushArg(IdentifierNode *idenNode, uint64 &argCount) {
             argCount++;
             res &= buildExpression(idenNode->getParam(i));
         }
+    auto fInfo = std::get<0>(getFuncCallInfo(idenNode));
+    for (; argCount < fInfo->params.size(); argCount++)
+        writeVCode(Command::i64_push, fInfo->defaultVals[argCount - (fInfo->params.size() - fInfo->defaultVals.size())]->getToken().data);
     return res;
 }
 

@@ -137,6 +137,8 @@ bool generateDefData_Func(FunctionInfo *func, int dep) {
         if (i > 0) oStream << ", ";
         oStream << func->params[i]->name << " : ";
         generateDefData_EType(func->params[i]->type);
+        if (i >= func->params.size() - func->defaultVals.size())
+            oStream << " = " << func->defaultVals[i - (func->params.size() - func->defaultVals.size())]->getToken().data.uint64_v();
     }
     oStream << ") : ";
     generateDefData_EType(func->resType);

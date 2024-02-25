@@ -5,7 +5,7 @@ using System::Math;
 var n : int;
 class Node : ArrayLike<$Node$> {
     public var child : Array<$Node$>;
-    public var f0 : int, f1 : int;
+    public var : int f0, f1;
     public func @constructer() : void { @base(); child = $Array<$Node$>(); }
     public func addChild(node : Node) : void { child.append(node); }
     public varfunc get(index : uint) : Node { return child[index]; }
@@ -17,18 +17,6 @@ func dp(u : Node) : void {
         dp(u[i]);
         u.f0 += max(u[i].f0, u[i].f1);
         u.f1 += u[i].f0;
-    }
-}
-
-func calcC(n : int, m : int) : void {
-    var C = $int[n][n + 1];
-    for (var i = 0; i < n; i++) C[i][0] = 1;
-    for (var i = 1; i < n; i++)
-        for (var j = 1; j <= i; j++)
-            C[i][j] = (C[i - 1][j] + C[i - 1][j - 1]) % m;
-    for (var i = 0; i < n; i++) {
-        for (var j = 0; j <= i; j++) print(C[i][j]), putchar(' ');
-        putchar('\n');
     }
 }
 
@@ -58,5 +46,5 @@ public func main() : void {
     sort(farr, $FloatCompare());
     for (var i = 0u; i < farr.getLength(); i++) print(farr[i]), putchar(' ');
     putchar('\n');
-    calcC(100, 1000000007);
+    calcC(10000, 1000000007);
 }

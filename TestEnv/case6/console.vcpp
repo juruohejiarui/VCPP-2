@@ -14,15 +14,22 @@ namespace System::Console {
     public func print(str : char[]) : void {
         for (var i = 0; str[i] != '\0'; i++) putchar(str[i]);
     }
-    public func inputInt() : int {
+    public func inputInt(base : int = 10) : int {
         var x = 0, m = 1, ch = getchar();
         while (ch < '0' || ch > '9') {
             if (ch == '-') m = 0-1;
             ch = getchar();
         }
-        while ('0' <= ch && ch <= '9') 
-            x = (x << 3) + (x << 1) + (ch - '0') as int,
-            ch = getchar();
+        if (base <= 10)
+            while ('0' <= ch && ch <= '9') 
+                x = x * base + (ch - '0') as int,
+                ch = getchar();
+        else
+            while (('0' <= ch && ch <= '9') || ('a' <= ch && ch <= 'z')) {
+                if (('0' <= ch && ch <= '9')) x = x * base + (ch - '0') as int;
+                else x = x * base + (ch - 'a') as int;
+                ch = getchar();
+            }
         return x * m;
     }
 }

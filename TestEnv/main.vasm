@@ -156,49 +156,6 @@ vret
       #LABEL @LOOP_END1
     i64_push 0x0
     i32_setvar 0x3
-      i32_push 0x0
-      i32_setvar 0x3
-      #LABEL @LOOP_START3
-      i32_pvar 0x3
-      i32_pvar 0x0
-      i32_ls
-      jz @LOOP_END3
-            i32_push 0x0
-            i32_setvar 0x4
-            #LABEL @LOOP_START4
-            i32_pvar 0x4
-            i32_pvar 0x3
-            i32_le
-            jz @LOOP_END4
-              o_pvar 0x2
-              i32_pvar 0x3
-              i32_pvar 0x4
-              i32_parrmem 0x2
-              setarg 0x1
-              call System.Console.print@int_DIMC0
-              i64_pop
-              c_push 0x20
-              setarg 0x1
-              call System.Console.putchar@char_DIMC0
-              i64_pop
-            #LABEL @LOOP_CONTENT_END4
-            i32_sincvar 0x4
-            i32_pop
-            jmp @LOOP_START4
-            #LABEL @LOOP_END4
-          i64_push 0x0
-          i32_setvar 0x4
-          c_push 0xA
-          setarg 0x1
-          call System.Console.putchar@char_DIMC0
-          i64_pop
-      #LABEL @LOOP_CONTENT_END3
-      i32_sincvar 0x3
-      i32_pop
-      jmp @LOOP_START3
-      #LABEL @LOOP_END3
-    i64_push 0x0
-    i32_setvar 0x3
     i64_push 0x0
     o_setvar 0x2
   i64_push 0x0
@@ -212,7 +169,7 @@ ret
   getarg 0x1
       u32_push 0x0
       u32_setvar 0x1
-      #LABEL @LOOP_START5
+      #LABEL @LOOP_START3
       u32_pvar 0x1
       o_pvar 0x0
       o_cpy
@@ -220,7 +177,7 @@ ret
       i64_pmem 0x30
       vcall
       u32_ls
-      jz @LOOP_END5
+      jz @LOOP_END3
           o_pvar 0x0
           o_cpy
           u32_pvar 0x1
@@ -257,11 +214,11 @@ ret
           vcall
           i32_pmem 0x50
           i32_addmem 0x54
-      #LABEL @LOOP_CONTENT_END5
+      #LABEL @LOOP_CONTENT_END3
       u32_sincvar 0x1
       u32_pop
-      jmp @LOOP_START5
-      #LABEL @LOOP_END5
+      jmp @LOOP_START3
+      #LABEL @LOOP_END3
     i64_push 0x0
     u32_setvar 0x1
   i64_push 0x0
@@ -271,8 +228,9 @@ ret
 #LABEL main
   setlocal 0x4
   getarg 0x0
-    setarg 0x0
-    call System.Console.inputInt
+    i64_push 0xA
+    setarg 0x1
+    call System.Console.inputInt@int_DIMC0
     i32_setglo n
     i64_push 0x4
     i32_pglo n
@@ -288,11 +246,11 @@ ret
     o_setvar 0x1
       i32_push 0x1
       i32_setvar 0x2
-      #LABEL @LOOP_START6
+      #LABEL @LOOP_START4
       i32_pvar 0x2
       i32_pglo n
       i32_le
-      jz @LOOP_END6
+      jz @LOOP_END4
         o_pvar 0x1
         i32_pvar 0x2
         newobj Node
@@ -304,24 +262,27 @@ ret
         o_pvar 0x1
         i32_pvar 0x2
         o_parrmem 0x1
-        setarg 0x0
-        call System.Console.inputInt
+        i64_push 0xA
+        setarg 0x1
+        call System.Console.inputInt@int_DIMC0
         i32_setmem 0x54
-      #LABEL @LOOP_CONTENT_END6
+      #LABEL @LOOP_CONTENT_END4
       i32_sincvar 0x2
       i32_pop
-      jmp @LOOP_START6
-      #LABEL @LOOP_END6
+      jmp @LOOP_START4
+      #LABEL @LOOP_END4
     i64_push 0x0
     i32_setvar 0x2
-    #LABEL @LOOP_START7
+    #LABEL @LOOP_START5
     i32_push 0x1
-    jz @LOOP_END7
-        setarg 0x0
-        call System.Console.inputInt
+    jz @LOOP_END5
+        i64_push 0xA
+        setarg 0x1
+        call System.Console.inputInt@int_DIMC0
         i32_setvar 0x2
-        setarg 0x0
-        call System.Console.inputInt
+        i64_push 0xA
+        setarg 0x1
+        call System.Console.inputInt@int_DIMC0
         i32_setvar 0x3
         i32_pvar 0x2
         i32_push 0x0
@@ -342,7 +303,7 @@ ret
           i32_setvar 0x2
           i64_push 0x0
           i32_setvar 0x3
-          jmp @LOOP_END7
+          jmp @LOOP_END5
         jmp @IF_END0
         #LABEL @IF_ELSE0
         #LABEL @IF_END0
@@ -363,16 +324,16 @@ ret
         i32_setvar 0x2
         i64_push 0x0
         i32_setvar 0x3
-    #LABEL @LOOP_CONTENT_END7
-    jmp @LOOP_START7
-    #LABEL @LOOP_END7
+    #LABEL @LOOP_CONTENT_END5
+    jmp @LOOP_START5
+    #LABEL @LOOP_END5
       i32_push 0x1
       i32_setvar 0x2
-      #LABEL @LOOP_START8
+      #LABEL @LOOP_START6
       i32_pvar 0x2
       i32_pglo n
       i32_le
-      jz @LOOP_END8
+      jz @LOOP_END6
         o_pvar 0x0
         i32_pvar 0x2
         i32_parrmem 0x1
@@ -398,15 +359,15 @@ ret
             setarg 0x1
             call System.Console.print@int_DIMC0
             i64_pop
-            jmp @LOOP_END8
+            jmp @LOOP_END6
         jmp @IF_END1
         #LABEL @IF_ELSE1
         #LABEL @IF_END1
-      #LABEL @LOOP_CONTENT_END8
+      #LABEL @LOOP_CONTENT_END6
       i32_sincvar 0x2
       i32_pop
-      jmp @LOOP_START8
-      #LABEL @LOOP_END8
+      jmp @LOOP_START6
+      #LABEL @LOOP_END6
     i64_push 0x0
     i32_setvar 0x2
     c_push 0xA
@@ -458,7 +419,7 @@ ret
     i64_pop
       u32_push 0x0
       u32_setvar 0x3
-      #LABEL @LOOP_START9
+      #LABEL @LOOP_START7
       u32_pvar 0x3
       o_pvar 0x2
       o_cpy
@@ -466,7 +427,7 @@ ret
       i64_pmem 0x30
       vcall
       u32_ls
-      jz @LOOP_END9
+      jz @LOOP_END7
         o_pvar 0x2
         o_cpy
         u32_pvar 0x3
@@ -480,18 +441,18 @@ ret
         setarg 0x1
         call System.Console.putchar@char_DIMC0
         i64_pop
-      #LABEL @LOOP_CONTENT_END9
+      #LABEL @LOOP_CONTENT_END7
       u32_sincvar 0x3
       u32_pop
-      jmp @LOOP_START9
-      #LABEL @LOOP_END9
+      jmp @LOOP_START7
+      #LABEL @LOOP_END7
     i64_push 0x0
     u32_setvar 0x3
     c_push 0xA
     setarg 0x1
     call System.Console.putchar@char_DIMC0
     i64_pop
-    i32_push 0x64
+    i32_push 0x2710
     i32_push 0x3B9ACA07
     setarg 0x2
     call calcC@int_DIMC0@int_DIMC0

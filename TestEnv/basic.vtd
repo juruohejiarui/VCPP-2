@@ -28,7 +28,7 @@
     }
     N Console{
       F getchar F System.Console.getchar v public 0x0 : char {}
-      F inputInt F System.Console.inputInt v public 0x0 : int {}
+      F inputInt@int_DIMC0 F System.Console.inputInt@int_DIMC0 v public 0x0 : int { : int}
       F print@int_DIMC0 F System.Console.print@int_DIMC0 v public 0x0 : void { : int}
       F print@float_DIMC0 F System.Console.print@float_DIMC0 v public 0x0 : void { : float}
       F print@char_DIMC1 F System.Console.print@char_DIMC1 v public 0x0 : void { : char[]}
@@ -71,10 +71,7 @@
         F set@KeyT_DIMC0@ValueT_DIMC0 F System.Container.MapLike.set@KeyT_DIMC0@ValueT_DIMC0 v public 0x0 : void { : object : object}
         V set@KeyT_DIMC0@ValueT_DIMC0 v public : ulong 0x20
       }
-      C String C System.Container.Array v public 0x70 0x0 0x60{
-        V capacity v private : uint 0x6C
-        V data v private : char[] 0x60
-        V length v private : uint 0x68
+      C String C System.Container.Array v public 0x60 0x0 0x60{
         F @constructer F System.Container.String.@constructer v public 0x0 : void {}
         F @constructer@uint_DIMC0@char_DIMC0 F System.Container.String.@constructer@uint_DIMC0@char_DIMC0 v public 0x0 : void { : uint : char}
         F @constructer@System.Container.String_DIMC0 F System.Container.String.@constructer@System.Container.String_DIMC0 v public 0x0 : void { : System.Container.String}

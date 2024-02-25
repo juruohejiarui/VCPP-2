@@ -25,7 +25,7 @@ namespace System::Algorithm{
 }
 namespace System::Console{
   public func getchar() : char;
-  public func inputInt() : int;
+  public func inputInt(base : int = 10) : int;
   public func print(x : int) : void;
   public func print(x : float) : void;
   public func print(str : char[]) : void;
@@ -58,9 +58,6 @@ namespace System::Container{
     public varfunc set(index : KeyT, data : ValueT) : void;
   }
   public class String : System::Container::Array<$char$>{
-    private var capacity : uint;
-    private var data : char[];
-    private var length : uint;
     public func @constructer() : void;
     public func @constructer(length : uint, initChar : char) : void;
     public func @constructer(source : System::Container::String) : void;

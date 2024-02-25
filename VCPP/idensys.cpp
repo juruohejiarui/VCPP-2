@@ -182,9 +182,9 @@ FunctionInfo::FunctionInfo() {
 }
 
 FuncDefNode *FunctionInfo::getDefNode() const { return defNode; }
-void FunctionInfo::setDefNode(FuncDefNode *defNode) {
+bool FunctionInfo::setDefNode(FuncDefNode *defNode) {
     this->defNode = defNode;
-    name = nameWithParam = defNode->getNameNode()->getName();
+    name = nameWithParam = fullName = defNode->getNameNode()->getName();
     // get the generic params
     generCls.clear();
     if (defNode->getNameNode()->getGenericArea() != nullptr) {
@@ -201,14 +201,21 @@ void FunctionInfo::setDefNode(FuncDefNode *defNode) {
     setCurFunc(this);
     // get the param list
     params.clear();
+    bool isDefaultValListSt = false;
     for (size_t i = 0; i < defNode->getParamCount(); i++) {
         auto pir = defNode->getParam(i);
         auto param = new VariableInfo();
         param->blgFunc = this, param->blgCls = blgCls, param->blgNsp = blgNsp, param->blgRoot = blgRoot;
-        param->setNameNode(pir.first), param->setTypeNode(pir.second);
+        param->setNameNode(std::get<0>(pir)), param->setTypeNode(std::get<1>(pir));
+        if (std::get<2>(pir) != nullptr) defaultVals.push_back(std::get<2>(pir)), isDefaultValListSt = true;
+        else if (isDefaultValListSt) {
+            printError(defNode->getToken().lineId, "The param which has default value should be the suffix of param list.");
+            return false;
+        }
         params.push_back(param);
     }
     resType = ExprType(defNode->getResNode());
+    return true;
 }
 
 IdenRegion FunctionInfo::getRegion() const {
@@ -218,7 +225,8 @@ IdenRegion FunctionInfo::getRegion() const {
 }
 
 std::tuple<bool, ExprType, GTableData> FunctionInfo::satisfy(const GenerSubstMap &gsMap, const std::vector<ExprType> &paramList) {
-    if (paramList.size() != this->params.size()) return std::make_tuple(false, ExprType(), GTableData());
+    // the params who has default value can be ignore
+    if (paramList.size() < this->params.size() - defaultVals.size() || this->params.size() < paramList.size()) return std::make_tuple(false, ExprType(), GTableData());
     auto ngsMap = gsMap;
     auto tryMatch = [&](ExprType src, const ExprType &tgr) -> bool {
         auto recursion = [&](auto &&self, ExprType src, const ExprType &tgr) -> bool {
@@ -643,13 +651,13 @@ bool buildClsMem() {
                 FunctionInfo *fInfo = new FunctionInfo();
                 fInfo->blgCls = dCls, fInfo->blgNsp = dCls->blgNsp, fInfo->blgRoot = dCls->blgRoot;
                 fInfo->visibility = (fDef->getVisibility() == IdenVisibility::Unknown ? IdenVisibility::Private : fDef->getVisibility());
-                fInfo->setDefNode(fDef);
+                succ &= fInfo->setDefNode(fDef);
                 setCurFunc(fInfo);
                 std::string &funcNameWithParam = fInfo->nameWithParam;
                 // set classes for all the expression type of this fInfo
                 succ &= fInfo->resType.setCls();
                 if (!succ) {
-                    printError(fDef->getToken().lineId, "Definition of function " + fInfo->fullName + " has error in expression type param and return value checking");
+                    printError(fDef->getToken().lineId, "Definition of function " + fInfo->fullName + " has error in return value checking");
                     delete fInfo;
                     continue;
                 }
@@ -667,7 +675,7 @@ bool buildClsMem() {
                 }
                 fInfo->fullName = dCls->fullName + "." + funcNameWithParam; 
                 if (!succ) {
-                    printError(fDef->getToken().lineId, "Definition of function " + fInfo->fullName + " has error in expression type param and return value checking");
+                    printError(fDef->getToken().lineId, "Definition of function " + fInfo->fullName + " has error in param definition");
                     delete fInfo;
                     continue;
                 }

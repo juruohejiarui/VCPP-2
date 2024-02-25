@@ -1,4 +1,5 @@
 #include "syntaxnode.h"
+#include "constexprcalc.h"
 
 const uint32 IdentifierWeight = 1000000;
 #pragma region Definition of methods in syntaxnode 
@@ -14,10 +15,13 @@ const std::string syntaxNodeTypeString[] = {
 const int32 syntaxNodeTypeNumber = 22;
 
 #pragma region SyntaxNode
-SyntaxNode::SyntaxNode(SyntaxNodeType type) { this->type = type, localVarCount = 0; }
-SyntaxNode::SyntaxNode(SyntaxNodeType type, const Token &token) : type(type), token(token) { localVarCount = 0; }
+SyntaxNode::SyntaxNode(SyntaxNodeType type) { parent = nullptr, this->type = type, localVarCount = 0; }
+SyntaxNode::SyntaxNode(SyntaxNodeType type, const Token &token) : type(type), token(token) { parent = nullptr, localVarCount = 0; }
 
-SyntaxNode::~SyntaxNode() { for (auto child : children) if (child != nullptr) delete child; }
+SyntaxNode::~SyntaxNode() {
+    if (parent != nullptr) parent->removeChild(this);
+    for (auto child : children) if (child != nullptr) delete child;
+}
 
 Token &SyntaxNode::getToken() { return token; }
 const Token &SyntaxNode::getToken() const { return token; }
@@ -106,6 +110,7 @@ IdentifierNode::IdentifierNode() : ExpressionNode() {
 }
 IdentifierNode::IdentifierNode(const Token &token) : ExpressionNode() {
     type = SyntaxNodeType::Identifier, children.resize(2, nullptr); 
+    this->token.lineId = token.lineId;
     get(1) = new ConstValueNode();
     get(1)->getToken().type = TokenType::ConstData;
     get(1)->getToken().data.type = DataTypeModifier::u32;
@@ -212,9 +217,9 @@ IdenVisibility FuncDefNode::getVisibility() const { return visibility; }
 void FuncDefNode::setVisibility(IdenVisibility visibility) { this->visibility = visibility; }
 
 IdentifierNode *FuncDefNode::getNameNode() const { return (IdentifierNode *)get(0); }
-size_t FuncDefNode::getParamCount() const { return (getChildrenCount() - 3) / 2; }
-std::pair<IdentifierNode *, IdentifierNode *> FuncDefNode::getParam(size_t index) const {
-    return std::make_pair((IdentifierNode *)get(index * 2 + 1), (IdentifierNode *)get(index * 2 + 2));
+size_t FuncDefNode::getParamCount() const { return (getChildrenCount() - 3) / 3; }
+std::tuple<IdentifierNode *, IdentifierNode *, ConstValueNode *> FuncDefNode::getParam(size_t index) const {
+    return std::make_tuple((IdentifierNode *)get(index * 3 + 1), (IdentifierNode *)get(index * 3 + 2), (ConstValueNode *)get(index * 3 + 3));
 }
 IdentifierNode *FuncDefNode::getResNode() const { return (IdentifierNode *)get(getChildrenCount() - 2); }
 SyntaxNode *FuncDefNode::getContent() const { return get(getChildrenCount() - 1); }
@@ -577,13 +582,24 @@ VarDefNode *buildVarDef(const TokenList &tkList, size_t l, size_t &r) {
     if (l && isVisibility(tkList[l - 1].type)) node->setVisibility(getVisibility(tkList[l - 1].type));
     r = l + 1;
     uint32 varCount = 0;
+    IdentifierNode *defaultTypeNode = nullptr;
+    if (tkList[r].type == TokenType::TypeHint) {
+        defaultTypeNode = buildIdentifier(tkList, r + 1, r);
+        r++;
+    }
     while (tkList[r].type != TokenType::ExprEnd) {
         IdentifierNode *nameNode = new IdentifierNode(tkList[l]), *typeNode = nullptr;
         ExpressionNode *initNode = nullptr;
         nameNode->setName(tkList[r].dataStr);
         size_t to = r;
-        if (tkList[to + 1].type == TokenType::TypeHint)
-            typeNode = buildIdentifier(tkList, to + 2, to);
+        if (tkList[to + 1].type == TokenType::TypeHint) {
+            if (defaultTypeNode == nullptr) typeNode = buildIdentifier(tkList, to + 2, to);
+            else {
+                printError(tkList[to + 1].lineId, "It is invalid to add type hint for a signle variable when there is a global type hint.");
+                delete node;
+                return nullptr;
+            }
+        } else typeNode = defaultTypeNode;
         if (tkList[to + 1].type == TokenType::Assign) {
             size_t to2 = to + 1;
             while (tkList[to2].type != TokenType::Comma && tkList[to2].type != TokenType::ExprEnd) {
@@ -651,6 +667,7 @@ FuncDefNode *buildFuncDef(const TokenList &tkList, size_t l, size_t &r) {
     }
     for (size_t pos = r + 1, rpos = pos; pos < tkList[r].data.uint64_v(); pos = ++rpos) {
         IdentifierNode *pNameNode = new IdentifierNode(tkList[pos]), *pTypeNode = nullptr;
+        ConstValueNode *pValNode = nullptr;
         pNameNode->setName(tkList[pos].dataStr);
         if (tkList[pos + 1].type != TokenType::TypeHint) {
             printError(tkList[pos + 1].lineId, "Invalid content of param definition of function \"" + nameNode->getName() + "\"");
@@ -659,6 +676,22 @@ FuncDefNode *buildFuncDef(const TokenList &tkList, size_t l, size_t &r) {
         }
         pTypeNode = buildIdentifier(tkList, pos + 2, rpos);
         node->addChild(pNameNode), node->addChild(pTypeNode);
+        // found default value expression for this param
+        if (tkList[rpos + 1].type == TokenType::Assign) {
+            size_t st = (rpos += 2);
+            while (tkList[rpos].type != TokenType::Comma && rpos < tkList[r].data.uint64_v()) {
+                if (isBracketL(tkList[rpos].type)) rpos = tkList[rpos].data.uint64_v();
+                rpos++;
+            }
+            ExpressionNode *constexprTree = buildExpression(tkList, st, rpos - 1);
+            if (!isConstExpr(constexprTree)) {
+                printError(tkList[st].lineId, "The default value of function param must be constant.");
+                delete constexprTree, delete node;
+                return nullptr;
+            }
+            pValNode = calcConstExpr(constexprTree);
+        }
+        node->addChild(pValNode);
         rpos++;
     }
     r = tkList[r].data.uint64_v();
