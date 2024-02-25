@@ -8,9 +8,17 @@ set(CXX_SOURCE
     syntaxnode.cpp
     idensys.cpp
     gensymbol.cpp genvcode.cpp genhelper.cpp searchsymbol.cpp chketype.cpp syntaxcandy.cpp
+    constexprcalc.cpp
     compiler.cpp
     main.cpp)
-set(CXX_HEADER ../Tools/tools.h ../Tools/message.h ../VASM/commandlist.h tokenlist.h idensys.h gen.h geninner.h compiler.h syntaxnode.h)  
+set(CXX_HEADER 
+    ../Tools/tools.h ../Tools/message.h 
+    ../VASM/commandlist.h 
+    tokenlist.h 
+    idensys.h constexprcalc.h
+    gen.h geninner.h 
+    compiler.h 
+    syntaxnode.h)  
 
 # set_target_properties(${TARGET} PROPERTIES
 #     COMPILE_FLAGS "-pthread"
@@ -20,11 +28,9 @@ find_package(Threads)
 target_link_libraries(VCPP ${CMAKE_THREAD_LIBS_INIT})
 
 
-#   ʽָ        
 set(CMAKE_CXX_COMPILER "g++")
 
  
-#           Ϣ
 set(CMAKE_BUILD_TYPE "Debug")
 set(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -g2 -ggdb -std=c++17")
 set(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -g -O3 -std=c++17")

@@ -1,0 +1,160 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "(lldb)VASM",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/VASM/VASM",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/TestEnv",
+            "preLaunchTask": "VASM-make",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "lldb"
+        },
+        {
+            "name": "(lldb)VM",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/VM/VM",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/TestEnv",
+            "preLaunchTask": "VM-make",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "lldb"
+        },
+        {
+            "name": "(lldb)VCPP",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/VCPP/VCPP",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/TestEnv",
+            "preLaunchTask": "VCPP-make",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "lldb"
+        },
+        {
+            "name": "(lldb)VGVM",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/VGVM/VGVM",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/TestEnv",
+            "preLaunchTask": "VGVM-make",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "lldb"
+        },
+        {
+            "name": "VASM",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/VASM/VASM",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/TestEnv",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "preLaunchTask": "VASM-make",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "VM",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/VM/VM",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/TestEnv",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "preLaunchTask": "VM-make",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "VCPP",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/VCPP/VCPP",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/TestEnv",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "preLaunchTask": "VCPP-make",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "VGVM",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/VGVM/VGVM",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/TestEnv",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "preLaunchTask": "VGVM-make",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        }
+    ]
+}

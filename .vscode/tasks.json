@@ -1,0 +1,89 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "VASM-cmake",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "../../VASM"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/build/VASM"
+            },            
+        },
+        {
+            "label": "VASM-make",
+            "type": "shell",
+            "command": "make",
+            "args": [],
+            "options": {
+                "cwd": "${workspaceFolder}/build/VASM"
+            }, 
+            "dependsOn": ["VASM-cmake"]
+        },
+        {
+            "label": "VM-cmake",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "../../VM"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/build/VM"
+            },            
+        },
+        {
+            "label": "VM-make",
+            "type": "shell",
+            "command": "make",
+            "args": [],
+            "options": {
+                "cwd": "${workspaceFolder}/build/VM"
+            }, 
+            "dependsOn": ["VM-cmake"]
+        },
+        {
+            "label": "VCPP-cmake",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "../../VCPP"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/build/VCPP"
+            },            
+        },
+        {
+            "label": "VCPP-make",
+            "type": "shell",
+            "command": "make",
+            "args": [],
+            "options": {
+                "cwd": "${workspaceFolder}/build/VCPP"
+            }, 
+            "dependsOn": ["VCPP-cmake"]
+        },
+        {
+            "label": "VGVM-cmake",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "../../VGVM"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/build/VGVM"
+            },            
+        },
+        {
+            "label": "VGVM-make",
+            "type": "shell",
+            "command": "make",
+            "args": [],
+            "options": {
+                "cwd": "${workspaceFolder}/build/VGVM"
+            }, 
+            "dependsOn": ["VGVM-cmake"]
+        }
+    ],
+}

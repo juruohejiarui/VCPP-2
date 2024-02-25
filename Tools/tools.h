@@ -89,6 +89,8 @@ struct UnionData {
 
     float32 float32_v() const;
     float64 float64_v() const;
+
+    UnionData convertTo(DataTypeModifier dtMdf);
 };
 
 
@@ -106,6 +108,8 @@ extern const std::string dataTypeModifierStr[], valueTypeModifierStr[], idenVisi
 extern const int dataTypeModifierNumber, valueTypeModifierNumber, identifierVisibilityNumber;
 
 bool isInteger(DataTypeModifier dtMfr);
+bool isUnsignedInteger(DataTypeModifier dtMfr);
+bool isSignedInteger(DataTypeModifier dtMfr);
 bool isReference(ValueTypeModifier vlMfr);
 
 /// @brief separate STR using SEP and return RES

@@ -50,6 +50,45 @@ int64 UnionData::int64_v() const { return data.int64_v; }
 float32 UnionData::float32_v() const { return data.float32_v; }
 float64 UnionData::float64_v() const { return data.float64_v; }
 
+UnionData UnionData::convertTo(DataTypeModifier tgType) {
+    if (type == tgType || isInteger(tgType) == isInteger(type)) {
+        auto res = UnionData(*this); res.type = tgType;
+        return res;
+    }
+    if (isUnsignedInteger(type)) {
+        if (type == DataTypeModifier::f32) return UnionData((float32)uint64_v());
+        else return UnionData((float64)uint64_v());
+    } else if (isSignedInteger(type)) {
+        UnionData tmp(DataTypeModifier::i64);
+        switch (type) {
+            case DataTypeModifier::c: tmp.int64_v() = int8_v(); break;
+            case DataTypeModifier::i16: tmp.int64_v() = int16_v(); break;
+            case DataTypeModifier::i32: tmp.int64_v() = int32_v(); break;
+            case DataTypeModifier::i64: tmp.int64_v() = int64_v(); break;
+        }
+        switch (tgType) {
+            case DataTypeModifier::f32: 
+                tmp.float32_v() = (float32)tmp.int64_v(); tmp.int64_v() &= (1ull << 32 - 1);
+                break;
+            case DataTypeModifier::f64: tmp.float64_v() = (float64)tmp.int64_v(); break;
+        }
+        tmp.type = tgType;
+        return tmp;
+    } else {
+        UnionData tmp(DataTypeModifier::f64);
+        if (type == DataTypeModifier::f32) tmp.float64_v() = float32_v();
+        else tmp.float64_v() = float64_v();
+        if (isUnsignedInteger(tgType)) return UnionData((uint64)tmp.float64_v());
+        switch (type) {
+            case DataTypeModifier::c: return UnionData((int8)tmp.float64_v());
+            case DataTypeModifier::i16: return UnionData((int16)tmp.float64_v());
+            case DataTypeModifier::i32: return UnionData((int32)tmp.float64_v());
+            case DataTypeModifier::i64: return UnionData((int64)tmp.float64_v());
+        }
+    }
+    return UnionData(DataTypeModifier::unknown);
+}
+
 DataTypeModifier getDataTypeModifier(const std::string &name) {
     for (int i = 0; i < dataTypeModifierNumber; i++) if (name == dataTypeModifierStr[i]) return (DataTypeModifier)i;
     return DataTypeModifier::unknown;
@@ -64,12 +103,10 @@ IdenVisibility getIdenVisibility(const std::string &name) {
     return IdenVisibility::Unknown;
 }
 
-bool isInteger(DataTypeModifier dtMfr) {
-    return dtMfr <= DataTypeModifier::u64;
-}
-bool isReference(ValueTypeModifier vlMfr) {
-    return vlMfr == ValueTypeModifier::MemberRef || vlMfr == ValueTypeModifier::Ref;
-}
+bool isInteger(DataTypeModifier dtMfr) { return dtMfr <= DataTypeModifier::u64; }
+bool isUnsignedInteger(DataTypeModifier dtMfr) { return dtMfr <= DataTypeModifier::u64 && ((int)dtMfr & 1);}
+bool isSignedInteger(DataTypeModifier dtMfr) { return dtMfr <= DataTypeModifier::u64 && !((int)dtMfr & 1);}
+bool isReference(ValueTypeModifier vlMfr) { return vlMfr == ValueTypeModifier::MemberRef || vlMfr == ValueTypeModifier::Ref; }
 
 void stringSplit(const std::string &str, const std::string &sep, std::vector<std::string> &res) {
     res.clear();

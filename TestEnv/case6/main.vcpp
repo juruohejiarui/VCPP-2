@@ -20,6 +20,18 @@ func dp(u : Node) : void {
     }
 }
 
+func calcC(n : int, m : int) : void {
+    var C = $int[n][n + 1];
+    for (var i = 0; i < n; i++) C[i][0] = 1;
+    for (var i = 1; i < n; i++)
+        for (var j = 1; j <= i; j++)
+            C[i][j] = (C[i - 1][j] + C[i - 1][j - 1]) % m;
+    for (var i = 0; i < n; i++) {
+        for (var j = 0; j <= i; j++) print(C[i][j]), putchar(' ');
+        putchar('\n');
+    }
+}
+
 public func main() : void {
     n = inputInt();
     var isc = $int[n + 1], nodes = $Node[n + 1];
@@ -43,6 +55,8 @@ public func main() : void {
     farr.append(3.0f);
     farr.append(5.0f);
     farr.append(1.8f);
-    // sort(farr, $FloatCompare());
-    // for (var i = 0u; i < farr.getLength(); i++) print(farr[i]), putchar(' ');
+    sort(farr, $FloatCompare());
+    for (var i = 0u; i < farr.getLength(); i++) print(farr[i]), putchar(' ');
+    putchar('\n');
+    calcC(100, 1000000007);
 }

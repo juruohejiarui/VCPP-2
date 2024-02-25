@@ -1,4 +1,5 @@
 private var n : int;
+private func calcC(n : int, m : int) : void;
 private func dp(u : Node) : void;
 public func main() : void;
 private class Node : System::Container::ArrayLike<$Node$>{
