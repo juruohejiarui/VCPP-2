@@ -23,7 +23,7 @@
 			},
 			{
 				"name": "keyword",
-				"match": "\\b(var|varfunc|func|class|namespace|private|public|protected)\\b"
+				"match": "\\b(var|varfunc|func|class|namespace|private|public|protected|@this)\\b"
 			},
 			{
 				"name": "keyword.operator",

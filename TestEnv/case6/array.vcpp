@@ -31,6 +31,9 @@ namespace System::Container {
 			@base();
 			for (var i = 0u; i < source.getLength(); i++) append(source[i]);
 		}
+		public func appendStr(str : String) : void {
+			for (var i = 0u; i < str.getLength(); i++) append(str[i]);
+		}
 		public varfunc toBasicArray() : char[] {
 			var res = $char[getLength() + 1];
 			for (var i = 0u; i < @this.getLength(); i++) res[i] = get(i);
