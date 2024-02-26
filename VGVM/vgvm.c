@@ -34,9 +34,7 @@ void genInstBlk(RuntimeBlock *rblk) {
 }
 
 RuntimeBlock *loadRuntimeBlock(const char *vobjPath) {
-    #ifdef GCC_HIGH
     AlignRsp
-    #endif
     #ifndef NDEBUG
     printf("VGVM Log: loading rblock from file %s\n", vobjPath);
     #endif

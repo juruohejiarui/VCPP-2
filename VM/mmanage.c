@@ -54,9 +54,7 @@ Object *newObject(uint64 size) {
 }
 
 void freeObj(Object *obj) {
-    #ifdef GCC_HIGH
     AlignRsp
-    #endif
     #ifndef NDEBUG
     printf("GC Log:   free obj : %p\n", obj);
     #endif

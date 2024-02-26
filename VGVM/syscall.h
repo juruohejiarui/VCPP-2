@@ -13,4 +13,4 @@ void printUInt64(uint64 data);
 uint64 inputUInt64();
 uint64 getTime();
 
-void printFloat32(float32 data);
+void printFloat32(uint64 data);

@@ -1492,5 +1492,5 @@ void setInstBlk() {
             *(int32 *)(pfx + 1) = (int32)((uint64)tgBlk->entryList[dstOffset] - (uint64)tgBlk->instBlk) - ((int32)jmpAddr + 5);
     }
 
-    Debug_saveJITCode(tgBlk->instBlk, tgList->size, "test.log");
+    // Debug_saveJITCode(tgBlk->instBlk, tgList->size, "test.log");
 }

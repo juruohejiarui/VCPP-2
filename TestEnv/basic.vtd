@@ -33,15 +33,6 @@
       F print@float_DIMC0 F System.Console.print@float_DIMC0 v public 0x0 : void { : float}
       F print@char_DIMC1 F System.Console.print@char_DIMC1 v public 0x0 : void { : char[]}
       F putchar@char_DIMC0 F System.Console.putchar@char_DIMC0 v public 0x0 : void { : char}
-      C FormatString C object v public 0x28 0x0 0x10{
-        V dtStr v private : System.Container.Array 0x18
-        V fmtSize v private : System.Container.Array 0x20
-        V fmtStr v private : System.Container.String 0x10
-        F @constructer@System.Container.String_DIMC0 F System.Console.FormatString.@constructer@System.Container.String_DIMC0 v public 0x0 : void { : System.Container.String}
-        F addData@System.Container.String_DIMC0 F System.Console.FormatString.addData@System.Container.String_DIMC0 v public 0x0 : void { : System.Container.String}
-        F analysis F System.Console.FormatString.analysis v private 0x0 : void {}
-        F output F System.Console.FormatString.output v public 0x0 : System.Container.String {}
-      }
     }
     N Container{
       C Array C System.Container.ArrayLike v public 0x60 0x1 0x48{

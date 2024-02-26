@@ -34,32 +34,4 @@ namespace System::Console {
             }
         return x * m;
     }
-
-    public class FormatString {
-        private var fmtStr : String, dtStr : Array<$String$>, fmtSize : Array<$uint$>;
-        public func @constructer(fmtStr : String) : void { @this.fmtStr = fmtStr, dtStr = $Array<$String$>(), fmtSize = $Array<$uint$>(); }
-        public func addData(data : String) : void { dtStr.append(data); }
-        public func output() : String {
-            var res = $String(), dtId = 0u;
-            for (var i = 0u; i < fmtStr.getLength(); i++) {
-                if (fmtStr[i] != '%') res.append(fmtStr[i]);
-                else {
-                    if (fmtStr[i + 1] == '%') res.append('%');
-                    else i = fmtSize[dtId], res.appendStr(dtStr[dtId++]);
-                }
-            }
-            return res;
-        }
-        private func analysis() : int {
-            for (var i = 0u; i < fmtStr.getLength(); i++) {
-                if (fmtStr[i] != '%') continue;
-                if (fmtStr[i + 1] == '%') continue;
-                if (fmtStr[i + 1] == 's') fmtSize.append(2u);
-            }
-        }
-    }
-}
-
-public class AppendDataString : Shl<$FormatString, String, FormatString$> {
-    
 }

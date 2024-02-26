@@ -30,15 +30,6 @@ namespace System::Console{
   public func print(x : float) : void;
   public func print(str : char[]) : void;
   public func putchar(ch : char) : void;
-  public class FormatString : object{
-    private var dtStr : System::Container::Array<$System::Container::String$>;
-    private var fmtSize : System::Container::Array<$uint$>;
-    private var fmtStr : System::Container::String;
-    public func @constructer(fmtStr : System::Container::String) : void;
-    public func addData(data : System::Container::String) : void;
-    private func analysis() : void;
-    public func output() : System::Container::String;
-  }
 }
 namespace System::Container{
   public class Array<$T$> : System::Container::ArrayLike<$T$>{
