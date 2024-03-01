@@ -172,19 +172,28 @@ typedef enum tmpTCommand {
 extern const int8 argCnt[];
 
 #define AlignRsp \
-    uint64 rsp; \
+    uint64 rsp, __isModified = 0; \
     __asm__ __volatile__ ( \
         "movq %%rsp, %0" \
-        : "=a"(rsp) \
+        : "=m"(rsp) \
         :  \
         : "memory" \
     ); \
     if (rsp & 8) \
         __asm__ __volatile__ ( \
-            "addq $8, %%rsp" \
-            : \
+            "push %%rax\n\t" \
+            "movq $1, %0\n\t" \
+            : "=m"(__isModified) \
             : \
             : \
         );
+#define cancelAlignRsp \
+    if (__isModified) \
+        __asm__ __volatile__ ( \
+            "pop %%rax" \
+            : \
+            : \
+            : "rax" \
+        ); \
 
 #endif

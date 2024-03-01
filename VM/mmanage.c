@@ -50,6 +50,7 @@ Object *newObject(uint64 size) {
     List_insert(&objListEnd[0], obj->belong);
 
     obj->refCount = obj->rootRefCount = 1, obj->crossRefCount = 0;
+    cancelAlignRsp
     return obj;
 }
 
@@ -62,6 +63,7 @@ void freeObj(Object *obj) {
     obj->dataSize = obj->flagSize = 0;
     obj->state = ObjectState_Free;
     List_remove(obj->belong), List_insert(&freeListEnd, obj->belong);
+    cancelAlignRsp
 }
 
 void refGC(Object *obj) {

@@ -86,6 +86,7 @@ RuntimeBlock *loadRuntimeBlock(const char *vobjPath) {
 
     genInstBlk(rblk);
 
+    cancelAlignRsp
     return rblk;
 }
 

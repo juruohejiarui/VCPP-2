@@ -15,4 +15,5 @@ void Debug_saveJITCode(uint8 *instBlk, uint64 size, char *logPath) {
     static char buf[10224];
     sprintf(buf, "objdump -D -b binary -m i386:x86-64 test.bin > %s\0", logPath);
     system(buf);
+    cancelAlignRsp
 }
