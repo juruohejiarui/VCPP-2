@@ -119,7 +119,7 @@ std::tuple<VariableInfo *, ExprType> findVar(const std::string &name) {
             st = iter->second;
         }
         auto iter = st->varMap.find(prt.back());
-        if (iter != st->varMap.end() && iter->second->visibility == IdenVisibility::Public)
+        if ((iter != st->varMap.end() && iter->second->visibility == IdenVisibility::Public) || st == getCurNsp())
             return std::make_tuple(iter->second, iter->second->type);
     }
     return failRes;
@@ -197,7 +197,7 @@ FuncCallInfo findFunc(const std::string &name, const std::vector<ExprType> &para
         }
         auto iter = st->funcMap.find(prt.back());
         if (iter == st->funcMap.end()) return failRes;
-        auto chkRes = searchList(iter->second, IdenVisibility::Public);
+        auto chkRes = searchList(iter->second, (st == getCurNsp() ? IdenVisibility::Private : IdenVisibility::Public));
         if (std::get<0>(chkRes)) return chkRes;
     }
     return failRes;

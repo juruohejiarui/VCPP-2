@@ -52,5 +52,5 @@ int main(int argc, char **argv) {
     // buildVObj(0, "./builtin/basic.vasm", "./builtin/basic.vtd", "./builtin/basic.vdef", std::vector<std::string>(), "./basic.vobj");
     // buildVObj(0, "./builtin/math.vasm", "./builtin/math.vtd", "./builtin/math.vdef", std::vector<std::string>(), "./math.vobj");
     // buildVObj(1, "./test.vasm", "./test.vtd", "./test.vdef", std::vector<std::string>({ "./console.vobj", "./math.vobj" }), "./test.vobj");
-    return (res == true);
+    return (res != true);
 }

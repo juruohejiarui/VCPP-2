@@ -2,10 +2,10 @@
 
 uint64 genSize[2];
 uint64 checkTick;
-const uint64 limitGenSize[2] = {1 << 26, 1 << 30}, limitCheckTick = 1 << 18;
+const uint64 limitGenSize[2] = {1 << 26, 1 << 30}, limitCheckTick = 10;
 
 int checkGC() {
-    return (genSize[0] > limitGenSize[0] || genSize[1] > limitGenSize[1]) && checkTick >= limitCheckTick;
+    return (genSize[0] > limitGenSize[0] || genSize[1] > limitGenSize[1]) && ++checkTick >= limitCheckTick;
 }
 
 ListElement objListStart[2], objListEnd[2], freeListStart, freeListEnd;
@@ -50,6 +50,7 @@ Object *newObject(uint64 size) {
     List_insert(&objListEnd[0], obj->belong);
 
     obj->refCount = obj->rootRefCount = 1, obj->crossRefCount = 0;
+    if (checkGC()) genGC();
     cancelAlignRsp
     return obj;
 }
@@ -57,7 +58,7 @@ Object *newObject(uint64 size) {
 void freeObj(Object *obj) {
     AlignRsp
     #ifndef NDEBUG
-    printf("GC Log:   free obj : %p\n", obj);
+    printf("GC Log:   free obj : %p in gen %d\n", obj, obj->genId);
     #endif
     free(obj->data), free(obj->flag);
     obj->dataSize = obj->flagSize = 0;

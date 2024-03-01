@@ -394,7 +394,7 @@ ClassInfo *findCls(const std::string &path) {
             if (st->nspMap.count(prts[i])) st = st->nspMap[prts[i]];
             else return nullptr;
         }
-        if (st->clsMap.count(prts.back()) && st->clsMap[prts.back()]->visibility == IdenVisibility::Public)
+        if ((st->clsMap.count(prts.back()) && st->clsMap[prts.back()]->visibility == IdenVisibility::Public) || st == curNsp)
             return st->clsMap[prts.back()];
         else return nullptr;
     }

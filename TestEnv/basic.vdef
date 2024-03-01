@@ -18,6 +18,8 @@ namespace System::Algorithm{
   public func getRand() : long;
   public func getRand(l : int, r : int) : int;
   public func initRand(seed : long) : void;
+  public func isLetter(ch : char) : int;
+  public func isNumber(ch : char) : int;
   public func reverse<$T$>(array : System::Container::ArrayLike<$T$>, l : uint, r : uint) : void;
   public func reverse<$T$>(array : System::Container::ArrayLike<$T$>) : void;
   private func sort<$T$>(array : System::Container::ArrayLike<$T$>, @compare : Compare<$T, T$>, l : int, r : int) : void;
@@ -51,6 +53,22 @@ namespace System::Container{
     public varfunc set(index : uint, data : T) : void;
     public varfunc swap(x : uint, y : uint) : void;
     public varfunc toBasicArray() : T[];
+  }
+  private class FormatData : object{
+    public var base : int;
+    public var len : int;
+    public var type : char;
+    public func @constructer(type : char, len : int, base : int) : void;
+  }
+  public class FormatString : object{
+    private var dtStr : System::Container::Array<$System::Container::String$>;
+    private var fmtData : System::Container::Array<$System::Container::FormatData$>;
+    private var fmtPos : System::Container::Array<$uint$>;
+    private var fmtSize : System::Container::Array<$uint$>;
+    private var fmtStr : System::Container::String;
+    public func @constructer(fmtStr : System::Container::String) : void;
+    public func analysis() : int;
+    public func appendData(str : System::Container::String) : void;
   }
   public class MapLike<$KeyT, ValueT$> : object{
     public func @constructer() : void;

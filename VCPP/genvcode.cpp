@@ -664,7 +664,7 @@ bool buildConstructer(FunctionInfo *func) {
         thisInfo->type = ExprType(func->blgCls->fullName);
         for (size_t i = 0; i < func->blgCls->generCls.size(); i++)
             thisInfo->type.generParams.push_back(ExprType(func->blgCls->generCls[i]));
-        thisInfo->type.setCls();
+        thisInfo->type.cls = func->blgCls;
         thisInfo->blgFunc = func, thisInfo->blgCls = func->blgCls, thisInfo->blgNsp = func->blgNsp, thisInfo->blgRoot = func->blgRoot;
         res &= locVarStkTop()->insertVar(thisInfo);
     }
@@ -715,8 +715,6 @@ bool buildFunc(FunctionInfo *func) {
             UnionData(func->blgCls->baseCls->size), 
             UnionData((uint64)func->blgCls->generCls.size()));
     }
-
-    
     
     // if this function is a member of a class, then there should be a param named "@this"
     if (isMember) {
@@ -726,7 +724,7 @@ bool buildFunc(FunctionInfo *func) {
         thisInfo->type = ExprType(func->blgCls->fullName);
         for (size_t i = 0; i < func->blgCls->generCls.size(); i++)
             thisInfo->type.generParams.push_back(ExprType(func->blgCls->generCls[i]));
-        thisInfo->type.setCls();
+        thisInfo->type.cls = func->blgCls;
         thisInfo->blgFunc = func, thisInfo->blgCls = func->blgCls, thisInfo->blgNsp = func->blgNsp, thisInfo->blgRoot = func->blgRoot;
         res &= locVarStkTop()->insertVar(thisInfo);
     }

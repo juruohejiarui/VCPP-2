@@ -34,4 +34,7 @@ namespace System::Algorithm {
 		randSeed = (25214903917l * randSeed) & ((1l << 48) - 1);
 		return randSeed as int % (r - l + 1) + l;
 	}
+
+	public func isNumber(ch : char) : int { return '0' <= ch && ch <= '9'; }
+	public func isLetter(ch : char) : int { return ('a' <= ch && ch <= 'z') || ('A' <= ch && ch <= 'Z'); }
 }

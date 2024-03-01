@@ -1,0 +1,47 @@
+using System::Algorithm;
+
+namespace System::Container {
+    private class FormatData {
+        public var : int len, base;
+        public var : char type;
+        public func @constructer(type : char, len : int, base : int) : void {
+            @base();
+            @this.type = type;
+            @this.len = len, @this.base = base;
+        }
+    }
+    public class FormatString {
+        private var : String fmtStr;
+        private var : Array<$uint$> fmtPos, fmtSize;
+        private var : Array<$FormatData$> fmtData;
+        private var : Array<$String$> dtStr;
+
+        public func @constructer(fmtStr : String) : void {
+            @base();
+            @this.fmtStr = fmtStr;
+            fmtPos = $Array<$uint$>(), fmtSize = $Array<$uint$>();
+            dtStr = $Array<$String$>();
+        }
+
+        public func analysis() : int {
+            for (var i = 0u; i < fmtStr.getLength(); i++) {
+                if (fmtStr[i] == '%') continue;
+                if (fmtStr[i + 1] == '%') { i++; continue; }
+                var len = 0-1, base = 10, pos = i + 1;
+                if (isNumber(fmtStr[pos])) {
+                    len = 0;
+                    while (isNumber(fmtStr[pos])) len = (len << 3) + (len << 1) + (fmtStr[pos] - '0'), pos++;
+                }
+                if (fmtStr[pos] == '-') {
+                    pos++, base = 0;
+                    while (isNumber(fmtStr[pos])) base = (base << 3) + (base << 1) + (fmtStr[pos] - '0'), pos++;
+                }
+                fmtData.append($FormatData(fmtStr[pos], len, base));
+                fmtPos.append(i), fmtSize.append(pos - i);
+                i = pos;
+            }
+        }
+
+        public func appendData(str : String) : void { dtStr.append(str); }
+    }
+}

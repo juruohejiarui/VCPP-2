@@ -21,6 +21,8 @@
       F getRand F System.Algorithm.getRand v public 0x0 : long {}
       F getRand@int_DIMC0@int_DIMC0 F System.Algorithm.getRand@int_DIMC0@int_DIMC0 v public 0x0 : int { : int : int}
       F initRand@long_DIMC0 F System.Algorithm.initRand@long_DIMC0 v public 0x0 : void { : long}
+      F isLetter@char_DIMC0 F System.Algorithm.isLetter@char_DIMC0 v public 0x0 : int { : char}
+      F isNumber@char_DIMC0 F System.Algorithm.isNumber@char_DIMC0 v public 0x0 : int { : char}
       F reverse@@T@@@System.Container.ArrayLike_DIMC0@@T_DIMC0@@@uint_DIMC0@uint_DIMC0 F System.Algorithm.reverse@@T@@@System.Container.ArrayLike_DIMC0@@T_DIMC0@@@uint_DIMC0@uint_DIMC0 v public 0x1 : void { : System.Container.ArrayLike : uint : uint}
       F reverse@@T@@@System.Container.ArrayLike_DIMC0@@T_DIMC0@@ F System.Algorithm.reverse@@T@@@System.Container.ArrayLike_DIMC0@@T_DIMC0@@ v public 0x1 : void { : System.Container.ArrayLike}
       F sort@@T@@@System.Container.ArrayLike_DIMC0@@T_DIMC0@@@Compare_DIMC0@@T_DIMC0T_DIMC0@@@int_DIMC0@int_DIMC0 F System.Algorithm.sort@@T@@@System.Container.ArrayLike_DIMC0@@T_DIMC0@@@Compare_DIMC0@@T_DIMC0T_DIMC0@@@int_DIMC0@int_DIMC0 v private 0x1 : void { : System.Container.ArrayLike : Compare : int : int}
@@ -63,6 +65,22 @@
         V swap@uint_DIMC0@uint_DIMC0 v public : ulong 0x38
         F toBasicArray F System.Container.ArrayLike.toBasicArray v public 0x0 : object[] {}
         V toBasicArray v public : ulong 0x40
+      }
+      C FormatData C object v private 0x19 0x0 0x10{
+        V base v public : int 0x14
+        V len v public : int 0x10
+        V type v public : char 0x18
+        F @constructer@char_DIMC0@int_DIMC0@int_DIMC0 F System.Container.FormatData.@constructer@char_DIMC0@int_DIMC0@int_DIMC0 v public 0x0 : void { : char : int : int}
+      }
+      C FormatString C object v public 0x38 0x0 0x10{
+        V dtStr v private : System.Container.Array 0x30
+        V fmtData v private : System.Container.Array 0x28
+        V fmtPos v private : System.Container.Array 0x18
+        V fmtSize v private : System.Container.Array 0x20
+        V fmtStr v private : System.Container.String 0x10
+        F @constructer@System.Container.String_DIMC0 F System.Container.FormatString.@constructer@System.Container.String_DIMC0 v public 0x0 : void { : System.Container.String}
+        F analysis F System.Container.FormatString.analysis v public 0x0 : int {}
+        F appendData@System.Container.String_DIMC0 F System.Container.FormatString.appendData@System.Container.String_DIMC0 v public 0x0 : void { : System.Container.String}
       }
       C MapLike C object v public 0x28 0x2 0x10{
         F @constructer F System.Container.MapLike.@constructer v public 0x0 : void {}
