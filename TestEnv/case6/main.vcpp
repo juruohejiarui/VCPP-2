@@ -21,6 +21,7 @@ func dp(u : Node) : void {
 }
 
 public func main() : void {
+    print("Start\n");
     n = inputInt();
     var isc = $int[n + 1], nodes = $Node[n + 1];
     for (var i = 1; i <= n; i++) nodes[i] = $Node(), nodes[i].f1 = inputInt();
@@ -38,7 +39,6 @@ public func main() : void {
     putchar('\n');
 
     var farr = $Array<$float$>();
-    print(2.0f);
     farr.append(1.0f);
     farr.append(3.0f);
     farr.append(5.0f);

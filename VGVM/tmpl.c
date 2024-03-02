@@ -331,22 +331,12 @@ VInstTmpl_Function(setvar, varId, _2) {
     SBool setEntry = false;
     if (dtMdf == TM_object) {
         InstList_add(&temp, MOV_or_r(TM_qword, locVarDisp(varId), RBP, RCX), 1);
-        InstList_add(&temp, XOR_r_r(TM_qword, RDX, RDX), 0);
-        InstList_add(&temp, CMP_r_r(TM_qword, RDX, RCX), 0);
+        InstList_add(&temp, CMP_i_r(TM_qword, 0, RCX), 0);
         InstList_add(&temp, JZ(0), 0);
-        uint32 jzP = temp.size, jzP1, end;
+        uint32 jzP = temp.size, end;
         InstList_add(&temp, DEC_or(TM_qword, refCntOffset, RCX), 0);
         InstList_add(&temp, DEC_or(TM_qword, rootRefCntOffset, RCX), 0);
-        InstList_add(&temp, CMP_r_or(TM_qword, RDX, refCntOffset, RCX), 0);
-        InstList_add(&temp, JNZ(0), 0);
-        jzP1 = temp.size;
-        prepareCallVMFunc(&temp, 0, stkTop);
-        InstList_add(&temp, MOV_i_r(TM_qword, (uint64)refGC, RAX), 0);
-        InstList_add(&temp, MOV_r_r(TM_qword, RCX, RDI), 0);
-        InstList_add(&temp, CALL(RAX), 0);
-        restoreFromCallVMFunc(&temp, 0, stkTop);
         *(uint32 *)(temp.data + jzP - 4) = temp.size - jzP;
-        *(uint32 *)(temp.data + jzP1 - 4) = temp.size - jzP1;
         setEntry = true;
     }
 

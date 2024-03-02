@@ -367,6 +367,14 @@ ret
     i32_ge
     jz @IF_ELSE5
       u64_push 0x0
+      i64_push 0x0
+      o_setvar 0x1
+      i64_push 0x0
+      o_setvar 0x0
+      i64_push 0x0
+      i32_setvar 0x2
+      i64_push 0x0
+      i32_setvar 0x3
       ret
     jmp @IF_END5
     #LABEL @IF_ELSE5

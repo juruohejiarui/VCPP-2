@@ -2,11 +2,14 @@
 
 uint64 genSize[2];
 uint64 checkTick;
-const uint64 limitGenSize[2] = {1 << 26, 1 << 30}, limitCheckTick = 10;
+const uint64 limitGenSize[2] = {1 << 26, 1 << 30}, limitCheckTick = 2;
 
 int checkGC() {
-    return (genSize[0] > limitGenSize[0] || genSize[1] > limitGenSize[1]) && ++checkTick >= limitCheckTick;
+    ++checkTick;
+    return (genSize[0] > limitGenSize[0] || genSize[1] > limitGenSize[1]) && checkTick >= limitCheckTick;
 }
+
+uint64 getGenSize(int genId) { return genSize[genId]; }
 
 ListElement objListStart[2], objListEnd[2], freeListStart, freeListEnd;
 
@@ -15,17 +18,8 @@ void initGC() {
     List_init(&freeListStart, &freeListEnd);
 }
 
-
-
 Object *newObject(uint64 size) {
     AlignRsp
-    #ifndef NDEBUG
-    printf("GC Log:   allocate an object of (%#018llx = %.6lfMB(datas) + %#018llx = %.6lfMB(flags))\n", 
-        size,
-        size * 1.0 / 1024 / 1024, 
-        ((size / 8) + 63) / 64,
-        (((size / 8) + 63) / 64) * sizeof(uint64) * 1.0 / 1024 / 1024);
-    #endif
     Object *obj = NULL;
 
     // get an object from free list
@@ -38,7 +32,11 @@ Object *newObject(uint64 size) {
         obj->belong = lsele, lsele->content = obj;
     }
     #ifndef NDEBUG
-    printf("GC Log:   object Address : %p\n", obj);
+    printf("GC Log:   object Address : %p (%#018llx = %.6lfMB(datas) + %#018llx = %.6lfMB(flags))\n", obj,
+        size,
+        size * 1.0 / 1024 / 1024, 
+        ((size / 8) + 63) / 64,
+        (((size / 8) + 63) / 64) * sizeof(uint64) * 1.0 / 1024 / 1024);
     #endif
     obj->dataSize = size, obj->flagSize = ((size / 8) + 63) / 64;
     obj->data = mallocArray(uint8, size);
@@ -50,7 +48,8 @@ Object *newObject(uint64 size) {
     List_insert(&objListEnd[0], obj->belong);
 
     obj->refCount = obj->rootRefCount = 1, obj->crossRefCount = 0;
-    if (checkGC()) genGC();
+    genSize[0] += size;
+    if (checkGC()) genGC(0);
     cancelAlignRsp
     return obj;
 }
@@ -60,6 +59,7 @@ void freeObj(Object *obj) {
     #ifndef NDEBUG
     printf("GC Log:   free obj : %p in gen %d\n", obj, obj->genId);
     #endif
+    genSize[obj->genId] -= obj->dataSize;
     free(obj->data), free(obj->flag);
     obj->dataSize = obj->flagSize = 0;
     obj->state = ObjectState_Free;
@@ -92,7 +92,7 @@ void scanObj(Object *obj, uint32 mxGen) {
     }
 }
 
-void genGC() {
+void genGC(int isFinal) {
     for (ListElement *ele = objListStart[0].next; ele != &objListEnd[0]; ele = ele->next) ((Object *)ele->content)->state = ObjectState_Waiting;
     for (ListElement *ele = objListStart[0].next; ele != &objListEnd[0]; ele = ele->next) {
         Object *obj = (Object *)ele->content;
@@ -111,7 +111,7 @@ void genGC() {
         List_remove(ele), List_insert(&objListEnd[1], ele);
         genSize[1] += obj->dataSize, genSize[0] -= obj->dataSize;
     }
-    if (genSize[1] > limitGenSize[1]) {
+    if (genSize[1] > limitGenSize[1] || isFinal) {
         for (ListElement *ele = objListStart[1].next; ele != &objListEnd[1]; ele = ele->next) ((Object *)ele->content)->state = ObjectState_Waiting;
         for (ListElement *ele = objListStart[1].next; ele != &objListEnd[1]; ele = ele->next) {
             Object *obj = (Object *)ele->content;
@@ -123,5 +123,20 @@ void genGC() {
             if (obj->state == ObjectState_Waiting) freeObj(obj);
         }
     }
+    #ifndef NDBUG
+    if (isFinal) {
+        printf("remains : \ngen 1: ");
+        for (ListElement *ele = objListStart[1].next; ele != &objListEnd[1]; ele = ele->next) {
+            Object *obj = (Object *)ele->content;
+            printf("%p ref = %lld + %lld\n", obj, obj->refCount, obj->rootRefCount);
+        } 
+        printf("gen 0: ");
+        for (ListElement *ele = objListStart[0].next; ele != &objListEnd[0]; ele = ele->next) {
+            Object *obj = (Object *)ele->content;
+            printf("%p ref = %lld + %lld\n", obj, obj->refCount, obj->rootRefCount);
+        } 
+        putchar('\n');
+    }
+    #endif
     checkTick = 0;
 }

@@ -382,10 +382,6 @@ ret
     call System.Container.Array.@constructer
     i64_pop
     o_setvar 0x2
-    f32_push 0x40000000
-    setarg 0x1
-    call System.Console.print@float_DIMC0
-    i64_pop
     o_pvar 0x2
     f32_push 0x3F800000
     setarg 0x2

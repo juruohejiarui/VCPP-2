@@ -537,6 +537,8 @@ bool buildControl(ControlNode *node) {
                     printError(node->getToken().lineId, "The return value of function is not matched");
                 }
                 writeVCode(Command::u64_push, UnionData(0ull));
+                for (auto frm = locVarStkTop(); frm != nullptr; frm = frm->getPrev())
+                    frm->writeCleanVCode();
                 writeVCode(Command::ret);
             }
             break;

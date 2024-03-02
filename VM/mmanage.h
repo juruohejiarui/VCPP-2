@@ -25,6 +25,7 @@ typedef struct tmpObject {
     ClassTypeData *typeData;
 } Object;
 
+uint64 getGenSize(int genId);
 void initGC();
 Object *newObject(uint64 size);
 void refGC(Object *obj);
