@@ -382,7 +382,7 @@ void systemVectorInit()
 	setTrapGate(19,1,SIMD_exception);
 	setTrapGate(20,1,virtualization_exception);
 
-	//set_system_gate(SYSTEM_CALL_VECTOR,7,system_call);
+	//setSystemGate(SYSTEM_CALL_VECTOR,7,system_call);
 
 }
 

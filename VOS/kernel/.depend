@@ -3,5 +3,9 @@
 interrupt/trap.o: interrupt/trap.c interrupt/../includes/trap.h \
  interrupt/../includes/gate.h interrupt/../includes/printk.h \
  interrupt/../includes/linkage.h interrupt/../includes/lib.h
+interrupt/gate.o: interrupt/gate.c interrupt/../includes/gate.h
 log/printk.o: log/printk.c log/../includes/printk.h log/../includes/linkage.h \
  log/../includes/lib.h log/font.h
+memory/memory.o: memory/memory.c memory/../includes/memory.h \
+ memory/../includes/lib.h
+lib/lib.o: lib/lib.c lib/../includes/lib.h

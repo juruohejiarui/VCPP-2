@@ -11,10 +11,8 @@ void Start_Kernel(void) {
     position.YCharSize = 16;
 
     position.XPosition = position.YPosition = 0;
-    position.FBAddr = (unsigned int *)0xffff800000a00000;
+    position.FBAddr = (unsigned int *)0xffff800003000000;
 
-    printk(0x00ffffff, 0x000000, "Hello, world!\n");
-    printk(0x00ff0000, 0x000000, "print test %d %#010x %s %s\n", 123, 0x345608, "Hello world", "Hello world again");
     
     loadTR(8);
     setTSS64(   0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00,

@@ -13,18 +13,21 @@
 *
 ***************************************************/
 
+#include "./includes/linkage.h"
+
 .section .text
 
-.globl _start
+ENTRY(_start)
 
-_start:
-
-	mov	$0x10,	%ax
+	mov	%ss,	%ax
 	mov	%ax,	%ds
 	mov	%ax,	%es
 	mov	%ax,	%fs
 	mov	%ax,	%ss
 	mov	$0x7E00,	%esp
+
+	movq	$0x101000,	%rax
+	movq	%rax,		%cr3
 
 //=======	load GDTR
 
@@ -63,8 +66,7 @@ entry64:
 	movq	%rax,	%es
 	movq	%rax,	%gs
 	movq	%rax,	%ss
-	movq	$0xffff800000007E00,	%rsp		/* rsp address */
-
+	movq	$0xffff800000007E00,	%rsp
 setup_IDT:							
 	leaq	ignore_int(%rip),	%rdx
 	movq	$(0x08 << 16),	%rax
@@ -102,12 +104,12 @@ setup_TSS64:
 	addq	%rcx,	%rax
 	addq	$103,	%rax
 	leaq	GDT_Table(%rip),	%rdi
-	movq	%rax,	64(%rdi)
+	movq	%rax,	80(%rdi)	//tss segment offset
 	shrq	$32,	%rdx
-	movq	%rdx,	72(%rdi)
+	movq	%rdx,	88(%rdi)	//tss+1 segment offset
 
-	// mov	$0x40,	%ax
-	// ltr	%ax
+//	mov	$0x50,	%ax
+//	ltr	%ax
 
 	movq	go_to_kernel(%rip),	%rax		/* movq address */
 	pushq	$0x08
@@ -117,60 +119,62 @@ setup_TSS64:
 go_to_kernel:
 	.quad	Start_Kernel
 
-//====== ignore_int
+
+//=======	ignore_int
+
 ignore_int:
 	cld
 	pushq	%rax
 	pushq	%rbx
 	pushq	%rcx
 	pushq	%rdx
-	pushq   %rbp
-	pushq 	%rdi
-	pushq   %rsi
+	pushq	%rbp
+	pushq	%rdi
+	pushq	%rsi
 
-	pushq  %r8
-	pushq  %r9
-	pushq  %r10
-	pushq  %r11
-	pushq  %r12
-	pushq  %r13
-	pushq  %r14
-	pushq  %r15
+	pushq	%r8
+	pushq	%r9
+	pushq	%r10
+	pushq	%r11
+	pushq	%r12
+	pushq	%r13
+	pushq	%r14
+	pushq	%r15
 
-	movq %es, %rax
-	pushq %rax
-	movq %ds, %rax
-	pushq %rax
+	movq	%es,	%rax
+	pushq	%rax
+	movq	%ds,	%rax
+	pushq	%rax
 
-	movq $0x10, %rax
-	movq %rax, %ds
-	movq %rax, %es
+	movq	$0x10,	%rax
+	movq	%rax,	%ds
+	movq	%rax,	%es
 
-	leaq int_msg(%rip), %rax
-	pushq %rax
-	movq %rax, %rdx
-	movq $0x00000000, %rsi
-	movq $0x00ff0000, %rdi
-	movq $0, %rax
-	call printk
-	addq $0x8, %rsp
+	leaq	int_msg(%rip),	%rax			/* leaq get address */
+	pushq	%rax
+	movq	%rax,	%rdx
+	movq	$0x00000000,	%rsi
+	movq	$0x00ff0000,	%rdi
+	movq	$0,	%rax
+	callq	printk
+	addq	$0x8,	%rsp
 
 Loop:
-	jmp Loop
+	jmp	Loop	
 
-	popq %rax
-	movq %rax, %ds
-	popq %rax
-	movq %rax, %es
+	popq	%rax
+	movq	%rax,	%ds
+	popq	%rax
+	movq	%rax,	%es
 
-	popq  %r15
-	popq  %r14
-	popq  %r13
-	popq  %r12
-	popq  %r11
-	popq  %r10
-	popq  %r9
-	popq  %r8
+	popq	%r15
+	popq	%r14
+	popq	%r13
+	popq	%r12
+	popq	%r11
+	popq	%r10
+	popq	%r9
+	popq	%r8
 
 	popq	%rsi
 	popq	%rdi
@@ -180,8 +184,10 @@ Loop:
 	popq	%rbx
 	popq	%rax
 	iretq
+
 int_msg:
 	.asciz "Unknown interrupt or fault at RIP\n"
+
 //=======	init page
 .align 8
 
@@ -198,26 +204,26 @@ __PML4E:
 
 __PDPTE:
 	
-	.quad	0x103003
+	.quad	0x103007	/* 0x103003 */
 	.fill	511,8,0
 
 .org	0x3000
 
 __PDE:
 
-	.quad	0x000083	
-	.quad	0x200083
-	.quad	0x400083
-	.quad	0x600083
-	.quad	0x800083
-	.quad	0xe0000083		/*0x a00000*/
-	.quad	0xe0200083
-	.quad	0xe0400083
-	.quad	0xe0600083
-	.quad	0xe0800083		/*0x1000000*/
-	.quad	0xe0a00083
-	.quad	0xe0c00083
-	.quad	0xe0e00083
+	.quad	0x000087	
+	.quad	0x200087
+	.quad	0x400087
+	.quad	0x600087
+	.quad	0x800087
+	.quad	0xa00087		/*0x a00000*/
+	.quad	0xc00087
+	.quad	0xe00087
+	.quad	0x1000087
+	.quad	0x1200087		/*0x1000000*/
+	.quad	0x1400087
+	.quad	0x1600087
+	.quad	0x1800087
 	.fill	499,8,0
 
 //=======	GDT_Table
@@ -230,11 +236,13 @@ GDT_Table:
 	.quad	0x0000000000000000			/*0	NULL descriptor		       	00*/
 	.quad	0x0020980000000000			/*1	KERNEL	Code	64-bit	Segment	08*/
 	.quad	0x0000920000000000			/*2	KERNEL	Data	64-bit	Segment	10*/
-	.quad	0x0020f80000000000			/*3	USER	Code	64-bit	Segment	18*/
-	.quad	0x0000f20000000000			/*4	USER	Data	64-bit	Segment	20*/
-	.quad	0x00cf9a000000ffff			/*5	KERNEL	Code	32-bit	Segment	28*/
-	.quad	0x00cf92000000ffff			/*6	KERNEL	Data	32-bit	Segment	30*/
-	.fill	10,8,0					/*8 ~ 9	TSS (jmp one segment <7>) in long-mode 128-bit 40*/
+	.quad	0x0000000000000000			/*3	USER	Code	32-bit	Segment 18*/
+	.quad	0x0000000000000000			/*4	USER	Data	32-bit	Segment 20*/
+	.quad	0x0020f80000000000			/*5	USER	Code	64-bit	Segment	28*/
+	.quad	0x0000f20000000000			/*6	USER	Data	64-bit	Segment	30*/
+	.quad	0x00cf9a000000ffff			/*7	KERNEL	Code	32-bit	Segment	38*/
+	.quad	0x00cf92000000ffff			/*8	KERNEL	Data	32-bit	Segment	40*/
+	.fill	10,8,0					/*10 ~ 11 TSS (jmp one segment <9>) in long-mode 128-bit 50*/
 GDT_END:
 
 GDT_POINTER:
@@ -261,6 +269,8 @@ TSS64_Table:
 	.fill  13,8,0
 TSS64_END:
 
+
 TSS64_POINTER:
 TSS64_LIMIT:	.word	TSS64_END - TSS64_Table - 1
 TSS64_BASE:	.quad	TSS64_Table
+

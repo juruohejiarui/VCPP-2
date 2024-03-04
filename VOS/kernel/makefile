@@ -5,7 +5,7 @@ ASMFLAG = --64
 CFLAGS = -mcmodel=large -fno-builtin -fno-stack-protector -m64
 
 ASMOBJS = head.o entry.o
-SRCS = $(wildcard ./*.c) $(wildcard interrupt/*.c) $(wildcard log/*.c) $(wildcard includes/*.c)
+SRCS = $(wildcard ./*.c) $(wildcard interrupt/*.c) $(wildcard log/*.c) $(wildcard includes/*.c) $(wildcard memory/*.c) $(wildcard lib/*.c)
 CXXOBJS = $(SRCS:.c=.o)
 
 ALLOBJS = $(ASMOBJS) $(CXXOBJS) 
@@ -28,8 +28,8 @@ include .depend
 head.o: head.S
 	$(CXX) -E head.S > head.s
 	$(ASM) $(ASMFLAG) -o head.o head.s
-entry.o: entry.S
-	$(CXX) -E entry.S > entry.s
+entry.o: ./interrupt/entry.S
+	$(CXX) -E ./interrupt/entry.S > entry.s
 	$(ASM) $(ASMFLAG) -o entry.o entry.s
 
 clear:
