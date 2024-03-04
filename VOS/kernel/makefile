@@ -1,5 +1,5 @@
 ASM = as
-CC = gcc-4.7
+CC = gcc-9
 
 ASMFLAG = --64
 CFLAGS = -mcmodel=large -fno-builtin -fno-stack-protector -m64
