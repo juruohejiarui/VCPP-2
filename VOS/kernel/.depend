@@ -1,0 +1,7 @@
+./main.o: main.c includes/printk.h includes/linkage.h includes/trap.h \
+ includes/gate.h
+interrupt/trap.o: interrupt/trap.c interrupt/../includes/trap.h \
+ interrupt/../includes/gate.h interrupt/../includes/printk.h \
+ interrupt/../includes/linkage.h interrupt/../includes/lib.h
+log/printk.o: log/printk.c log/../includes/printk.h log/../includes/linkage.h \
+ log/../includes/lib.h log/font.h

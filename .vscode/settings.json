@@ -112,5 +112,6 @@
         "vgvm.h": "c"
     },
     "C_Cpp.default.compilerPath": "/usr/bin/g++",
-    "cmake.configureOnOpen": true
+    "cmake.configureOnOpen": true,
+    "cmake.sourceDirectory": "/home/hjr/Projects/VCPP-2"
 }

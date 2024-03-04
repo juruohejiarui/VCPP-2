@@ -19,7 +19,7 @@ target_link_libraries(VGVM ${CMAKE_THREAD_LIBS_INIT})
 
 
 # set the compiler
-set(CMAKE_C_COMPILER "gcc-13")
+set(CMAKE_C_COMPILER "gcc")
 
  
 # set the arguments
