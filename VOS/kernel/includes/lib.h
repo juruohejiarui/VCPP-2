@@ -36,19 +36,19 @@ typedef unsigned char u8;
 #define nop() 		__asm__ __volatile__ ("nop	\n\t")
 #define io_mfence() 	__asm__ __volatile__ ("mfence	\n\t":::"memory")
 
-typedef struct List
+typedef struct tmpList
 {
-	struct List * prev;
-	struct List * next;
-} list_t;
+	struct tmpList * prev;
+	struct tmpList * next;
+} List;
 
-void list_init(list_t *);
-void list_add_to_behind(list_t *, list_t *);
-void list_add_to_before(list_t *, list_t *);
-void list_del(list_t *);
-long list_is_empty(list_t *);
-list_t * list_prev(list_t *);
-list_t * list_next(list_t *);
+void List_init(List *);
+void list_addBehind(List *, List *);
+void list_addBefore(List *, List *);
+void list_del(List *);
+long list_isEmpty(List *);
+List * list_prev(List *);
+List * list_next(List *);
 
 void * memcpy(void *, void *, long);
 int memcmp(void *, void *, long);

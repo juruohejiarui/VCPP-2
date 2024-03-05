@@ -1,12 +1,12 @@
 #include "../includes/lib.h"
 
-inline void list_init(list_t *list)
+inline void List_init(List *list)
 {
 	list->prev = list;
 	list->next = list;
 }
 
-inline void list_add_to_behind(list_t *entry, list_t *new) ////add to entry behind
+inline void list_addBehind(List *entry, List *new) ////add to entry behind
 {
 	new->next = entry->next;
 	new->prev = entry;
@@ -14,7 +14,7 @@ inline void list_add_to_behind(list_t *entry, list_t *new) ////add to entry behi
 	entry->next = new;
 }
 
-inline void list_add_to_before(list_t *entry, list_t *new) ////add to entry behind
+inline void list_addBefore(List *entry, List *new) ////add to entry behind
 {
 	new->next = entry;
 	entry->prev->next = new;
@@ -22,13 +22,13 @@ inline void list_add_to_before(list_t *entry, list_t *new) ////add to entry behi
 	entry->prev = new;
 }
 
-inline void list_del(list_t *entry)
+inline void list_del(List *entry)
 {
 	entry->next->prev = entry->prev;
 	entry->prev->next = entry->next;
 }
 
-inline long list_is_empty(list_t *entry)
+inline long list_isEmpty(List *entry)
 {
 	if (entry == entry->next && entry->prev == entry)
 		return 1;
@@ -36,7 +36,7 @@ inline long list_is_empty(list_t *entry)
 		return 0;
 }
 
-inline list_t *list_prev(list_t *entry)
+inline List *list_prev(List *entry)
 {
 	if (entry->prev != NULL)
 		return entry->prev;
@@ -44,7 +44,7 @@ inline list_t *list_prev(list_t *entry)
 		return NULL;
 }
 
-inline list_t *list_next(list_t *entry)
+inline List *list_next(List *entry)
 {
 	if (entry->next != NULL)
 		return entry->next;

@@ -6,18 +6,37 @@
 #define PAGE_OFFSET ((u64)0xffff800000000000)
 
 #define PAGE_GDT_SHIFT 39
+#define PAGE_1G_SHIFT 30
+#define PAGE_2M_SHIFT 21
+#define PAGE_4K_SHIFT 12
 
-typedef struct __tmpE820 {
-    u64 addr;
-    u64 len;
-    u32 type;    
+#define PAGE_2M_SIZE (1ul << PAGE_2M_SHIFT)
+#define PAGE_4K_SIZE (1ul << PAGE_4K_SHIFT)
+
+#define PAGE_2M_MASK (~(PAGE_2M_SIZE - 1))
+#define PAGE_4K_MASK (~(PAGE_4K_SIZE - 1))
+
+#define PAGE_2M_ALIGN(addr) (((u64)(addr) + PAGE_2M_SIZE - 1) & PAGE_2M_MASK)
+#define PAGE_4K_ALIGN(addr) (((u64)(addr) + PAGE_4K_SIZE - 1) & PAGE_4K_MASK)
+
+#define virtToPhy(addr) ((u64)(addr) - PAGE_OFFSET)
+#define phyToVirt(addr) ((u64 *)((u64)addr + PAGE_OFFSET))
+
+typedef struct tmpE820 {
+    u64 address;
+    u64 length;
+    u32 type;
 } __attribute__((packed)) E820;
-typedef struct __tmpGlobalMemoryDescriptor {
-    E820 e820[32];
-    u64 e820Len;
-} GlobalMemoryDescriptor;
 
-extern GlobalMemoryDescriptor memManageStruct;
+struct GlobalMemoryDescriptor {
+    E820 e820[32];
+    u64 e820Size;
+    
+    u64 *bitmap;
+    u64 bitmapSize, bitmapLength;
+};
+
+extern struct GlobalMemoryDescriptor memManageStruct;
 
 void initMemory();
 #endif
