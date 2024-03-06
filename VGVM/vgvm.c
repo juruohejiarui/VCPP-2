@@ -28,6 +28,7 @@ void genInstBlk(RuntimeBlock *rblk) {
         if (argCnt[tcmd] >= 2)
             arg2 = *(uint64 *)&rblk->vinstList[offset],
             offset += sizeof(uint64);
+
         addVInst(tmpOffset, tcmd, dtmdf1, dtmdf2, arg1, arg2);
     }
     setInstBlk();

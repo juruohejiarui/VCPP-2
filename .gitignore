@@ -1,2 +1,5 @@
 /build
 /vscode-highlight/.vscode
+/TestEnv/*.vasm
+/TestEnv/*.vdef
+/TestEnv/*.vtd

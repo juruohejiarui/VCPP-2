@@ -23,7 +23,7 @@ set(CMAKE_C_COMPILER "gcc")
 
  
 # set the arguments
-set(CMAKE_BUILD_TYPE "Release")
+set(CMAKE_BUILD_TYPE "Debug")
 set(LINK_FLAGS "")
-set(CMAKE_C_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -g2 -ggdb -std=gnu99")
+set(CMAKE_C_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -g2 -ggdb -DNDEBUG -std=gnu99")
 set(CMAKE_C_FLAGS_RELEASE "$ENV{CXXFLAGS} -O3 -std=gnu99 -DNDEBUG")

@@ -14,7 +14,7 @@ void printHelp() {
 
 int main(int argc, char **argv) {
     if (argc == 1) {
-        buildVObj(0, "./main.vasm", "./main.vtd", "./main.vdef", {}, "./main.vobj");
+        buildVObj(0, "./main.vasm", "./main.vtd", "./main.vdef", {"basic.vobj"}, "./main.vobj");
         // buildVObj(0, "./builtin/console.vasm", "./builtin/console.vtd", "./builtin/console.vdef", { "./basic.vobj" }, "./console.vobj");
         // buildVObj(1, "./test.vasm", "./test.vtd", "./test.vdef", { "./basic.vobj", "./console.vobj" }, "./test.vobj");
         return 0;
