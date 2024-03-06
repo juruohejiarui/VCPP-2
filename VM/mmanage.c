@@ -123,7 +123,7 @@ void genGC(int isFinal) {
             if (obj->state == ObjectState_Waiting) freeObj(obj);
         }
     }
-    #ifndef NDBUG
+    #ifndef NDEBUG
     if (isFinal) {
         printf("remains : \ngen 1: ");
         for (ListElement *ele = objListStart[1].next; ele != &objListEnd[1]; ele = ele->next) {

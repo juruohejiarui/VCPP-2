@@ -1109,12 +1109,6 @@ VInstTmpl_Function(vcall, _1, _2) {
 VInstTmpl_Function(call, data, _2) {
     CreateTemplInstList;
     uint64 blkId = (data >> 48), funcId = (data & ((1ull << 48) - 1));
-    /*
-    if (curFrm->blgBlk->relyBlk[blkId] == NULL)
-        curFrm->blgBlk->relyBlk[blkId] = loadRuntimeBlock(curFrm->blgBlk->relyList[blkId]);
-    RuntimeBlock *rblk = curFrm->blgBlk->relyBlk[blkId];
-    (uint64 (*)())(rblk->entryList[offset])();
-    */
     prepareCallVMFunc(&temp, 1, stkTop);
     InstList_add(&temp, MOV_or_r(TM_qword, blgBlkDisp, RBP, RDI), stkTop == 0);
     if (blkId)
@@ -1127,9 +1121,6 @@ VInstTmpl_Function(call, data, _2) {
     restoreFromCallVMFunc(&temp, 0, stkTop);
     if (stkTop + 1 <= stkRegNumber) InstList_add(&temp, MOV_r_r(TM_qword, RAX, stkReg[stkTop + 1]), 0);
     else InstList_add(&temp, MOV_r_or(TM_qword, RAX, clStkDisp(stkTop + 1), RBP), 0);
-    
-    Debug_printJITCode(temp.data, temp.size);
-
     InstList_merge(tgList, &temp);
 }
 

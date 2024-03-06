@@ -11,8 +11,10 @@ int main() {
     testBlock = loadRuntimeBlock("./main.vobj");
     clock_t st = clock();
     launch(testBlock);
-    printf("%.3lf\n", (clock() - st) * 1.0 / CLOCKS_PER_SEC);
     genGC(1);
+    #ifndef NDEBUG
+    printf("%.3lf\n", (clock() - st) * 1.0 / CLOCKS_PER_SEC);
     printf("remains %llu + %llu\n", getGenSize(0), getGenSize(1));
+    #endif
     return 0;
 }
