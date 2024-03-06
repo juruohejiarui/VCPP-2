@@ -11,9 +11,11 @@ struct CommandInfo {
 };
 
 struct VASMPackage {
-    std::vector<CommandInfo> commandList;
+    std::vector<CommandInfo> cmdList;
     uint64 vcodeSize, mainAddr;
     std::map<std::string, uint64> labelOffset;
+    /// @brief the map for function label <function Id, function Offset>
+    std::map<std::string, std::pair<uint64, uint64> > funcLabelInfo;
     std::vector< std::pair<uint32, std::string> > hints;
     std::vector<std::string> strList;
     /// @brief the map of exposed identifier : identifier -> offset
@@ -21,7 +23,7 @@ struct VASMPackage {
     // std::vector<std::string> relyList;
     /// @brief the map of extern identifier : identifier -> id(before compiled) / (rely | offset)(after compiled)
     // std::map<std::string, uint64> externMap;
-    uint64 globalMemory;
+    uint64 gloMem;
 
     VASMPackage();
     /// @brief generate this package using the source and return if it is successful
@@ -49,7 +51,7 @@ struct FunctionTypeData {
     std::string name, labelName;
     IdenVisibility visibility;
     uint8 gtableSize;
-    uint64 offset;
+    uint64 index;
     std::string resType;
     std::vector<std::string> argTypes;
 };
@@ -85,8 +87,8 @@ struct DataTypePackage {
 
 struct VOBJPackage {
     uint8 type;
-    VASMPackage vasmPackage;
-    DataTypePackage dataTypePackage;
+    VASMPackage vasmPkg;
+    DataTypePackage dataTypePkg;
     std::string definition;
     
     /// @brief read the content of the vobj file

@@ -4,7 +4,7 @@
 
 #define setInstSize_or(ins, offset, baseSize) \
     do { \
-        if (abs(offset) >= (1 << 8)) modRM = 0x80, Inst_init(&ins, (baseSize) + 4), *(int32 *)(ins.data + (baseSize)) = offset; \
+        if (abs(offset) >= (1 << 7)) modRM = 0x80, Inst_init(&ins, (baseSize) + 4), *(int32 *)(ins.data + (baseSize)) = offset; \
         else modRM = 0x40, Inst_init(&ins, (baseSize) + 1), *(int8 *)(ins.data + (baseSize)) = (int8)offset; \
     } while(0);
 

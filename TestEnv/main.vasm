@@ -228,6 +228,10 @@ ret
 #LABEL main
   setlocal 0x4
   getarg 0x0
+    pstr 0x0
+    setarg 0x1
+    call System.Console.print@char_DIMC1
+    i64_pop
     i64_push 0xA
     setarg 0x1
     call System.Console.inputInt@int_DIMC0
@@ -461,5 +465,6 @@ ret
     o_setvar 0x1
 u64_push 0x0
 ret
+#STRING "Start\n"
 
 #GLOMEM 0x8

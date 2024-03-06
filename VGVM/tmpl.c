@@ -1089,56 +1089,47 @@ VInstTmpl_Function(vcall, _1, _2) {
     prepareCallVMFunc(&temp, 1, stkTop - 1);
     if (stkTop <= stkRegNumber) InstList_add(&temp, MOV_r_r(TM_qword, stkReg[stkTop], RDI), stkTop == 1);
     else InstList_add(&temp, MOV_or_r(TM_qword, clStkDisp(stkTop), RBP, RDI), stkTop == 1);
-    InstList_addm(&temp, 2,
-        MOV_i_r(TM_qword, (uint64)callFunc, RAX),
-        CALL(RAX));
+    InstList_addm(&temp, 11,
+        PUSH_r(RDI), 
+        // blkAddr = getRuntimeBlock(blkId)
+        SHR_i_r(TM_qword, 48, RDI), MOV_i_r(TM_qword, (uint64)getRuntimeBlock, RAX), CALL(RAX),
+        // funcEntry = getFuncEntry(blkAddr, funcId)
+        MOV_r_r(TM_qword, RAX, RDI),
+        MOV_i_r(TM_qword, ((1ull << 48) - 1), RCX), POP_r(RAX), AND_r_r(TM_qword, RCX, RAX),
+        MOV_or_r(TM_qword, entryListOffset, RDI, RBX),
+        MOV_rrs_r(TM_qword, RBX, RAX, 8, RAX),
+        CALL(RAX)
+    );
     restoreFromCallVMFunc(&temp, 0, stkTop - 1);
     if (stkTop <= stkRegNumber) InstList_add(&temp, MOV_r_r(TM_qword, RAX, stkReg[stkTop]), 0);
-    else InstList_add(&temp, MOV_or_r(TM_qword, RAX, clStkDisp(stkTop), RBP), 0);
+    else InstList_add(&temp, MOV_r_or(TM_qword, RAX, clStkDisp(stkTop), RBP), 0);
     InstList_merge(tgList, &temp);
 }
 
 VInstTmpl_Function(call, data, _2) {
     CreateTemplInstList;
-    uint64 blkId = (data >> 48), offset = (data & ((1ull << 48) - 1));
+    uint64 blkId = (data >> 48), funcId = (data & ((1ull << 48) - 1));
     /*
     if (curFrm->blgBlk->relyBlk[blkId] == NULL)
         curFrm->blgBlk->relyBlk[blkId] = loadRuntimeBlock(curFrm->blgBlk->relyList[blkId]);
     RuntimeBlock *rblk = curFrm->blgBlk->relyBlk[blkId];
     (uint64 (*)())(rblk->entryList[offset])();
     */
-    InstList_add(&temp, MOV_or_r(TM_qword, blgBlkDisp, RBP, RCX), 1);
-    InstList_add(&temp, MOV_or_r(TM_qword, relyBlkOffset, RCX, RDX), 0);
-    InstList_add(&temp, MOV_or_r(TM_qword, blkId * 8, RDX, RAX), 0);
-    if (blkId > 0) {
-        InstList_add(&temp, CMP_i_r(TM_qword, 0, RAX), 0);
-        InstList_add(&temp, JNZ(0), 0);
-        uint32 jnzP = temp.size;
-        prepareCallVMFunc(&temp, false, stkTop);
-        InstList_addm(&temp, 6,
-            PUSH_r(RDX),
-            MOV_or_r(TM_qword, relyListOffset, RCX, RDI),
-            MOV_or_r(TM_qword, blkId * 8, RDI, RDI),
-            MOV_i_r(TM_qword, (uint64)loadRuntimeBlock, RAX),
-            CALL(RAX),
-            POP_r(RDX));
-        restoreFromCallVMFunc(&temp, false, stkTop);
-        uint32 end = temp.size;
-        *(int32 *)(temp.data + jnzP - 4) = end - jnzP;
-        InstList_add(&temp, MOV_r_or(TM_qword, RAX, blkId * 8, RDX), 0);
-    }
-    prepareCallVMFunc(&temp, 0, stkTop);
-    InstList_addm(&temp, 5,
-        MOV_r_r(TM_qword, RAX, RDI),
-        MOV_or_r(TM_qword, entryListOffset, RAX, RAX),
-        MOV_i_r(TM_qword, offset, RCX),
-        MOV_rrs_r(TM_qword, RAX, RCX, 8, RAX),
+    prepareCallVMFunc(&temp, 1, stkTop);
+    InstList_add(&temp, MOV_or_r(TM_qword, blgBlkDisp, RBP, RDI), stkTop == 0);
+    if (blkId)
+        InstList_addm(&temp, 4, MOV_i_r(TM_qword, blkId, RSI), MOV_i_r(TM_qword, (uint64)getRelyAddr, RAX), CALL(RAX), MOV_r_r(TM_qword, RAX, RDI));
+    InstList_addm(&temp, 3,
+        // funcEntry = getFuncEntry(blkAddr(have stored in RDI), funcId)
+        MOV_or_r(TM_qword, entryListOffset, RDI, RAX),
+        MOV_or_r(TM_qword, funcId * 8, RAX, RAX),
         CALL(RAX));
     restoreFromCallVMFunc(&temp, 0, stkTop);
-    // get the return value from the function and then push it to the calculate stack:
-    if (stkTop + 1 <= stkRegNumber) 
-        InstList_add(&temp, MOV_r_r(TM_qword, RAX, stkReg[stkTop + 1]), 0);
+    if (stkTop + 1 <= stkRegNumber) InstList_add(&temp, MOV_r_r(TM_qword, RAX, stkReg[stkTop + 1]), 0);
     else InstList_add(&temp, MOV_r_or(TM_qword, RAX, clStkDisp(stkTop + 1), RBP), 0);
+    
+    Debug_printJITCode(temp.data, temp.size);
+
     InstList_merge(tgList, &temp);
 }
 
@@ -1481,6 +1472,5 @@ void setInstBlk() {
         else
             *(int32 *)(pfx + 1) = (int32)((uint64)tgBlk->entryList[dstOffset] - (uint64)tgBlk->instBlk) - ((int32)jmpAddr + 5);
     }
-
     // Debug_saveJITCode(tgBlk->instBlk, tgList->size, "test.log");
 }

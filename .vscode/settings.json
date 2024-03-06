@@ -113,5 +113,5 @@
     },
     "C_Cpp.default.compilerPath": "/usr/bin/g++",
     "cmake.configureOnOpen": true,
-    "cmake.sourceDirectory": "/home/jhe/Desktop/VCPP-2"
+    "cmake.sourceDirectory": "/home/hjr/Projects/VCPP-2"
 }

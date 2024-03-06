@@ -8,7 +8,7 @@ CommandInfo::CommandInfo(Command _command, uint32 lineId) {
 
 #pragma region VASMPackage
 VASMPackage::VASMPackage() {
-    vcodeSize = mainAddr = globalMemory = 0;
+    vcodeSize = mainAddr = gloMem = 0;
 }
 
 bool VASMPackage::generate(const std::string &srcPath, bool ignoreHint) {
@@ -33,8 +33,8 @@ bool VASMPackage::generate(const std::string &srcPath, bool ignoreHint) {
     for (auto &pir : hints) std::cout << "Offset 0x" << std::setfill('0') << std::setbase(16) << std::setw(8) << pir.first << " : " << pir.second << std::endl;  
     std::cout << "strings \n";
     for (auto &pir : strList) std::cout << pir << std::endl;  
-    std::cout << "global memory : " << globalMemory << std::endl;
-    for (auto &cInfo : commandList) {
+    std::cout << "global memory : " << gloMem << std::endl;
+    for (auto &cInfo : cmdList) {
         std::cout << std::setfill('0') << "0x" << std::setiosflags(std::ios::right) << std::setw(8) << cInfo.offset << " ";
         std::cout << std::setfill(' ') << std::setiosflags(std::ios::left) << std::setw(18) << commandString[(uint32)cInfo.command] << " ";
         std::cout << std::setw(7) << tCommandString[((uint32)cInfo.vcode) & ((1 << 16) - 1)] << ' ';
@@ -87,7 +87,7 @@ bool VASMPackage::generateLine(const std::string &line, int lineId, bool ignoreH
                 strList.push_back(lst[2]);
                 break;
             case PretreatCommand::GLOMEM:
-                globalMemory += getUnionData(lst[2]).data.uint64_v;
+                gloMem += getUnionData(lst[2]).data.uint64_v;
                 break;
             case PretreatCommand::HINT:
                 hints.push_back(std::make_pair(vcodeSize, lst[2]));
@@ -98,6 +98,8 @@ bool VASMPackage::generateLine(const std::string &line, int lineId, bool ignoreH
                     return false;
                 }
                 labelOffset[lst[2]] = vcodeSize;
+                // this is a label for function entry
+                if (lst[2][0] != '@') funcLabelInfo.insert(std::make_pair(lst[2], std::make_pair(funcLabelInfo.size(), vcodeSize)));
                 break;
         }
     } else {
@@ -238,7 +240,7 @@ bool VASMPackage::generateLine(const std::string &line, int lineId, bool ignoreH
                 break;
             }
         }
-        commandList.push_back(cInfo);
+        cmdList.push_back(cInfo);
         vcodeSize += sizeof(uint32) + sizeof(uint64) * cInfo.argument.size() + sizeof(uint64) * (!cInfo.argumentString.empty());
     }
     return true;
@@ -449,7 +451,7 @@ void debugPrintTypeData(FunctionTypeData *mtd, int dep) {
     std::cout << getIndent(dep) << "function : " << mtd->name << std::endl;
     std::cout << getIndent(dep + 1) << "visibility  : " << idenVisibilityStr[(uint32)mtd->visibility] << std::endl;
     std::cout << getIndent(dep + 1) << "result type : " << mtd->resType << std::endl;
-    std::cout << getIndent(dep + 1) << "offset      : 0x" << std::setbase(16) << mtd->offset << std::endl;
+    std::cout << getIndent(dep + 1) << "offset      : 0x" << std::setbase(16) << mtd->index << std::endl;
     for (auto &arg : mtd->argTypes) std::cout << getIndent(dep + 1) << arg << std::endl;
 }
 void debugPrintTypeData(ClassTypeData *cls, int dep) {
@@ -536,7 +538,7 @@ bool VOBJPackage::read(const std::string &path) {
             dt.type = DataTypeModifier::b, readData(ifs, dt),
             mtd->gtableSize = dt.uint8_v();
             // offset
-            dt.type = DataTypeModifier::u64, readData(ifs, dt), mtd->offset = dt.uint64_v();
+            dt.type = DataTypeModifier::u64, readData(ifs, dt), mtd->index = dt.uint64_v();
             // arg count
             readData(ifs, dt), mtd->argTypes.resize(dt.uint64_v(), "");
             // arg types
@@ -585,7 +587,7 @@ bool VOBJPackage::read(const std::string &path) {
             while (nspCnt--) nsp->nspList.push_back(self(self));
             return nsp;
         };
-        this->dataTypePackage.root = readNsp(readNsp);
+        this->dataTypePkg.root = readNsp(readNsp);
     };
     readTD();
     // read vcode
@@ -595,7 +597,7 @@ bool VOBJPackage::read(const std::string &path) {
 
 #pragma endregion
 
-bool getOffset(VOBJPackage &vobjPkg, std::map<std::string, uint64> &mOffset, std::map<std::string, uint64> &cSize, std::map<std::string, uint64> &vOffset, uint32 bid) {
+bool getOffset(VOBJPackage &vobjPkg, std::map<std::string, uint64> &mIndex, std::map<std::string, uint64> &cSize, std::map<std::string, uint64> &vOffset, uint32 bid) {
     uint32 curOffset = 0;
     // get the offset of classes
     auto getClassSize = [&]() -> bool {
@@ -612,18 +614,19 @@ bool getOffset(VOBJPackage &vobjPkg, std::map<std::string, uint64> &mOffset, std
             }
             return succ;
         };
-        return scanNsp(scanNsp, vobjPkg.dataTypePackage.root, std::string(""));
+        return scanNsp(scanNsp, vobjPkg.dataTypePkg.root, std::string(""));
     };
     // get the offset of methods from vcode
     auto getMethodOffset = [&]() -> bool {
         auto scanMtd = [&](FunctionTypeData *mtd, std::string pfx) -> bool {
             const std::string &lbl = mtd->labelName;
-            if (!vobjPkg.vasmPackage.labelOffset.count(lbl)) {
-                printError(0, "Can not find the label : " + lbl);
+            auto iter = vobjPkg.vasmPkg.funcLabelInfo.find(lbl);
+            if (iter == vobjPkg.vasmPkg.funcLabelInfo.end()) {
+                printError(0, "Can not find the function label : " + lbl);
                 return false;
             }
-            mtd->offset = (((uint64)bid) << 48) | vobjPkg.vasmPackage.labelOffset[lbl];
-            mOffset.insert(std::make_pair(lbl, mtd->offset));
+            mtd->index = (((uint64)bid) << 48) | iter->second.first;
+            mIndex.insert(std::make_pair(lbl, iter->second.first));
             return true;
         };
         auto scanCls = [&](ClassTypeData *cls, std::string pfx) -> bool {
@@ -643,7 +646,7 @@ bool getOffset(VOBJPackage &vobjPkg, std::map<std::string, uint64> &mOffset, std
                 succ &= self(self, child, pfx + child->name + ".");
             return succ;
         };
-        return scanNsp(scanNsp, vobjPkg.dataTypePackage.root, std::string(""));
+        return scanNsp(scanNsp, vobjPkg.dataTypePkg.root, std::string(""));
     };
     // modify the offset of variables using bid
     auto getVariableOffset = [&]() -> bool {
@@ -662,12 +665,12 @@ bool getOffset(VOBJPackage &vobjPkg, std::map<std::string, uint64> &mOffset, std
             }
             return succ;
         };
-        return scanNsp(scanNsp, vobjPkg.dataTypePackage.root, std::string(""));
+        return scanNsp(scanNsp, vobjPkg.dataTypePkg.root, std::string(""));
     };
     return getClassSize() && getMethodOffset() && getVariableOffset();
 }
 
-bool getRelyOffset(VOBJPackage &vobjPkg, std::map<std::string, uint64> &mOffset, std::map<std::string, uint64> &cSize, std::map<std::string, uint64> &vOffset, uint32 bid) {
+bool getRelyOffset(VOBJPackage &vobjPkg, std::map<std::string, uint64> &mIndex, std::map<std::string, uint64> &cSize, std::map<std::string, uint64> &vOffset, uint32 bid) {
     uint32 curOffset = 0;
     // get the offset of classes
     auto getClassOffset = [&]() -> bool {
@@ -678,13 +681,13 @@ bool getRelyOffset(VOBJPackage &vobjPkg, std::map<std::string, uint64> &mOffset,
                 cSize.insert(std::make_pair(pfx + cls->name, cls->size));
             return succ;
         };
-        return scanNsp(scanNsp, vobjPkg.dataTypePackage.root, std::string(""));
+        return scanNsp(scanNsp, vobjPkg.dataTypePkg.root, std::string(""));
     };
     // load the information from the structure
     auto getMethodOffset = [&]() -> bool {
         auto scanMtd = [&](FunctionTypeData *mtd, std::string pfx) -> bool {
             auto fullName = mtd->labelName;
-            mOffset.insert(std::make_pair(fullName, (((uint64)bid) << 48) | mtd->offset));
+            mIndex.insert(std::make_pair(fullName, (((uint64)bid) << 48) | mtd->index));
             return true;
         };
         auto scanCls = [&](ClassTypeData *cls, std::string pfx) -> bool {
@@ -704,7 +707,7 @@ bool getRelyOffset(VOBJPackage &vobjPkg, std::map<std::string, uint64> &mOffset,
                 succ &= self(self, child, pfx + child->name + ".");
             return succ;
         };
-        return scanNsp(scanNsp, vobjPkg.dataTypePackage.root, std::string(""));
+        return scanNsp(scanNsp, vobjPkg.dataTypePkg.root, std::string(""));
     };
     // modify the offset of variables using bid
     auto getVariableOffset = [&]() -> bool {
@@ -718,12 +721,12 @@ bool getRelyOffset(VOBJPackage &vobjPkg, std::map<std::string, uint64> &mOffset,
             }
             return succ;
         };
-        return scanNsp(scanNsp, vobjPkg.dataTypePackage.root, std::string(""));
+        return scanNsp(scanNsp, vobjPkg.dataTypePkg.root, std::string(""));
     };
     return getClassOffset() && getMethodOffset() && getVariableOffset();
 }
-bool applyOffset(VOBJPackage &vobjPkg,std::map<std::string, uint64> &mOffset, std::map<std::string, uint64> &cSize, std::map<std::string, uint64> &vOffset) {
-    auto &cmdls = vobjPkg.vasmPackage.commandList;
+bool applyOffset(VOBJPackage &vobjPkg,std::map<std::string, uint64> &mIndex, std::map<std::string, uint64> &cSize, std::map<std::string, uint64> &vOffset) {
+    auto &cmdls = vobjPkg.vasmPkg.cmdList;
     bool succ = false;
     UnionData data(DataTypeModifier::u64);
     for (uint32 i = 0; i < cmdls.size(); i++) {
@@ -733,12 +736,12 @@ bool applyOffset(VOBJPackage &vobjPkg,std::map<std::string, uint64> &mOffset, st
             case TCommand::jz:
             case TCommand::jp:
             case TCommand::jmp:
-                cmd.argument.push_back(UnionData(vobjPkg.vasmPackage.labelOffset[cmd.argumentString]));
+                cmd.argument.push_back(UnionData(vobjPkg.vasmPkg.labelOffset[cmd.argumentString]));
                 break;
             case TCommand::call: 
             case TCommand::plabel: {
                 const auto &mtdName = cmd.argumentString;
-                if (mOffset.count(mtdName)) data.data.uint64_v = mOffset[mtdName], cmd.argument.push_back(data);
+                if (mIndex.count(mtdName)) data.data.uint64_v = mIndex[mtdName], cmd.argument.push_back(data);
                 else {
                     printError(cmd.lineId, "Can not find method : " + mtdName);
                     succ = false;
@@ -790,7 +793,7 @@ bool writeVObj(uint8 type, VOBJPackage &vobjPkg, const std::vector<std::string> 
             writeData(ofs, UnionData((uint8)mtd->visibility));
             writeString(ofs, mtd->resType);
             writeData(ofs, UnionData(mtd->gtableSize));
-            writeData(ofs, UnionData(mtd->offset));
+            writeData(ofs, UnionData(mtd->index));
             writeData(ofs, UnionData((uint64)mtd->argTypes.size()));
             for (auto &arg : mtd->argTypes) writeString(ofs, arg);
         };
@@ -817,20 +820,30 @@ bool writeVObj(uint8 type, VOBJPackage &vobjPkg, const std::vector<std::string> 
             for (auto &cls : nsp->clsList) writeCls(cls);
             for (auto &child : nsp->nspList) self(self, child);
         };
-        writeNsp(writeNsp, vobjPkg.dataTypePackage.root);
+        writeNsp(writeNsp, vobjPkg.dataTypePkg.root);
     };
     writeData(ofs, UnionData((uint64)relyList.size()));
     for (auto &rely : relyList) writeString(ofs, rely);
     writeString(ofs, vobjPkg.definition);
     writeTypeData();
-    if (vobjPkg.vasmPackage.labelOffset.count("main"))
-        writeData(ofs, UnionData(vobjPkg.vasmPackage.labelOffset["main"]));
+
+    // write the function entry list
+    writeData(ofs, UnionData((uint64)vobjPkg.vasmPkg.funcLabelInfo.size()));
+    std::vector<uint64> tmpFuncOffset(vobjPkg.vasmPkg.funcLabelInfo.size());
+    for (auto &pir : vobjPkg.vasmPkg.funcLabelInfo)
+        tmpFuncOffset[pir.second.first] = pir.second.second;
+    for (size_t i = 0; i < tmpFuncOffset.size(); i++) writeData(ofs, UnionData(tmpFuncOffset[i]));
+
+    // main entry offset
+    if (vobjPkg.vasmPkg.funcLabelInfo.count("main"))
+        writeData(ofs, UnionData(vobjPkg.vasmPkg.funcLabelInfo["main"].first));
     else writeData(ofs, UnionData((uint64)0));
-    writeData(ofs, UnionData((uint64)vobjPkg.vasmPackage.strList.size()));
-    for (auto &str : vobjPkg.vasmPackage.strList) writeString(ofs, str);
-    writeData(ofs, UnionData(vobjPkg.vasmPackage.globalMemory));
-    writeData(ofs, UnionData(vobjPkg.vasmPackage.vcodeSize));
-    for (auto &cmd : vobjPkg.vasmPackage.commandList) {
+
+    writeData(ofs, UnionData((uint64)vobjPkg.vasmPkg.strList.size()));
+    for (auto &str : vobjPkg.vasmPkg.strList) writeString(ofs, str);
+    writeData(ofs, UnionData(vobjPkg.vasmPkg.gloMem));
+    writeData(ofs, UnionData(vobjPkg.vasmPkg.vcodeSize));
+    for (auto &cmd : vobjPkg.vasmPkg.cmdList) {
         writeData(ofs, UnionData(cmd.vcode));
         for (auto &arg : cmd.argument) arg.type = DataTypeModifier::u64, writeData(ofs, arg);
         #ifndef NDEBUG
@@ -861,7 +874,7 @@ bool buildVObj( uint8 type,
     VOBJPackage vobjPkg;
     vobjPkg.type = type;
     std::vector<VOBJPackage> relyPkg(relyList.size());
-    bool succ = vobjPkg.vasmPackage.generate(vasmPath) && vobjPkg.dataTypePackage.generate(typeDataPath);
+    bool succ = vobjPkg.vasmPkg.generate(vasmPath) && vobjPkg.dataTypePkg.generate(typeDataPath);
     if (!succ) {
         printError(0, "fail to compile vtd file");
         return false;
@@ -880,23 +893,23 @@ bool buildVObj( uint8 type,
     for (int i = 0; i < relyList.size(); i++) relyPkg[i].read(relyList[i]);
 
     // get the offset of functions shown in tdt file
-    std::map<std::string, uint64> mOffset, cSize, vOffset;
-    succ &= getOffset(vobjPkg, mOffset, cSize, vOffset, 0);
+    std::map<std::string, uint64> mIndex, cSize, vOffset;
+    succ &= getOffset(vobjPkg, mIndex, cSize, vOffset, 0);
     uint32 bid = 0;
-    for (auto &rely : relyPkg) succ &= getRelyOffset(rely, mOffset, cSize, vOffset, ++bid);
+    for (auto &rely : relyPkg) succ &= getRelyOffset(rely, mIndex, cSize, vOffset, ++bid);
     if (!succ) return false;
 
     #ifndef NDEBUG
     std::cout << "global variables : " << std::endl;
     for (auto &pir : vOffset) std::cout << pir.first << " 0x" << std::setbase(16) << pir.second << std::endl;
     std::cout << "methods : " << std::endl;
-    for (auto &pir : mOffset) std::cout << pir.first << " 0x" << std::setbase(16) << pir.second << std::endl;
+    for (auto &pir : mIndex) std::cout << pir.first << " 0x" << std::setbase(16) << pir.second << std::endl;
     std::cout << "classes : " << std::endl;
     for (auto &pir : cSize) std::cout << pir.first << " 0x" << std::setbase(16) << pir.second << std::endl;
     #endif
     // change the strings in vcode into offset
-    succ = applyOffset(vobjPkg, mOffset, cSize, vOffset);
+    succ = applyOffset(vobjPkg, mIndex, cSize, vOffset);
 
-    writeVObj(type, vobjPkg, relyList, target, mOffset, cSize, vOffset);
+    writeVObj(type, vobjPkg, relyList, target, mIndex, cSize, vOffset);
     return succ;
 }

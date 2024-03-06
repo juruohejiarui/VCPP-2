@@ -22,6 +22,7 @@ typedef struct tmpRuntimeBlock {
     NamespaceTypeData *tdRoot;
     uint8 *dataTmpl;
 
+    // when it is in constructing period, it is for all the vinstructions; when it is in finish period, it is for all the function entry
     void **entryList;
     uint64 entryListSize;
     void *instBlk;
@@ -39,7 +40,6 @@ CallFrame *getCallStackBottom();
 
 #pragma region Interface for accessing the information and function of VM
 void pauseVM(uint64 rbp, uint64 rsp);
-uint64 callFunc(uint64 id);
 
 void disconnectMember(Object *obj, Object *mem);
 void connectMember(Object *obj, Object *mem, uint64 offset);
@@ -47,10 +47,14 @@ void connectMember(Object *obj, Object *mem, uint64 offset);
 void *getGloAddr(RuntimeBlock *curBlk, uint64 id);
 
 // get the blkId of the rely block of curBlk
-uint64 getRelyId(RuntimeBlock *curBlk, uint64 id);
+uint64 *getRelyId(RuntimeBlock *curBlk, uint64 id);
+RuntimeBlock *getRelyAddr(RuntimeBlock *curBlk, uint64 id);
 RuntimeBlock *getRuntimeBlock(uint64 blkId);
-#pragma endregion
+void *getFuncEntry(RuntimeBlock *blgBlk, uint64 funcId);
 
 RuntimeBlock *loadRuntimeBlock(const char *vobjPath);
+
+#pragma endregion
+
 
 int launch(RuntimeBlock *rBlk);

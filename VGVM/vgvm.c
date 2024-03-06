@@ -58,6 +58,13 @@ RuntimeBlock *loadRuntimeBlock(const char *vobjPath) {
     rblk->tdRoot = loadTypeData(fPtr);
     rblk->dataTmpl = generateDataTmpl(rblk->tdRoot);
 
+    uint64 funcCnt, *funcOffset = NULL;
+    void **funcEntryList = NULL;
+    readData(fPtr, &funcCnt, uint64);
+    funcOffset = mallocArray(uint64, funcCnt);
+    funcEntryList = mallocArray(void *, funcCnt);
+    for (int i = 0; i < funcCnt; i++) readData(fPtr, &funcOffset[i], uint64);
+
     readData(fPtr, &rblk->mainOffset, uint64);
 
     readData(fPtr, &rblk->strCnt, uint64);
@@ -85,6 +92,12 @@ RuntimeBlock *loadRuntimeBlock(const char *vobjPath) {
     Trie_insert(&vobjPathTrieRoot, vobjPath, rblk);
 
     genInstBlk(rblk);
+
+    for (int i = 0; i < funcCnt; i++)
+        funcEntryList[i] = rblk->entryList[funcOffset[i]];
+    free(rblk->entryList);
+    rblk->entryListSize = funcCnt;
+    rblk->entryList = funcEntryList;
 
     cancelAlignRsp
     return rblk;
@@ -117,6 +130,26 @@ uint64 callFunc(uint64 id) {
     return ((uint64 (*)(RuntimeBlock *))(rBlk->entryList[offset]))(rBlk);
 }
 
+uint64 *getRelyId(RuntimeBlock *curBlk, uint64 id) {
+    if (curBlk->relyBlk[id] == NULL) curBlk->relyBlk[id] = loadRuntimeBlock(curBlk->relyPath[id]);
+    return curBlk->relyBlk[id]->id;
+}
+
+RuntimeBlock *getRelyAddr(RuntimeBlock *curBlk, uint64 id) {
+    if (curBlk->relyBlk[id] == NULL) curBlk->relyBlk[id] = loadRuntimeBlock(curBlk->relyPath[id]);
+    return curBlk->relyBlk[id];
+}
+
+RuntimeBlock *getRuntimeBlock(uint64 blkId) {
+    if (blkId > rBlkCnt) return NULL;
+    return &rBlks[blkId];
+}
+
+void *getFuncEntry(RuntimeBlock *blgBlk, uint64 funcId) {
+    if (funcId >= blgBlk->entryListSize) return NULL;
+    return blgBlk->entryList[funcId];
+}
+
 void disconnectMember(Object *obj, Object *mem) {
     // printf("disconnect %p from %p\n", mem, obj);
     if (mem == NULL) return ;
@@ -138,14 +171,4 @@ void *getGloAddr(RuntimeBlock *curBlk, uint64 id) {
     if (curBlk->relyBlk[blkId] == NULL) curBlk->relyBlk[blkId] = loadRuntimeBlock(curBlk->relyPath[blkId]);
     rBlk = curBlk->relyBlk[blkId];
     return (void *)(rBlk->gloMem + offset);
-}
-
-uint64 getRelyId(RuntimeBlock *curBlk, uint64 id) {
-    if (curBlk->relyBlk[id] == NULL) curBlk->relyBlk[id] = loadRuntimeBlock(curBlk->relyPath[id]);
-    return curBlk->relyBlk[id]->id;
-}
-
-RuntimeBlock *getRuntimeBlock(uint64 blkId) {
-    if (blkId > rBlkCnt) return NULL;
-    return &rBlks[blkId];
 }
