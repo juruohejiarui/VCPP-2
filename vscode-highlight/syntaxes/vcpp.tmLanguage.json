@@ -35,19 +35,19 @@
 			},
 			{
 				"name": "entity.name.class",
-				"match": "(?<=((:|\\$)(\\s)*|class(\\s)+|namespace(\\s)+|using\\b(\\s)*|as(\\s)+))(\\w)+"
+				"match": "(?<=([^\\:]:|as\\b|$|class\\b|using\\b|namespace\\b)(\\s)*(\\w+::)*)\\w+(?!::)"
 			},
 			{
 				"name": "entity.name.class",
-				"match": "(?<=(<\\$(\\w|,|\\s)*))(\\w)+(?=((\\s|\\w|,)*\\$>))"
+				"match": "(?<=<\\$(\\w|<\\$|\\$>|\\s|,)*)\\w+(?=(\\w|<\\$|\\$>|\\s|,)*\\$>)"
 			},
 			{
-				"name": "entity.name.section",
-				"match": "(?<=((namespace\\b|::)(\\s)*))(\\w)+"
+				"name": "entity.name.class",
+				"match": "\\w+(?=::)"
 			},
 			{
 				"name": "entity.name.function",
-				"match": "(?<!\\$\\s*)@?(\\w)+(?=((<\\$(\\w|\\s|,)*\\$>){0,1}(\\s)*\\())"
+				"match": "(?<!\\$\\s*)(?<=(\\w+::)*)[@|\\w]+(?=(<\\$|\\$>|,|\\w|\\s)*\\()"
 			},
 			{
 				"name": "constant.numeric",

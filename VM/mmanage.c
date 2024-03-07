@@ -2,7 +2,7 @@
 
 uint64 genSize[2];
 uint64 checkTick;
-const uint64 limitGenSize[2] = {1 << 26, 1 << 30}, limitCheckTick = 2;
+const uint64 limitGenSize[2] = {1ull << 28, 1ull << 32}, limitCheckTick = 1000;
 
 int checkGC() {
     ++checkTick;
@@ -83,7 +83,7 @@ void refGC(Object *obj) {
 void scanObj(Object *obj, uint32 mxGen) {
     if (obj->state == ObjectState_Active) return ;
     obj->state = ObjectState_Active;
-    for (uint32 i = 0; i < obj->flagSize; i++) if (obj->flag[i]) {
+    for (uint64 i = 0; i < obj->flagSize; i++) if (obj->flag[i]) {
         for (int j = 0; j < 64 && (j + i * 64) * 8 + 8 <= obj->dataSize; i++) if (obj->flag[i] & (1ull << j)) {
             Object *ref = *(uint64*) &obj->data[(i * 64 + j) * 8];
             if (ref == NULL || ref->genId > mxGen || ref->state == ObjectState_Active) continue;
@@ -93,6 +93,9 @@ void scanObj(Object *obj, uint32 mxGen) {
 }
 
 void genGC(int isFinal) {
+    #ifndef NDEBUG
+    printf("GC Log: start genGC\n");
+    #endif
     for (ListElement *ele = objListStart[0].next; ele != &objListEnd[0]; ele = ele->next) ((Object *)ele->content)->state = ObjectState_Waiting;
     for (ListElement *ele = objListStart[0].next; ele != &objListEnd[0]; ele = ele->next) {
         Object *obj = (Object *)ele->content;
