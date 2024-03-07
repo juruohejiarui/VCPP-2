@@ -33,6 +33,11 @@ struct GlobalMemoryDescriptor {
     u64 e820Size;
 };
 
+typedef struct { u64 pml4tData; } Pml4t;
+typedef struct { u64 pdptData; } Pdpt;
+typedef struct { u64 pdtData; } Pdt;
+typedef struct { u64 ptData; } Pt;
+
 extern struct GlobalMemoryDescriptor memManageStruct;
 
 void initMemory();

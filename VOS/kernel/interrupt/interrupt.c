@@ -6,6 +6,7 @@
 #define saveAll \
     "cld \n\t" \
     "pushq %rax \n\t" \
+    "pushq %rax \n\t" \
     "movq %es, %rax \n\t" \
     "pushq %rax \n\t" \
     "movq %ds, %rax \n\t" \
@@ -70,7 +71,7 @@ buildIRQ(0x35)
 buildIRQ(0x36)
 buildIRQ(0x37)
 
-void (* interrupt[24])(void) = {
+void (*interrupt[24])(void) = {
     IRQ0x20Interrupt, IRQ0x21Interrupt, IRQ0x22Interrupt, IRQ0x23Interrupt,
     IRQ0x24Interrupt, IRQ0x25Interrupt, IRQ0x26Interrupt, IRQ0x27Interrupt,
     IRQ0x28Interrupt, IRQ0x29Interrupt, IRQ0x2aInterrupt, IRQ0x2bInterrupt,
@@ -95,13 +96,16 @@ void initInterrupt() {
     IO_out8(0xa1, 0x02);
     IO_out8(0xa1, 0x01);
     // init 8259A-M/S OCW1
-    IO_out8(0x21, 0x00);
-    IO_out8(0xa0, 0x00);
+    IO_out8(0x21, 0xfd);
+    IO_out8(0xa0, 0xff);
 
     sti();
 }
 
 void doIRQ(u64 regs, u64 nr) {
-    printk(RED, WHITE, "IRQ:%#018lx\n", nr);
+    u8 x;
+    printk(RED, BLACK, "doIRQ: %#018lx\t", nr);
+    x = IO_in8(0x60);
+    printk(RED, BLACK, "key code: %#018lx\n", x);
     IO_out8(0x20, 0x20);
 }
