@@ -1,8 +1,12 @@
 ./main.o: main.c includes/printk.h includes/linkage.h includes/trap.h \
- includes/gate.h includes/UEFI.h includes/lib.h includes/memory.h
+ includes/gate.h includes/UEFI.h includes/lib.h includes/memory.h \
+ includes/interrupt.h
 interrupt/trap.o: interrupt/trap.c interrupt/../includes/trap.h \
  interrupt/../includes/gate.h interrupt/../includes/printk.h \
  interrupt/../includes/linkage.h interrupt/../includes/lib.h
+interrupt/interrupt.o: interrupt/interrupt.c interrupt/../includes/interrupt.h \
+ interrupt/../includes/linkage.h interrupt/../includes/gate.h \
+ interrupt/../includes/lib.h interrupt/../includes/printk.h
 interrupt/gate.o: interrupt/gate.c interrupt/../includes/gate.h
 log/printk.o: log/printk.c log/../includes/printk.h log/../includes/linkage.h \
  log/../includes/lib.h log/font.h

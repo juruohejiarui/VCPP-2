@@ -36,7 +36,7 @@ extern unsigned int TSS64_Table[26];
 
 */
 
-#define _set_gate(gate_selector_addr, attr, ist, code_addr)                                                 \
+#define setGate(gate_selector_addr, attr, ist, code_addr)                                                 \
 	do                                                                                                      \
 	{                                                                                                       \
 		unsigned long __d0, __d1;                                                                           \

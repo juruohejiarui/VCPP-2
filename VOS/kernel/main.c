@@ -3,6 +3,7 @@
 #include "includes/gate.h"
 #include "includes/UEFI.h"
 #include "includes/memory.h"
+#include "includes/interrupt.h"
 
 struct KernelBootParameterInfo *bootParamInfo = (struct KernelBootParameterInfo *)0xffff800000060000;
 
@@ -24,6 +25,8 @@ void Start_Kernel(void) {
     systemVectorInit();
 
     initMemory();
+
+    initInterrupt();
 
     // i = 1 / 0;
     // i = *(unsigned char *)(0xffff80000aa00000);

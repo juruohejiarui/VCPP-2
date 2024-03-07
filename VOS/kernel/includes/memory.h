@@ -31,9 +31,6 @@ typedef struct tmpE820 {
 struct GlobalMemoryDescriptor {
     E820 e820[32];
     u64 e820Size;
-    
-    u64 *bitmap;
-    u64 bitmapSize, bitmapLength;
 };
 
 extern struct GlobalMemoryDescriptor memManageStruct;

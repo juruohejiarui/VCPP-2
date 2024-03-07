@@ -43,16 +43,16 @@ typedef struct tmpList
 } List;
 
 void List_init(List *);
-void list_addBehind(List *, List *);
-void list_addBefore(List *, List *);
-void list_del(List *);
-long list_isEmpty(List *);
-List * list_prev(List *);
-List * list_next(List *);
+void List_addBehind(List *, List *);
+void List_addBefore(List *, List *);
+void List_del(List *);
+long List_isEmpty(List *);
+List * List_prev(List *);
+List * List_next(List *);
 
-void * memcpy(void *, void *, long);
-int memcmp(void *, void *, long);
-void * memset(void *, unsigned char, long);
+void * memcpy(void * src, void *dst, long size);
+int memcmp(void *val1, void *val2, long size);
+void * memset(void * dst, unsigned char val, long size);
 
 char * strcpy(char *, char *);
 char * strncpy(char *, char * Src, long);
@@ -61,14 +61,14 @@ int strcmp(char *, char *);
 int strncmp(char *, char *, long);
 int strlen(char *);
 
-unsigned long bit_set(unsigned long *, unsigned long);
-unsigned long bit_get(unsigned long *, unsigned long);
-unsigned long bit_clean(unsigned long *, unsigned long);
+u64 BIT_set(u64 *addr, u64 pos);
+u64 BIT_get(u64 *addr, u64 pos);
+u64 BIT_clear(u64 *addr, u64 pos);
 
-unsigned char io_in8(unsigned short);
-unsigned int io_in32(unsigned short);
-void io_out8(unsigned short, unsigned char);
-void io_out32(unsigned short, unsigned int);
+u8 IO_in8(u16 port);
+u32 IO_in32(u16 port);
+void IO_out8(u16 port, u8 data);
+void IO_out32(u16 port, u32 data);
 
 unsigned long rdmsr(unsigned long);
 void wrmsr(unsigned long, unsigned long);

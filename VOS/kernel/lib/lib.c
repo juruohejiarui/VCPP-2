@@ -6,7 +6,7 @@ inline void List_init(List *list)
 	list->next = list;
 }
 
-inline void list_addBehind(List *entry, List *new) ////add to entry behind
+inline void List_addBehind(List *entry, List *new) ////add to entry behind
 {
 	new->next = entry->next;
 	new->prev = entry;
@@ -14,7 +14,7 @@ inline void list_addBehind(List *entry, List *new) ////add to entry behind
 	entry->next = new;
 }
 
-inline void list_addBefore(List *entry, List *new) ////add to entry behind
+inline void List_addBefore(List *entry, List *new) ////add to entry behind
 {
 	new->next = entry;
 	entry->prev->next = new;
@@ -22,13 +22,13 @@ inline void list_addBefore(List *entry, List *new) ////add to entry behind
 	entry->prev = new;
 }
 
-inline void list_del(List *entry)
+inline void List_del(List *entry)
 {
 	entry->next->prev = entry->prev;
 	entry->prev->next = entry->next;
 }
 
-inline long list_isEmpty(List *entry)
+inline long List_isEmpty(List *entry)
 {
 	if (entry == entry->next && entry->prev == entry)
 		return 1;
@@ -36,7 +36,7 @@ inline long list_isEmpty(List *entry)
 		return 0;
 }
 
-inline List *list_prev(List *entry)
+inline List *List_prev(List *entry)
 {
 	if (entry->prev != NULL)
 		return entry->prev;
@@ -44,7 +44,7 @@ inline List *list_prev(List *entry)
 		return NULL;
 }
 
-inline List *list_next(List *entry)
+inline List *List_next(List *entry)
 {
 	if (entry->next != NULL)
 		return entry->next;
@@ -274,8 +274,7 @@ inline int strlen(char *String)
 
 */
 
-inline unsigned long bit_set(unsigned long *addr, unsigned long nr)
-{
+inline u64 BIT_set(u64 *addr, u64 nr) {
 	return *addr | (1UL << nr);
 }
 
@@ -283,8 +282,7 @@ inline unsigned long bit_set(unsigned long *addr, unsigned long nr)
 
 */
 
-inline unsigned long bit_get(unsigned long *addr, unsigned long nr)
-{
+inline u64 BIT_get(u64 *addr,u64 nr) {
 	return *addr & (1UL << nr);
 }
 
@@ -292,8 +290,7 @@ inline unsigned long bit_get(unsigned long *addr, unsigned long nr)
 
 */
 
-inline unsigned long bit_clean(unsigned long *addr, unsigned long nr)
-{
+inline u64 BIT_clear(u64 *addr, u64 nr) {
 	return *addr & (~(1UL << nr));
 }
 
@@ -301,7 +298,7 @@ inline unsigned long bit_clean(unsigned long *addr, unsigned long nr)
 
 */
 
-inline unsigned char io_in8(unsigned short port)
+inline u8 IO_in8(u16 port)
 {
 	unsigned char ret = 0;
 	__asm__ __volatile__("inb	%%dx, %0	\n\t"
@@ -316,7 +313,7 @@ inline unsigned char io_in8(unsigned short port)
 
 */
 
-inline unsigned int io_in32(unsigned short port)
+inline u32 IO_in32(u16 port)
 {
 	unsigned int ret = 0;
 	__asm__ __volatile__("inl	%%dx, %0	\n\t"
@@ -331,7 +328,7 @@ inline unsigned int io_in32(unsigned short port)
 
 */
 
-inline void io_out8(unsigned short port, unsigned char value)
+inline void IO_out8(u16 port, u8 value)
 {
 	__asm__ __volatile__("outb	%0,	%%dx	\n\t"
 						 "mfence			\n\t"
@@ -344,7 +341,7 @@ inline void io_out8(unsigned short port, unsigned char value)
 
 */
 
-inline void io_out32(unsigned short port, unsigned int value)
+inline void IO_out32(u16 port, u32 value)
 {
 	__asm__ __volatile__("outl	%0,	%%dx	\n\t"
 						 "mfence			\n\t"
