@@ -25,6 +25,11 @@ typedef int s32;
 typedef short s16;
 typedef char s8;
 
+extern char _text;
+extern char _etext;
+extern char _edata;
+extern char _end;
+
 
 #define NULL 0
 
