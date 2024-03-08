@@ -13,4 +13,6 @@ log/printk.o: log/printk.c log/../includes/printk.h log/../includes/linkage.h \
 memory/memory.o: memory/memory.c memory/../includes/memory.h \
  memory/../includes/lib.h memory/../includes/UEFI.h \
  memory/../includes/printk.h memory/../includes/linkage.h
+memory/buddy.o: memory/buddy.c memory/buddy.h memory/../includes/memory.h \
+ memory/../includes/lib.h
 lib/lib.o: lib/lib.c lib/../includes/lib.h

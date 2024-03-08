@@ -39,8 +39,8 @@ struct GlobalMemoryDescriptor {
     u64 e820Size;
 
     /// @brief the bitmap of 4K pages.
-    /// (bitmap[i] >> j) & 1 == 0:  the (i * 64 + j)-th page is allocated; 
-    ///                      == 1:  the (i * 64 + j)-th page is free                        
+    /// (bitmap[i] >> j) & 1 == 1:  the (i * 64 + j)-th page is allocated; 
+    ///                      == 0:  the (i * 64 + j)-th page is free                        
     u64 *bitmap;
     u64 bitmapLength;
     u64 bitmapSize;
@@ -63,6 +63,25 @@ struct GlobalMemoryDescriptor {
     // the end address of the pages
     u64 endOfStruct;
 };
+
+#define ZONE_DMA        (1 << 0)
+#define ZONE_NORMAL     (1 << 1)
+#define ZONE_UNMAPED    (1 << 2)
+
+// the flag for the page has been mapped
+#define PAGE_PTable_Maped   (1 << 0)
+// the flag for the page belongs to kernel initial program
+#define PAGE_Kernel_Init    (1 << 1)
+// the flag for the page belongs to kernel
+#define PAGE_Kernel         (1 << 2)
+// the flag for the page which is active
+#define PAGE_Active         (1 << 3)
+// the flag for the page which is shared by kernel to user
+#define PAGE_Shared_K2U     (1 << 4)
+// the flag for the page referred
+#define PAGE_Referred       (1 << 5)
+
+#define MAX_NR_ZONES    10
 
 typedef struct { u64 pml4tData; } Pml4t;
 typedef struct { u64 pdptData; } Pdpt;
@@ -100,6 +119,8 @@ struct tmpZone {
 };
 
 extern struct GlobalMemoryDescriptor memManageStruct;
+
+u64 *getGDT();
 
 void initMemory();
 #endif

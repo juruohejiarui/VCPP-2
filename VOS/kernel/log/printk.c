@@ -28,7 +28,7 @@ int skipAtoI(const char **fmt) {
     __res; \
 })
 
-char *number(char *str, long num, int base, int size, int precision, int type) {
+char *number(char *str, s64 num, int base, int size, int precision, int type) {
     char c, sign, tmp[66];
     const char *digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     int i;
@@ -89,7 +89,7 @@ int sprintf(char *buf, const char *fmt, va_list args) {
                 default: goto endScanFlags;
             }
             endScanFlags:
-            fld_w = -1;
+            fld_w = -1, qlf = 0;
             if (isDigit(*fmt))
                 fld_w = skipAtoI(&fmt);
             else if (*fmt == '*') {
@@ -110,12 +110,12 @@ int sprintf(char *buf, const char *fmt, va_list args) {
                 if (prec < 0) prec = 0;
             }
             switch (*fmt) {
-                case 'h': qlf = *(fmt + 1) == 'h' ? fmt += 2, 'H' : fmt++, 'h'; break;
-                case 'l': qlf = *(fmt + 1) == 'l' ? fmt += 2, 'L' : fmt++, 'l'; break;
-                case 'j': qlf = fmt++, 'j'; break;
-                case 'z': qlf = fmt++, 'z'; break;
-                case 't': qlf = fmt++, 't'; break;
-                case 'L': qlf = fmt++, 'L'; break;
+                case 'h': qlf = (*(fmt + 1) == 'h' ? (fmt += 2, 'H') : (fmt++, 'h')); break;
+                case 'l': qlf = (*(fmt + 1) == 'l' ? (fmt += 2, 'L') : (fmt++, 'L')); break;
+                case 'j': qlf = (fmt++, 'j'); break;
+                case 'z': qlf = (fmt++, 'z'); break;
+                case 't': qlf = (fmt++, 't'); break;
+                case 'L': qlf = (fmt++, 'L'); break;
                 default: qlf = 0; break;
             }
             switch (*fmt) {
@@ -135,7 +135,7 @@ int sprintf(char *buf, const char *fmt, va_list args) {
                     while (len < fld_w--) *(str++) = ' ';
                     break;
                 case 'o':
-                    str = number(str, qlf == 'l' ? va_arg(args, unsigned long) : va_arg(args, unsigned int), 8, fld_w, prec, flags);
+                    str = number(str, qlf == 'L' ? va_arg(args, unsigned long) : va_arg(args, unsigned int), 8, fld_w, prec, flags);
                     break;
                 case 'p':
                     if (fld_w == -1) {
@@ -146,13 +146,13 @@ int sprintf(char *buf, const char *fmt, va_list args) {
                     break;
                 case 'x':
                 case 'X':
-                    str = number(str, qlf == 'l' ? va_arg(args, unsigned long) : va_arg(args, unsigned int), 16, fld_w, prec, flags);
+                    str = number(str, qlf == 'L' ? va_arg(args, unsigned long) : va_arg(args, unsigned int), 16, fld_w, prec, flags);
                     break;
                 case 'd':
                 case 'i':
                     flags |= flag_sign;
                 case 'u':
-                    str = number(str, qlf == 'l' ? va_arg(args, unsigned long) : va_arg(args, unsigned int), 10, fld_w, prec, flags);
+                    str = number(str, qlf == 'L' ? va_arg(args, unsigned long) : va_arg(args, unsigned int), 10, fld_w, prec, flags);
                     break;
                 default:
                     *(str++) = '%';
