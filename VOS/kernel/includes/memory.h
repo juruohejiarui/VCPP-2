@@ -123,4 +123,10 @@ extern struct GlobalMemoryDescriptor memManageStruct;
 u64 *getGDT();
 
 void initMemory();
+
+/// @brief Get NUM consecutive pages
+/// @param zoneSel the zone that the pages belong to
+/// @param num the number of pages
+/// @param flags the flags of the pages
+Page *allocPages(int zoneSel, int num, u64 flags);
 #endif

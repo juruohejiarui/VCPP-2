@@ -1,6 +1,7 @@
 #include "../includes/memory.h"
 #include "../includes/UEFI.h"
 #include "../includes/printk.h"
+#include "buddy.h"
 
 struct GlobalMemoryDescriptor memManageStruct = {{0}, 0};
 
@@ -172,6 +173,8 @@ void initMemory() {
     printk(WHITE, BLACK, "Kernel Start:%#018lx, End:%#018lx, Data End:%#018lx, Break End:%#018lx\n", 
         memManageStruct.codeSt, memManageStruct.codeEd, memManageStruct.dataEd, memManageStruct.brkEd);
 
+    initBuddy();
+
     u64 to = virtToPhy(memManageStruct.endOfStruct) >> PAGE_2M_SHIFT;
     for (u64 i = 0; i < to; i++) 
         initPage(memManageStruct.pages + i, PAGE_PTable_Maped | PAGE_Kernel_Init | PAGE_Active | PAGE_Kernel);
@@ -184,4 +187,37 @@ void initMemory() {
     for (int i = 0; i < 10; i++)
         *(phyToVirt(globalCR3) + i) = 0ul;
     flushTLB();
+}
+
+Page *allocPages(int zoneSel, int num, u64 flags) {
+    int zoneSt = 0, zoneEd = 0;
+    switch (zoneSel) {
+        case ZONE_DMA: zoneSt = 0, zoneEd = dmaIndex; break;
+        case ZONE_NORMAL: zoneSt = dmaIndex, zoneEd = normalIndex; break;
+        case ZONE_UNMAPED: zoneSt = normalIndex, zoneEd = memManageStruct.zonesLength - 1; break;
+        default: 
+            printk(RED, BLACK, "allocPages: zoneSel error\n");
+            return NULL;
+    }
+    for (int i = zoneSt; i <= zoneEd; i++) {
+        if (memManageStruct.zones[i].pageFreeCnt < num) continue;
+        Zone *zone = memManageStruct.zones + i;
+        u64 st = zone->stAddr >> PAGE_2M_SHIFT, ed = zone->edAddr >> PAGE_2M_SHIFT,
+            len = zone->length >> PAGE_2M_SHIFT;
+        u64 tmp = 64 - st % 64;
+        for (int j = st; j <= ed; j += (j % 64 ? tmp : 64)) {
+            u64 *bits = memManageStruct.bitmap + (j >> 6),
+                shift = j % 64;
+            for (u64 k = shift; k < 64 - shift; k++) {
+                if (!(((*bits >> k) | (*(bits + 1) << (64 - k))) & (num == 64 ? 0xffffffffffffffff : ((1ul << num) - 1)))) {
+                    for (int l = 0; l < num; l++) {
+                        Page *page = zone->pages + (j + k - 1) + l;
+                        initPage(page, flags);
+                    }
+                    return zone->pages + j + k - 1;
+                }
+            }
+        }
+    }
+    return NULL;
 }

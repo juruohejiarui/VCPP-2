@@ -28,6 +28,10 @@ void Start_Kernel(void) {
 
     initInterrupt();
 
+    // Page *pages = allocPages(ZONE_NORMAL, 32, PAGE_Kernel | PAGE_PTable_Maped | PAGE_Active);
+    // for (int i = 0; i < 64; i++)
+    //     printk(WHITE, BLACK, "Page %d: %p attribute: %lld, phyAddr: %#018lx\n", i, pages + i, (pages + i)->attribute, (pages + i)->phyAddr);
+
     // i = 1 / 0;
     // i = *(unsigned char *)(0xffff80000aa00000);
     while (1) ;

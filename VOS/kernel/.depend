@@ -10,9 +10,10 @@ interrupt/interrupt.o: interrupt/interrupt.c interrupt/../includes/interrupt.h \
 interrupt/gate.o: interrupt/gate.c interrupt/../includes/gate.h
 log/printk.o: log/printk.c log/../includes/printk.h log/../includes/linkage.h \
  log/../includes/lib.h log/font.h
-memory/memory.o: memory/memory.c memory/../includes/memory.h \
+memory/glomm.o: memory/glomm.c memory/../includes/memory.h \
  memory/../includes/lib.h memory/../includes/UEFI.h \
- memory/../includes/printk.h memory/../includes/linkage.h
+ memory/../includes/printk.h memory/../includes/linkage.h memory/buddy.h
 memory/buddy.o: memory/buddy.c memory/buddy.h memory/../includes/memory.h \
- memory/../includes/lib.h
+ memory/../includes/lib.h memory/../includes/printk.h \
+ memory/../includes/linkage.h
 lib/lib.o: lib/lib.c lib/../includes/lib.h
