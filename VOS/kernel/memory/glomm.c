@@ -1,7 +1,6 @@
 #include "../includes/memory.h"
 #include "../includes/UEFI.h"
 #include "../includes/printk.h"
-#include "buddy.h"
 
 struct GlobalMemoryDescriptor memManageStruct = {{0}, 0};
 
@@ -29,6 +28,7 @@ inline u64 *getGDT() {
 }
 
 u64 initPage(Page *page, u64 flags) {
+    printk(GREEN, BLACK, "page %#018lx flag = %#018lx\n", page, flags);
     if (!page->attribute) {
         *(memManageStruct.bitmap + ((page->phyAddr >> PAGE_2M_SHIFT) >> 6)) ^= 1ul << ((page->phyAddr >> PAGE_2M_SHIFT) % 64);
         page->attribute = flags;
@@ -173,11 +173,13 @@ void initMemory() {
     printk(WHITE, BLACK, "Kernel Start:%#018lx, End:%#018lx, Data End:%#018lx, Break End:%#018lx\n", 
         memManageStruct.codeSt, memManageStruct.codeEd, memManageStruct.dataEd, memManageStruct.brkEd);
 
-    initBuddy();
+    // Buddy_initMemory();
 
-    u64 to = virtToPhy(memManageStruct.endOfStruct) >> PAGE_2M_SHIFT;
+    u64 to = PAGE_2M_ALIGN(virtToPhy(memManageStruct.endOfStruct)) >> PAGE_2M_SHIFT;
     for (u64 i = 0; i < to; i++) 
         initPage(memManageStruct.pages + i, PAGE_PTable_Maped | PAGE_Kernel_Init | PAGE_Active | PAGE_Kernel);
+
+    // Buddy_initStruct();
 
     u64 *globalCR3 = getGDT();
     printk(WHITE, BLACK, "Global CR3:%#018lx\n", globalCR3);
@@ -187,7 +189,7 @@ void initMemory() {
     for (int i = 0; i < 10; i++)
         *(phyToVirt(globalCR3) + i) = 0ul;
     flushTLB();
-}
+} 
 
 Page *allocPages(int zoneSel, int num, u64 flags) {
     int zoneSt = 0, zoneEd = 0;

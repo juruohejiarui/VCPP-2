@@ -195,9 +195,9 @@ int_msg:
 
 __PML4E:
 
-	.quad	0x102007
+	.quad	0x102007 /*0x0000000000000000 ~ 0x0000007FFFFFFFFF */
 	.fill	255,8,0
-	.quad	0x102007
+	.quad	0x102007 /*0xffff800000000000 ~ 0xffff807FFFFFFFFF */
 	.fill	255,8,0
 
 .org	0x2000
@@ -210,7 +210,7 @@ __PDPTE:
 .org	0x3000
 
 __PDE:
-
+	// the 7-th bit is 1, so the pointer of the page table item is to the physical address
 	.quad	0x000087	
 	.quad	0x200087
 	.quad	0x400087
@@ -224,7 +224,9 @@ __PDE:
 	.quad	0x1400087
 	.quad	0x1600087
 	.quad	0x1800087
-	.fill	499,8,0
+	.quad 	0x1a00087
+	.quad 	0x1c00087
+	.fill	497,8,0
 
 //=======	GDT_Table
 

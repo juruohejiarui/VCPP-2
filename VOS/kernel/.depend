@@ -12,8 +12,5 @@ log/printk.o: log/printk.c log/../includes/printk.h log/../includes/linkage.h \
  log/../includes/lib.h log/font.h
 memory/glomm.o: memory/glomm.c memory/../includes/memory.h \
  memory/../includes/lib.h memory/../includes/UEFI.h \
- memory/../includes/printk.h memory/../includes/linkage.h memory/buddy.h
-memory/buddy.o: memory/buddy.c memory/buddy.h memory/../includes/memory.h \
- memory/../includes/lib.h memory/../includes/printk.h \
- memory/../includes/linkage.h
+ memory/../includes/printk.h memory/../includes/linkage.h
 lib/lib.o: lib/lib.c lib/../includes/lib.h
