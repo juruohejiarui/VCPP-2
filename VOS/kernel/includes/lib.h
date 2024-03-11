@@ -52,8 +52,8 @@ typedef struct tmpList
 } List;
 
 void List_init(List *);
-void List_addBehind(List *, List *);
-void List_addBefore(List *, List *);
+void List_addBehind(List *prevEle, List *newEle);
+void List_addBefore(List *nxtEle, List *newEle);
 void List_del(List *);
 long List_isEmpty(List *);
 List * List_prev(List *);

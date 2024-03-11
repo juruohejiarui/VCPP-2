@@ -173,13 +173,14 @@ void initMemory() {
     printk(WHITE, BLACK, "Kernel Start:%#018lx, End:%#018lx, Data End:%#018lx, Break End:%#018lx\n", 
         memManageStruct.codeSt, memManageStruct.codeEd, memManageStruct.dataEd, memManageStruct.brkEd);
 
-    // Buddy_initMemory();
+    Buddy_initMemory();
 
     u64 to = PAGE_2M_ALIGN(virtToPhy(memManageStruct.endOfStruct)) >> PAGE_2M_SHIFT;
     for (u64 i = 0; i < to; i++) 
-        initPage(memManageStruct.pages + i, PAGE_PTable_Maped | PAGE_Kernel_Init | PAGE_Active | PAGE_Kernel);
+        initPage(memManageStruct.pages + i, PAGE_PTable_Maped | PAGE_Kernel_Init | PAGE_Active | PAGE_Kernel),
+        printk(YELLOW, BLACK, "Set page %d as the memory manage page\n", i);
 
-    // Buddy_initStruct();
+    Buddy_initStruct();
 
     u64 *globalCR3 = getGDT();
     printk(WHITE, BLACK, "Global CR3:%#018lx\n", globalCR3);

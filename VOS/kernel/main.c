@@ -28,6 +28,21 @@ void Start_Kernel(void) {
 
     initInterrupt();
 
+    Buddy_debug();
+
+    Page *page = Buddy_alloc(4);
+    // Buddy_debug();
+    Page *page2 = Buddy_alloc(5);
+    // Buddy_debug();
+    Page *page3 = Buddy_alloc(4);
+    // Buddy_debug();
+    Buddy_free(page2);
+    // Buddy_debug();
+    Buddy_free(page3);
+    Buddy_debug();
+    Buddy_free(page);
+    Buddy_debug();
+
     // Page *pages = allocPages(ZONE_NORMAL, 32, PAGE_Kernel | PAGE_PTable_Maped | PAGE_Active);
     // for (int i = 0; i < 64; i++)
     //     printk(WHITE, BLACK, "Page %d: %p attribute: %lld, phyAddr: %#018lx\n", i, pages + i, (pages + i)->attribute, (pages + i)->phyAddr);

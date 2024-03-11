@@ -9,6 +9,8 @@
 #define BLUE    0x000000ff
 #define GREEN   0x0000ff00
 #define BLACK   0x00000000
+#define ORANGE  0x00ff8000
+#define YELLOW  0x00ffff00
 
 struct Position {
     int XResolution, YResolution;

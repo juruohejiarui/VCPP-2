@@ -226,7 +226,16 @@ __PDE:
 	.quad	0x1800087
 	.quad 	0x1a00087
 	.quad 	0x1c00087
-	.fill	497,8,0
+	.quad 	0x1e00087
+	.quad 	0x2000087
+	.quad 	0x2200087
+	.quad 	0x2400087
+	.quad 	0x2600087
+	.quad 	0x2800087
+	.quad 	0x2a00087
+	.quad 	0x2c00087
+	.quad 	0x2e00087
+	.fill	488,8,0
 
 //=======	GDT_Table
 

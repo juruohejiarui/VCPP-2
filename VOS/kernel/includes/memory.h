@@ -29,9 +29,7 @@ typedef struct tmpE820 {
 } __attribute__((packed)) E820;
 
 
-extern struct tmpPage;
 typedef struct tmpPage Page;
-extern struct tmpZone;
 typedef struct tmpZone Zone;
 
 struct GlobalMemoryDescriptor {
@@ -81,6 +79,10 @@ struct GlobalMemoryDescriptor {
 // the flag for the page referred
 #define PAGE_Referred       (1 << 5)
 
+#define PAGE_GloAttribute   ((1 << 6) - 1)
+// the flag for the head page in buddy system
+#define PAGE_HeadPage       (1 << 6)
+
 #define MAX_NR_ZONES    10
 
 typedef struct { u64 pml4tData; } Pml4t;
@@ -89,10 +91,13 @@ typedef struct { u64 pdtData; } Pdt;
 typedef struct { u64 ptData; } Pt;
 
 struct tmpPage {
+    List listEle;
     // the zone that this page belongs to
     Zone *blgZone;
     // the address of the page that managed by this struct
     u64 phyAddr;
+    // the pos in buddy system.
+    u64 posId;
     u64 attribute;
     u64 refCnt;
     u64 age;
@@ -129,4 +134,23 @@ void initMemory();
 /// @param num the number of pages
 /// @param flags the flags of the pages
 Page *allocPages(int zoneSel, int num, u64 flags);
+
+#define BUDDY_MAX_ORDER 11
+
+#define pageOrder(pagePtr) ((u8 *)((u64)&pagePtr->attribute + sizeof(u64) - 1))
+struct BuddyStruct {
+    u64 *bitmap[BUDDY_MAX_ORDER + 1];
+    Page *freePageList[BUDDY_MAX_ORDER + 1];
+};
+
+void Buddy_initMemory();
+void Buddy_initStruct();
+void Buddy_debug();
+
+// alloc 2^K pages
+Page *Buddy_alloc(u64 log2Size);
+
+// free pages
+void Buddy_free(Page *pages);
+
 #endif

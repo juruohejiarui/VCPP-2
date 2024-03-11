@@ -28,12 +28,8 @@ inline void List_del(List *entry)
 	entry->prev->next = entry->next;
 }
 
-inline long List_isEmpty(List *entry)
-{
-	if (entry == entry->next && entry->prev == entry)
-		return 1;
-	else
-		return 0;
+inline long List_isEmpty(List *entry) {
+	return entry == entry->next && entry->prev == entry;
 }
 
 inline List *List_prev(List *entry)
