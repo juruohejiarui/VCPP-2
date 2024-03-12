@@ -27,17 +27,18 @@ typedef char s8;
 
 extern char _text;
 extern char _etext;
+extern char _data;
 extern char _edata;
+extern char _rodata;
+extern char _erodata;
+extern char _bss;
+extern char _ebss;
 extern char _end;
 
 
 #define NULL 0
 
-#define container_of(ptr,type,member)									\
-({																		\
-	typeof(((type *)0)->member) * p = (ptr);							\
-	(type *)((unsigned long)p - (unsigned long)&(((type *)0)->member));	\
-})
+#define container_of(ptr,type,member) ((type *)((u64)(ptr) - (u64)&(((type *)0)->member)))
 
 
 #define sti() 		__asm__ __volatile__ ("sti	\n\t":::"memory")
@@ -87,5 +88,13 @@ __asm__ __volatile__("cld;rep;insw;mfence;"::"d"(port),"D"(buffer),"c"(nr):"memo
 
 #define port_outsw(port,buffer,nr)	\
 __asm__ __volatile__("cld;rep;outsw;mfence;"::"d"(port),"S"(buffer),"c"(nr):"memory")
+
+typedef struct {
+	u64 r15, r14, r13, r12, r11, r10, r9, r8;
+	u64 rbx, rcx, rdx, rsi, rdi, rbp, ds, es, rax;
+	u64 func;
+	u64 error;
+	u64 rip, cs, rflags, rsp, ss;
+} __attribute__((packed)) PtraceRegs;
 
 #endif

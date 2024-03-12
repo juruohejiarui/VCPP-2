@@ -8,7 +8,7 @@ make
 if [ $? -ne 0 ];then
     echo -e "${RED_COLOR}==kernel make failed!Please checkout first!==${RESET}"
     cd ../
-fi
+else
     cd ../
     echo -e "${RED_COLOR}=== copying files ===${RESET}"
     sudo mount /dev/sdb1 /mnt/
@@ -16,4 +16,4 @@ fi
     sudo cp ./kernel/kernel.bin /mnt/
     sudo sync
     sudo umount /mnt/
-
+fi

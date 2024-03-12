@@ -44,7 +44,7 @@ ENTRY(_start)
 	mov	%ax,	%gs
 	mov	%ax,	%ss
 
-	movq	$0x7E00,	%rsp
+	movq	_stack_start(%rip),	%rsp
 
 //=======	load	cr3
 
@@ -66,7 +66,7 @@ entry64:
 	movq	%rax,	%es
 	movq	%rax,	%gs
 	movq	%rax,	%ss
-	movq	$0xffff800000007E00,	%rsp
+	movq	_stack_start(%rip),	%rsp
 setup_IDT:							
 	leaq	ignore_int(%rip),	%rdx
 	movq	$(0x08 << 16),	%rax
@@ -187,6 +187,9 @@ Loop:
 
 int_msg:
 	.asciz "Unknown interrupt or fault at RIP\n"
+
+ENTRY(_stack_start)
+	.quad initTaskUnion + 32768
 
 //=======	init page
 .align 8

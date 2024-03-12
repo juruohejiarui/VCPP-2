@@ -8,6 +8,8 @@ int dmaIndex = 0;
 int normalIndex = 0;    // below 1GB RAM, was mapped in pagetable
 int unmapIndex = 0;     // above 1GB RAM, was not mapped in pagetable
 
+u64 *globalCR3;
+
 // update the page table and flush the TLB (Translation Lookaside Buffer)
 #define flushTLB() \
 do { \
@@ -19,13 +21,6 @@ do { \
         : \
         : "memory"); \
 } while(0)
-
-// get the value of CR3 register
-inline u64 *getGDT() {
-    u64 *tmp;
-    __asm__ __volatile__("movq %%cr3, %0\n\t":"=r"(tmp): : "memory");
-    return tmp;
-}
 
 u64 initPage(Page *page, u64 flags) {
     printk(GREEN, BLACK, "page %#018lx flag = %#018lx\n", page, flags);
@@ -182,7 +177,7 @@ void initMemory() {
 
     Buddy_initStruct();
 
-    u64 *globalCR3 = getGDT();
+    globalCR3 = getCR3();
     printk(WHITE, BLACK, "Global CR3:%#018lx\n", globalCR3);
     printk(WHITE, BLACK, "*Global CR3:%#018lx\n", *phyToVirt(globalCR3) & (~0xff));
     printk(WHITE, BLACK, "**Global CR3:%#018lx\n", *phyToVirt(*phyToVirt(globalCR3) & (~0xff)) & (~0xff));

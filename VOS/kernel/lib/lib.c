@@ -34,18 +34,12 @@ inline long List_isEmpty(List *entry) {
 
 inline List *List_prev(List *entry)
 {
-	if (entry->prev != NULL)
-		return entry->prev;
-	else
-		return NULL;
+	return entry->prev;
 }
 
 inline List *List_next(List *entry)
 {
-	if (entry->next != NULL)
-		return entry->next;
-	else
-		return NULL;
+	return entry->next;
 }
 
 /*

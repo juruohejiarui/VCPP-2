@@ -73,7 +73,7 @@ void setIntrGate(unsigned int, unsigned char, void *);
 void setTrapGate(unsigned int, unsigned char, void *);
 void setSystemGate(unsigned int, unsigned char, void *);
 void setSystemIntrGate(unsigned int, unsigned char, void *);
-void setTSS64(unsigned long, unsigned long, unsigned long, unsigned long, unsigned long, unsigned long,
-			   unsigned long, unsigned long, unsigned long, unsigned long);
+void setTSS64(unsigned long rsp0,unsigned long rsp1,unsigned long rsp2,unsigned long ist1,unsigned long ist2,unsigned long ist3,
+unsigned long ist4,unsigned long ist5,unsigned long ist6,unsigned long ist7);
 
 #endif

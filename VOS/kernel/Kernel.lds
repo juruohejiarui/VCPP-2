@@ -35,6 +35,13 @@ SECTIONS
 		
 		_edata = .;
 	}
+	.rodata : {
+		_rodata = .;
+		*(.rodata)
+		_erodata = .;
+	}
+	. = ALIGN(32768);
+	.data.initTask : { *(.data.initTask) }
 	.bss :
 	{
 		_bss = .;

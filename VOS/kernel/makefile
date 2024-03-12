@@ -4,8 +4,9 @@ CC = gcc-9
 ASMFLAG = --64
 CFLAGS = -mcmodel=large -fno-builtin -fno-stack-protector -m64
 
-ASMOBJS = head.o entry.o
-SRCS = $(wildcard ./*.c) $(wildcard interrupt/*.c) $(wildcard log/*.c) $(wildcard includes/*.c) $(wildcard memory/*.c) $(wildcard lib/*.c)
+ASMOBJS = head.o entry.o regmanage.o
+SRCS = $(wildcard ./*.c) $(wildcard interrupt/*.c) $(wildcard log/*.c) $(wildcard includes/*.c) $(wildcard memory/*.c) $(wildcard lib/*.c) \
+	$(wildcard task/*.c)
 CXXOBJS = $(SRCS:.c=.o)
 
 ALLOBJS = $(ASMOBJS) $(CXXOBJS) 
@@ -16,7 +17,6 @@ all: system_tmp $(ALLOBJS)
 system_tmp: $(ALLOBJS)
 	ld -b elf64-x86-64 -z muldefs -o system_tmp $(ALLOBJS) -T Kernel.lds 
 
-
 .depend: $(SRCS)
 	rm -f .depend
 	$(foreach src, $(SRCS), \
@@ -25,12 +25,15 @@ system_tmp: $(ALLOBJS)
 	)
 include .depend
 
+regmanage.o: memory/regmanage.S includes/lib.h includes/memory.h includes/linkage.h
+	$(CC) -E memory/regmanage.S > regmanage.s
+	$(ASM) $(ASMFLAG) -o regmanage.o regmanage.s
 head.o: head.S
-	$(CXX) -E head.S > head.s
+	$(CC) -E head.S > head.s
 	$(ASM) $(ASMFLAG) -o head.o head.s
 entry.o: ./interrupt/entry.S
-	$(CXX) -E ./interrupt/entry.S > entry.s
+	$(CC) -E ./interrupt/entry.S > entry.s
 	$(ASM) $(ASMFLAG) -o entry.o entry.s
 
 clear:
-	rm -R ./*.s $(ALLOBJS) system_tmp system kernel.bin
+	rm -R ./*.s regmanage.s $(ALLOBJS) system_tmp system kernel.bin

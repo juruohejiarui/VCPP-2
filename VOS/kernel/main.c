@@ -4,10 +4,12 @@
 #include "includes/UEFI.h"
 #include "includes/memory.h"
 #include "includes/interrupt.h"
+#include "includes/task.h"
 
 struct KernelBootParameterInfo *bootParamInfo = (struct KernelBootParameterInfo *)0xffff800000060000;
 
 void Start_Kernel(void) {
+    memset((void *)&_bss, 0, (u64)&_ebss - (u64)&_bss);
     char ch = '\0', i;
     unsigned int fcol = 0x00ffffff, bcol = 0x000000;
     position.XResolution = bootParamInfo->graphicsInfo.HorizontalResolution;
@@ -20,28 +22,15 @@ void Start_Kernel(void) {
 
     
     loadTR(10);
-    setTSS64(   0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00,
-                0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00);
+    setTSS64(   _stack_start        , _stack_start      , _stack_start      , 0xffff800000007c00, 0xffff800000007c00,
+                0xffff800000007c00  , 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00);
     systemVectorInit();
 
     initMemory();
 
     initInterrupt();
 
-    Buddy_debug();
-
-    Page *page = Buddy_alloc(4);
-    // Buddy_debug();
-    Page *page2 = Buddy_alloc(5);
-    // Buddy_debug();
-    Page *page3 = Buddy_alloc(4);
-    // Buddy_debug();
-    Buddy_free(page2);
-    // Buddy_debug();
-    Buddy_free(page3);
-    Buddy_debug();
-    Buddy_free(page);
-    Buddy_debug();
+    Task_init();
 
     // Page *pages = allocPages(ZONE_NORMAL, 32, PAGE_Kernel | PAGE_PTable_Maped | PAGE_Active);
     // for (int i = 0; i < 64; i++)

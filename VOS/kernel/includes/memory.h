@@ -125,8 +125,6 @@ struct tmpZone {
 
 extern struct GlobalMemoryDescriptor memManageStruct;
 
-u64 *getGDT();
-
 void initMemory();
 
 /// @brief Get NUM consecutive pages
@@ -135,6 +133,10 @@ void initMemory();
 /// @param flags the flags of the pages
 Page *allocPages(int zoneSel, int num, u64 flags);
 
+u64 *getCR3();
+extern u64 *globalCR3;
+
+#pragma region Buddy System
 #define BUDDY_MAX_ORDER 11
 
 #define pageOrder(pagePtr) ((u8 *)((u64)&pagePtr->attribute + sizeof(u64) - 1))
@@ -152,5 +154,24 @@ Page *Buddy_alloc(u64 log2Size);
 
 // free pages
 void Buddy_free(Page *pages);
+#pragma endregion
 
+#pragma region Slab System
+typedef struct {
+    List listEle;
+    Page *page;
+    u64 usingCnt, freeCnt;
+    void *virtAddr;
+    u64 colSize, colCnt;
+    u64 *colMap;
+} Slab;
+
+typedef struct {
+    u64 size, totUsing, totFree;
+    Slab *cachePool;
+    Slab *cacheDMAPool;
+    void (*constructer)(void *virtAddr, u64 arg);
+    void (*destructor)(void *virtAddr, u64 arg);
+} SlabCache;
+#pragma endregion
 #endif
