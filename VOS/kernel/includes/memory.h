@@ -150,7 +150,7 @@ void Buddy_initStruct();
 void Buddy_debug();
 
 // alloc 2^K pages
-Page *Buddy_alloc(u64 log2Size);
+Page *Buddy_alloc(u64 log2Size, u64 attribute);
 
 // free pages
 void Buddy_free(Page *pages);

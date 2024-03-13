@@ -62,7 +62,7 @@ void addPage2FreeList(Page *page, int order) {
             *pageOrder(father) = ord + 1;
             father->posId = page->posId >> 1;
             page = father;
-        }
+        } 
     }
 }
 
@@ -101,8 +101,9 @@ void Buddy_initStruct() {
     }
 }
 
-Page *Buddy_alloc(u64 log2Size) {
+Page *Buddy_alloc(u64 log2Size, u64 attribute) {
     if (log2Size > BUDDY_MAX_ORDER) return NULL;
+    Page *headPage = NULL;
     for (int i = log2Size; i <= BUDDY_MAX_ORDER; i++) {
         if (List_isEmpty((List *)buddyStruct.freePageList[i]))
             continue;
@@ -118,9 +119,12 @@ Page *Buddy_alloc(u64 log2Size) {
             headPage->posId = leftPosId(headPage->posId);
             (*pageOrder(headPage))--;
         }
-        return headPage;
+        break;
     }
-    return NULL;
+    if (headPage != NULL) {
+
+    }
+    return headPage;
 }
 
 void Buddy_free(Page *page) {

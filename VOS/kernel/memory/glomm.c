@@ -181,9 +181,7 @@ void initMemory() {
     printk(WHITE, BLACK, "Global CR3:%#018lx\n", globalCR3);
     printk(WHITE, BLACK, "*Global CR3:%#018lx\n", *phyToVirt(globalCR3) & (~0xff));
     printk(WHITE, BLACK, "**Global CR3:%#018lx\n", *phyToVirt(*phyToVirt(globalCR3) & (~0xff)) & (~0xff));
-
-    for (int i = 0; i < 10; i++)
-        *(phyToVirt(globalCR3) + i) = 0ul;
+    
     flushTLB();
 } 
 

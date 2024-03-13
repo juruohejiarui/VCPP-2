@@ -1,8 +1,8 @@
 ASM = as
-CC = gcc-9
+CC = gcc-4.7
 
 ASMFLAG = --64
-CFLAGS = -mcmodel=large -fno-builtin -fno-stack-protector -m64
+CFLAGS = -mcmodel=large -fno-builtin -fno-stack-protector -m64 -std=c99
 
 ASMOBJS = head.o entry.o regmanage.o
 SRCS = $(wildcard ./*.c) $(wildcard interrupt/*.c) $(wildcard log/*.c) $(wildcard includes/*.c) $(wildcard memory/*.c) $(wildcard lib/*.c) \
@@ -36,4 +36,4 @@ entry.o: ./interrupt/entry.S
 	$(ASM) $(ASMFLAG) -o entry.o entry.s
 
 clear:
-	rm -R ./*.s regmanage.s $(ALLOBJS) system_tmp system kernel.bin
+	rm -R ./*.s $(ALLOBJS) system_tmp system kernel.bin

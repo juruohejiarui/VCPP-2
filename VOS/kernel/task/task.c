@@ -4,6 +4,7 @@
 #include "../includes/printk.h"
 
 extern void ret_from_intr();
+extern void ret_system_call();
 
 #define INIT_TASK(tsk) { \
     .state      = TASK_STATE_UNINTERRUPTIBLE, \
@@ -85,9 +86,39 @@ inline void __switch_to(TaskStruct *prev, TaskStruct *next) {
     printk(WHITE, BLACK, "next->thread->rsp0 : %p\n", next->thread->rsp0);
 }
 
+void userLevelFunction() {
+    printk(RED, BLACK, "user level function task is running\n");
+    while (1);
+}
+
+u64 doExecve(PtraceRegs *regs) {
+    regs->rdx = 0x800000;
+    regs->rcx = 0xa00000;
+    regs->rax = 1;
+    regs->ds = regs->es = 0;
+    printk(RED, BLACK, "doExecve task is running\n");
+    memcpy(userLevelFunction, (void *)0x800000, 1024);
+    return 0;
+}
+
 u64 init(u64 arg) {
     printk(RED, WHITE, "init task is running, arg = %#018lx\n", arg);
-    while (1);
+
+    PtraceRegs *regs;
+    
+    current->thread->rip = (u64)ret_system_call;
+    current->thread->rsp = (u64)current + STACK_SIZE - sizeof(PtraceRegs);
+    regs = (PtraceRegs *)current->thread->rsp;
+
+    __asm__ __volatile__(
+        "movq %1, %%rsp \n\t"
+        "pushq %2 \n\t"
+        "jmp doExecve \n\t"
+        :
+        : "D"(regs), "m"(current->thread->rsp), "m"(current->thread->rip)
+        : "memory"
+    );
+    return 1;
 }
 
 u64 doExit(u64 code) {
@@ -130,7 +161,7 @@ u64 doFork(PtraceRegs *regs, u64 flag, u64 stkSt, u64 stkSize) {
     Page *p = NULL;
 
     printk(RED, BLACK, "before allocPages bitmap: %p\n", *memManageStruct.bitmap);
-
+    // page table update program have not been finish, so...
     p = allocPages(ZONE_NORMAL, 1, PAGE_PTable_Maped | PAGE_Kernel | PAGE_Active);
 
     printk(RED, BLACK, "after allocPages bitmap: %p\n", *memManageStruct.bitmap);
@@ -154,7 +185,7 @@ u64 doFork(PtraceRegs *regs, u64 flag, u64 stkSt, u64 stkSize) {
     thread->rsp = (u64)task + STACK_SIZE - sizeof(PtraceRegs);
 
     if (!(task->flags & TASK_FLAG_KTHREAD))
-        thread->rip = regs->rip = (u64)ret_from_intr;
+        thread->rip = regs->rip = (u64)ret_system_call;
     
     task->state = TASK_STATE_RUNNING;
 
@@ -190,6 +221,8 @@ void Task_init() {
     initMemManageStruct.brkSt = 0;
     initMemManageStruct.brkEd = memManageStruct.brkEd;
     initMemManageStruct.stkSt = _stack_start;
+
+    wrmsr(0x174, SEGMENT_KERNEL_CS);
 
     setTSS64(initThread.rsp0, initTSS[0].rsp1, initTSS[0].rsp2, 
         initTSS[0].ist1, initTSS[0].ist2, initTSS[0].ist3, initTSS[0].ist4, initTSS[0].ist5, initTSS[0].ist6, initTSS[0].ist7);
