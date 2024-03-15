@@ -22,8 +22,9 @@ void Start_Kernel(void) {
 
     
     loadTR(10);
-    setTSS64(   _stack_start        , _stack_start      , _stack_start      , 0xffff800000007c00, 0xffff800000007c00,
-                0xffff800000007c00  , 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00);
+    setTSS64(_stack_start, _stack_start, _stack_start, 
+        0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00);
+
     systemVectorInit();
 
     initMemory();

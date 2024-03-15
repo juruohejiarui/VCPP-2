@@ -66,7 +66,8 @@ entry64:
 	movq	%rax,	%es
 	movq	%rax,	%gs
 	movq	%rax,	%ss
-	movq	_stack_start(%rip),	%rsp
+	movq	_stack_start(%rip),	%rsp		/* rsp address */
+
 setup_IDT:							
 	leaq	ignore_int(%rip),	%rdx
 	movq	$(0x08 << 16),	%rax
@@ -189,7 +190,9 @@ int_msg:
 	.asciz "Unknown interrupt or fault at RIP\n"
 
 ENTRY(_stack_start)
-	.quad initTaskUnion + 32768
+	.quad	initTaskUnion + 32768
+
+
 
 //=======	init page
 .align 8

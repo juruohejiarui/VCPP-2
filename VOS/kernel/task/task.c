@@ -37,7 +37,7 @@ extern void ret_system_call();
 }
 
 union TaskUnion initTaskUnion __attribute__((__section__(".data.initTask"))) = { INIT_TASK(initTaskUnion.task) };
-TaskStruct *initTask[NR_CPUS] = {&initTaskUnion.task};
+TaskStruct *initTask[NR_CPUS] = {&initTaskUnion.task, 0};
 TaskMemManageStruct initMemManageStruct = {0};
 ThreadStruct initThread = {
     .rsp0   = (u64)(initTaskUnion.stack + STACK_SIZE / sizeof(u64)),
@@ -87,7 +87,7 @@ inline void __switch_to(TaskStruct *prev, TaskStruct *next) {
 }
 
 void userLevelFunction() {
-    printk(RED, BLACK, "user level function task is running\n");
+    printk(RED, BLACK, "user level function task is running...\n");
     while (1);
 }
 
@@ -95,21 +95,22 @@ u64 doExecve(PtraceRegs *regs) {
     regs->rdx = 0x800000;
     regs->rcx = 0xa00000;
     regs->rax = 1;
-    regs->ds = regs->es = 0;
+    regs->ds = 0;
+    regs->es = 0;
     printk(RED, BLACK, "doExecve task is running\n");
     memcpy(userLevelFunction, (void *)0x800000, 1024);
     return 0;
 }
 
 u64 init(u64 arg) {
-    printk(RED, WHITE, "init task is running, arg = %#018lx\n", arg);
+    printk(BLACK, WHITE, "init task is running, arg = %#018lx\n", arg);
 
     PtraceRegs *regs;
     
     current->thread->rip = (u64)ret_system_call;
     current->thread->rsp = (u64)current + STACK_SIZE - sizeof(PtraceRegs);
     regs = (PtraceRegs *)current->thread->rsp;
-
+    printk(ORANGE, BLACK, "rip of user level function : %#018lx\n", current->thread->rip);
     __asm__ __volatile__(
         "movq %1, %%rsp \n\t"
         "pushq %2 \n\t"
@@ -159,15 +160,10 @@ u64 doFork(PtraceRegs *regs, u64 flag, u64 stkSt, u64 stkSize) {
     TaskStruct *task = NULL;
     ThreadStruct *thread = NULL;
     Page *p = NULL;
-
-    printk(RED, BLACK, "before allocPages bitmap: %p\n", *memManageStruct.bitmap);
     // page table update program have not been finish, so...
     p = allocPages(ZONE_NORMAL, 1, PAGE_PTable_Maped | PAGE_Kernel | PAGE_Active);
-
-    printk(RED, BLACK, "after allocPages bitmap: %p\n", *memManageStruct.bitmap);
     
     task = (TaskStruct *)phyToVirt(p->phyAddr);
-    printk(RED, BLACK, "task: %p current: %p\n", task, current);
 
     memset(task, 0, sizeof(*task));
     *task = *current;
@@ -209,6 +205,7 @@ int kernelThread(u64 (*func)(u64), u64 arg, u64 flag) {
 }
 
 void Task_init() {
+    printk(RED, BLACK, "task init....\n");
     TaskStruct *p = NULL;
     initMemManageStruct.pgd = (Pml4t *)globalCR3;
 
@@ -230,15 +227,9 @@ void Task_init() {
     initTSS[0].rsp0 = initThread.rsp0;
 
     List_init(&initTaskUnion.task.list);
-    printk(WHITE, BLACK, "initTaskUnion.task.list = %p, prev = %p, next = %p\n",
-        &initTaskUnion.task.list,
-        List_prev(&initTaskUnion.task.list),
-        List_next(&initTaskUnion.task.list));
     kernelThread(init, 10, TASK_CLONE_FS | TASK_CLONE_FILES | TASK_CLONE_SIGNAL);
     initTaskUnion.task.state = TASK_STATE_RUNNING;
-    printk(WHITE, BLACK, "current = %p next = %p\n", current, List_next(&current->list));
     p = container_of(List_next(&current->list), TaskStruct, list);
-    printk(WHITE, BLACK, "before switch to %p\n", p);
     switch_to(current, p);
 }
 

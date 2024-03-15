@@ -23,7 +23,7 @@
 
 #define TASK_FLAG_KTHREAD (1 << 0)
 
-#define NR_CPUS 1
+#define NR_CPUS 8
 
 extern u64 _stack_start;
 
@@ -53,7 +53,7 @@ typedef struct tmpTaskStruct {
     List list;
     volatile long state;
     u64 flags;
-    TaskMemManageStruct memStruct;
+    TaskMemManageStruct *memStruct;
     ThreadStruct *thread;
 
     /*user: 0x0->0x0000,7fff,ffff,ffff, kernel: 0xffff,8000,0000,0000->0xffff,ffff,ffff,ffff*/
@@ -85,9 +85,12 @@ typedef struct {
     u16 iomapBaseAddr;
 } __attribute__((packed)) TSS;
 
-extern union TaskUnion initTaskUnion __attribute__((__section__(".data.init_task")));
+extern union TaskUnion initTaskUnion;
+extern TaskStruct *initTask[NR_CPUS];
 extern TaskMemManageStruct initMemManageStruct;
 extern ThreadStruct initThread;
+
+void __switch_to(TaskStruct *prev, TaskStruct *next);
 
 TaskStruct *getCurrentTask();
 #define current getCurrentTask()

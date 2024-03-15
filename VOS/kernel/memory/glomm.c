@@ -170,17 +170,17 @@ void initMemory() {
 
     Buddy_initMemory();
 
-    u64 to = PAGE_2M_ALIGN(virtToPhy(memManageStruct.endOfStruct)) >> PAGE_2M_SHIFT;
+    u64 to = virtToPhy(memManageStruct.endOfStruct) >> PAGE_2M_SHIFT;
     for (u64 i = 0; i < to; i++) 
         initPage(memManageStruct.pages + i, PAGE_PTable_Maped | PAGE_Kernel_Init | PAGE_Active | PAGE_Kernel),
         printk(YELLOW, BLACK, "Set page %d as the memory manage page\n", i);
 
     Buddy_initStruct();
 
-    globalCR3 = getCR3();
-    printk(WHITE, BLACK, "Global CR3:%#018lx\n", globalCR3);
-    printk(WHITE, BLACK, "*Global CR3:%#018lx\n", *phyToVirt(globalCR3) & (~0xff));
-    printk(WHITE, BLACK, "**Global CR3:%#018lx\n", *phyToVirt(*phyToVirt(globalCR3) & (~0xff)) & (~0xff));
+    // globalCR3 = getCR3();
+    // printk(WHITE, BLACK, "Global CR3:%#018lx\n", globalCR3);
+    // printk(WHITE, BLACK, "*Global CR3:%#018lx\n", *phyToVirt(globalCR3) & (~0xff));
+    // printk(WHITE, BLACK, "**Global CR3:%#018lx\n", *phyToVirt(*phyToVirt(globalCR3) & (~0xff)) & (~0xff));
     
     flushTLB();
 } 

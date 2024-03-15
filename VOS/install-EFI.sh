@@ -16,4 +16,6 @@ else
     sudo cp ./kernel/kernel.bin /mnt/
     sudo sync
     sudo umount /mnt/
+
+    # sudo vmware
 fi
