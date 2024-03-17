@@ -18,7 +18,6 @@ int main(int argc, char **argv) {
         // addRely("basic.vobj");
         // compile(1, "main.vobj");
         // addRely("./basic.vobj");
-        compile(0, "console.vobj");
         addSource("./case6/algorithm.vcpp");
         addSource("./case6/array.vcpp");
         addSource("./case6/basic.vcpp");

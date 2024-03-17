@@ -13,11 +13,15 @@ func calcC(n : int, m : int) : void {
 }
 
 class ListNode : object {
-    public var : int data;
-    public var : ListNode next;
+    private var : int data;
+    private var : ListNode next;
 
     public func @constructer(data : int, next : ListNode) : void {
         @this.data = data;
+        @this.next = next;
+    }
+
+    public func setNext(next : ListNode) : void {
         @this.next = next;
     }
 }
@@ -26,6 +30,6 @@ func testCirRef(n : int) : void {
     System::Algorithm::initRand(System::getTime());
     var nodes = $ListNode[n];
     for (var i = 0; i < n; i++) nodes[i] = $ListNode(i, 0 as ListNode);
-    for (var i = 0; i < n; i++) nodes[i].next = nodes[System::Algorithm::getRand() % n];
+    for (var i = 0; i < n; i++) nodes[i].setNext(nodes[System::Algorithm::getRand() % n]);
     nodes = 0 as ListNode[];
 }
