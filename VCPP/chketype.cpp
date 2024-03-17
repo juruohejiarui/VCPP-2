@@ -270,7 +270,7 @@ ETChkRes chkEType_GetMem(OperatorNode *node) {
                 funcCallMap[mem] = clInfo = std::make_tuple(func, std::get<1>(chkResF), std::get<2>(chkResF));
                 break;
             }
-            if (tgFunc == nullptr) {
+            if (tgFunc == nullptr && !(tgFunc->visibility == IdenVisibility::Public || isThis)) {
                 funcCallMap[mem] = std::make_tuple(nullptr, ExprType(), GTableData());
                 printError(mem->getToken().lineId, "can not find function that satisfies the param list");
             }

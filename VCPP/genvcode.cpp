@@ -54,6 +54,7 @@ bool buildVCode(SyntaxNode *node);
 bool buildExpression(ExpressionNode *node);
 
 bool writePushArg(IdentifierNode *idenNode, uint64 &argCount) {
+    if (idenNode == nullptr) return false;
     bool res = true;
     argCount = 0;
     for (size_t i = 0; i < idenNode->getParamCount(); i++)
@@ -62,6 +63,7 @@ bool writePushArg(IdentifierNode *idenNode, uint64 &argCount) {
             res &= buildExpression(idenNode->getParam(i));
         }
     auto fInfo = std::get<0>(getFuncCallInfo(idenNode));
+    if (fInfo == nullptr) return false;
     for (; argCount < fInfo->params.size(); argCount++)
         writeVCode(Command::i64_push, fInfo->defaultVals[argCount - (fInfo->params.size() - fInfo->defaultVals.size())]->getToken().data);
     return res;
