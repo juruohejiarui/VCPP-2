@@ -17,7 +17,9 @@ memory/buddy.o: memory/buddy.c memory/../includes/memory.h \
  memory/../includes/lib.h memory/../includes/printk.h \
  memory/../includes/linkage.h
 lib/lib.o: lib/lib.c lib/../includes/lib.h
+task/usrlvl.o: task/usrlvl.c task/usrlvl.h task/../includes/lib.h \
+ task/../includes/printk.h task/../includes/linkage.h
 task/task.o: task/task.c task/../includes/task.h task/../includes/lib.h \
  task/../includes/memory.h task/../includes/gate.h \
  task/../includes/memory.h task/../includes/printk.h \
- task/../includes/linkage.h
+ task/../includes/linkage.h task/usrlvl.h

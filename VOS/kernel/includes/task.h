@@ -100,4 +100,9 @@ TaskStruct *getCurrentTask();
 
 void Task_init();
 
+#define SYSTEM_CALL_TABLE_SIZE 10
+
+typedef u64 (*SystemCall)(PtraceRegs *);
+extern SystemCall syscallTable[SYSTEM_CALL_TABLE_SIZE];
+
 #endif

@@ -3,8 +3,11 @@
 #include "../includes/memory.h"
 #include "../includes/printk.h"
 
+#include "usrlvl.h"
+
 extern void ret_from_intr();
 extern void ret_system_call();
+extern void system_call();
 
 #define INIT_TASK(tsk) { \
     .state      = TASK_STATE_UNINTERRUPTIBLE, \
@@ -86,10 +89,6 @@ inline void __switch_to(TaskStruct *prev, TaskStruct *next) {
     printk(WHITE, BLACK, "next->thread->rsp0 : %p\n", next->thread->rsp0);
 }
 
-void userLevelFunction() {
-    printk(RED, BLACK, "user level function task is running...\n");
-    while (1);
-}
 
 u64 doExecve(PtraceRegs *regs) {
     regs->rdx = 0x800000;
@@ -220,6 +219,8 @@ void Task_init() {
     initMemManageStruct.stkSt = _stack_start;
 
     wrmsr(0x174, SEGMENT_KERNEL_CS);
+    wrmsr(0x175, current->thread->rsp0);
+    wrmsr(0x176, (u64)system_call);
 
     setTSS64(initThread.rsp0, initTSS[0].rsp1, initTSS[0].rsp2, 
         initTSS[0].ist1, initTSS[0].ist2, initTSS[0].ist3, initTSS[0].ist4, initTSS[0].ist5, initTSS[0].ist6, initTSS[0].ist7);
@@ -241,3 +242,24 @@ inline TaskStruct *getCurrentTask() {
     __asm__ __volatile__("andq %%rsp, %0 \n\t" : "=r" (current) : "0" (~32767UL));
     return current;
 }
+
+u64 SystemCall_none(void) {
+	printk(RED, BLACK, "no_system_call is calling\n");
+	return (u64)-1;
+}
+
+u64 SystemCall_printf(PtraceRegs *regs) {
+    printk(BLACK, WHITE, (const char *)regs->rdi);
+    return 0;
+}
+
+u64 systemCallFunction(PtraceRegs *regs) {
+    return syscallTable[regs->rax](regs);
+}
+
+SystemCall syscallTable[SYSTEM_CALL_TABLE_SIZE] = { 
+    [0] = SystemCall_none,
+    [1] = SystemCall_printf,
+    [2 ... SYSTEM_CALL_TABLE_SIZE - 1] = NULL
+};
+
