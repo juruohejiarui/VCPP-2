@@ -5,6 +5,7 @@
 #include "includes/memory.h"
 #include "includes/interrupt.h"
 #include "includes/task.h"
+#include "includes/cpu.h"
 
 struct KernelBootParameterInfo *bootParamInfo = (struct KernelBootParameterInfo *)0xffff800000060000;
 
@@ -12,6 +13,8 @@ void Start_Kernel(void) {
     memset((void *)&_bss, 0, (u64)&_ebss - (u64)&_bss);
     char ch = '\0', i;
     unsigned int fcol = 0x00ffffff, bcol = 0x000000;
+    // position.XResolution = 3840;
+    // position.YResolution = 2560;
     position.XResolution = bootParamInfo->graphicsInfo.HorizontalResolution;
 	position.YResolution = bootParamInfo->graphicsInfo.VerticalResolution;
     position.XCharSize = 8;
@@ -19,13 +22,14 @@ void Start_Kernel(void) {
 
     position.XPosition = position.YPosition = 0;
     position.FBAddr = (unsigned int *)0xffff800003000000;
-
     
     loadTR(10);
     setTSS64(_stack_start, _stack_start, _stack_start, 
         0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00);
 
     systemVectorInit();
+
+    initCPU();
 
     initMemory();
 

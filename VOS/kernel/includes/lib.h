@@ -97,4 +97,6 @@ typedef struct {
 	u64 rip, cs, rflags, rsp, ss;
 } __attribute__((packed)) PtraceRegs;
 
+#define alignTo(orgVal, bs) (((orgVal) + (bs) - 1) / (bs))
+
 #endif
