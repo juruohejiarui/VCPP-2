@@ -7,6 +7,8 @@
 #include "includes/task.h"
 #include "includes/cpu.h"
 
+#include "memory/memoryinner.h"
+
 struct KernelBootParameterInfo *bootParamInfo = (struct KernelBootParameterInfo *)0xffff800000060000;
 
 void Start_Kernel(void) {
@@ -32,6 +34,11 @@ void Start_Kernel(void) {
     initCPU();
 
     initMemory();
+
+    Page *page = Buddy_alloc(0, 0);
+    Buddy_debug();
+    PageTable_initPageTable(page->phyAddr, (u64 *)0x0000000000000000);
+    setCR3(page->phyAddr + sizeof(u64));
 
     initInterrupt();
 

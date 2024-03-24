@@ -1,4 +1,4 @@
-#include "../includes/memory.h"
+#include "memoryinner.h"
 #include "../includes/printk.h"
 
 struct BuddyStruct buddyStruct;
@@ -28,13 +28,13 @@ int getBit(Page *page, int ord) {
 // this action will not the bit of the page
 void delFreePage(Page *page) {
     int ord = *pageOrder(page);
-    if (page->attribute & PAGE_HeadPage) {
-        page->attribute ^= PAGE_HeadPage;
+    if (page->attribute & PAGE_FLAG_HeadPage) {
+        page->attribute ^= PAGE_FLAG_HeadPage;
         // delete this page from the free page list
         List_del((List *)page);
         page->listEle.next = page->listEle.prev = NULL;
         if (!List_isEmpty((List *)buddyStruct.freePageList[ord]))
-            ((Page *)buddyStruct.freePageList[ord]->listEle.next)->attribute |= PAGE_HeadPage;
+            ((Page *)buddyStruct.freePageList[ord]->listEle.next)->attribute |= PAGE_FLAG_HeadPage;
     } else {
         List_del((List *)page);
         page->listEle.next = page->listEle.prev = NULL;
@@ -44,6 +44,7 @@ void delFreePage(Page *page) {
 // Add a page into freeList[order] and try to merge the connected pages into a bigger block. 
 // The posId of this page should be set before calling this function.
 void addPage2FreeList(Page *page, int order) {
+    page->attribute = PAGE_FLAG_HeadPage;
     for (int ord = order; ord <= BUDDY_MAX_ORDER; ord++) {
         // is the right page
         revBit(page, ord);
@@ -51,8 +52,8 @@ void addPage2FreeList(Page *page, int order) {
         if (getBit(page, ord) || page->posId == 1) {
             // printk(ORANGE, BLACK, "add page %p to order %d\n", page, ord);
             if (!List_isEmpty((List *)buddyStruct.freePageList[ord]))
-                ((Page *)buddyStruct.freePageList[ord]->listEle.next)->attribute ^= PAGE_HeadPage;
-            page->attribute |= PAGE_HeadPage;
+                ((Page *)buddyStruct.freePageList[ord]->listEle.next)->attribute ^= PAGE_FLAG_HeadPage;
+            page->attribute |= PAGE_FLAG_HeadPage;
             List_addBehind((List *)buddyStruct.freePageList[ord], (List *)page);
             *pageOrder(page) = ord;
             break;
@@ -85,15 +86,15 @@ void Buddy_initStruct() {
         Zone *zone = memManageStruct.zones + zId;
         u64 resLen = zone->pagesLength, pos = 0;
         // ignore the pages that used to store the data of global memory struct and buddy struct.
-        while (pos < zone->pagesLength && (zone->pages[pos].attribute & PAGE_GloAttribute)) pos++, resLen--;
+        while (pos < zone->pagesLength && (zone->pages[pos].attribute & PAGE_FLAG_GloAttribute)) pos++, resLen--;
         for (int i = BUDDY_MAX_ORDER; i >= 0; i--) {
             while ((1ul << i) <= resLen) {
                 Page *headPage = zone->pages + pos;
-                headPage->attribute |= PAGE_HeadPage;
+                headPage->attribute |= PAGE_FLAG_HeadPage;
                 headPage->posId = 1;
                 *pageOrder(headPage) = i;
                 if (!List_isEmpty((List *)buddyStruct.freePageList[i]))
-                    ((Page *)buddyStruct.freePageList[i]->listEle.next)->attribute ^= PAGE_HeadPage;
+                    ((Page *)buddyStruct.freePageList[i]->listEle.next)->attribute ^= PAGE_FLAG_HeadPage;
                 List_addBehind((List *)buddyStruct.freePageList[i], (List *)headPage);
                 resLen -= (1ul << i), pos += (1ul << i);
             }
@@ -105,9 +106,12 @@ Page *Buddy_alloc(u64 log2Size, u64 attribute) {
     if (log2Size > BUDDY_MAX_ORDER) return NULL;
     Page *headPage = NULL;
     for (int i = log2Size; i <= BUDDY_MAX_ORDER; i++) {
-        if (List_isEmpty((List *)buddyStruct.freePageList[i]))
+        if (List_isEmpty((List *)buddyStruct.freePageList[i])) {
+            printk(RED, BLACK, "i = %d, empty\n", i);
             continue;
-        Page *headPage = (Page *)buddyStruct.freePageList[i]->listEle.next;
+        }
+        headPage = (Page *)buddyStruct.freePageList[i]->listEle.next;
+        printk(RED, BLACK, "headPage = %#018x\n", buddyStruct.freePageList[i]->listEle.next);
         delFreePage(headPage);
         revBit(headPage, i);
         // seperate it into two part
@@ -121,9 +125,8 @@ Page *Buddy_alloc(u64 log2Size, u64 attribute) {
         }
         break;
     }
-    if (headPage != NULL) {
-
-    }
+    if (headPage != NULL)
+        headPage->attribute = attribute | PAGE_FLAG_HeadPage;
     return headPage;
 }
 

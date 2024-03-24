@@ -1,4 +1,4 @@
-#include "../includes/memory.h"
+#include "memoryinner.h"
 #include "../includes/UEFI.h"
 #include "../includes/printk.h"
 
@@ -7,20 +7,6 @@ struct GlobalMemoryDescriptor memManageStruct = {{0}, 0};
 int dmaIndex = 0;
 int normalIndex = 0;    // below 1GB RAM, was mapped in pagetable
 int unmapIndex = 0;     // above 1GB RAM, was not mapped in pagetable
-
-u64 *globalCR3;
-
-// update the page table and flush the TLB (Translation Lookaside Buffer)
-#define flushTLB() \
-do { \
-    u64 tmpreg; \
-    __asm__ __volatile__( \
-        "movq %%cr3, %0\n\t" \
-        "movq %0, %%cr3\n\t" \
-        :"=r"(tmpreg) \
-        : \
-        : "memory"); \
-} while(0)
 
 u64 initPage(Page *page, u64 flags) {
     printk(GREEN, BLACK, "page %#018lx flag = %#018lx\n", page, flags);
@@ -31,7 +17,7 @@ u64 initPage(Page *page, u64 flags) {
         page->blgZone->pageFreeCnt--;
         page->blgZone->pageUsingCnt++;
         page->blgZone->totPageLink++;
-    } else if ((page->attribute || flags) & (PAGE_Referred || PAGE_Shared_K2U)) {
+    } else if ((page->attribute || flags) & (PAGE_FLAG_Referred || PAGE_FLAG_Shared_K2U)) {
         page->attribute |= flags;
         page->refCnt++;
         page->blgZone->totPageLink++;
@@ -168,14 +154,18 @@ void initMemory() {
     printk(WHITE, BLACK, "Kernel Start:%#018lx, End:%#018lx, Data End:%#018lx, Break End:%#018lx\n", 
         memManageStruct.codeSt, memManageStruct.codeEd, memManageStruct.dataEd, memManageStruct.brkEd);
 
+    // allocate memory for memory management
     Buddy_initMemory();
+    PageTable_init();
 
-    u64 to = virtToPhy(memManageStruct.endOfStruct) >> PAGE_2M_SHIFT;
+    u64 to = virtToPhy(PAGE_2M_ALIGN(memManageStruct.endOfStruct)) >> PAGE_2M_SHIFT;
+    printk(RED, BLACK, "endOfStruct = %#018lx\t, to = %ld\n", memManageStruct.endOfStruct, to);
     for (u64 i = 0; i < to; i++) 
-        initPage(memManageStruct.pages + i, PAGE_PTable_Maped | PAGE_Kernel_Init | PAGE_Active | PAGE_Kernel),
+        initPage(memManageStruct.pages + i, PAGE_FLAG_PTable_Maped | PAGE_FLAG_Kernel_Init | PAGE_FLAG_Active | PAGE_FLAG_Kernel),
         printk(YELLOW, BLACK, "Set page %d as the memory manage page\n", i);
 
     Buddy_initStruct();
+    Buddy_debug();
 
     // globalCR3 = getCR3();
     // printk(WHITE, BLACK, "Global CR3:%#018lx\n", globalCR3);

@@ -4,7 +4,7 @@ CC = gcc-4.7
 ASMFLAG = --64
 CFLAGS = -mcmodel=large -fno-builtin -fno-stack-protector -m64 -std=c99
 
-ASMOBJS = head.o entry.o regmanage.o
+ASMOBJS = head.o entry.o pgtbl.o
 SRCS = $(wildcard ./*.c) $(wildcard interrupt/*.c) $(wildcard log/*.c) $(wildcard includes/*.c) $(wildcard memory/*.c) $(wildcard lib/*.c) \
 	$(wildcard task/*.c) $(wildcard hardware/*.c)
 CXXOBJS = $(SRCS:.c=.o)
@@ -25,9 +25,9 @@ system_tmp: $(ALLOBJS)
 	)
 include .depend
 
-regmanage.o: memory/regmanage.S includes/lib.h includes/memory.h includes/linkage.h
-	$(CC) -E memory/regmanage.S > regmanage.s
-	$(ASM) $(ASMFLAG) -o regmanage.o regmanage.s
+pgtbl.o: memory/pgtbl.S includes/lib.h includes/memory.h includes/linkage.h
+	$(CC) -E memory/pgtbl.S > pgtbl.s
+	$(ASM) $(ASMFLAG) -o pgtbl.o pgtbl.s
 head.o: head.S
 	$(CC) -E head.S > head.s
 	$(ASM) $(ASMFLAG) -o head.o head.s

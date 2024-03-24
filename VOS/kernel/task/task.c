@@ -160,7 +160,7 @@ u64 doFork(PtraceRegs *regs, u64 flag, u64 stkSt, u64 stkSize) {
     ThreadStruct *thread = NULL;
     Page *p = NULL;
     // page table update program have not been finish, so...
-    p = allocPages(ZONE_NORMAL, 1, PAGE_PTable_Maped | PAGE_Kernel | PAGE_Active);
+    p = allocPages(ZONE_NORMAL, 1, PAGE_FLAG_PTable_Maped | PAGE_FLAG_Kernel | PAGE_FLAG_Active);
     
     task = (TaskStruct *)phyToVirt(p->phyAddr);
 
@@ -206,7 +206,7 @@ int kernelThread(u64 (*func)(u64), u64 arg, u64 flag) {
 void Task_init() {
     printk(RED, BLACK, "task init....\n");
     TaskStruct *p = NULL;
-    initMemManageStruct.pgd = (Pml4t *)globalCR3;
+    initMemManageStruct.pgd = (Pml4t *)getCR3();
 
     initMemManageStruct.codeSt = memManageStruct.codeSt;
     initMemManageStruct.codeEd = memManageStruct.codeEd;

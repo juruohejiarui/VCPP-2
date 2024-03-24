@@ -201,9 +201,10 @@ ENTRY(_stack_start)
 
 __PML4E:
 
-	.quad	0x102007 /*0x0000000000000000 ~ 0x0000007FFFFFFFFF */
-	.fill	255,8,0
-	.quad	0x102007 /*0xffff800000000000 ~ 0xffff807FFFFFFFFF */
+	.quad	0x102007 /* 0x0000000000000000 ~ 0x0000007FFFFFFFFF */
+	.fill	254,8,0
+	.quad 	0x104007 /* 0xffff7f8000000000 ~ 0xffff7fffffffffff the swap space for temporary mapping */
+	.quad	0x102007 /* 0xffff800000000000 ~ 0xffff807FFFFFFFFF */
 	.fill	255,8,0
 
 .org	0x2000
@@ -242,6 +243,16 @@ __PDE:
 	.quad 	0x2c00087
 	.quad 	0x2e00087
 	.fill	488,8,0
+
+.org	0x4000
+__SWP_PDPTE:
+	.quad 0x105007
+	.fill 511, 8, 0
+
+// initially fill this table with 0
+.org	0x5000
+__SWP_PDE:
+	.fill 512, 8, 0
 
 //=======	GDT_Table
 

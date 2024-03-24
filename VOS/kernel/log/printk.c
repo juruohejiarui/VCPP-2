@@ -169,9 +169,8 @@ void scroll(void) {
     int x, y;
     unsigned int *addr = position.FBAddr, 
                 *addr2 = position.FBAddr + position.YCharSize * position.XResolution;
-    for (x = 0; x < position.XResolution * (position.YResolution - position.YCharSize); x++, addr++, addr2++) {
-        *addr = *addr2;
-    }
+    memcpy(addr2, addr, position.XResolution * (position.YResolution - position.YCharSize) * sizeof(u32));
+    memset(addr + position.XResolution * (position.YResolution - position.YCharSize), 0, position.XResolution * position.YCharSize * sizeof(u32));
 }
 
 void drawchar(unsigned int fcol, unsigned int bcol, int px, int py, char ch) {

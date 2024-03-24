@@ -1,6 +1,7 @@
 ./main.o: main.c includes/printk.h includes/linkage.h includes/trap.h \
  includes/gate.h includes/UEFI.h includes/lib.h includes/memory.h \
- includes/interrupt.h includes/task.h includes/memory.h
+ includes/interrupt.h includes/task.h includes/memory.h includes/cpu.h \
+ memory/memoryinner.h memory/../includes/memory.h
 interrupt/trap.o: interrupt/trap.c interrupt/../includes/trap.h \
  interrupt/../includes/gate.h interrupt/../includes/printk.h \
  interrupt/../includes/linkage.h interrupt/../includes/lib.h
@@ -10,10 +11,17 @@ interrupt/interrupt.o: interrupt/interrupt.c interrupt/../includes/interrupt.h \
 interrupt/gate.o: interrupt/gate.c interrupt/../includes/gate.h
 log/printk.o: log/printk.c log/../includes/printk.h log/../includes/linkage.h \
  log/../includes/lib.h log/font.h
-memory/glomm.o: memory/glomm.c memory/../includes/memory.h \
+memory/glomm.o: memory/glomm.c memory/memoryinner.h memory/../includes/memory.h \
  memory/../includes/lib.h memory/../includes/UEFI.h \
  memory/../includes/printk.h memory/../includes/linkage.h
-memory/buddy.o: memory/buddy.c memory/../includes/memory.h \
+memory/pagetable.o: memory/pagetable.c memory/memoryinner.h \
+ memory/../includes/memory.h memory/../includes/lib.h \
+ memory/../includes/task.h memory/../includes/memory.h \
+ memory/../includes/printk.h memory/../includes/linkage.h
+memory/slab.o: memory/slab.c memory/memoryinner.h memory/../includes/memory.h \
+ memory/../includes/lib.h memory/../includes/printk.h \
+ memory/../includes/linkage.h
+memory/buddy.o: memory/buddy.c memory/memoryinner.h memory/../includes/memory.h \
  memory/../includes/lib.h memory/../includes/printk.h \
  memory/../includes/linkage.h
 lib/lib.o: lib/lib.c lib/../includes/lib.h
@@ -23,3 +31,6 @@ task/task.o: task/task.c task/../includes/task.h task/../includes/lib.h \
  task/../includes/memory.h task/../includes/gate.h \
  task/../includes/memory.h task/../includes/printk.h \
  task/../includes/linkage.h task/usrlvl.h
+hardware/cpu.o: hardware/cpu.c hardware/../includes/cpu.h \
+ hardware/../includes/lib.h hardware/../includes/printk.h \
+ hardware/../includes/linkage.h
