@@ -22,7 +22,7 @@ Heap Bottom
 User Program 
 >> 0x0000000000000000 
 ```
-# Basic Calling Process
+# Basic Functions and API
 
 ## Allocate memory
 
@@ -32,7 +32,7 @@ for user: ``malloc(virtAddr)---->buddy_alloc(virtAddr, pages)->mapPage(phyAddr, 
 
 ``buddy_alloc()``中调用``mapPage(phyAddr, virtAddr)``完成页表更新
 
-## free memory
+## Free memory
 
 for kernel: ``kfree()->slab_free()``
 
@@ -98,7 +98,16 @@ virtAddr 511
 # General Process
 实际运行过程中，可以选择当程序使用某个内存时，再分配对应的物理页。
 比如，每个进程的栈空间的基地址均为 $\texttt{0x7fffffffffff}$ ，但是堆空间以及程序数据的起始地址是 $\texttt{0x0}$ ，中间的大部分空间一般是不会被使用的，因此：
-- 初始的时候，可以首先申请一个页面给栈空间，以及若干个页面给程序数据和堆空间
-- 使用 ``malloc()`` 分配内存的时候，会分配物理页，也就是堆空间是即时分配的。
+- 初始的时候，可以首先申请一个页面给栈空间，以及若干个页面给程序数据和堆空间。
+- 堆空间：
+    - 使用 ``malloc()`` 分配内存的时候，会分配物理页，也就是堆空间是即时分配的。
+    - 使用 ``free()`` 释放内存的时候，会产生空洞，因为虚拟地址 $\mathrm{virtAddr}$ 和及其对应的物理地址 $\mathrm{phyAddr}$ 满足如下关系：
+    $$
+    \mathrm{virtAddr} - 2\texttt{MB}\times \left\lfloor\frac{\mathrm{virtAddr}}{2\texttt{MB}}\right\rfloor
+     =
+    \mathrm{phyAddr} - 2\texttt{MB}\times \left\lfloor\frac{\mathrm{phyAddr}}{2\texttt{MB}}\right\rfloor
+    $$
+    因此可以观察空洞大小，如果存在整个物理页都是空洞，那么可以用 ``Buddy_free`` 回收这个页表。
+    - PS：回收物理页 $p$ 之前，需要调整 $p$ 所在的物理页块中其他物理页的结构，使其满足 ``Buddy`` 系统的结构，然后再将 $p$ 抽出。
 - 当栈生长到某个没有映射物理页的虚拟地址，会触发 ``doPageFault`` ，这时候可以使用 $\texttt{CR2}$ 获得出错的地址，这时候只需要分配一个物理页给这个地址对 $2\texttt{MB}$ 下取整的虚拟地址即可。
 - 值得注意的是，当栈空间缩小后，分配到栈的物理页并不会回收。
