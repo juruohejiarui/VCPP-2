@@ -78,6 +78,8 @@ const size_t getStrId(ConstValueNode *node);
 const std::string getString(size_t id);
 const std::vector<std::string> &getStrList();
 
+extern std::map<TokenType, std::string> operCandyStr;
+
 void initOperCandy();
 /// @brief Load the syntax candies for operator
 /// @return if it is successful

@@ -102,6 +102,16 @@ std::string ExprType::toDebugString() const {
     return str;
 }
 
+bool ExprType::satisfy(const ExprType &tgr) const {
+    if (tgr.dimc != dimc || cls->isGeneric != tgr.cls->isGeneric) return false;
+    if (cls->isGeneric && cls == tgr.cls) return true;
+    ExprType cpy = *this;
+    while (cpy.cls->dep > tgr.cls->dep) cpy = cpy.convertToBase();
+    if (cpy.cls != tgr.cls || cpy.generParams.size() != tgr.generParams.size()) return false;
+    for (size_t i = 0; i < cpy.generParams.size(); i++) if (!cpy.generParams[i].satisfy(tgr.generParams[i])) return false;
+    return true;
+}
+
 ExprType &GTableData::operator[](uint8 index) { return etype[index]; }
 const ExprType &GTableData::operator[](uint8 index) const { return etype[index]; }
 void GTableData::insert(const std::vector<ClassInfo *> gClsList, const GenerSubstMap &gsMap) {

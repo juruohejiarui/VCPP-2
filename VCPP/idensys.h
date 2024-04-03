@@ -42,6 +42,8 @@ struct ExprType {
     std::string toString() const;
     std::string toVtdString() const;
     std::string toDebugString() const;
+
+    bool satisfy(const ExprType &tgr) const ;
 };
 typedef std::map<ClassInfo *, ExprType> GenerSubstMap;
 ExprType subst(const ExprType &target, ClassInfo *cls, const ExprType &clsImpl);

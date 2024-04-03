@@ -22,3 +22,8 @@ public class FloatCompare : Compare<$float, float$> {
 		else return 0 - 1;
 	}
 }
+
+public class Add<$T1, T2, T3$> {
+	public func @constructer() : void { @base(); }
+	public varfunc calculate(a : T1, b : T2) : T3;
+}

@@ -46,7 +46,6 @@ public func main() : void {
     sort(farr, $FloatCompare());
     for (var i = 0u; i < farr.getLength(); i++) print(farr[i]), putchar(' ');
     putchar('\n');
-    calcC(10000, 1000000007);
 
-    testCirRef(10000000);
+    testVectorCalc();
 }

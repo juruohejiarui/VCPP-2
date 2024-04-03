@@ -10,10 +10,31 @@ ClassInfo *operCls[operNumber];
 
 std::map<std::string, std::vector<VariableInfo *> > operMap[3];
 
+std::map<TokenType, std::string> operCandyStr;
+
+void initOperCandyStr() {
+    operCandyStr[TokenType::Add] = "@add";
+    operCandyStr[TokenType::Sub] = "@sub";
+    operCandyStr[TokenType::Mul] = "@mul";
+    operCandyStr[TokenType::Div] = "@div";
+    operCandyStr[TokenType::Mod] = "@mod";
+    operCandyStr[TokenType::Shl] = "@shl";
+    operCandyStr[TokenType::Shr] = "@shr";
+    operCandyStr[TokenType::And] = "@and";
+    operCandyStr[TokenType::Or] = "@or";
+    operCandyStr[TokenType::Xor] = "@xor";
+    operCandyStr[TokenType::Equ] = operCandyStr[TokenType::Neq] = "@compare";
+    operCandyStr[TokenType::Gt] = operCandyStr[TokenType::Ge] = "@compare";
+    operCandyStr[TokenType::Ls] = operCandyStr[TokenType::Le] = "@compare";
+}
+
 void initOperCandy() {
     for (int i = 0; i < operNumber; i++) operCls[i] = findCls(operClsName[i]);
     for (int i = 0; i < 3; i++) operMap[i].clear();
+    initOperCandyStr();
 }
+
+
 
 bool updOperCandy() {
     auto tryInsert = [&](VariableInfo *vInfo, std::map<std::string, std::vector<VariableInfo *> > &operMap) -> void {
@@ -73,7 +94,8 @@ VariableInfo *findOperCandy(const std::string &name, const ExprType &expr1, cons
         for (auto vInfo : iter->second) {
             ExprType vType = vInfo->type;
             while (vType.cls->dep > req.cls->dep) vType = vType.convertToBase();
-            if (vType.cls == req.cls && vType.generParams == req.generParams) return vInfo;
+            if (vType.cls == req.cls && expr1.satisfy(vType.generParams[0]) && expr2.satisfy(vType.generParams[1]))
+                return vInfo;
         }
     }
     return nullptr;

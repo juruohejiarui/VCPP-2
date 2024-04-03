@@ -56,24 +56,6 @@ OperatorNode *buildOperCandy(VariableInfo *vInfo, ExpressionNode *exprL, Express
     return operCandy;
 }
 
-std::map<TokenType, std::string> operCandyStr;
-
-void initOperCandyStr() {
-    operCandyStr[TokenType::Add] = "@add";
-    operCandyStr[TokenType::Sub] = "@sub";
-    operCandyStr[TokenType::Mul] = "@mul";
-    operCandyStr[TokenType::Div] = "@div";
-    operCandyStr[TokenType::Mod] = "@mod";
-    operCandyStr[TokenType::Shl] = "@shl";
-    operCandyStr[TokenType::Shr] = "@shr";
-    operCandyStr[TokenType::And] = "@and";
-    operCandyStr[TokenType::Or] = "@or";
-    operCandyStr[TokenType::Xor] = "@xor";
-    operCandyStr[TokenType::Equ] = operCandyStr[TokenType::Neq] = "@compare";
-    operCandyStr[TokenType::Gt] = operCandyStr[TokenType::Ge] = "@compare";
-    operCandyStr[TokenType::Ls] = operCandyStr[TokenType::Le] = "@compare";
-}
-
 ETChkRes chkEType_Assign(OperatorNode *node) {
     ExpressionNode *exprL = node->getLeft(), *exprR = node->getRight();
     ETChkRes chkResR = chkEType(exprR);
