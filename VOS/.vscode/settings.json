@@ -1,5 +1,6 @@
 {
     "files.associations": {
-        "memoryinner.h": "c"
+        "memoryinner.h": "c",
+        "lib.h": "c"
     }
 }
