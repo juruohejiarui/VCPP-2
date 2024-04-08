@@ -1,3 +1,4 @@
+// this file defines some useful data structures and the descriptor of CPU (e.g tss, GDT, IDT...)
 #ifndef __LIB_DS_H__
 #define __LIB_DS_H__
 
@@ -19,4 +20,14 @@ void List_insBehind(List *ele, List *pos);
 void List_insBefore(List *ele, List *pos);
 int List_isEmpty(List *list);
 void List_del(List *list);
+
+u64 Bit_get(u64 *addr, u64 index);
+u64 Bit_set(u64 *addr, u64 index);
+u64 Bit_clear(u64 *addr, u64 index);
+
+#define container(memberAddr, type, memberIden) ((type *)((u64)(memberAddr)-(u64)&(((type *)0)->memberIden)))
+
+typedef struct {
+    
+} PtraceRegs;
 #endif

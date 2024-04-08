@@ -4,8 +4,7 @@ CC = gcc-4.7
 ASMFLAG = --64
 CFLAGS = -mcmodel=large -fno-builtin -fno-stack-protector -m64 -std=c99
 
-ASMOBJS = head.o entry.o pgtbl.o
-SRCS = $(wildcard ./*.c) \
+CSRCS = $(wildcard ./*.c) \
 	$(wildcard interrupt/*.c) \
 	$(wildcard log/*.c) \
 	$(wildcard includes/*.c) \
@@ -13,7 +12,16 @@ SRCS = $(wildcard ./*.c) \
 	$(wildcard lib/*.c) \
 	$(wildcard task/*.c) \
 	$(wildcard hardware/*.c)
-CXXOBJS = $(SRCS:.c=.o)
+CXXOBJS = $(CSRCS:.c=.o)
+ASMSRCS = $(wildcard ./*.S) \
+	$(wildcard interrupt/*.S) \
+	$(wildcard log/*.S) \
+	$(wildcard includes/*.S) \
+	$(wildcard memory/*.S) \
+	$(wildcard lib/*.S) \
+	$(wildcard task/*.S) \
+	$(wildcard hardware/*.S)
+ASMOBJS = $(ASMSRCS:.S=.o)
 
 ALLOBJS = $(ASMOBJS) $(CXXOBJS) 
 
@@ -23,23 +31,19 @@ all: system_tmp $(ALLOBJS)
 system_tmp: $(ALLOBJS)
 	ld -b elf64-x86-64 -z muldefs -o system_tmp $(ALLOBJS) -T Kernel.lds 
 
-.depend: $(SRCS)
+.depend: $(CSRCS)
 	rm -f .depend
 	$(foreach src, $(SRCS), \
 		echo -n $(dir $(src)) >> .depend; \
 		gcc -I. -MM $(src) >> .depend; \
 	)
 include .depend
-
-pgtbl.o: memory/pgtbl.S includes/lib.h includes/memory.h includes/linkage.h
-	$(CC) -E memory/pgtbl.S > pgtbl.s
-	$(ASM) $(ASMFLAG) -o pgtbl.o pgtbl.s
 head.o: head.S
 	$(CC) -E head.S > head.s
 	$(ASM) $(ASMFLAG) -o head.o head.s
-entry.o: ./interrupt/entry.S
-	$(CC) -E ./interrupt/entry.S > entry.s
-	$(ASM) $(ASMFLAG) -o entry.o entry.s
+interrupt/entry.o: interrupt/entry.S
+	$(CC) -E interrupt/entry.S > interrupt/entry.s
+	$(ASM) $(ASMFLAG) -o interrupt/entry.o interrupt/entry.s
 
 clear:
-	rm -R ./*.s $(ALLOBJS) system_tmp system kernel.bin
+	rm -R ./*.s ./*/*.s $(ALLOBJS) system_tmp system kernel.bin

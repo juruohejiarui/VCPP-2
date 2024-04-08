@@ -1,6 +1,8 @@
 {
     "files.associations": {
         "memoryinner.h": "c",
-        "lib.h": "c"
+        "lib.h": "c",
+        "gate.h": "c",
+        "memop.h": "c"
     }
 }

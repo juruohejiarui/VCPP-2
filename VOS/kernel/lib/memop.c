@@ -69,8 +69,8 @@ i64 strlen(u8 *str) {
         "cld        \n\t"
         "repne      \n\t"
         "scasb      \n\t"
-        "notl %0    \n\t"
-        "decl %0    \n\t"
+        "notq %0    \n\t"
+        "decq %0    \n\t"
         : "=c"(res)
         : "D"(str), "a"(0), "0"(0xffffffffffffffff)
     );

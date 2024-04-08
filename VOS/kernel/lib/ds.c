@@ -22,3 +22,7 @@ void List_del(List *ele) {
     ele->next->prev = ele->prev;
     ele->prev->next = ele->next;
 }
+
+u64 Bit_get(u64 *addr, u64 index) { return *addr & (1ul << index); }
+u64 Bit_set(u64 *addr, u64 index) { return *addr | (1ul << index); }
+u64 Bit_clear(u64 *addr, u64 index) { return *addr & (~(1ul << index)); }

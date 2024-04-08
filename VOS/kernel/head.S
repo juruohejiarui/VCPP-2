@@ -1,4 +1,4 @@
-#include "linkage.h"
+#include "./includes/linkage.h"
 
 .section .text
 
@@ -18,14 +18,15 @@ ENTRY(_start)
     
     lidt idtPointer(%rip)
 
+    // set all the segment register to kernel data 64-bit
     mov $0x10, %ax
     mov %ax, %ds
     mov %ax, %es
     mov %ax, %fs
     mov %ax, %gs
     mov %ax, %ss
-
-    movq stackStart(%rip), %rsp
+    
+    movq $0xffff800000007E00, %rsp
 
     movq $0x101000, %rax
     movq %rax, %cr3
@@ -43,13 +44,123 @@ entry64:
     movq %rax, %es
     movq %rax, %gs
     movq %rax, %ss
-    movq stackStart(%rip), %rsp
+    movq $0xffff800000007E00, %rsp
+
+setupIDT:
+    leaq ignoreInt(%rip), %rdx
+    // the segment selector was set to 0x08 (kernel code 64-bit)
+    movq $(0x08 << 16), %rax
+    // set the 0...15th bits of offset
+    movw %dx, %ax
+    // set the gate type to be 0xE and DPL to be 3 and the 47-th bit to be 1
+    movq $((0xE << 40) + (1 << 47)), %rcx
+    orq %rcx, %rax
+    // set the 16...31-th bits of offset to 48...63-th bits
+    movl %edx, %ecx
+    shrl $16, %ecx
+    shlq $48, %rcx
+    orq %rcx, %rax
+    // set the 32...63-th bits of offset to 64...95-th bits
+    shrq $32, %rdx
+// set all the interrupt vector to ignoreInt()
+    leaq idtTable(%rip), %rdi
+    mov $256, %rcx
+repeatSetIDT:
+    movq %rax, (%rdi)
+    movq %rdx, 8(%rdi)
+    addq $0x10, %rdi
+    dec %rcx
+    jne repeatSetIDT
+
+// set the GDT descriptor of TSS
+setupTSS64:
+    leaq tss64Table(%rip), %rdx
+    xorq %rax, %rax
+    xorq %rcx, %rcx
+    // present(47th) = 1, DescriptorType(44th) = 0, E(32th) = 1, A(40th) = 1
+    movq $(0x89 << 40), %rax
+    // get the 0...31-th bits of address of tss64Table(represented by A)
+    movl %edx, %ecx
+    // set the 24-31-th bits of A to the 56...64-th bits
+    shrl $24, %ecx
+    shlq $56, %rcx
+    orq %rcx, %rax
+    // set the 0...23-th bits of A to 16...31-th bits
+    movl %edx, %ecx
+    andq $0xffffff, %rcx
+    shlq $16, %rcx
+    orq %rcx, %rax
+    // set the limit of this segment to 0...15-th bits
+    orq $103, %rax
+    // set the 32...64-th bits of A to 64...95-th bits
+    shrq $32, %rdx
+    // set rax and rdx to the gdtTable + 0x50 
+    leaq gdtTable(%rip), %rdi
+    movq %rax, 0x50(%rdi)
+    movq %rdx, 0x58(%rdi)
+
+    // enable the tss
+    // mov $0x50, %ax
+    // ltr %ax
+
+    movq goToKernel(%rip), %rax
+    pushq $0x08
+    pushq %rax
+    lretq
+
+goToKernel:
+    .quad startKernel
+
+ignoreInt:
+    cld
+    // save the register in the order of struct PtraceRegs
+    pushq %rax
+    pushq %rbx
+    pushq %rcx
+    pushq %rdx
+    pushq %rdi
+    pushq %rsi
+    pushq %r8
+    pushq %r9
+    pushq %r10
+    pushq %r11
+    pushq %r12
+    pushq %r13
+    pushq %r14
+    pushq %r15
+    movq %es, %rax
+    pushq %rax
+    movq %ds, %rax
+    pushq %rax
+
+    // switch the segment register to kernel data 64-bit
+    movq $0x10, %rax
+    movq %rax, %ds
+    movq %rax, %es
+
+    leaq intMsg(%rip), %rax
+    pushq %rax
+    movq %rax, %rdx
+    movq $0x00000000, %rsi
+    movq $0x00ff0000, %rdi
+    movq $0, %rax
+    callq printk
+    addq $0x8, %rsp
+
+ignoreInt_loop:
+    jmp ignoreInt_loop
+
+    // restore the registers
+    popq %rax
+    movq %rax, %ds
+    popq %rax
+    movq %rax, %es
 
 intMsg:
     .asciz "Unknown interrupt or fault at RIP\n"
 
-ENTRY(startStart)
-    .quad initTaskUnion + 32768
+// ENTRY(stackStart)
+//     .quad initTaskUnion + 32768
 
 // initial page table
 .align 8
@@ -57,7 +168,8 @@ ENTRY(startStart)
 .org 0x1000
 
 pml4e:
-    .fill 256, 8, 0
+    .quad 0x102007
+    .fill 255, 8, 0
     .quad 0x102007 /*0xffff800000000000 ~ 0xffff807FFFFFFFFF*/
     .fill 255, 8, 0
 

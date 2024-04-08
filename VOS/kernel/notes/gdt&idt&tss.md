@@ -2,7 +2,7 @@ This page aims to record the structure of Global Descriptor Table(GDT), Interrup
 
 # GDT
 ## Description
-One item of GDT can be described in the following List:
+One item of GDT can be described using the following List:
 
 - $0...15$: $0...15$-th bits of **limit**
 - $16...31$: $0...15$-th bits of **base**
@@ -45,16 +45,15 @@ From the forms above, we can write the segment descriptor for 64-bit flag mode.
 
 For the 64-bit kernel code segment, we have:
 ```
-P(47th) = S(44th) = E(43th) = 1
+P(47th) = DescriptorType(44th) = E(43th) = 1
 L(53th) = 1
 ```
 then the value of this descriptor should be $\texttt{0x0020980000000000}$
 
 For the 64-bit kernel data segment, we have:
 ```
-P(47th) = E(44th) = RW(42th) = 1
+P(47th) = DescriptorType(44th) = RW(42th) = 1
 ```
-PS: we will use some places of data segment to store the code, then **E** should be $1$. 
 Then the value should be $\texttt{0x0000920000000000}$
 
 The following code shown the initial GDT, which is used in the initialization period of kernel program:
@@ -94,7 +93,7 @@ $\texttt{IST}1...\texttt{IST}7$ are stack pointer used to load the stack when an
 |Reserved|$\texttt{0x5C}$    |$12\texttt{B}$|
 |IOPB|$\texttt{0x66}$ |$2\texttt{B}$|
 
-Instruction ``ltr`` can be used to load the TSS, which accepts an offset based on GDT as the description of TSS.
+Instruction ``ltr`` can be used to load the TSS, which accepts an offset based on GDT as the description of TSS, then, modifies the register ``tr``.
 
 For example, 
 ```as
@@ -121,3 +120,17 @@ ltr %rax
 # IDT
 ## Description
 There are at most $256$ items in one IDT, and every item is a 128-bit integer. Once an interrupt, trap or error is triggered, CPU will search for the description on the IDT, then jump to the corresponded program, which aims to handle the interrupt/trap/error. If there is no description for this interrupt/trap/error, then "general protection" will be triggered.
+
+The item of IDT is called **Interrupt Vector** or **Gate Descriptor**, which can be descripted using the following list:
+
+- $0...15$: $0...15$-th bits of **Offset**
+- $16...31$: the segment selector $\in[0, 2^{15}-1]$
+- $32...34$: the IST index. if $=0$, then the IST will not be used.
+- $35...39$: reserved.
+- $40...43$: Gate Type. $\texttt{0xE}$: This is a 64-bit interrupt gate. $\texttt{0xF}$: This is a 64-bit Trap gate.
+- $44$: should be $0$.
+- $45...46$: **DPL**, Processor privilege level. Used to Defined which are allowed to access this interrupt via ``int`` instruction. Hardware interrupt ignores this mechanism.
+- $47$: Must be $1$
+- $48...63$: the $16...31$-th bits of **Offset**
+- $64...95$: the $32...63$-th bits of **Offset**
+- $96...127$: reserved.

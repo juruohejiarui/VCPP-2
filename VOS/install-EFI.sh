@@ -2,7 +2,7 @@ RED_COLOR='\E[1;31m'
 RESET='\E[0m'
 
 echo -e "${RED_COLOR}=== gen kernel.bin ===${RESET}"
-cd kernel-temp
+cd kernel
 make 
 
 if [ $? -ne 0 ];then
@@ -13,7 +13,7 @@ else
     echo -e "${RED_COLOR}=== copying files ===${RESET}"
     sudo mount /dev/sda1 /mnt/
     sudo cp ./BootLoader.efi /mnt/EFI/BOOT/bootx64.efi
-    sudo cp ./kernel-temp/kernel.bin /mnt/
+    sudo cp ./kernel/kernel.bin /mnt/
     sudo sync
     sudo umount /mnt/
 
