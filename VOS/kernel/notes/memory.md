@@ -80,9 +80,11 @@ The description of PMD is similar to PUD, so I will not show it again. The only 
 # Memory Management
 ## Initialzation Process
 During the initialization period, the kernel program will only use the mapped address space in ``head.S``, whose size is below $512\texttt{MB}$. Then the buddy system is initalized. Then a 'directly mapping address space' (DMAS) is initalized (this idea is copy from one concept of linux kernel), whose virtual address space is $[\texttt{0xffff880000000000}, \texttt{0xffffC80000000000}]$, whose size is $64\texttt{TB}$ and the relationship of the physics address and the virtual address of this space is
+
 $$
 \text{physics address}=\text{virtual address} - \texttt{0xffff880000000000}
 $$
+
 The page table of this DMAS is $2\texttt{MB}$ page table or maybe a $1\texttt{GB}$ page table, whose size relates to the actual size of the machine memory space. and it is stored in the space following the kernel pragram. Then the SLAB system is finally initialized, since it will use the management APIs of page table management and buddy system.
 
 ## APIs and Algorithms behind Them
