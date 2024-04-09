@@ -182,7 +182,7 @@ pdpte:
 .org 0x3000
     // the 7-th bit is 1, so the pointer of the page table item is to the physical address
     .quad	0x000087	
-	.quad	0x200087
+	.quad	0x200087 /* 0x200000 ~ 0x200FFF */
 	.quad	0x400087
 	.quad	0x600087
 	.quad	0x800087
@@ -206,7 +206,6 @@ pdpte:
 	.quad 	0x2c00087
 	.quad 	0x2e00087
 	.fill	488,8,0
-
 .section .data
 
 ENTRY(gdtTable)

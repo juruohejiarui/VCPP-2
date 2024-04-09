@@ -76,3 +76,56 @@ errorCode:
     call *%rdx
     jmp retFromException
 
+ENTRY(nmi)
+    /* no error code since it is not an exception */
+    pushq %rax
+    cld
+    pushq %rax
+    pushq %rax
+    movq %es, %rax
+    pushq %rax
+    movq %ds, %rax
+    pushq %rax
+    xorq %rax, %rax
+    pushq %rbp
+    pushq %rdi
+    pushq %rsi
+    pushq %rdx
+    pushq %rcx
+    pushq %rbx
+    pushq %r8
+    pushq %r9
+    pushq %r10
+    pushq %r11
+    pushq %r12
+    pushq %r13
+    pushq %r14
+    pushq %r15
+
+    movq $0x10, %rdi
+    movq %rdi, %ds
+    movq %rdi, %es
+    movq $0, %rsi
+    movq %rsp, %rdi
+
+    callq doNMI
+    jmp restoreAll
+
+ENTRY(undefinedOpcode)
+    pushq	$0
+	pushq	%rax
+    leaq doUndefinedOpcode(%rip), %rax
+    xchgq %rax, (%rsp)
+    jmp errorCode
+
+ENTRY(invalidTSS)
+    pushq %rax
+    leaq doInvalidTSS(%rip), %rax
+    xchgq %rax, (%rsp)
+    jmp errorCode
+
+ENTRY(pageFault)
+    pushq %rax
+    leaq doPageFault(%rip), %rax
+    xchgq %rax, (%rsp)
+    jmp errorCode

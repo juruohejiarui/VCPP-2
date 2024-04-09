@@ -23,3 +23,23 @@ u32 IO_in32(u16 port) {
     );
     return ret;
 }
+
+void IO_writeMSR(u64 msrAddr, u64 data) { 
+    __asm__ __volatile__ (
+        "wrmsr \n\t"
+        :
+        : "c"(msrAddr), "A"(data & 0xFFFFFFFF), "d"((data >> 32) & 0xFFFFFFFF)
+        : "memory"
+    );
+}
+
+u64 IO_readMSR(u64 msrAddr) {
+    u32 data1, data2;
+    __asm__ __volatile__ (
+        "rdmsr \n\t"
+        : "=d"(data1), "=a"(data2)
+        : "c"(msrAddr)
+        : "memory"
+    );
+    return (((u64) data1) << 32) | data2;
+}

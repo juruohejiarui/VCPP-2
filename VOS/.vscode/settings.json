@@ -3,6 +3,7 @@
         "memoryinner.h": "c",
         "lib.h": "c",
         "gate.h": "c",
-        "memop.h": "c"
+        "memop.h": "c",
+        "ds.h": "c"
     }
 }
