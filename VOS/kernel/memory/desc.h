@@ -11,6 +11,7 @@ extern char _bss;
 extern char _ebss;
 extern char _data;
 extern char _edata;
+extern char _end;
 
 #define Page_4KShift 12
 #define Page_2MShift 21
@@ -24,12 +25,12 @@ extern char _edata;
 #define Page_2MMask (Page_2MSize - 1)
 #define Page_1GMask (Page_1GSize - 1)
 
-#define Page_4KAlign(addr) ((addr) & (~Page_4KMask))
-#define Page_2MAlign(addr) ((addr) & (~Page_2MMask))
-#define Page_1GAlign(addr) ((addr) & (~Page_1GMask))
-#define Page_4KUpAligned(addr) (((addr) + Page_4KMask) & (~Page_4KMask))
-#define Page_2MUpAligned(addr) (((addr) + Page_2MMask) & (~Page_2MMask))
-#define Page_1GUpAligned(addr) (((addr) + Page_1GMask) & (~Page_1GMask))
+#define Page_4KDownAlign(addr) ((addr) & (~Page_4KMask))
+#define Page_2MDownAlign(addr) ((addr) & (~Page_2MMask))
+#define Page_1GDownAlign(addr) ((addr) & (~Page_1GMask))
+#define Page_4KUpAlign(addr) (((addr) + Page_4KMask) & (~Page_4KMask))
+#define Page_2MUpAlign(addr) (((addr) + Page_2MMask) & (~Page_2MMask))
+#define Page_1GUpAlign(addr) (((addr) + Page_1GMask) & (~Page_1GMask))
 
 #define DMMA_virtAddrStart  (0xffff880000000000ul)
 #define DMMA_virtAddrEnd    (0xffffC80000000000ul)

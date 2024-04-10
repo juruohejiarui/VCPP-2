@@ -2,6 +2,7 @@
 #include "includes/log.h"
 #include "includes/hardware.h"
 #include "includes/interrupt.h"
+#include "includes/memory.h"
 
 void startKernel() {
 
@@ -24,7 +25,8 @@ void startKernel() {
             0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00);
 
     Init_systemVector();
+    Init_memManage();
 
-    int i = 1 / 0;
+    int i = *(int *)(0xffff810000000000);
     while (1) ;
 }
