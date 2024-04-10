@@ -88,3 +88,5 @@ $$
 The page table of this DMAS is $2\texttt{MB}$ page table or maybe a $1\texttt{GB}$ page table, whose size relates to the actual size of the machine memory space. and it is stored in the space following the kernel pragram. Then the SLAB system is finally initialized, since it will use the management APIs of page table management and buddy system.
 
 ## APIs and Algorithms behind Them
+### Basic Management Structure
+for every $4\texttt{KB}$ page, there is a structure to manage its attributes, physics address. 
