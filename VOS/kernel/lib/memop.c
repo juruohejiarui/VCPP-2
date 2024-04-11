@@ -28,6 +28,7 @@ void *memcpy(void *src, void *dst, u64 size) {
     int d0, d1, d2;
     __asm__ __volatile__ (
         "cld                    \n\t"
+        "rep                    \n\t"
         "movsq                  \n\t"
         "testb $4, %b4          \n\t"
         "je 1f                  \n\t"

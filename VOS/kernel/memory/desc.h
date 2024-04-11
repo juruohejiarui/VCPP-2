@@ -32,8 +32,6 @@ extern char _end;
 #define Page_2MUpAlign(addr) (((addr) + Page_2MMask) & (~Page_2MMask))
 #define Page_1GUpAlign(addr) (((addr) + Page_1GMask) & (~Page_1GMask))
 
-#define DMMA_virtAddrStart  (0xffff880000000000ul)
-#define DMMA_virtAddrEnd    (0xffffC80000000000ul)
 
 #define Page_Flag_Kernel        (1ul << 0)
 #define Page_Flag_KernelInit    (1ul << 1)
@@ -81,6 +79,7 @@ struct GlobalMemManageStruct {
     u64 bitsSize;
 
     u64 edAddrOfStruct;
+    u64 totMemSize;
 };
 
 extern struct GlobalMemManageStruct gloMemManageStruct;

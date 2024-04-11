@@ -1,12 +1,9 @@
 #include "desc.h"
 #include "../includes/hardware.h"
 #include "../includes/log.h"
+#include "DMAS.h"
 
 struct GlobalMemManageStruct gloMemManageStruct = {{0}, 0};
-
-void Init_DMMA() {
-
-}
 
 void Init_memManage() {
     EFI_E820MemoryDescriptor *p = (EFI_E820MemoryDescriptor *)bootParamInfo->E820Info.entry;
@@ -23,6 +20,7 @@ void Init_memManage() {
         if (p->type > 4 || p->length == 0 || p->type < 1) break;
     }
     printk(WHITE, BLACK, "Total Memory Size : %#018lx\n", totMem);
+    gloMemManageStruct.totMemSize = totMem;
 
     // get the total 4K pages
     totMem = 0;
@@ -37,4 +35,7 @@ void Init_memManage() {
     printk(WHITE, BLACK, "Total 4K pages: %#018lx = %ld\n", totMem, totMem);
 
     gloMemManageStruct.edAddrOfStruct = Page_4KUpAlign((u64)&_end);
+    printk(WHITE, BLACK, "edAddrOfStruct = %#018lx\n", gloMemManageStruct.edAddrOfStruct);
+
+    DMAS_init();
 }

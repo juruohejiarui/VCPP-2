@@ -23,7 +23,7 @@ void startKernel() {
     Init_systemVector();
     Init_memManage();
 
-    u64 *bs = (u64 *)(0xffff800040100000);
-    for (int i = 0; i < 1000; i++) printk(WHITE, BLACK, "%#018lx\n", *(bs + i));
+    u64 *bs = DMAS_phys2Virt(0x112000);
+    for (int i = 0; i < 512; i++) printk(WHITE, BLACK, "%#018lx%c", *(bs + i), (i + 1) % 8 == 0 ? '\n' : ' ');
     while (1) ;
 }
