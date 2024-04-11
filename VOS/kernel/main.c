@@ -13,10 +13,6 @@ void startKernel() {
 
     position.XPosition = position.YPosition = 0;
     position.FBAddr = (unsigned int *)0xffff800003000000;
-
-    int data = *(int *)(0xffff80000020FFFF);
-    printk(WHITE, BLACK, "%#010d\n", data);
-
     printk(RED, BLACK, "hello world\n");
 
     loadTR(10);
@@ -27,6 +23,7 @@ void startKernel() {
     Init_systemVector();
     Init_memManage();
 
-    int i = *(int *)(0xffff810000000000);
+    u64 *bs = (u64 *)(0xffff800040100000);
+    for (int i = 0; i < 1000; i++) printk(WHITE, BLACK, "%#018lx\n", *(bs + i));
     while (1) ;
 }

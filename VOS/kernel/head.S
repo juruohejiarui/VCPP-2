@@ -176,8 +176,9 @@ pml4e:
 .org 0x2000
 
 pdpte:
-    .quad 0x103007
-    .fill 511, 8, 0
+    .quad 0x103007  /* 0xffff800000000000 ~ 0xffff800040000000 */
+    .quad 0x87      /* 0xffff800040000000 ~ 0xffff800080000000 */
+    .fill 510, 8, 0
 
 .org 0x3000
     // the 7-th bit is 1, so the pointer of the page table item is to the physical address
