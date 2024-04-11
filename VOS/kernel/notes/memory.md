@@ -78,15 +78,50 @@ The description of PMD is similar to PUD, so I will not show it again. The only 
 - $47...63$: These bits are the same as those in PGD.
 
 # Memory Management
-## Initialzation Process
-During the initialization period, the kernel program will only use the mapped address space in ``head.S``, whose size is below $512\texttt{MB}$. Then the buddy system is initalized. Then a 'directly mapping address space' (DMAS) is initalized (this idea is copy from one concept of linux kernel), whose virtual address space is $[\texttt{0xffff880000000000}, \texttt{0xffffC80000000000}]$, whose size is $64\texttt{TB}$ and the relationship of the physics address and the virtual address of this space is
+## Initialization Process
+During the initialization period, the kernel program will first use the mapped address space in ``head.S``, whose size is below $512\texttt{MB}$ to build the page table of 'directly mapping address space' (DMAS), and along with the page array, the zone array and the bitmap. The addresses of the elements of these three arrays are contiguous respectively and within the range of DMAS, so the program will first set the zone arrays, then find the valid address space to set the page array and bitmap respectively. 
+
+DMAS is an area whose virtual address is just the physics address added up with an offse. The maximum virtual address space is $[\texttt{0xffff880000000000}, \texttt{0xffffC80000000000}]$, and maximum size is $64\texttt{TB}$. The following equation is the the relationship of the physics address and the virtual address of this space:
 
 $$
 \text{physics address}=\text{virtual address} - \texttt{0xffff880000000000}
 $$
 
-The page table of this DMAS is $2\texttt{MB}$ page table or maybe a $1\texttt{GB}$ page table, whose size relates to the actual size of the machine memory space. and it is stored in the space following the kernel pragram. Then the SLAB system is finally initialized, since it will use the management APIs of page table management and buddy system.
+After initialization of DMAS and those arrays, the Buddy System is built, also using virtual address in DMAS. Then the cache for page table management is built up, by allocating the memory from the Buddy System. Then the SLAB System is built, also by applying the APIs of Buddy System.
 
 ## APIs and Algorithms behind Them
-### Basic Management Structure
-for every $4\texttt{KB}$ page, there is a structure to manage its attributes, physics address. 
+### Basic Memory Management
+for every $4\texttt{KB}$ page, there is a structure to manage its attributes, physics address and numbers of reference. A zone struct manage the pages that belongs to it and the general attribute of these pages, like the reference number, free page number and active page number. each bit of the bitmap stores whether this page is allocated or not. This basic management structure is temporary used to manage the memory that used to build the Buddy System and page table of DMAS.
+
+**PS**
+- This management system can only manage the pages in the range of DMAS.
+- Once the buddy system is built up, it is invalid to use this system, excepts the ``BsMemManage_setPageAttr(Page *, u64 attr)`` and ``BsMemMange_getPageAttr(Page *)``.
+
+**APIs**:
+```c
+// initialize this system
+void BsMemManage_init()
+// allocate NUM pages and set the attributes of them to ATTR
+Page *BsMemManage_alloc(int num, int attr) 
+// free the pages that allocated from BsMemManage_alloc()
+void BsMemManage_free(Page *page)
+// get the attribute of PAGE
+u64 BsMemManage_getPageAttr(Page *page);
+// set the attribute of PAGE to ATTR
+void BsMemManage_setPageAttr(Page *page, u64 attr);
+```
+
+### Buddy System
+This system divides the pages into groups, whose size a power of 2. These group is called page frame. Let $S_f=\log_2(\text{the number of pages in the page frame }f)$. We say that $f$ is in the **frame group** $i$ if and only if $S_f=i$ . Due to the limitation of kernel memory used, $S_f\in [0, 11]$. In one page frame, the first page is called **head page**. Kernel and Users can allocate and free a **whole** page frame. All the pages in one allocated page frame has the same attribute, which is stored in the head page of this page frame. Furthermore, the head page has an attribute call ``Page_Flag_HeadPage`` , while the others don't.
+
+Two basic operations of this system is "division" and "merger". Division is to split a page frame into two buddy page frames, who sizes are the same, while the "merger" it to merge two buddy page frames into a larger page frame. It is be noticed that two buddy page frames are called buddies is not because of the same size of them, and the true reason is that their are "born" from the same page frame.
+
+When initializing this system, the page frame will be merged to ensure that the number is page frames is minimum. When it is asked to allocate a page frame, while there is no page frames that meet its requirement of size, the system will divide a page frame which is larger than the requirement recursively, and get the prefix of it to allocate. When a page frame is going to be released, the system will try to merge recursively when its buddy is also free.
+
+The algorithm for finding the buddy of one page is using the numbering method which is similar to that of segment tree. Another important part is use a bitmap to manage whether the states of allocation (allocated/free) of one pages and their buddies are the same. One page and its buddy share the same bit. When one page is allocated or released, that bit will be reversed.
+
+**APIs**:
+```c
+void Buddy_init();
+Page *Buddy_alloc(int log2Size, u64 attr);
+void Buddy_free(Page *);
