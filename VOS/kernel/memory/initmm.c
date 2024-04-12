@@ -1,3 +1,4 @@
+// this file defines the initialization process of memory management and the APIs of basic management system
 #include "desc.h"
 #include "pgtable.h"
 #include "../includes/hardware.h"
@@ -17,15 +18,15 @@ static void initArray() {
         if (e820->type != 1) continue;
         u64 st = Page_4KUpAlign(e820->addr), ed = Page_4KDownAlign(e820->addr + e820->size);
         if (st >= ed) continue;
-        if (0x100000 >= st && ed > memManageStruct.edOfStruct - Init_virtAddrStart)
+        if (0x100000 >= st && ed > memManageStruct.edOfStruct - Init_virtAddrStart && memManageStruct.zonesLength > 0)
             kernelZoneId = i;
         memManageStruct.zonesLength++;
-        totPage = (ed - st) >> Page_4KShift;
+        totPage += (ed - st) >> Page_4KShift;
     }
-    printk(WHITE, BLACK, "kernelZoneId = %d\n", kernelZoneId);
+    printk(WHITE, BLACK, "kernelZoneId = %d, totPage = %d\n", kernelZoneId, totPage);
     // search for a place for building zones
     u64 reqSize = upAlignTo(sizeof(Zone) * memManageStruct.zonesLength, sizeof(u64));
-    for (int i = 0; i <= memManageStruct.e820Length; i++) {
+    for (int i = 1; i <= memManageStruct.e820Length; i++) {
         E820 *e820 = memManageStruct.e820 + i;
         if (e820->type != 1) continue;
         u64 availdSt = (kernelZoneId == i ? (memManageStruct.edOfStruct - Init_virtAddrStart) : e820->addr),
@@ -33,7 +34,7 @@ static void initArray() {
         if (availdSt + reqSize >= ed) continue;
         // build the system in this zone
         memset(DMAS_phys2Virt(availdSt), 0, reqSize);
-        printk(RED, BLACK, "Set the zone array on %#018lx\n", DMAS_phys2Virt(availdSt));
+        printk(ORANGE, BLACK, "Set the zone array on %#018lx\n", DMAS_phys2Virt(availdSt));
         memManageStruct.zones = DMAS_phys2Virt(availdSt);
         for (int j = 0, id = 0; j <= memManageStruct.e820Length; j++) {
             E820 *e820 = memManageStruct.e820 + j;
@@ -44,16 +45,61 @@ static void initArray() {
             zone->attribute = zone->phyAddrSt;
             if (kernelZoneId == j) zone->attribute = memManageStruct.edOfStruct - Init_virtAddrStart;
             if (j == i) zone->attribute += reqSize;
-            printk(RED, BLACK, "zone[%d]: phyAddr: [%#018lx, %#018lx], attribute = %#018lx\n", 
-                i, zone->phyAddrSt, zone->phyAddrEd, zone->attribute);
+            printk(WHITE, BLACK, "zone[%d]: phyAddr: [%#018lx, %#018lx], attribute = %#018lx\n", 
+                id, zone->phyAddrSt, zone->phyAddrEd, zone->attribute);
             id++;
         }
-        goto FindAvailSpace;
+        goto SuccBuildZones;
     }
     printk(RED, BLACK, "Fail to build a zone array\n");
     return ;
-    FindAvailSpace:
+    SuccBuildZones:
     reqSize = upAlignTo(sizeof(Page) * totPage, sizeof(u64));
+    memManageStruct.pagesLength = totPage;
+    for (int i = 1; i < memManageStruct.zonesLength; i++) {
+        Zone *zone = memManageStruct.zones + i;
+        if (zone->attribute + reqSize >= zone->phyAddrEd) continue;
+        memset(DMAS_phys2Virt(zone->attribute), 0, reqSize);
+        printk(ORANGE, BLACK, "Set the page array on %#018lx, size = %#018lx\n", DMAS_phys2Virt(zone->attribute), reqSize);
+        memManageStruct.pages = DMAS_phys2Virt(zone->attribute);
+        zone->attribute = upAlignTo(zone->attribute + reqSize, sizeof(u64));
+        for (u64 j = 0; j < totPage; j++)
+            memManageStruct.pages[j].phyAddr = j * Page_4KSize;
+        goto SuccBuildPages;
+    }
+    printk(RED, BLACK, "Fail to build a page array\n");
+    return ;
+    SuccBuildPages:
+    reqSize = upAlignTo(upAlignTo(totPage, sizeof(u64)) >> 3, sizeof(u64));
+    memManageStruct.bitsLength = upAlignTo(totPage, sizeof(u64)) >> 3;
+    for (int i = 1; i < memManageStruct.zonesLength; i++) {
+        Zone *zone = memManageStruct.zones + i;
+        if (zone->attribute + reqSize >= zone->phyAddrEd) continue;
+        
+        printk(ORANGE, BLACK, "Set the bitmap on %#018lx, size = %#018lx\n", DMAS_phys2Virt(zone->attribute), reqSize);
+        u64 tmp;
+        memset(DMAS_phys2Virt(zone->attribute), 0, reqSize);
+        zone->attribute = upAlignTo(zone->attribute + reqSize, sizeof(u64));
+        goto SuccBuildBitmap;
+    }
+    printk(RED, BLACK, "Fail to build a bitmap\n");
+    return ;
+    SuccBuildBitmap:
+    // set the property "blgZone" of the pages
+    for (int i = 0; i < memManageStruct.zonesLength; i++) {
+        Zone *zone = memManageStruct.zones + i;
+        zone->pages = memManageStruct.pages + zone->phyAddrSt / Page_4KSize;
+        zone->pagesLength = (zone->phyAddrEd - zone->phyAddrSt) / Page_4KSize;
+        zone->usingCnt = Page_4KUpAlign(zone->attribute) / Page_4KSize - zone->phyAddrSt / Page_4KSize;
+        zone->freeCnt = zone->pagesLength - zone->usingCnt;
+        for (int i = 0; i < zone->usingCnt; i++)
+            zone->pages[i].attr = Page_Flag_Kernel | Page_Flag_KernelInit,
+            memManageStruct.bits[zone->pages[i].phyAddr >> Page_4KShift >> 6] |= 1ul << ((zone->pages[i].phyAddr >> Page_4KShift) % 64);
+        for (int i = 0; i < zone->pagesLength; i++) zone->pages[i].blgZone = zone;
+        printk(WHITE, BLACK, "zone[%d]: pagesLength = %ld, usingCnt = %ld, freeCnt = %ld\n", 
+            i, zone->pagesLength, zone->usingCnt, zone->freeCnt);
+    }
+    return ;
 }
 
 void Init_memManage() {
@@ -81,7 +127,7 @@ void Init_memManage() {
         st = Page_4KUpAlign(memManageStruct.e820[i].addr);
         ed = Page_4KDownAlign(memManageStruct.e820[i].addr + memManageStruct.e820[i].size);
         if (ed <= st) continue;
-        totMem = (ed - st) >> Page_4KShift;
+        totMem += (ed - st) >> Page_4KShift;
     }
     printk(WHITE, BLACK, "Total 4K pages: %#018lx = %ld\n", totMem, totMem);
 
@@ -90,4 +136,8 @@ void Init_memManage() {
 
     DMAS_init();
     initArray();
+}
+
+Page *BsMemManage_alloc(u64 size) {
+    
 }

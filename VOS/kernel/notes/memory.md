@@ -104,7 +104,7 @@ void BsMemManage_init()
 // allocate NUM pages and set the attributes of them to ATTR
 Page *BsMemManage_alloc(int num, int attr) 
 // free the pages that allocated from BsMemManage_alloc()
-void BsMemManage_free(Page *page)
+void BsMemManage_free(Page *page, int num)
 // get the attribute of PAGE
 u64 BsMemManage_getPageAttr(Page *page);
 // set the attribute of PAGE to ATTR

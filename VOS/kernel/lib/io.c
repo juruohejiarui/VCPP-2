@@ -43,3 +43,12 @@ u64 IO_readMSR(u64 msrAddr) {
     );
     return (((u64) data1) << 32) | data2;
 }
+
+u64 IO_getRIP() {
+    u64 ret = 0;
+    __asm__ __volatile__ (
+        "lea (%%rip), %0 \n\t"
+        : "=r"(ret)
+    );
+    return ret;
+}

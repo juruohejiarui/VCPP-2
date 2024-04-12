@@ -4,10 +4,15 @@
 #include "includes/interrupt.h"
 #include "includes/memory.h"
 
-void startKernel() {
+void drawPoint(int x, int y, unsigned int color) {
+    position.FBAddr[x + y * position.XResolution] = color;
+}
 
+void startKernel() {
     position.XResolution = bootParamInfo->graphicsInfo.HorizontalResolution;
 	position.YResolution = bootParamInfo->graphicsInfo.VerticalResolution;
+    // position.XResolution = 3840;
+	// position.YResolution = 2560;
     position.XCharSize = 8;
     position.YCharSize = 16;
 
@@ -22,6 +27,5 @@ void startKernel() {
 
     Init_systemVector();
     Init_memManage();
-
     while (1) ;
 }

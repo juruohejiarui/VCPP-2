@@ -1,3 +1,4 @@
+// this file defines the initialization process of memory management and the APIs of basic management system
 #ifndef __MEMORY_DESC_H__
 #define __MEMORY_DESC_H__
 
@@ -54,7 +55,6 @@ struct tmpZone {
     Page *pages;
     u64 pagesLength;
     u64 attribute;
-    u64 *bits;
     u64 freeCnt, usingCnt;
 };
 typedef struct tmpZone Zone;
