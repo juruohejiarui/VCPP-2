@@ -53,6 +53,7 @@ struct tmpZone {
     u64 phyAddrSt, phyAddrEd;
     Page *pages;
     u64 pagesLength;
+    u64 attribute;
     u64 *bits;
     u64 freeCnt, usingCnt;
 };
@@ -78,11 +79,11 @@ struct GlobalMemManageStruct {
     u64 zonesSize;
     u64 bitsSize;
 
-    u64 edAddrOfStruct;
+    u64 edOfStruct;
     u64 totMemSize;
 };
 
-extern struct GlobalMemManageStruct gloMemManageStruct;
+extern struct GlobalMemManageStruct memManageStruct;
 
 void Init_memManage();
 

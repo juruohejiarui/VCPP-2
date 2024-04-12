@@ -11,7 +11,6 @@ int memcmp(void *fir, void *sec, u64 size);
 
 i64 strlen(u8 *str);
 
-// alignTo(x, bs) = floor(x / bs) * bs
-#define alignTo(x, bs) (((x) + (bs) - 1) / (bs) * (bs))
+
 
 #endif
