@@ -27,5 +27,10 @@ void startKernel() {
 
     Init_systemVector();
     Init_memManage();
+
+    // Page *page = BsMemManage_alloc(64, Page_Flag_Kernel | Page_Flag_Active);
+    // for (int i = 0; i < 64; i++) {
+    //     printk(WHITE, BLACK, "page[%d]: phyAddr = %#018lx, attr = %#018lx\n", i, page[i].phyAddr, page[i].attr);
+    // }
     while (1) ;
 }

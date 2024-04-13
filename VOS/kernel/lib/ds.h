@@ -3,10 +3,10 @@
 #define __LIB_DS_H__
 
 typedef unsigned int u32;
-typedef unsigned long u64;
+typedef unsigned long long u64;
 typedef unsigned short u16;
 typedef unsigned char u8;
-typedef long i64;
+typedef long long i64;
 typedef int i32;
 typedef short i16;
 typedef char i8;
@@ -25,7 +25,7 @@ u64 Bit_get(u64 *addr, u64 index);
 u64 Bit_set(u64 *addr, u64 index);
 u64 Bit_clear(u64 *addr, u64 index);
 
-#define container(memberAddr, type, memberIden) ((type *)((u64)(memberAddr)-(u64)&(((type *)0)->memberIden)))
+#define container(memberAddr, type, memberIden) ((type *)(((u64)(memberAddr))-((u64)&(((type *)0)->memberIden))))
 
 typedef struct {
     

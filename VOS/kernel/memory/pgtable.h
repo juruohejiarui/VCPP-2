@@ -9,4 +9,8 @@ u64 getCR3();
 void setCR3(u64 cr3);
 void flushTLB();
 
+typedef struct { u64 entry[512]; } PageTable;
+PageTable *PageTable_alloc();
+void PageTable_free(PageTable *pageTable);
+
 #endif

@@ -40,13 +40,17 @@ extern char _end;
 #define Page_Flag_ShareK2U      (1ul << 3)
 #define Page_Flag_BuddyHeadPage (1ul << 4)
 
-#define Page_order(pageStructAddr) (((pageStructAddr)->attr >> 5) & (1ul << 4))
+#define Page_getOrder(pageStructAddr) (((pageStructAddr)->attr >> 5) & (1ul << 4))
+#define Page_setOrder(page, ord) (((page)->attr) |= ((ord) << 5))
+
+#define availVirtAddrSt ((u64 *)(0xffff800004000000ul))
 
 struct tmpPage {
     u64 phyAddr;
     u64 attr;
     u64 buddyId;
-    struct Zone *blgZone;
+    List listEle;
+    struct tmpZone *blgZone;
 };
 typedef struct tmpPage Page;
 
@@ -86,5 +90,9 @@ struct GlobalMemManageStruct {
 extern struct GlobalMemManageStruct memManageStruct;
 
 void Init_memManage();
+
+void BsMemMange_setPageAttr(Page *page, u64 attr);
+u64 BsMemManage_getPageAttr(Page *page);
+Page *BsMemManage_alloc(u64 num, u64 attr);
 
 #endif

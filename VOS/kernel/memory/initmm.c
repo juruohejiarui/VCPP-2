@@ -4,6 +4,7 @@
 #include "../includes/hardware.h"
 #include "../includes/log.h"
 #include "DMAS.h"
+#include "buddy.h"
 
 struct GlobalMemManageStruct memManageStruct = {{0}, 0};
 
@@ -21,15 +22,15 @@ static void initArray() {
         if (0x100000 >= st && ed > memManageStruct.edOfStruct - Init_virtAddrStart && memManageStruct.zonesLength > 0)
             kernelZoneId = i;
         memManageStruct.zonesLength++;
-        totPage += (ed - st) >> Page_4KShift;
     }
+    totPage = (memManageStruct.e820[memManageStruct.e820Length].addr + memManageStruct.e820[memManageStruct.e820Length].size) >> Page_4KShift;
     printk(WHITE, BLACK, "kernelZoneId = %d, totPage = %d\n", kernelZoneId, totPage);
     // search for a place for building zones
     u64 reqSize = upAlignTo(sizeof(Zone) * memManageStruct.zonesLength, sizeof(u64));
     for (int i = 1; i <= memManageStruct.e820Length; i++) {
         E820 *e820 = memManageStruct.e820 + i;
         if (e820->type != 1) continue;
-        u64 availdSt = (kernelZoneId == i ? (memManageStruct.edOfStruct - Init_virtAddrStart) : e820->addr),
+        u64 availdSt = max((kernelZoneId == i ? (memManageStruct.edOfStruct - Init_virtAddrStart) : e820->addr), (u64)availVirtAddrSt - Init_virtAddrStart),
             ed = Page_4KDownAlign(e820->addr + e820->size);
         if (availdSt + reqSize >= ed) continue;
         // build the system in this zone
@@ -43,7 +44,9 @@ static void initArray() {
             zone->phyAddrSt = Page_4KUpAlign(e820->addr);
             zone->phyAddrEd = Page_4KDownAlign(e820->addr + e820->size);
             zone->attribute = zone->phyAddrSt;
-            if (kernelZoneId == j) zone->attribute = memManageStruct.edOfStruct - Init_virtAddrStart;
+            if (j == 0) zone->attribute = zone->phyAddrEd;
+            if (zone->phyAddrSt <= (u64)availVirtAddrSt - Init_virtAddrStart && zone->phyAddrEd > (u64)availVirtAddrSt - Init_virtAddrStart)
+                zone->attribute = Page_4KUpAlign((u64)availVirtAddrSt - Init_virtAddrStart);
             if (j == i) zone->attribute += reqSize;
             printk(WHITE, BLACK, "zone[%d]: phyAddr: [%#018lx, %#018lx], attribute = %#018lx\n", 
                 id, zone->phyAddrSt, zone->phyAddrEd, zone->attribute);
@@ -55,6 +58,7 @@ static void initArray() {
     return ;
     SuccBuildZones:
     reqSize = upAlignTo(sizeof(Page) * totPage, sizeof(u64));
+    printk(RED, BLACK, "%ld->%d\n", sizeof(Page) * totPage, reqSize);
     memManageStruct.pagesLength = totPage;
     for (int i = 1; i < memManageStruct.zonesLength; i++) {
         Zone *zone = memManageStruct.zones + i;
@@ -72,6 +76,7 @@ static void initArray() {
     SuccBuildPages:
     reqSize = upAlignTo(upAlignTo(totPage, sizeof(u64)) >> 3, sizeof(u64));
     memManageStruct.bitsLength = upAlignTo(totPage, sizeof(u64)) >> 3;
+    memManageStruct.bitsSize = reqSize;
     for (int i = 1; i < memManageStruct.zonesLength; i++) {
         Zone *zone = memManageStruct.zones + i;
         if (zone->attribute + reqSize >= zone->phyAddrEd) continue;
@@ -136,8 +141,25 @@ void Init_memManage() {
 
     DMAS_init();
     initArray();
+    Buddy_init();
 }
 
-Page *BsMemManage_alloc(u64 size) {
-    
+inline void BsMemMange_setPageAttr(Page *page, u64 attr) { page->attr = attr; }
+inline u64 BsMemManage_getPageAttr(Page *page) { return page->attr; }
+
+Page *BsMemManage_alloc(u64 num, u64 attr) {
+    for (int i = 1; i < memManageStruct.zonesLength; i++) {
+        Zone *zone = memManageStruct.zones + i;
+        if (zone->freeCnt < num) continue;
+        // check if there are enough continuous pages
+        Page *stPage = zone->pages + zone->usingCnt;
+        zone->usingCnt += num;
+        u64 bitPos = stPage - memManageStruct.pages;
+        // set the attribute of the pages
+        for (int j = 0; j < num; j++) 
+            BsMemMange_setPageAttr(stPage + j, attr),
+            memManageStruct.bits[bitPos >> 6] |= 1ul << (bitPos % 64);
+        return stPage;
+    }
+    return NULL;
 }

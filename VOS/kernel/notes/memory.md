@@ -95,6 +95,7 @@ for every $4\texttt{KB}$ page, there is a structure to manage its attributes, ph
 
 **PS**
 - This management system can only manage the pages in the range of DMAS.
+- No API for releasing pages.
 - Once the buddy system is built up, it is invalid to use this system, excepts the ``BsMemManage_setPageAttr(Page *, u64 attr)`` and ``BsMemMange_getPageAttr(Page *)``.
 
 **APIs**:
@@ -103,8 +104,6 @@ for every $4\texttt{KB}$ page, there is a structure to manage its attributes, ph
 void BsMemManage_init()
 // allocate NUM pages and set the attributes of them to ATTR
 Page *BsMemManage_alloc(int num, int attr) 
-// free the pages that allocated from BsMemManage_alloc()
-void BsMemManage_free(Page *page, int num)
 // get the attribute of PAGE
 u64 BsMemManage_getPageAttr(Page *page);
 // set the attribute of PAGE to ATTR
