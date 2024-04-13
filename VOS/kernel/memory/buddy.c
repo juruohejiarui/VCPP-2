@@ -28,23 +28,23 @@ static inline int getBit(Page *headPage) {
 void Buddy_init() {
     // allocate pages for bitmap
     printk(RED, BLACK, "Buddy_init()\n");
-    printk(WHITE, BLACK, "memManageStruct.bitsSize = %d\n", memManageStruct.bitsSize);
-    if (Page_4KSize > memManageStruct.bitsSize) {
-        u64 numOfOnePage = (u64)Page_4KSize / memManageStruct.bitsSize;
+    u64 bitsSize = upAlignTo(Page_4KUpAlign(memManageStruct.totMemSize) >> Page_4KShift, 64) / 8;
+    if (Page_4KSize > bitsSize) {
+        u64 numOfOnePage = (u64)Page_4KSize / bitsSize;
         printk(GREEN, BLACK, "One page for %d bitmap\n", numOfOnePage);
-        for (u64 i = 0; i < Buddy_maxOrder; i += numOfOnePage) {
+        for (u64 i = 0; i <= Buddy_maxOrder; i += numOfOnePage) {
             Page *page = BsMemManage_alloc(1, Page_Flag_Active | Page_Flag_Kernel | Page_Flag_KernelInit);
             if (page == NULL) {
                 printk(RED, BLACK, "Buddy_init() failed to allocate memory for bitmap\n");
                 return;
             }
             for (int j = 0; j < numOfOnePage  && i + j < Buddy_maxOrder; j++)
-                mmStruct.bitmap[i + j] = DMAS_phys2Virt(page->phyAddr + memManageStruct.bitsSize * j);
+                mmStruct.bitmap[i + j] = DMAS_phys2Virt(page->phyAddr + bitsSize * j);
         }
     } else {
-        u64 regPage = Page_4KUpAlign(memManageStruct.bitsSize) / Page_4KSize;
+        u64 regPage = Page_4KUpAlign(bitsSize) / Page_4KSize;
         printk(GREEN, BLACK, "%d pages for one bitmap\n", regPage);
-        for (int i = 0; i < Buddy_maxOrder; i++) {
+        for (int i = 0; i <= Buddy_maxOrder; i++) {
             Page *page = BsMemManage_alloc(regPage, Page_Flag_Active | Page_Flag_Kernel | Page_Flag_KernelInit);
             if (page == NULL) {
                 printk(RED, BLACK, "Buddy_init() failed to allocate memory for bitmap\n");
@@ -53,9 +53,8 @@ void Buddy_init() {
             mmStruct.bitmap[i] = DMAS_phys2Virt(page->phyAddr);
         }
     }
-    // log: allocate memory for bitmap
     for (int i = 0; i <= Buddy_maxOrder; i++)
-        printk(WHITE, BLACK, "mmStruct.bitmap[%d] = %p\n", i, mmStruct.bitmap[i]);
+        memset(mmStruct.bitmap[i], 0, bitsSize), mmStruct.freeList[i] = NULL;
     // initialize the free list
     for (int i = 1; i < memManageStruct.zonesLength; i++) {
         Zone *zone = memManageStruct.zones + i;
@@ -78,10 +77,12 @@ void Buddy_init() {
         printk(ORANGE, BLACK, "mmStruct.freeList[%d] = %p\n", i, mmStruct.freeList[i]);
         if (mmStruct.freeList[i] != NULL) {
             Page *page = mmStruct.freeList[i];
+            int cnt = 0;
             do {
-                printk(WHITE, BLACK, "%#018lx, phyAddr = %#018lx, attr = %lx, buddyId = %d\n", page, page->phyAddr, page->attr, page->buddyId);
+                printk(WHITE, BLACK, "[%#018lx, %#018lx]%c", page, page->phyAddr, (((++cnt) % 5 == 0) ? '\n' : ' '));
                 page = container(page->listEle.next, Page, listEle);
             } while (page != mmStruct.freeList[i]);
+            putchar(WHITE, BLACK, '\n');
         }
     }
 }

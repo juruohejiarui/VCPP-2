@@ -1,9 +1,11 @@
 #include <stdarg.h>
 #include "../includes/log.h"
 #include "../includes/lib.h"
+#include "../includes/hardware.h"
 #include "font.h"
 
 char buf[4096] = {0};
+u32 lineLength[4096] = { [0 ... 4095] = 0 };
 
 #define isDigit(ch) ((ch) >= '0' && (ch) <= '9')
 
@@ -168,9 +170,19 @@ int sprintf(char *buf, const char *fmt, va_list args) {
 void scroll(void) {
     int x, y;
     unsigned int *addr = position.FBAddr, 
-                *addr2 = position.FBAddr + position.YCharSize * position.XResolution;
-    memcpy(addr2, addr, position.XResolution * (position.YResolution - position.YCharSize) * sizeof(u32));
-    memset(addr + position.XResolution * (position.YResolution - position.YCharSize), 0, position.XResolution * position.YCharSize * sizeof(u32));
+                *addr2 = position.FBAddr + position.YCharSize * bootParamInfo->graphicsInfo.PixelsPerScanLine;
+    for (int i = 0; i < position.YPosition - 1; i++) {
+        for (int j = 0; j < position.YCharSize; j++)
+            memcpy(
+                    addr2 + j * bootParamInfo->graphicsInfo.PixelsPerScanLine, 
+                    addr + j * bootParamInfo->graphicsInfo.PixelsPerScanLine,
+                    max(lineLength[i + 1], lineLength[i]) * position.XCharSize * sizeof(u32));
+        addr += bootParamInfo->graphicsInfo.PixelsPerScanLine * position.YCharSize;
+        addr2 += bootParamInfo->graphicsInfo.PixelsPerScanLine * position.YCharSize;
+        lineLength[i] = lineLength[i + 1];
+    }
+    memset(addr, 0, position.XResolution * position.YCharSize * sizeof(u32));
+    lineLength[position.YPosition - 1] = 0;
 }
 
 void drawchar(unsigned int fcol, unsigned int bcol, int px, int py, char ch) {
@@ -179,7 +191,7 @@ void drawchar(unsigned int fcol, unsigned int bcol, int px, int py, char ch) {
     unsigned int *addr;
     unsigned char *fontp = font_ascii[ch];
         for (y = 0; y < position.YCharSize; y++, fontp++) {
-            addr = position.FBAddr + position.XResolution * (py + y) + px;
+            addr = position.FBAddr + bootParamInfo->graphicsInfo.PixelsPerScanLine * (py + y) + px;
             testVal = 0x80;
             for (x = 0; x < position.XCharSize; x++, addr++, testVal >>= 1) {
                 if (*fontp & testVal) *addr = fcol;
@@ -210,6 +222,7 @@ inline void putchar(unsigned int fcol, unsigned int bcol, char ch) {
             putchar(fcol, bcol, '\n');
         drawchar(fcol, bcol, position.XCharSize * position.XPosition, position.YCharSize * position.YPosition, ch);
         position.XPosition++;
+        lineLength[position.YPosition] = position.XPosition;
     }
 }
 

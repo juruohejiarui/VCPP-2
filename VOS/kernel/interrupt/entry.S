@@ -76,6 +76,13 @@ errorCode:
     call *%rdx
     jmp retFromException
 
+ENTRY(debug)
+    pushq $0
+    pushq %rax
+    leaq doDebug(%rip), %rax
+    xchgq %rax, (%rsp)
+    jmp errorCode
+
 ENTRY(nmi)
     /* no error code since it is not an exception */
     pushq %rax
@@ -111,10 +118,51 @@ ENTRY(nmi)
     callq doNMI
     jmp restoreAll
 
+ENTRY(int3)
+    pushq $0
+    pushq %rax
+    leaq doInt3(%rip), %rax
+    xchgq %rax, (%rsp)
+    jmp errorCode
+
+ENTRY(overflow)
+    pushq $0
+    pushq %rax
+    leaq doOverflow(%rip), %rax
+    xchgq %rax, (%rsp)
+    jmp errorCode
+
+ENTRY(bounds)
+    pushq $0
+    pushq %rax
+    leaq doBounds(%rip), %rax
+    xchgq %rax, (%rsp)
+    jmp errorCode
+
 ENTRY(undefinedOpcode)
     pushq	$0
 	pushq	%rax
     leaq doUndefinedOpcode(%rip), %rax
+    xchgq %rax, (%rsp)
+    jmp errorCode
+    
+ENTRY(devNotAvailable)
+    pushq $0
+    pushq %rax
+    leaq doDevNotAvailable(%rip), %rax
+    xchgq %rax, (%rsp)
+    jmp errorCode
+
+ENTRY(doubleFault)
+    pushq %rax
+    leaq doDoubleFault(%rip), %rax
+    xchgq %rax, (%rsp)
+    jmp errorCode
+
+ENTRY(coprocessorSegmentOverrun)
+    pushq $0
+    pushq %rax
+    leaq doCoprocessorSegmentOverrun(%rip), %rax
     xchgq %rax, (%rsp)
     jmp errorCode
 
@@ -124,8 +172,60 @@ ENTRY(invalidTSS)
     xchgq %rax, (%rsp)
     jmp errorCode
 
+ENTRY(segmentNotPresent)
+    pushq %rax
+    leaq doSegmentNotPresent(%rip), %rax
+    xchgq %rax, (%rsp)
+    jmp errorCode
+
+ENTRY(stackSegmentFault)
+    pushq %rax
+    leaq doStackSegmentFault(%rip), %rax
+    xchgq %rax, (%rsp)
+    jmp errorCode
+
+ENTRY(generalProtection)
+    pushq %rax
+    leaq doGeneralProtection(%rip), %rax
+    xchgq %rax, (%rsp)
+    jmp errorCode
+
 ENTRY(pageFault)
     pushq %rax
     leaq doPageFault(%rip), %rax
+    xchgq %rax, (%rsp)
+    jmp errorCode
+
+ENTRY(x87FPUError)
+    pushq $0
+    pushq %rax
+    leaq doX87FPUError(%rip), %rax
+    xchgq %rax, (%rsp)
+    jmp errorCode
+
+ENTRY(alignmentCheck)
+    pushq %rax
+    leaq doAlignmentCheck(%rip), %rax
+    xchgq %rax, (%rsp)
+    jmp errorCode
+
+ENTRY(machineCheck)
+    pushq $0
+    pushq %rax
+    leaq doMachineCheck(%rip), %rax
+    xchgq %rax, (%rsp)
+    jmp errorCode
+
+ENTRY(simdError)
+    pushq $0
+    pushq %rax
+    leaq doSIMDError(%rip), %rax
+    xchgq %rax, (%rsp)
+    jmp errorCode
+
+ENTRY(virtualizationError)
+    pushq $0
+    pushq %rax
+    leaq doVirtualizationError(%rip), %rax
     xchgq %rax, (%rsp)
     jmp errorCode

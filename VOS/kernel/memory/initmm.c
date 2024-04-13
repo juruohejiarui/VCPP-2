@@ -27,7 +27,7 @@ static void initArray() {
     printk(WHITE, BLACK, "kernelZoneId = %d, totPage = %d\n", kernelZoneId, totPage);
     // search for a place for building zones
     u64 reqSize = upAlignTo(sizeof(Zone) * memManageStruct.zonesLength, sizeof(u64));
-    for (int i = 1; i <= memManageStruct.e820Length; i++) {
+    for (int i = 0; i <= memManageStruct.e820Length; i++) {
         E820 *e820 = memManageStruct.e820 + i;
         if (e820->type != 1) continue;
         u64 availdSt = max((kernelZoneId == i ? (memManageStruct.edOfStruct - Init_virtAddrStart) : e820->addr), (u64)availVirtAddrSt - Init_virtAddrStart),
@@ -44,7 +44,7 @@ static void initArray() {
             zone->phyAddrSt = Page_4KUpAlign(e820->addr);
             zone->phyAddrEd = Page_4KDownAlign(e820->addr + e820->size);
             zone->attribute = zone->phyAddrSt;
-            if (j == 0) zone->attribute = zone->phyAddrEd;
+            if (j < kernelZoneId) zone->attribute = zone->phyAddrEd;
             if (zone->phyAddrSt <= (u64)availVirtAddrSt - Init_virtAddrStart && zone->phyAddrEd > (u64)availVirtAddrSt - Init_virtAddrStart)
                 zone->attribute = Page_4KUpAlign((u64)availVirtAddrSt - Init_virtAddrStart);
             if (j == i) zone->attribute += reqSize;
@@ -74,22 +74,7 @@ static void initArray() {
     printk(RED, BLACK, "Fail to build a page array\n");
     return ;
     SuccBuildPages:
-    reqSize = upAlignTo(upAlignTo(totPage, sizeof(u64)) >> 3, sizeof(u64));
-    memManageStruct.bitsLength = upAlignTo(totPage, sizeof(u64)) >> 3;
-    memManageStruct.bitsSize = reqSize;
-    for (int i = 1; i < memManageStruct.zonesLength; i++) {
-        Zone *zone = memManageStruct.zones + i;
-        if (zone->attribute + reqSize >= zone->phyAddrEd) continue;
-        
-        printk(ORANGE, BLACK, "Set the bitmap on %#018lx, size = %#018lx\n", DMAS_phys2Virt(zone->attribute), reqSize);
-        u64 tmp;
-        memset(DMAS_phys2Virt(zone->attribute), 0, reqSize);
-        zone->attribute = upAlignTo(zone->attribute + reqSize, sizeof(u64));
-        goto SuccBuildBitmap;
-    }
-    printk(RED, BLACK, "Fail to build a bitmap\n");
-    return ;
-    SuccBuildBitmap:
+    printk(RED, BLACK, "Setting the properties of the zones\n");
     // set the property "blgZone" of the pages
     for (int i = 0; i < memManageStruct.zonesLength; i++) {
         Zone *zone = memManageStruct.zones + i;
@@ -97,9 +82,8 @@ static void initArray() {
         zone->pagesLength = (zone->phyAddrEd - zone->phyAddrSt) / Page_4KSize;
         zone->usingCnt = Page_4KUpAlign(zone->attribute) / Page_4KSize - zone->phyAddrSt / Page_4KSize;
         zone->freeCnt = zone->pagesLength - zone->usingCnt;
-        for (int i = 0; i < zone->usingCnt; i++)
-            zone->pages[i].attr = Page_Flag_Kernel | Page_Flag_KernelInit,
-            memManageStruct.bits[zone->pages[i].phyAddr >> Page_4KShift >> 6] |= 1ul << ((zone->pages[i].phyAddr >> Page_4KShift) % 64);
+        for (u64 j = 0; j < zone->usingCnt; j++)
+            zone->pages[j].attr = Page_Flag_Kernel | Page_Flag_KernelInit;
         for (int i = 0; i < zone->pagesLength; i++) zone->pages[i].blgZone = zone;
         printk(WHITE, BLACK, "zone[%d]: pagesLength = %ld, usingCnt = %ld, freeCnt = %ld\n", 
             i, zone->pagesLength, zone->usingCnt, zone->freeCnt);
@@ -113,7 +97,7 @@ void Init_memManage() {
     printk(WHITE, BLACK, "Display Physics Address MAP,Type(1:RAM,2:ROM or Reserved,3:ACPI Reclaim Memory,4:ACPI NVS Memory,Others:Undefine)\n");
     for (int i = 0; i < bootParamInfo->E820Info.entryCount; i++) {
         printk(GREEN, BLACK, "Address:%#018lx\tLength:%#018lx\tType:%#010x\n", p->address, p->length, p->type);
-        if (p->type == 1) totMem += p->length;
+        totMem += p->length;
         memManageStruct.e820[i].addr = p->address;
         memManageStruct.e820[i].size = p->length;
         memManageStruct.e820[i].type = p->type;
@@ -157,8 +141,7 @@ Page *BsMemManage_alloc(u64 num, u64 attr) {
         u64 bitPos = stPage - memManageStruct.pages;
         // set the attribute of the pages
         for (int j = 0; j < num; j++) 
-            BsMemMange_setPageAttr(stPage + j, attr),
-            memManageStruct.bits[bitPos >> 6] |= 1ul << (bitPos % 64);
+            BsMemMange_setPageAttr(stPage + j, attr);
         return stPage;
     }
     return NULL;

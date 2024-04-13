@@ -1,4 +1,5 @@
 #include "ds.h"
+#include "../includes/log.h"
 
 void List_init(List *list) {
     list->prev = list->next = list;

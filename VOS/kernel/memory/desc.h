@@ -43,7 +43,7 @@ extern char _end;
 #define Page_getOrder(pageStructAddr) (((pageStructAddr)->attr >> 5) & (1ul << 4))
 #define Page_setOrder(page, ord) (((page)->attr) |= ((ord) << 5))
 
-#define availVirtAddrSt ((u64 *)(0xffff800004000000ul))
+#define availVirtAddrSt ((u64 *)Page_4KUpAlign(0xffff800003000000ul + bootParamInfo->graphicsInfo.FrameBufferSize))
 
 struct tmpPage {
     u64 phyAddr;
@@ -75,13 +75,10 @@ struct GlobalMemManageStruct {
 
     Page *pages;
     Zone *zones;
-    u64 *bits;
     u64 pagesLength;
     u64 zonesLength;
-    u64 bitsLength;
     u64 pagesSize;
     u64 zonesSize;
-    u64 bitsSize;
 
     u64 edOfStruct;
     u64 totMemSize;
