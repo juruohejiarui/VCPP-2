@@ -34,7 +34,12 @@ void startKernel() {
     Init_systemVector();
     Init_memManage();
 
-
+    Buddy_debugLog(11);
+    Page *page = Buddy_alloc(3, Page_Flag_Kernel | Page_Flag_Active);
+    Page *page2 = Buddy_alloc(4, Page_Flag_Kernel | Page_Flag_Active);
+    Buddy_free(page);
+    Buddy_free(page2);
+    Buddy_debugLog(11);
 
     // Page *page = BsMemManage_alloc(64, Page_Flag_Kernel | Page_Flag_Active);
     // for (int i = 0; i < 64; i++) {

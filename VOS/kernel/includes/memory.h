@@ -3,4 +3,5 @@
 #include "../memory/desc.h"
 #include "../memory/DMAS.h"
 #include "../memory/pgtable.h"
+#include "../memory/buddy.h"
 #endif

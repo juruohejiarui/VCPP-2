@@ -40,8 +40,7 @@ extern char _end;
 #define Page_Flag_ShareK2U      (1ul << 3)
 #define Page_Flag_BuddyHeadPage (1ul << 4)
 
-#define Page_getOrder(pageStructAddr) (((pageStructAddr)->attr >> 5) & (1ul << 4))
-#define Page_setOrder(page, ord) (((page)->attr) |= ((ord) << 5))
+
 
 #define availVirtAddrSt ((u64 *)Page_4KUpAlign(0xffff800003000000ul + bootParamInfo->graphicsInfo.FrameBufferSize))
 

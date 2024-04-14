@@ -3,26 +3,53 @@
 #include "../includes/log.h"
 
 #define Buddy_maxOrder 15
+
+static inline int Page_getOrder(Page *pageStructAddr) {
+    return (pageStructAddr->attr >> 6) & ((1ul << 4) - 1);
+}
+static inline int Page_setOrder(Page *page, int ord) {
+    page->attr = (page->attr & (~(((1ul << 4) - 1) << 6))) | (ord << 6);
+}
+
 static struct BuddyManageStruct {
     Page *freeList[Buddy_maxOrder + 1];
     u64 *bitmap[Buddy_maxOrder + 1];
 } mmStruct;
 
-#define getParentPos(pos) ((pos) >> 1)
-#define getLeftChildPos(pos) ((pos) << 1)
-#define getRightChildPos(pos) (((pos) << 1) | 1)
+#define parentPos(pos) ((pos) >> 1)
+#define lChildPos(pos) ((pos) << 1)
+#define rChildPos(pos) (((pos) << 1) | 1)
 #define isLeft(pos) (!((pos) & 1))
 #define isRight(pos) ((pos) & 1)
+#define buddyPages(headPage) (isLeft(headPage->buddyId) ? (headPage + (1 << Page_getOrder(headPage))) : (headPage - (1 << Page_getOrder(headPage))))
+
+static inline int getBit(Page *headPage) {
+    if (headPage->buddyId == 1) return 1;
+    u64 pos = headPage->phyAddr >> Page_4KShift;
+    pos -= isRight(headPage->buddyId) * (1 << Page_getOrder(headPage));
+    return (mmStruct.bitmap[Page_getOrder(headPage)][pos / 64] >> (pos % 64)) & 1;
+}
 
 static inline void revBit(Page *headPage) {
+    if (headPage->buddyId == 1) return ;
     u64 pos = headPage->phyAddr >> Page_4KShift;
     pos -= isRight(headPage->buddyId) * (1 << Page_getOrder(headPage));
     mmStruct.bitmap[Page_getOrder(headPage)][pos / 64] ^= (1ul << (pos % 64));
 }
-static inline int getBit(Page *headPage) {
-    u64 pos = headPage->phyAddr >> Page_4KShift;
-    pos -= isRight(headPage->buddyId) * (1 << Page_getOrder(headPage));
-    return (mmStruct.bitmap[Page_getOrder(headPage)][pos / 64] >> (pos % 64)) & 1;
+
+
+static inline void insNewFreePageFrame(int ord, Page *headPage) {
+    List_init(&headPage->listEle);
+    if (mmStruct.freeList[ord] == NULL) mmStruct.freeList[ord] = headPage;
+    else List_insBefore(&headPage->listEle, &mmStruct.freeList[ord]->listEle);
+}
+
+static inline Page *popFreePageFrame(int ord) {
+    Page *headPage = mmStruct.freeList[ord];
+    if (headPage == NULL) return NULL;
+    if (List_isEmpty(&headPage->listEle)) mmStruct.freeList[ord] = NULL;
+    else List_del(&headPage->listEle), List_init(&headPage->listEle);
+    return headPage;
 }
 
 void Buddy_init() {
@@ -67,13 +94,57 @@ void Buddy_init() {
                 Page_setOrder(headPage, ord);
                 List_init(&headPage->listEle);
                 headPage->buddyId = 1;
-                if (mmStruct.freeList[ord] == NULL) mmStruct.freeList[ord] = headPage;
-                else List_insBefore(&headPage->listEle, &mmStruct.freeList[ord]->listEle);
+                insNewFreePageFrame(ord, headPage);
                 pgPos += (1 << ord);
             }
     }
-    // log: free list
-    for (int i = 0; i <= Buddy_maxOrder; i++) {
+}
+
+Page *Buddy_alloc(u64 log2Size, u64 attr) {
+    if (log2Size > Buddy_maxOrder) return NULL;
+    for (int ord = log2Size; ord <= Buddy_maxOrder; ord++) {
+        Page *headPage = popFreePageFrame(ord);
+        if (headPage == NULL) continue;
+        // divide this page frame
+        for (int i = ord; i > log2Size; i--) {
+            Page *rPage = headPage + (1 << (i - 1));
+            rPage->buddyId = rChildPos(headPage->buddyId);
+            headPage->buddyId = lChildPos(headPage->buddyId);
+            Page_setOrder(rPage, i - 1);
+            Page_setOrder(headPage, i - 1);
+            rPage->attr |= Page_Flag_BuddyHeadPage;
+            insNewFreePageFrame(i - 1, rPage);
+            revBit(rPage);
+        }
+        headPage->attr |= attr;
+        return headPage;
+    }
+    return NULL;
+}
+
+void Buddy_free(Page *pages) {
+    if (pages == NULL || (pages->attr & Page_Flag_BuddyHeadPage) == 0) return;
+    for (int i = Page_getOrder(pages); i < Buddy_maxOrder; i++) {
+        revBit(pages);
+        if (getBit(pages)) break;
+        Page *buddy = buddyPages(pages);
+        // the buddy page is the the only free page in freeList[i]
+        if (List_isEmpty(&buddy->listEle))
+            mmStruct.freeList[i] = NULL;
+        List_del(&buddy->listEle), List_init(&buddy->listEle);
+        Page    *rChild = isRight(pages->buddyId) ? pages : buddy,
+                *lChild = isRight(pages->buddyId) ? buddy : pages;
+        rChild->attr = 0;
+        lChild->attr = Page_Flag_BuddyHeadPage;
+        rChild->buddyId = 0,        lChild->buddyId = parentPos(lChild->buddyId);
+        Page_setOrder(rChild, 0),   Page_setOrder(lChild, i + 1);
+        pages = lChild;
+    }
+    insNewFreePageFrame(Page_getOrder(pages), pages);
+}
+
+void Buddy_debugLog(int range) {
+    for (int i = 0; i <= min(Buddy_maxOrder, range); i++) {
         printk(ORANGE, BLACK, "mmStruct.freeList[%d] = %p\n", i, mmStruct.freeList[i]);
         if (mmStruct.freeList[i] != NULL) {
             Page *page = mmStruct.freeList[i];
