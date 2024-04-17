@@ -1,8 +1,8 @@
 ASM = as
-CC = gcc-4.7
+CC = gcc
 
 ASMFLAG = --64
-CFLAGS = -mcmodel=large -fno-builtin -fno-stack-protector -m64 -std=c99
+CFLAGS = -mcmodel=large -fno-builtin -fno-stack-protector -m64 -std=gnu89 -std=c99
 
 CSRCS = $(wildcard ./*.c) \
 	$(wildcard interrupt/*.c) \

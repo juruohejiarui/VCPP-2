@@ -4,10 +4,10 @@
 
 #define Buddy_maxOrder 15
 
-static inline int Page_getOrder(Page *pageStructAddr) {
+inline int Page_getOrder(Page *pageStructAddr) {
     return (pageStructAddr->attr >> 6) & ((1ul << 4) - 1);
 }
-static inline int Page_setOrder(Page *page, int ord) {
+inline void Page_setOrder(Page *page, int ord) {
     page->attr = (page->attr & (~(((1ul << 4) - 1) << 6))) | (ord << 6);
 }
 
@@ -48,7 +48,7 @@ static inline Page *popFreePageFrame(int ord) {
     Page *headPage = mmStruct.freeList[ord];
     if (headPage == NULL) return NULL;
     if (List_isEmpty(&headPage->listEle)) mmStruct.freeList[ord] = NULL;
-    else List_del(&headPage->listEle), List_init(&headPage->listEle);
+    else List_del(&headPage->listEle);
     return headPage;
 }
 
@@ -124,6 +124,8 @@ Page *Buddy_alloc(u64 log2Size, u64 attr) {
 
 void Buddy_free(Page *pages) {
     if (pages == NULL || (pages->attr & Page_Flag_BuddyHeadPage) == 0) return;
+    List_del(&pages->listEle);
+    pages->attr = Page_Flag_BuddyHeadPage;
     for (int i = Page_getOrder(pages); i < Buddy_maxOrder; i++) {
         revBit(pages);
         if (getBit(pages)) break;
@@ -131,7 +133,7 @@ void Buddy_free(Page *pages) {
         // the buddy page is the the only free page in freeList[i]
         if (List_isEmpty(&buddy->listEle))
             mmStruct.freeList[i] = NULL;
-        List_del(&buddy->listEle), List_init(&buddy->listEle);
+        List_del(&buddy->listEle);
         Page    *rChild = isRight(pages->buddyId) ? pages : buddy,
                 *lChild = isRight(pages->buddyId) ? buddy : pages;
         rChild->attr = 0;
@@ -156,4 +158,17 @@ void Buddy_debugLog(int range) {
             putchar(WHITE, BLACK, '\n');
         }
     }
+}
+
+Page *Buddy_dividePageFrame(Page *headPage) {
+    int ord = Page_getOrder(headPage);
+    if (ord == 0) return NULL;
+    Page *rPage = headPage + (1 << (ord - 1));
+    rPage->buddyId = rChildPos(headPage->buddyId);
+    headPage->buddyId = lChildPos(headPage->buddyId);
+    Page_setOrder(rPage, ord - 1);
+    Page_setOrder(headPage, ord - 1);
+    List_init(&rPage->listEle);
+    rPage->attr = headPage->attr;
+    return rPage;
 }

@@ -22,6 +22,7 @@ int List_isEmpty(List *ele) { return ele->prev == ele && ele->next == ele; }
 void List_del(List *ele) {
     ele->next->prev = ele->prev;
     ele->prev->next = ele->next;
+    ele->prev = ele->next = ele;
 }
 
 u64 Bit_get(u64 *addr, u64 index) { return *addr & (1ul << index); }

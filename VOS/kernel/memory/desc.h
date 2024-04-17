@@ -40,7 +40,10 @@ extern char _end;
 #define Page_Flag_ShareK2U      (1ul << 3)
 #define Page_Flag_BuddyHeadPage (1ul << 4)
 
-
+#define userAddrStart   0x0000000000000000ul
+#define userAddrEd      0x00007ffffffffffful
+#define kernelAddrStart 0xffff800000000000ul
+#define kernelAddrEd    0xfffffffffffffffful
 
 #define availVirtAddrSt ((u64 *)Page_4KUpAlign(0xffff800003000000ul + bootParamInfo->graphicsInfo.FrameBufferSize))
 
