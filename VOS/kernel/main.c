@@ -33,5 +33,8 @@ void startKernel() {
 
     Init_systemVector();
     Init_memManage();
+
+    Init_interrupt();
+    
     while (1) ;
 }

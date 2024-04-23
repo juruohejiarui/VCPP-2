@@ -82,6 +82,7 @@ void Buddy_init() {
     }
     for (int i = 0; i <= Buddy_maxOrder; i++)
         memset(mmStruct.bitmap[i], 0, bitsSize), mmStruct.freeList[i] = NULL;
+    memManageStruct.totMemSize = 0;
     // initialize the free list
     for (int i = 1; i < memManageStruct.zonesLength; i++) {
         Zone *zone = memManageStruct.zones + i;
@@ -96,6 +97,7 @@ void Buddy_init() {
                 headPage->buddyId = 1;
                 insNewFreePageFrame(ord, headPage);
                 pgPos += (1 << ord);
+                memManageStruct.totMemSize += (1 << (ord + Page_4KShift));
             }
     }
 }

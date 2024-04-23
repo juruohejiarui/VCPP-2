@@ -10,5 +10,8 @@ u32 IO_in32(u16 port);
 void IO_writeMSR(u64 msrAddr, u64 data);
 u64 IO_readMSR(u64 msrAddr);
 
+void sti();
+void cli();
+
 u64 IO_getRIP();
 #endif

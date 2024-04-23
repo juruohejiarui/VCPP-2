@@ -1,5 +1,25 @@
 #include "io.h"
 
+void IO_out8(u16 port, u8 data) {
+    __asm__ __volatile__ (
+        "outb %0, %%dx   \n\t"
+        "mfence          \n\t"
+        :
+        : "a"(data), "d"(port)
+        : "memory"
+    );
+}
+
+void IO_out32(u16 port, u32 data) {
+    __asm__ __volatile__ (
+        "outl %0, %%dx   \n\t"
+        "mfence          \n\t"
+        :
+        : "a"(data), "d"(port)
+        : "memory"
+    );
+}
+
 u8 IO_in8(u16 port) {
     u8 ret = 0;
     __asm__ __volatile__ (
@@ -42,6 +62,18 @@ u64 IO_readMSR(u64 msrAddr) {
         : "memory"
     );
     return (((u64) data1) << 32) | data2;
+}
+
+void sti() {
+    __asm__ __volatile__ (
+        "sti \n\t"
+    );
+}
+
+void cli() {
+    __asm__ __volatile__ (
+        "cli \n\t"
+    );
 }
 
 u64 IO_getRIP() {

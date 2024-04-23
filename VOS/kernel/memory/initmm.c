@@ -126,6 +126,8 @@ void Init_memManage() {
     DMAS_init();
     initArray();
     Buddy_init();
+
+    printk(WHITE, BLACK, "totMemSize = %#018lx Byte = %ld MB\n", memManageStruct.totMemSize, memManageStruct.totMemSize >> 20);
 }
 
 inline void BsMemMange_setPageAttr(Page *page, u64 attr) { page->attr = attr; }
