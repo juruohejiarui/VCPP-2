@@ -6,192 +6,6 @@
 
 #define alloc2MPage() Buddy_alloc(9, Page_Flag_Kernel)
 
-/// @brief Create a slab cache struct and one slab struct
-/// @param size the size of slabs
-/// @param constructer pointer of constucter function
-/// @param destructor pointer of destucter function
-/// @param arg some other args
-/// @return the pointer to the slab cache struct
-SlabCache *Slab_createCache(u64 size, 
-        void *(*constructer)(void *virtAddr, u64 arg), void *(*destructor)(void *virtAddr, u64 arg),
-        u64 arg) {
-    SlabCache *cache = (SlabCache *)kmalloc(sizeof(SlabCache), 0);
-    if (cache == NULL) {
-        printk(RED, BLACK, "Slab_createCache: kmalloc failed\n");
-        return NULL;
-    }
-    memset(cache, 0, sizeof(SlabCache));
-    cache->size = upAlignTo(size, sizeof(u64));
-    cache->usingCnt = cache->freeCnt = 0;
-    cache->slabs = (Slab *)kmalloc(sizeof(Slab), 0);
-    if (cache->slabs == NULL) {
-        printk(RED, BLACK, "Slab_createCache: kmalloc failed\n");
-        kfree(cache);
-        return NULL;
-    }
-    memset(cache->slabs, 0, sizeof(Slab));
-
-    cache->constructer = constructer;
-    cache->destructor = destructor;
-    List_init(&cache->slabs->listEle);
-
-    cache->slabs->page = alloc2MPage(); // Allocate 2MB
-    if (cache->slabs->page == NULL) {
-        printk(RED, BLACK, "Slab_createCache: Buddy_alloc failed\n");
-        kfree(cache->slabs);
-        kfree(cache);
-        return NULL;
-    }
-    cache->slabs->usingCnt = 0, cache->slabs->freeCnt = Page_2MSize / cache->size;
-    cache->freeCnt = cache->slabs->freeCnt;
-    // map it to DMAS address area
-    cache->slabs->virtAddr = DMAS_phys2Virt(cache->slabs->page->phyAddr);
-
-    cache->slabs->colCnt = cache->slabs->freeCnt;
-    cache->slabs->colLen = upAlignTo(cache->slabs->colCnt, sizeof(u64)) / 8;
-    cache->slabs->colMap = (u64 *)kmalloc(cache->slabs->colLen * sizeof(u64), 0);
-    if (cache->slabs->colMap == NULL) {
-        printk(RED, BLACK, "Slab_createCache: kmalloc failed\n");
-        Buddy_free(cache->slabs->page);
-        kfree(cache->slabs);
-        kfree(cache);
-        return NULL;
-    }
-    memset(cache->slabs->colMap, 0, cache->slabs->colLen * sizeof(u64));
-    
-    return cache;
-}
-
-/// @brief Destroy a slab cache struct and all slabs
-/// @param cache the pointer to the slab cache struct
-/// @return 1: success, 0: failed
-u64 Slab_destroy(SlabCache *cache) {
-    if (cache == NULL) return 0;
-    Slab *slabs = cache->slabs, *tmp = NULL;
-    if (slabs->usingCnt > 0) {
-        printk(RED, BLACK, "Slab_destroy: some slabs are still in using\n");
-        return 0;
-    }
-    while (!List_isEmpty(&slabs->listEle)) {
-        tmp = slabs;
-        slabs = container(slabs->listEle.next, Slab, listEle);
-        List_del(&tmp->listEle);
-        kfree(tmp->colMap);
-        Buddy_free(tmp->page);
-        kfree(tmp);
-    }
-    kfree(slabs->colMap);
-    Buddy_free(slabs->page);
-    kfree(slabs);
-    kfree(cache);
-    return 1;
-}
-
-/// @brief Allocate a memory block from slab cache
-/// @param cache 
-/// @param arg 
-/// @return the pointer to the memory block
-void *Slab_malloc(SlabCache *cache, u64 arg) {
-    Slab *slab = cache->slabs;
-    // extend the slab
-    if (cache->freeCnt == 0) {
-        Slab *newSlab = (Slab *)kmalloc(sizeof(Slab), 0);
-        if (newSlab == NULL) {
-            printk(RED, BLACK, "Slab_malloc: kmalloc failed\n");
-            return NULL;
-        }
-        memset(newSlab, 0, sizeof(Slab));
-        List_init(&newSlab->listEle);
-        newSlab->page = alloc2MPage(); // Allocate 2MB
-        if (newSlab->page == NULL) {
-            printk(RED, BLACK, "Slab_malloc: Buddy_alloc failed\n");
-            kfree(newSlab);
-            return NULL;
-        }
-        newSlab->usingCnt = 0, newSlab->freeCnt = Page_2MSize / cache->size;
-        cache->freeCnt += newSlab->freeCnt;
-        // map it to DMAS address area
-        newSlab->virtAddr = DMAS_phys2Virt(newSlab->page->phyAddr);
-
-        newSlab->colCnt = newSlab->freeCnt;
-        newSlab->colLen = upAlignTo(newSlab->colCnt, sizeof(u64)) / 8;
-        newSlab->colMap = (u64 *)kmalloc(newSlab->colLen * sizeof(u64), 0);
-        if (newSlab->colMap == NULL) {
-            printk(RED, BLACK, "Slab_malloc: kmalloc failed\n");
-            Buddy_free(newSlab->page);
-            kfree(newSlab);
-            return NULL;
-        }
-        memset(newSlab->colMap, 0, newSlab->colLen * sizeof(u64));
-
-        List_insBefore(&newSlab->listEle, &slab->listEle);
-        for (int j = 0; j < newSlab->colCnt; j++) {
-            if (newSlab->colMap[j >> 6] & (1ul << (j & 63))) continue;
-            Bit_set(newSlab->colMap + (j >> 6), j & 63);
-            cache->freeCnt--;
-            cache->usingCnt++;
-            newSlab->freeCnt--;
-            newSlab->usingCnt++;
-            if (cache->constructer != NULL) 
-                return cache->constructer((char *)newSlab->virtAddr + j * cache->size, arg);
-            else return (void *)((char *)newSlab->virtAddr + j * cache->size);
-        }
-        List_del(&newSlab->listEle);
-        kfree(newSlab->colMap);
-        Buddy_free(newSlab->page);
-        kfree(newSlab);
-    } else { // find a free block in the slab
-        do {
-            if (slab->freeCnt == 0) {
-                slab = container(slab->listEle.next, Slab, listEle);
-                continue;
-            }
-            for (int j = 0; j < slab->colCnt; j++) {
-                if (slab->colMap[j >> 6] & (1ul << (j & 63))) continue;
-                Bit_set(slab->colMap + (j >> 6), j & 63);
-                cache->freeCnt--;
-                cache->usingCnt++;
-                slab->freeCnt--;
-                slab->usingCnt++;
-                if (cache->constructer != NULL) 
-                    return cache->constructer((char *)slab->virtAddr + j * cache->size, arg);
-                else return (void *)((char *)slab->virtAddr + j * cache->size);
-            }
-        } while (slab != cache->slabs);
-    }
-    printk(RED, BLACK, "Slab_malloc: no free block\n");
-    return NULL;
-}
-
-u64 Slab_free(SlabCache *cache, void *addr, u64 arg) {
-    Slab *slab = cache->slabs;
-    int id = 0;
-    do {
-        // the address is in this slab
-        if (slab->virtAddr <= addr && addr < (void *)((char *)slab->virtAddr + Page_2MSize)) {
-            id = ((char *)addr - (char *)slab->virtAddr) / cache->size;
-            Bit_clear(slab->colMap + (id >> 6), id & 63);
-            cache->freeCnt++;
-            cache->usingCnt--;
-            slab->freeCnt++;
-            slab->usingCnt--;
-            if (cache->destructor != NULL) cache->destructor(addr, arg);
-            // free the slab if it is not used and freeCnt is enough
-            if (slab->usingCnt == 0 && cache->freeCnt >= slab->freeCnt * 3 / 2) {
-                List_del(&slab->listEle);
-                cache->freeCnt -= slab->freeCnt;
-                kfree(slab->colMap);
-                Buddy_free(slab->page);
-                kfree(slab);
-            }
-            return 1;
-        } else
-            slab = container(slab->listEle.next, Slab, listEle); // next slab
-    } while (slab != cache->slabs);
-    printk(RED, BLACK, "Slab_free: address not in the slab\n");
-    return 0;
-}
-
 SlabCache Slab_kmallocCache[16] = {
     {32,        0, 0, NULL, NULL, NULL},
     {64,        0, 0, NULL, NULL, NULL},
@@ -211,7 +25,175 @@ SlabCache Slab_kmallocCache[16] = {
     {1048576,   0, 0, NULL, NULL, NULL} // 1MB
 };
 
-u64 Slab_init() {
+void Slab_init() {
+    printk(RED, BLACK, "Slab_init()\n");
     // calculate the total size of Slab and colMap
-    
+    u64 totSize = 16 * sizeof(Slab);
+    for (int i = 0; i < 16; i++)
+        totSize += upAlignTo(Page_2MSize / Slab_kmallocCache[i].size, 64) / 64 * sizeof(u64);
+    totSize = Page_4KUpAlign(totSize);
+    printk(GREEN, BLACK, "Slab_init: require %d Bytes for initialization\n", totSize);
+    // up align to power of 2
+    u64 log2Size = 0;
+    while ((1ul << log2Size) < (totSize >> Page_4KShift)) log2Size++;
+    printk(GREEN, BLACK, "Slab_init: require %d Pages for initialization\n", 1ul << log2Size);
+    Page *page = Buddy_alloc(log2Size, Page_Flag_Kernel);
+    if (page == NULL) {
+        printk(RED, BLACK, "Slab_init: Buddy_alloc failed\n");
+        return ;
+    }
+    u64 virtAddr = (u64)DMAS_phys2Virt(page->phyAddr);
+    for (int i = 0; i < 16; i++) {
+        Slab_kmallocCache[i].slabs = (Slab *)virtAddr;
+        virtAddr += sizeof(Slab);
+        List_init(&Slab_kmallocCache[i].slabs->listEle);
+
+        // initial the information for the first slab of this cache
+        Slab_kmallocCache[i].slabs->page = alloc2MPage();
+        if (Slab_kmallocCache[i].slabs->page == NULL) {
+            printk(RED, BLACK, "Slab_init: Buddy_alloc failed\n");
+            Buddy_free(page);
+            return ;
+        }
+        Slab_kmallocCache[i].slabs->usingCnt = 0, Slab_kmallocCache[i].slabs->freeCnt = Page_2MSize / Slab_kmallocCache[i].size;
+        Slab_kmallocCache[i].freeCnt = Slab_kmallocCache[i].slabs->freeCnt;
+        Slab_kmallocCache[i].slabs->virtAddr = DMAS_phys2Virt(Slab_kmallocCache[i].slabs->page->phyAddr);
+        Slab_kmallocCache[i].slabs->colMap = (u64 *)virtAddr;
+        Slab_kmallocCache[i].slabs->colCnt = Slab_kmallocCache[i].slabs->freeCnt;
+        Slab_kmallocCache[i].slabs->colLen = upAlignTo(Slab_kmallocCache[i].slabs->colCnt, 64) / 64;
+        memset(Slab_kmallocCache[i].slabs->colMap, 0xff, Slab_kmallocCache[i].slabs->colLen * sizeof(u64));
+        virtAddr += Slab_kmallocCache[i].slabs->colLen * sizeof(u64);
+        for (int j = 0; j < Slab_kmallocCache[i].slabs->colCnt; j++) 
+            Bit_set0(Slab_kmallocCache[i].slabs->colMap + (j >> 6), j & 63);
+    }
+}
+
+void Slab_debugLog() {
+    for (int i = 0; i < 16; i++) {
+        printk(ORANGE, BLACK, "Slab_cache[%d]: size = %d, usingCnt = %d, freeCnt = %d\n", 
+            i, Slab_kmallocCache[i].size, Slab_kmallocCache[i].usingCnt, Slab_kmallocCache[i].freeCnt);
+        Slab *slab = Slab_kmallocCache[i].slabs;
+        do {
+            printk(WHITE, BLACK, "\t(%p): usingCnt = %06d, freeCnt = %06d, colMap[0] = %#018lx, virtAddr = %#018lx\n", 
+                slab, slab->usingCnt, slab->freeCnt, slab->colMap[0], slab->virtAddr);
+            slab = container(slab->listEle.next, Slab, listEle);
+        } while (slab != Slab_kmallocCache[i].slabs);
+    }
+}
+
+void Slab_pushNewSlab(int id) {
+    Page *page2M = alloc2MPage();
+    Slab *slab;
+    if (page2M == NULL) {
+        printk(RED, BLACK, "Slab_pushNewSlab: Buddy_alloc failed\n");
+        return ;
+    }
+    u64 structSize = 0; void *virtAddr;
+    // 32, 64, 128, 256, 512
+    if (0 <= id && id < 5) {
+        virtAddr = DMAS_phys2Virt(page2M->phyAddr);
+        structSize = sizeof(Slab) + upAlignTo(Page_2MSize / Slab_kmallocCache[id].size, 64) / 64 * sizeof(u64);
+        // set the address of struct and the colmap to the end of this page
+        slab = (Slab *)((char *)virtAddr + Page_2MSize - structSize);
+        slab->usingCnt = 0;
+        slab->freeCnt = (Page_2MSize - structSize) / Slab_kmallocCache[id].size;
+
+        slab->colCnt = slab->freeCnt;
+        slab->colLen = upAlignTo(slab->colCnt, 64) / 64;
+        slab->colMap = (u64 *)((char *)slab + sizeof(Slab));
+
+        slab->virtAddr = DMAS_phys2Virt(page2M->phyAddr);
+        slab->page = page2M;
+    } else { // 1KB, 2KB, 4KB, 8KB, 16KB, 32KB, 64KB, 128KB, 256KB, 512KB, 1MB
+        slab = (Slab *)kmalloc(sizeof(Slab), 0);
+        slab->usingCnt = 0;
+        slab->freeCnt = Page_2MSize / Slab_kmallocCache[id].size;
+
+        slab->colCnt = slab->freeCnt;
+        slab->colLen = upAlignTo(slab->colCnt, 64) / 64;
+        slab->colMap = (u64 *)kmalloc(slab->colLen * sizeof(u64), 0);
+
+        slab->virtAddr = DMAS_phys2Virt(page2M->phyAddr);
+        slab->page = page2M;
+    }
+    memset(slab->colMap, 0xff, slab->colLen * sizeof(u64));
+    for (int j = 0; j < slab->colCnt; j++) 
+        Bit_set0(slab->colMap + (j >> 6), j & 63);
+
+    List_init(&slab->listEle);
+    List_insBehind(&slab->listEle, &Slab_kmallocCache[id].slabs->listEle);
+    Slab_kmallocCache[id].freeCnt += slab->freeCnt;
+}
+
+/// @brief allocate a memory block for kernel process from the slab system
+/// @param size 
+/// @param arg 
+/// @return 
+void *kmalloc(u64 size, u64 arg) {
+    printk(BLACK, WHITE, "kmalloc %08d\t", size);
+    int id = 0;
+    if (size > 1048576) return NULL;
+    while (Slab_kmallocCache[id].size < size) id++;
+    Slab *slab = NULL;
+    // find a slab with free memory block
+    if (Slab_kmallocCache[id].freeCnt > 0) {
+        slab = Slab_kmallocCache[id].slabs;
+        do {
+            if (slab->freeCnt > 0) break;
+            slab = container(slab->listEle.next, Slab, listEle);
+        } while (slab != Slab_kmallocCache[id].slabs);
+    } else { // create a new slab
+        Slab_pushNewSlab(id);
+        slab = container(Slab_kmallocCache[id].slabs->listEle.next, Slab, listEle);
+    }
+    // find a free memory block
+    for (u64 j = 0; j < slab->colCnt; j++) {
+        if (slab->colMap[j >> 6] == 0xfffffffffffffffful) {j += 63; continue; }
+        if (Bit_get(slab->colMap + (j >> 6), j & 63) != 0) continue;
+        Bit_set1(slab->colMap + (j >> 6), j & 63);
+        slab->usingCnt++, slab->freeCnt--;
+        Slab_kmallocCache[id].usingCnt++, Slab_kmallocCache[id].freeCnt--;
+        return printk(BLACK, WHITE, "addr : %#018lx\n", (void *)((u64)slab->virtAddr + j * Slab_kmallocCache[id].size)),
+            (void *)((u64)slab->virtAddr + j * Slab_kmallocCache[id].size);
+    }
+    printk(RED, BLACK, "kmalloc: invalid state\n");
+    return NULL;
+}
+
+void Slab_destroySlab(int id, Slab *slab) {
+    List_del(&slab->listEle);
+    Slab_kmallocCache[id].freeCnt -= slab->freeCnt;
+    if (0 <= id && id < 5) {
+        Buddy_free(slab->page);
+    } else {
+        kfree(slab->colMap);
+        Buddy_free(slab->page);
+        kfree(slab);
+    }
+}
+
+void kfree(void *addr) {
+    int id = 0, flag = 0;
+    Slab *slab = NULL;
+    for (id = 0; id < 16; id++) {
+        slab = Slab_kmallocCache[id].slabs;
+        do {
+            if (slab->virtAddr <= addr && addr < (void *)((u64)slab->virtAddr + slab->colCnt * Slab_kmallocCache[id].size)) {
+                flag = 1;
+                break;
+            }
+            slab = container(slab->listEle.next, Slab, listEle);
+        } while (slab != Slab_kmallocCache[id].slabs);
+        if (flag) break;
+    }
+    if (!flag) {
+        printk(RED, BLACK, "kfree: invalid address %#018lx\n", addr);
+        return ;
+    }
+    u64 offset = ((u64)addr - (u64)slab->virtAddr) / Slab_kmallocCache[id].size;
+    Bit_set0(slab->colMap + (offset >> 6), offset & 63);
+    slab->freeCnt++, slab->usingCnt--;
+    Slab_kmallocCache[id].freeCnt++, Slab_kmallocCache[id].usingCnt--;
+    if (slab->usingCnt == 0 && Slab_kmallocCache[id].freeCnt >= slab->colCnt * 3 / 2 && Slab_kmallocCache[id].slabs != slab)
+        Slab_destroySlab(id, slab);
 }

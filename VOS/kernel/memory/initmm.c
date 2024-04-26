@@ -5,6 +5,7 @@
 #include "../includes/log.h"
 #include "DMAS.h"
 #include "buddy.h"
+#include "SLAB.h"
 
 struct GlobalMemManageStruct memManageStruct = {{0}, 0};
 
@@ -128,6 +129,8 @@ void Init_memManage() {
     Buddy_init();
 
     printk(WHITE, BLACK, "totMemSize = %#018lx Byte = %ld MB\n", memManageStruct.totMemSize, memManageStruct.totMemSize >> 20);
+
+    Slab_init();
 }
 
 inline void BsMemMange_setPageAttr(Page *page, u64 attr) { page->attr = attr; }

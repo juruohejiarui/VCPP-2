@@ -4,6 +4,7 @@
         "lib.h": "c",
         "gate.h": "c",
         "memop.h": "c",
-        "ds.h": "c"
+        "ds.h": "c",
+        "memory.h": "c"
     }
 }

@@ -25,6 +25,6 @@ void List_del(List *ele) {
     ele->prev = ele->next = ele;
 }
 
-u64 Bit_get(u64 *addr, u64 index) { return *addr & (1ul << index); }
-u64 Bit_set(u64 *addr, u64 index) { return *addr | (1ul << index); }
-u64 Bit_clear(u64 *addr, u64 index) { return *addr & (~(1ul << index)); }
+u64 Bit_get(u64 *addr, u64 index) { return ((*addr) >> index) & 1; }
+void Bit_set1(u64 *addr, u64 index) { *addr |= (1ul << index); }
+void Bit_set0(u64 *addr, u64 index) { *addr &= (~(1ul << index)); }
