@@ -11,8 +11,8 @@
 
 #define DMAS_size           0x0000400000000000ul
 
-#define DMAS_virt2Phys(virtAddr) ((virtAddr) - (u64)DMAS_virtAddrStart + DMAS_physAddrStart)
-#define DMAS_phys2Virt(physAddr) ((void *)((physAddr) - DMAS_physAddrStart + (u64)DMAS_virtAddrStart))
+#define DMAS_virt2Phys(virtAddr) ((u64)(virtAddr) - (u64)DMAS_virtAddrStart + DMAS_physAddrStart)
+#define DMAS_phys2Virt(physAddr) ((void *)((u64)(physAddr) - DMAS_physAddrStart + (u64)DMAS_virtAddrStart))
 
 void DMAS_init();
 

@@ -4,4 +4,5 @@
 #include "../memory/DMAS.h"
 #include "../memory/pgtable.h"
 #include "../memory/buddy.h"
+#include "../memory/SLAB.h"
 #endif
