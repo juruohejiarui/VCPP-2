@@ -90,5 +90,9 @@ void irqHandler(u64 regs, u64 num) {
 
 void Init_interrupt() {
     for (int i = 32; i < 56; i++) setIntrGate(i, 2, intrList[i - 32]);
+#ifdef APIC
+    Init_APIC();
+#else
     Init_8259A();
+#endif
 }

@@ -35,6 +35,11 @@ void startKernel() {
     Init_memManage();
 
     Init_interrupt();
+
+    int *arr = (int *)kmalloc(100 * sizeof(int), 0);
+    printk(RED, BLACK, "malloc 100 32-bit integer. %p\n", arr);
+
+    Init_CPU();
     
     while (1) ;
 }
