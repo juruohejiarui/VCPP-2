@@ -5,6 +5,13 @@
 
 Page *apicRegPage = NULL;
 
+struct APIC_IOAddrMap {
+    u32 phyAddr;
+    u8 *virtIndexAddr;
+    u32 *virtDataAddr;
+    u32 *virtEOIAddr;
+} APIC_ioMap;
+
 u64 APIC_getReg_IA32_APIC_BASE() { return IO_readMSR(0x1b); }
 
 void APIC_setReg_IA32_APIC_BASE(u64 value) { IO_writeMSR(0x1b, value); }
@@ -128,14 +135,98 @@ void APIC_initLocal() {
     printk(WHITE, BLACK, "PPR: %#010x\n", x & 0xff);
 }
 
-void APIC_initIO() {
-    IO_out8(0x21, 0xff);
-    IO_out8(0xa1, 0xff);
+void APIC_mapIOAddr() {
+    PageTable_map(0xfec00000 + kernelAddrStart, 0xfec00000);
+    APIC_ioMap.phyAddr = 0xfec00000;
+    
+    printk(WHITE, BLACK, "APIC IO Address: %#08x\n", APIC_ioMap.phyAddr);
+    APIC_ioMap.virtIndexAddr = (u8 *)(APIC_ioMap.phyAddr + kernelAddrStart);
+    APIC_ioMap.virtDataAddr = (u32 *)(APIC_ioMap.virtIndexAddr + 0x10);
+    APIC_ioMap.virtEOIAddr = (u32 *)(APIC_ioMap.virtIndexAddr + 0x40);
+}
 
-    APIC_initLocal();
-    sti();
+u64 APIC_readRTE(u8 index) {
+    u64 ret;
+    *APIC_ioMap.virtIndexAddr = index + 1;
+    IO_mfence();
+    ret = *APIC_ioMap.virtDataAddr;
+    ret <<= 32;
+    IO_mfence();
+
+    *APIC_ioMap.virtIndexAddr = index;
+    IO_mfence();
+    ret |= *APIC_ioMap.virtDataAddr;
+    IO_mfence();
+
+    return ret;
+}
+
+void APIC_writeRTE(u8 index, u64 val) {
+    *APIC_ioMap.virtIndexAddr = index;
+    IO_mfence();
+    *APIC_ioMap.virtDataAddr = val & 0xffffffff;
+    IO_mfence();
+
+    *APIC_ioMap.virtIndexAddr = index + 1;
+    IO_mfence();
+    *APIC_ioMap.virtDataAddr = val >> 32;
+    IO_mfence();
+}
+
+void APIC_disableAll() {
+    for (int i = 0x10; i < 0x40; i += 2) APIC_writeRTE(i, 0x10000 + i);
+}
+void APIC_enableAll() {
+    for (int i = 0x10; i < 0x40; i += 2) APIC_writeRTE(i, i + 0x10);
+}
+
+void APIC_disableIntr(u8 intrId) {
+    APIC_writeRTE(intrId, 0x10000 + intrId);
+}
+
+void APIC_enableIntr(u8 intrId) {
+    APIC_writeRTE(intrId, intrId + 0x10);
+}
+
+void APIC_initIO() {
+    *APIC_ioMap.virtIndexAddr = 0x00;
+    IO_mfence();
+    *APIC_ioMap.virtDataAddr = 0x0f000000;
+    IO_mfence();
+    printk(WHITE, BLACK, "IOAPIC ID REG: %#010x ID: %#010x\n", *APIC_ioMap.virtDataAddr, *APIC_ioMap.virtDataAddr >> 24 & 0xf);
+    IO_mfence();
+
+    *APIC_ioMap.virtIndexAddr = 0x01;
+    IO_mfence();
+    printk(WHITE, BLACK, "IOAPIC VER REG: %#010x VER: %#010x\n", *APIC_ioMap.virtDataAddr, ((*APIC_ioMap.virtDataAddr >> 16) & 0xff) + 1);
+    APIC_disableAll();
+    printk(GREEN, BLACK, "IOAPIC Redirection Table Entries initialized\n");
 }
 
 void Init_APIC() {
+    APIC_mapIOAddr();
+    
+    IO_out8(0x21, 0xff);
+    IO_out8(0xa1, 0xff);
+
+
+    IO_out8(0x22, 0x70);
+    IO_out8(0x23, 0x01);
+
+    APIC_initLocal();
     APIC_initIO();
+
+    IO_out32(0xcf8, 0x8000f8f0);
+    u32 x = IO_in32(0xcfc);
+    x &= 0xffffc000;
+
+    if (x > 0xfec00000 && x < 0xfee00000) {
+        u32 *p = (u32 *)DMAS_phys2Virt(x + 0x31feUL);
+        x = (*p & 0xffffff00) | 0x100;
+        IO_mfence();
+        *p = x;
+        printk(RED, BLACK, "RCBA: %#010x\n", x);
+    }
+    IO_mfence();
+    sti();
 }

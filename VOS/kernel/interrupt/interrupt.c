@@ -82,16 +82,29 @@ void (*intrList[24])(void) = {
 
 void irqHandler(u64 regs, u64 num) {
     u8 x;
-    printk(RED, BLACK, "irqHandler: %d\t", num);
-    x = IO_in8(0x60);
-    printk(RED, BLACK, "key: %#08x\n", x);
-    IO_out8(0x20, 0x20);
+    printk(RED, BLACK, "irqHandler: %d", num);
+    if (num == 0x22) {
+         x = IO_in8(0x60);
+        printk(RED, BLACK, "\tkey: %#08x", x);
+    }
+    putchar(RED, BLACK, '\n');
+    __asm__ __volatile__ (
+        "movq $0x00, %%rdx  \n\t"
+        "movq $0x00, %%rax  \n\t"
+        "movq $0x80b, %%rcx \n\t"
+        "wrmsr              \n\t"
+        :
+        : 
+        : "memory"
+    );
 }
 
 void Init_interrupt() {
     for (int i = 32; i < 56; i++) setIntrGate(i, 2, intrList[i - 32]);
 #ifdef APIC
     Init_APIC();
+    // enable keyboard interrupt
+    APIC_enableIntr(0x12);
 #else
     Init_8259A();
 #endif

@@ -63,7 +63,6 @@ u64 IO_readMSR(u64 msrAddr) {
     );
     return (((u64) data1) << 32) | data2;
 }
-
 void sti() {
     __asm__ __volatile__ (
         "sti \n\t"

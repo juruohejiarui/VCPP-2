@@ -5,7 +5,7 @@
 
 #define RED     0x00ff0000
 #define WHITE   0x00ffffff
-#define BLUE    0x000000ff
+#define BLUE    0x0000afff
 #define GREEN   0x0000ff00
 #define BLACK   0x00000000
 #define ORANGE  0x00ff8000
