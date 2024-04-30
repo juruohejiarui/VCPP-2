@@ -124,3 +124,26 @@ The algorithm for finding the buddy of one page is using the numbering method wh
 void Buddy_init();
 Page *Buddy_alloc(int log2Size, u64 attr);
 void Buddy_free(Page *);
+```
+
+### Page Table
+This system manages the PGD, PUP, PMD, PLD entries and includes the allocation and releasing of page table. Like Slab system, a cache pool is used. When the size of this cache pool meets the minimum, a page frame will be allocated using Buddy System and the size of cache pool will reach its maximum. When a page table is released and the size of the cache pool exceeds the maximum, then the page that contains this page table will be directly released to Buddy System.
+
+**APIs**:
+```c
+void PageTable_init();
+void PageTable_map(u64 vAddr, u64 pAddr); // map a memory block [pAddr, pAddr + Page_4KSize - 1] to [vAddr, vAddr + page_4KSize - 1]
+void PageTable_unmap(u64 vAddr);
+```
+
+### SLAB
+This system contains a series of cache pool differentiated by size. from $2^5 \texttt{B}, 2^6 \texttt{B}... 1\texttt{MB}$ . There will be numbers of memory blocks in each cache pool, which sizes are all $2\texttt{MB}$ , Thus one memory block can allocate $\frac{2\texttt{MB}}{\text{Size of the pool that this block belongs to}}$, Additionally, when a memory block is completely free, and the numbers of free objects the pool that this block belongs to is higher than $\frac{3}{2}\times (\text{numbers of free objects of this block})$, then this block will be released. When a pool runs out of free objects, then a new memory block will be allocated from Buddy System.
+
+Additionally, since this system only used in kernel program, the virtual address of allocated memory block is always in DMAS range.
+
+**APIs**:
+```c
+void SLAB_init();
+void *kmalloc(u64 size, u64 arg);
+void free(void *addr);
+```
