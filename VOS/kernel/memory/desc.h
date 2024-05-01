@@ -6,10 +6,8 @@
 
 extern char _text;
 extern char _etext;
-extern char _code;
-extern char _ecode;
-extern char _bss;
-extern char _ebss;
+extern char _rodata;
+extern char _erodata;
 extern char _data;
 extern char _edata;
 extern char _end;
@@ -46,6 +44,9 @@ extern char _end;
 #define kernelAddrEd    0xfffffffffffffffful
 
 #define availVirtAddrSt ((u64 *)Page_4KUpAlign(0xffff800003000000ul + bootParamInfo->graphicsInfo.FrameBufferSize))
+
+#define Segment_kernelData 0x10
+#define Segment_kernelCode 0x08
 
 struct tmpPage {
     u64 phyAddr;

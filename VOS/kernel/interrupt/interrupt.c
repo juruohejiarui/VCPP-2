@@ -40,7 +40,7 @@ __asm__ ( \
     "pushq $0 \n\t" \
     saveAll \
     "movq %rsp, %rdi \n\t" \
-    "leaq retFromIntr(%rip), %rax \n\t" \
+    "leaq Intr_retFromIntr(%rip), %rax \n\t" \
     "pushq %rax \n\t" \
     "movq $"#num", %rsi \n\t" \
     "jmp irqHandler \n\t" \
@@ -100,7 +100,7 @@ void irqHandler(u64 regs, u64 num) {
 }
 
 void Init_interrupt() {
-    for (int i = 32; i < 56; i++) setIntrGate(i, 2, intrList[i - 32]);
+    for (int i = 32; i < 56; i++) Gate_setIntr(i, 2, intrList[i - 32]);
 #ifdef APIC
     Init_APIC();
     // enable keyboard interrupt

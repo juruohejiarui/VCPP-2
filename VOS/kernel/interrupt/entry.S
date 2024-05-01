@@ -3,7 +3,7 @@
 funcOffset      = 0x88
 errCodeOffset   = 0x90
 
-ENTRY(loadTR)
+ENTRY(Gate_loadTR)
     movw %di, %ax
     shlw $3, %ax
     ltr %ax
@@ -34,7 +34,7 @@ restoreAll:
     iretq
 
 retFromException:
-ENTRY(retFromIntr)
+ENTRY(Intr_retFromIntr)
     jmp restoreAll
 
 ENTRY(divideError)

@@ -237,25 +237,25 @@ void doVirtualizationError(u64 rsp, u64 errorCode) {
 }
 
 void Init_systemVector() {
-    setTrapGate(0, 1, divideError);
-	setTrapGate(1, 1, debug);
-	setIntrGate(2, 1, nmi);
-	setSystemGate(3, 1, int3);
-	setSystemGate(4, 1, overflow);
-	setSystemGate(5, 1, bounds);
-	setTrapGate(6, 1, undefinedOpcode);
-	setTrapGate(7, 1, devNotAvailable);
-	setTrapGate(8, 1, doubleFault);
-	setTrapGate(9, 1, coprocessorSegmentOverrun);
-	setTrapGate(10, 1, invalidTSS);
-	setTrapGate(11, 1, segmentNotPresent);
-	setTrapGate(12, 1, stackSegmentFault);
-	setTrapGate(13, 1, generalProtection);
-	setTrapGate(14, 1, pageFault);
+    Gate_setTrap(0, 1, divideError);
+	Gate_setTrap(1, 1, debug);
+	Gate_setIntr(2, 1, nmi);
+	Gate_setSystem(3, 1, int3);
+	Gate_setSystem(4, 1, overflow);
+	Gate_setSystem(5, 1, bounds);
+	Gate_setTrap(6, 1, undefinedOpcode);
+	Gate_setTrap(7, 1, devNotAvailable);
+	Gate_setTrap(8, 1, doubleFault);
+	Gate_setTrap(9, 1, coprocessorSegmentOverrun);
+	Gate_setTrap(10, 1, invalidTSS);
+	Gate_setTrap(11, 1, segmentNotPresent);
+	Gate_setTrap(12, 1, stackSegmentFault);
+	Gate_setTrap(13, 1, generalProtection);
+	Gate_setTrap(14, 1, pageFault);
 	// 15 reserved
-	setTrapGate(16, 1, x87FPUError);
-	setTrapGate(17, 1, alignmentCheck);
-	setTrapGate(18, 1, machineCheck);
-	setTrapGate(19, 1, simdError);
-	setTrapGate(20, 1, virtualizationError);
+	Gate_setTrap(16, 1, x87FPUError);
+	Gate_setTrap(17, 1, alignmentCheck);
+	Gate_setTrap(18, 1, machineCheck);
+	Gate_setTrap(19, 1, simdError);
+	Gate_setTrap(20, 1, virtualizationError);
 }

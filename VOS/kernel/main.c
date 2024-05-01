@@ -3,6 +3,7 @@
 #include "includes/hardware.h"
 #include "includes/interrupt.h"
 #include "includes/memory.h"
+#include "includes/task.h"
 
 void drawPoint(int x, int y, unsigned int color) {
     position.FBAddr[x + y * position.XResolution] = color;
@@ -26,8 +27,8 @@ void startKernel() {
 
     printk(RED, BLACK, "availAddrSt = %#018lx\n", availVirtAddrSt);
 
-    loadTR(10);
-    setTSS64(
+    Gate_loadTR(10);
+    Gate_setTSS(
             0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00,
             0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00);
 
@@ -40,6 +41,8 @@ void startKernel() {
     printk(RED, BLACK, "malloc 100 32-bit integer. %p\n", arr);
 
     Init_CPU();
+
+    Init_task();
     
     while (1) ;
 }

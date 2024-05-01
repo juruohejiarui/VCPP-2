@@ -45,6 +45,9 @@ head.o: head.S
 interrupt/entry.o: interrupt/entry.S
 	$(CC) -E interrupt/entry.S > interrupt/entry.s
 	$(ASM) $(ASMFLAG) -o interrupt/entry.o interrupt/entry.s
+task/entry.o: task/entry.S
+	$(CC) -E task/entry.S > task/entry.s
+	$(ASM) $(ASMFLAG) -o task/entry.o task/entry.s
 memory/croper.o: memory/croper.S
 	$(CC) -E memory/croper.S > memory/croper.s
 	$(ASM) $(ASMFLAG) -o memory/croper.o memory/croper.s

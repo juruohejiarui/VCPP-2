@@ -4,7 +4,15 @@
 #include "../includes/lib.h"
 #include "../includes/memory.h"
 
-#define Task_stackSize 32768
+#define Init_taskStackSize 32768
+
+#define Thread_Flag_Main      (1 << 0)
+#define Thread_Flag_Sub       (1 << 1)
+#define Task_Flag_Kernel    (1 << 2)
+
+#define Task_State_Uninterruptible  (1 << 0)
+#define Task_State_Running          (1 << 0)
+
 
 typedef struct tmpTaskMemStruct {
     PageTable *pgd;
@@ -16,13 +24,15 @@ typedef struct tmpTaskMemStruct {
     u64 stStk;
 } TaskMemStruct;
 typedef struct tmpThreadStruct {
-    u64 rsp0;
+    List listEle;
+    u64 rsp0; // the base of the stack
     u64 rip;
     u64 rsp;
     u64 fs, gs;
     u64 cr2;
     u64 trapNum;
     u64 errCode;
+    u64 flags;
 } ThreadStruct;
 
 typedef struct tmpTaskStruct {
@@ -36,16 +46,16 @@ typedef struct tmpTaskStruct {
 
 union TaskUnion {
     TaskStruct task;
-    u64 stk[Task_stackSize / sizeof(u64)];
+    u64 stk[Init_taskStackSize / sizeof(u64)];
 } __attribute__((aligned (8)));
 
 typedef struct tmpTSS {
-    u32 reversed0;
+    u32 reserved0;
     u64 rsp0, rsp1, rsp2;
-    u64 reversed1;
+    u64 reserved1;
     u64 ist1, ist2, ist3, ist4, ist5, ist6, ist7;
-    u64 reversed2;
-    u16 reversed3;
+    u64 reserved2;
+    u16 reserved3;
     u16 iomapBaseAddr;
 } __attribute__((packed)) TSS;
 
@@ -59,27 +69,8 @@ typedef struct tmpPtReg {
 } PtReg;
 
 TaskStruct *Task_getCurrent();
+// the current task
 #define Task_current Task_getCurrent()
-
-#define Task_switchTo(prev, next) \
-    do { \
-        __asm__ __volatile__ ( \
-            "pushq %%rbp                \n\t" /*save the stack*/ \
-            "pushq %%rax                \n\t" \
-            "movq %%rsp, %0             \n\t" \
-            "movq %2, %%rsp             \n\t" \
-            "movq 1f(%%rip), %%rax      \n\t" \
-            "movq %%rax, %1             \n\t" \
-            "pushq %3                   \n\t" \
-            "jmpq Task_switchTo_inner   \n\t" \
-            "1:                         \n\t" \
-            "popq %%rax                 \n\t" \
-            "popq %%rbp                 \n\t" \
-            : "=m"((prev)->thread->rsp), "=m"((next)->thread->rip) \
-            : "m"((next)->thread->rsp), "m"((next)->thread->rip), "D"(prev), "S"(next) \
-            : "memory" \
-        ); \
-    } while (0)
 
 void Init_task();
 
