@@ -70,7 +70,7 @@ extern u64 Init_stack;
 
 TaskStruct *Task_getCurrent() {
     TaskStruct *current;
-    __asm__ __volatile__("andq %%rsp, %0" : "=r"(current) : "0"(~32768ul));
+    __asm__ __volatile__("andq %%rsp, %0" : "=r"(current) : "0"(~32767ul));
     return current;
 }
 
@@ -99,24 +99,10 @@ void Task_switchTo_inner(TaskStruct *prev, TaskStruct *next) {
     Gate_setTSS(
             Init_TSS[0].rsp0, Init_TSS[0].rsp1, Init_TSS[0].rsp2, Init_TSS[0].ist1, Init_TSS[0].ist2,
             Init_TSS[0].ist3, Init_TSS[0].ist4, Init_TSS[0].ist5, Init_TSS[0].ist6, Init_TSS[0].ist7);
-    __asm__ __volatile__ (
-        "movq %%fs, %%rax   \n\t"
-        "movq %%rax, %0     \n\t"
-        "movq %%gs, %%rax   \n\t"
-        "movq %%rax, %1     \n\t"
-        : "=m"(prev->thread->fs), "=m"(prev->thread->gs)
-        :
-        : "memory", "rax"
-    );
-    __asm__ __volatile__ (
-        "movq %0, %%rax     \n\t"
-        "movq %%rax, %%fs   \n\t"
-        "movq %1, %%rax     \n\t"
-        "movq %%rax, %%gs   \n\t"
-        :
-        : "m"(next->thread->fs), "m"(next->thread->gs)
-        : "rax", "memory"
-    );
+    __asm__ __volatile__ ( "movq %%fs, %0 \n\t" : "=a"(prev->thread->fs));
+    __asm__ __volatile__ ( "movq %%gs, %0 \n\t" : "=a"(prev->thread->gs));
+    __asm__ __volatile__ ( "movq %0, %%fs \n\t" : : "a"(next->thread->fs));
+    __asm__ __volatile__ ( "movq %0, %%gs \n\t" : : "a"(next->thread->gs));
 
     printk(BLUE, BLACK, "prev->thread->rsp0: %#018lx\t", prev->thread->rsp0);
     printk(BLUE, BLACK, "next->thread->rsp0: %#018lx\n", next->thread->rsp0);
@@ -131,6 +117,7 @@ u64 Task_doFork(PtReg *regs, u64 cloneFlags, u64 stackBase, u64 stackSize) {
     printk(WHITE, BLACK, "TaskStruct Address: %#018lx\n", (u64)tsk);
     memset(tsk, 0, sizeof(*tsk));
     *tsk = *Task_current;
+    printk(BLUE, BLACK, "finished copying task struct\n");
 
     List_init(&tsk->listEle);
     List_insBehind(&Init_taskUnion.task.listEle, &tsk->listEle);
@@ -148,7 +135,7 @@ u64 Task_doFork(PtReg *regs, u64 cloneFlags, u64 stackBase, u64 stackSize) {
     if (!(tsk->flags & Task_Flag_Kernel))
         thread->rip = regs->rip = (u64)Intr_retFromIntr;
     tsk->state = Task_State_Running;
-
+    printk(BLUE, BLACK, "finished Task_doFork()\n");
     return 0;
 }
 

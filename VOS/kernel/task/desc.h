@@ -24,7 +24,6 @@ typedef struct tmpTaskMemStruct {
     u64 stStk;
 } TaskMemStruct;
 typedef struct tmpThreadStruct {
-    List listEle;
     u64 rsp0; // the base of the stack
     u64 rip;
     u64 rsp;
