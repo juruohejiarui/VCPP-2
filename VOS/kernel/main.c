@@ -42,6 +42,7 @@ void startKernel() {
 
     Init_CPU();
 
+    Init_syscall();
     Init_task();
     
     while (1) ;

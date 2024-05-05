@@ -1,4 +1,5 @@
 #include "desc.h"
+#include "syscall.h"
 #include "../includes/hardware.h"
 #include "../includes/interrupt.h"
 #include "../includes/memory.h"
@@ -8,6 +9,7 @@ extern void Intr_retFromIntr();
 
 u64 init(u64 arg) {
     printk(RED, BLACK, "init is running, arg = %#018lx\n", arg);
+    Task_switchToUsr(Task_initUsrLevel, 114514);
     return 1;
 }
 
@@ -79,12 +81,12 @@ TaskStruct *Task_getCurrent() {
         __asm__ __volatile__ ( \
             "pushq %%rbp                \n\t" /*save the stack*/ \
             "pushq %%rax                \n\t" \
-            "movq %%rsp, %0             \n\t" \
+            "movq %%rsp, %0             \n\t" /*save the rip and rsp of the prev thread*/ \
             "movq %2, %%rsp             \n\t" \
-            "movq 1f(%%rip), %%rax      \n\t" \
+            "movq 1f(%%rip), %%rax      \n\t" /*load the rip and rsp of the next thread*/ \
             "movq %%rax, %1             \n\t" \
             "pushq %3                   \n\t" \
-            "jmp Task_switchTo_inner   \n\t" \
+            "jmp Task_switchTo_inner   \n\t" /*call inner function for switch tss structure and segment registers*/ \
             "1:                         \n\t" \
             "popq %%rax                 \n\t" \
             "popq %%rbp                 \n\t" \
@@ -125,7 +127,7 @@ u64 Task_doFork(PtReg *regs, u64 cloneFlags, u64 stackBase, u64 stackSize) {
     tsk->state = Task_State_Uninterruptible;
     thread = (ThreadStruct *)(tsk + 1);
     tsk->thread = thread;
-    
+    // copy the registers into the task of the thread
     memcpy(regs, (void *)((u64)tsk + Init_taskStackSize - sizeof(PtReg)), sizeof(PtReg));
 
     thread->rsp0 = (u64)tsk + Init_taskStackSize;

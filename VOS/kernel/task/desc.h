@@ -6,8 +6,10 @@
 
 #define Init_taskStackSize 32768
 
-#define Thread_Flag_Main      (1 << 0)
-#define Thread_Flag_Sub       (1 << 1)
+#define Thread_Flag_Main    (1 << 0)
+#define Thread_Flag_Sub     (1 << 1)
+#define Thread_Flag_Kernel  (1 << 2)  
+
 #define Task_Flag_Kernel    (1 << 2)
 
 #define Task_State_Uninterruptible  (1 << 0)
@@ -26,7 +28,7 @@ typedef struct tmpTaskMemStruct {
 typedef struct tmpThreadStruct {
     u64 rsp0; // the base of the stack
     u64 rip;
-    u64 rsp;
+    u64 rspKernel, rsp;
     u64 fs, gs;
     u64 cr2;
     u64 trapNum;

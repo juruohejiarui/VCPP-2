@@ -215,8 +215,8 @@ ENTRY(gdtTable)
     .quad 0x0000920000000000    /* kernel data 64-bit */
     .quad 0x0000000000000000 
     .quad 0x0000000000000000
-    .quad 0x0020f80000000000    /* user code 64-bit */
     .quad 0x0000f20000000000    /* user data 64-bit */
+    .quad 0x0020f80000000000    /* user code 64-bit */
     .quad 0x00cf9a000000ffff    /* kernel code 32-bit */
     .quad 0x00cf92000000ffff    /* kernel data 32-bit */
     .fill 10, 8, 0				/* TSS (jmp one segment <9>) in long-mode 128-bit 50*/
