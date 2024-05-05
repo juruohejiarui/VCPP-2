@@ -1,4 +1,5 @@
 #include "memop.h"
+#include "../includes/log.h"
 
 void *memset(void *addr, u8 dt, u64 size) {
     int d0, d1;
@@ -24,8 +25,9 @@ void *memset(void *addr, u8 dt, u64 size) {
     return addr;
 }
 
-void *memcpy(void *src, void *dst, u64 size) {
+void *memcpy(void *src, void *dst, i64 size) {
     int d0, d1, d2;
+    printk(WHITE, BLACK, "memcpy(%#018lx, %#018lx, %#018lx)\n", src, dst, size);
     __asm__ __volatile__ (
         "cld                    \n\t"
         "rep                    \n\t"

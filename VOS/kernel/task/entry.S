@@ -73,4 +73,4 @@ ENTRY(Syscall_exit)
     // skip the zero
     addq $8, %rsp
     addq $0x38, %rsp
-    sysret
+    sysretq

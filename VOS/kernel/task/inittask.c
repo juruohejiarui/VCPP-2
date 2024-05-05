@@ -9,7 +9,8 @@ extern void Intr_retFromIntr();
 
 u64 init(u64 arg) {
     printk(RED, BLACK, "init is running, arg = %#018lx\n", arg);
-    Task_switchToUsr(Task_initUsrLevel, 114514);
+    Page *usrStkPage = Buddy_alloc(3, Page_Flag_Active);
+    Task_switchToUsr(Task_initUsrLevel, (u64)DMAS_phys2Virt(usrStkPage->phyAddr), 114514);
     return 1;
 }
 

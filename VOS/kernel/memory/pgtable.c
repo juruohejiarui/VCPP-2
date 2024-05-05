@@ -1,6 +1,7 @@
 #include "pgtable.h"
 #include "buddy.h"
 #include "DMAS.h"
+#include "../includes/task.h"
 
 #define PGTable_maxCacheSize 0x1100
 #define PGTable_minCacheSize 0x100
@@ -45,15 +46,12 @@ void PGTable_free(u64 phyAddr) {
 /// @param pAddr
 void PageTable_map(u64 vAddr, u64 pAddr) {
     u64 cr3 = getCR3();
-    if (vAddr >= kernelAddrStart) {
-        // map the kernel space
-        u64 *pgdEntry = (u64 *)DMAS_phys2Virt(cr3) + ((vAddr >> 39) & 0x1ff);
-        if (*pgdEntry == 0) *pgdEntry = PageTable_alloc() | 0x7;
-        u64 *pudEntry = (u64 *)DMAS_phys2Virt(*pgdEntry & ~0xfff) + ((vAddr >> 30) & 0x1ff);
-        if (*pudEntry == 0) *pudEntry = PageTable_alloc() | 0x7;
-        u64 *pmdEntry = (u64 *)DMAS_phys2Virt(*pudEntry & ~0xfff) + ((vAddr >> 21) & 0x1ff);
-        if (*pmdEntry == 0) *pmdEntry = PageTable_alloc() | 0x7;
-        u64 *pldEntry = (u64 *)DMAS_phys2Virt(*pmdEntry & ~0xfff) + ((vAddr >> 12) & 0x1ff);
-        *pldEntry = pAddr | 0x7;
-    }
+    u64 *pgdEntry = (u64 *)DMAS_phys2Virt(cr3) + ((vAddr >> 39) & 0x1ff);
+    if (*pgdEntry == 0) *pgdEntry = PageTable_alloc() | 0x7;
+    u64 *pudEntry = (u64 *)DMAS_phys2Virt(*pgdEntry & ~0xfff) + ((vAddr >> 30) & 0x1ff);
+    if (*pudEntry == 0) *pudEntry = PageTable_alloc() | 0x7;
+    u64 *pmdEntry = (u64 *)DMAS_phys2Virt(*pudEntry & ~0xfff) + ((vAddr >> 21) & 0x1ff);
+    if (*pmdEntry == 0) *pmdEntry = PageTable_alloc() | 0x7;
+    u64 *pldEntry = (u64 *)DMAS_phys2Virt(*pmdEntry & ~0xfff) + ((vAddr >> 12) & 0x1ff);
+    *pldEntry = pAddr | 0x7;
 }
