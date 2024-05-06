@@ -31,7 +31,7 @@ void Task_switchToUsr(u64 (*entry)(), u64 rspUser, u64 arg) {
     printk(RED, BLACK, "Task_switchToUsr: entry = %#018lx, arg = %#018lx\n", entry, arg);
     regs.rcx = (u64)entry;
     regs.rdi = arg;
-    regs.r11 = 0;
+    regs.r11 = (1 << 9); // enable interrupt
     u64 rspKernel = 0, res = 0;
     __asm__ __volatile__ ( 
         "movq %%rsp, %0     \n\t"

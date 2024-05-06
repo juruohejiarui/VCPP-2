@@ -15,6 +15,11 @@
 #define Task_State_Uninterruptible  (1 << 0)
 #define Task_State_Running          (1 << 0)
 
+#define Task_userStackEnd       0x00007fffffffffff
+#define Task_kernelStackEnd     0xffffffffffffffff
+#define Task_userStackSize      0x0000000002000000 // 32M
+#define Task_kernelStackSize    0x0000000002000000 // 32M
+
 
 typedef struct tmpTaskMemStruct {
     PageTable *pgd;

@@ -33,9 +33,9 @@ u64 Task_doExit(u64 arg) {
 #define Task_initTSS() \
 { \
     .reserved0 = 0, \
-    .rsp0 = (u64)(Init_taskUnion.stk + Init_taskStackSize / sizeof(u64)), \
-    .rsp1 = (u64)(Init_taskUnion.stk + Init_taskStackSize / sizeof(u64)), \
-    .rsp2 = (u64)(Init_taskUnion.stk + Init_taskStackSize / sizeof(u64)), \
+    .rsp0 = Task_kernelStackEnd, \
+    .rsp1 = Task_kernelStackEnd, \
+    .rsp2 = Task_kernelStackEnd, \
     .reserved1 = 0, \
     .ist1 = 0xffff800000007c00, \
     .ist2 = 0xffff800000007c00, \

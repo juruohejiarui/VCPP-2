@@ -19,6 +19,7 @@ void APIC_setReg_IA32_APIC_BASE_address(u64 phyAddr) {
     APIC_setReg_IA32_APIC_BASE(phyAddr | APIC_getReg_IA32_APIC_BASE() & ((1ul << 12) - 1)); 
 }
 void APIC_initLocal() {
+    printk(RED, BLACK, "APIC_initLocal()\n");
     apicRegPage = (Page *)Buddy_alloc(0, Page_Flag_Kernel);
     memset(DMAS_phys2Virt(apicRegPage->phyAddr), 0, Page_4KSize);
     APIC_setReg_IA32_APIC_BASE_address(apicRegPage->phyAddr);
@@ -221,7 +222,7 @@ void Init_APIC() {
     x &= 0xffffc000;
 
     if (x > 0xfec00000 && x < 0xfee00000) {
-        u32 *p = (u32 *)DMAS_phys2Virt(x + 0x31feUL);
+        u32 *p = (u32 *)(x + 0x31feUL + kernelAddrStart);
         x = (*p & 0xffffff00) | 0x100;
         IO_mfence();
         *p = x;

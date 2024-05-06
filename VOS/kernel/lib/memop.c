@@ -25,27 +25,27 @@ void *memset(void *addr, u8 dt, u64 size) {
     return addr;
 }
 
-void *memcpy(void *src, void *dst, i64 size) {
-    int d0, d1, d2;
-    printk(WHITE, BLACK, "memcpy(%#018lx, %#018lx, %#018lx)\n", src, dst, size);
-    __asm__ __volatile__ (
-        "cld                    \n\t"
-        "rep                    \n\t"
-        "movsq                  \n\t"
-        "testb $4, %b4          \n\t"
-        "je 1f                  \n\t"
-        "movsl                  \n\t"
-        "1:\ttestb $2, %b4      \n\t"
-        "je 2f                  \n\t"
-        "movsw                  \n\t"
-        "2:\ttestb $1, %b4      \n\t"
-        "je 3f                  \n\t"
-        "3:                     \n\t"
+void *memcpy(void *src, void *dst, i64 num)
+{
+	int d0, d1, d2;
+	__asm__ __volatile__(
+        "cld				\n\t"
+        "rep				\n\t"
+        "movsq				\n\t"
+        "testb	$4, %b4		\n\t"
+        "je	1f			\n\t"
+        "movsl				\n\t"
+        "1:\ttestb	$2, %b4	\n\t"
+        "je	2f			\n\t"
+        "movsw				\n\t"
+        "2:\ttestb	$1,%b4	\n\t"
+        "je	3f			\n\t"
+        "movsb				\n\t"
+        "3:				\n\t"
         : "=&c"(d0), "=&D"(d1), "=&S"(d2)
-        : "0"(size / 8), "q"(size), "1"(dst), "2"(src)
-        : "memory"
-    );
-    return dst;
+        : "0"(num / 8), "q"(num), "1"(dst), "2"(src)
+        : "memory");
+	return dst;
 }
 
 int memcmp(void *fir, void *sec, u64 size) {
