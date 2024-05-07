@@ -78,7 +78,7 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64), u64 arg, u64 flags) {
         PageTable_map(pgdPhyAddr, vAddr, 0);
     // map the kernel stack without present flag
     Page *lstPage = Buddy_alloc(0, Page_Flag_Active);
-    for (u64 vAddr = 0xFFFFFFFF00000000; vAddr != 0; vAddr += Page_4KSize)
+    for (u64 vAddr = 0xFFFFFFFFFF800000; vAddr != 0; vAddr += Page_4KSize)
         PageTable_map(pgdPhyAddr, vAddr, vAddr == 0xFFFFFFFFFFFFF000 ? lstPage->phyAddr : 0);
     TaskStruct *task = (TaskStruct *)DMAS_phys2Virt(tskStructPage->phyAddr);
     memset(task, 0, sizeof(TaskStruct) + sizeof(ThreadStruct) + sizeof(TaskMemStruct));
@@ -92,6 +92,7 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64), u64 arg, u64 flags) {
     task->mem->pgdPhyAddr = pgdPhyAddr;
     *thread = Init_thread;
     thread->rip = (u64)Task_kernelThreadEntry;
+    thread->rbp = Task_kernelStackEnd;
     thread->rsp0 = thread->rsp = Task_kernelStackEnd - sizeof(PtReg);
     thread->rsp3 = Task_userStackEnd - sizeof(PtReg);
 

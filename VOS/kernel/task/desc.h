@@ -17,8 +17,8 @@
 
 #define Task_userStackEnd       0x0000800000000000ul
 #define Task_kernelStackEnd     0xfffffffffffffff0ul
-#define Task_userStackSize      0x0000000002000000ul // 32M
-#define Task_kernelStackSize    0x0000000002000000ul // 32M
+#define Task_userStackSize      0x0000000000800000ul // 32M
+#define Task_kernelStackSize    0x0000000000800000ul // 32M
 #define Task_userBrkStart       0x0000000000100000ul
 #define Task_kernelBrkStart     0xffff800000000000ul
 
@@ -29,7 +29,7 @@ typedef struct tmpTaskMemStruct {
 } TaskMemStruct;
 typedef struct tmpThreadStruct {
     u64 rip;
-    u64 rsp0, rsp3, rsp;
+    u64 rsp0, rsp3, rsp, rbp;
     u64 fs, gs;
     u64 cr2;
     u64 trapNum;

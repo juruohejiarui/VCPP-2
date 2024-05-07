@@ -123,6 +123,8 @@ void Init_memManage() {
 
     memManageStruct.edOfStruct = Page_4KUpAlign((u64)&_end);
     printk(WHITE, BLACK, "edAddrOfStruct = %#018lx\n", memManageStruct.edOfStruct);
+    
+    flushTLB();
 
     DMAS_init();
     initArray();

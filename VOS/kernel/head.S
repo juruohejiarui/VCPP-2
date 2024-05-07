@@ -205,7 +205,7 @@ pdpte:
 	.quad 	0x2a00087
 	.quad 	0x2c00087
 	.quad 	0x2e00087
-	.fill	488,8,0
+    .fill 488, 8, 0
 .section .data
 
 ENTRY(gdtTable)

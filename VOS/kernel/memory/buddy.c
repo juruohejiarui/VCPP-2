@@ -23,18 +23,18 @@ static struct BuddyManageStruct {
 #define isRight(pos) ((pos) & 1)
 #define buddyPages(headPage) (isLeft(headPage->buddyId) ? (headPage + (1 << Page_getOrder(headPage))) : (headPage - (1 << Page_getOrder(headPage))))
 
-static inline int getBit(Page *headPage) {
+static int getBit(Page *headPage) {
     if (headPage->buddyId == 1) return 1;
-    u64 pos = headPage->phyAddr >> Page_4KShift;
-    pos -= isRight(headPage->buddyId) * (1 << Page_getOrder(headPage));
-    return (mmStruct.bitmap[Page_getOrder(headPage)][pos / 64] >> (pos % 64)) & 1;
+    u64 pos = headPage->phyAddr >> Page_4KShift, ord = Page_getOrder(headPage);
+    pos -= isRight(headPage->buddyId) * (1 << ord);
+    return (mmStruct.bitmap[ord][pos / 64] >> (pos % 64)) & 1;
 }
 
-static inline void revBit(Page *headPage) {
+static void revBit(Page *headPage) {
     if (headPage->buddyId == 1) return ;
-    u64 pos = headPage->phyAddr >> Page_4KShift;
-    pos -= isRight(headPage->buddyId) * (1 << Page_getOrder(headPage));
-    mmStruct.bitmap[Page_getOrder(headPage)][pos / 64] ^= (1ul << (pos % 64));
+    u64 pos = headPage->phyAddr >> Page_4KShift, ord = Page_getOrder(headPage);
+    pos -= isRight(headPage->buddyId) * (1 << ord);
+    mmStruct.bitmap[ord][pos / 64] ^= (1ul << (pos % 64));
 }
 
 
@@ -125,6 +125,7 @@ Page *Buddy_alloc(u64 log2Size, u64 attr) {
 }
 
 void Buddy_free(Page *pages) {
+    printk(RED, BLACK, "Buddy_free(%p)\n", pages);
     if (pages == NULL || (pages->attr & Page_Flag_BuddyHeadPage) == 0) return;
     List_del(&pages->listEle);
     pages->attr = Page_Flag_BuddyHeadPage;

@@ -70,6 +70,7 @@ void Task_switchToUsr(u64 (*entry)(), u64 arg) {
     memset(&regs, 0, sizeof(PtReg));
     printk(RED, BLACK, "Task_switchToUsr: entry = %#018lx, arg = %#018lx\n", entry, arg);
     regs.rcx = (u64)entry;
+    regs.rbp = Task_userStackEnd;
     regs.rdi = arg;
     regs.r11 = (1 << 9); // enable interrupt
     regs.cs = Segment_userCode;
@@ -110,6 +111,7 @@ u64 Task_initUsrLevel(u64 arg) {
     printk(WHITE, BLACK, "user level function, arg: %ld\n", arg);
     u64 res = Syscall_usrAPI(0, 1, 2, 3, 4, 5);
     printk(WHITE, BLACK, "syscall, res: %ld\n", res);
+    
     while (1);
 }
 
