@@ -4,6 +4,8 @@
 #include "../includes/lib.h"
 #include <stdarg.h>
 
+#define Syscall_num 1024
+
 /// @brief The interface for user level program to access syscall
 /// @param id the index of the syscall
 /// @param others the params of the system call

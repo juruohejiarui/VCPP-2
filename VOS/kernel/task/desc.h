@@ -19,21 +19,17 @@
 #define Task_kernelStackEnd     0xffffffffffffffff
 #define Task_userStackSize      0x0000000002000000 // 32M
 #define Task_kernelStackSize    0x0000000002000000 // 32M
+#define TASK_userBrkStart       0x0000800000000000
+#define TASK_kernelBrkStart     0xffff800000000000
 
 
 typedef struct tmpTaskMemStruct {
     PageTable *pgd;
-
-    u64 stCode, edCode;
-    u64 stData, edData;
-    u64 stRodata, edRodata;
-    u64 stBrk, edBrk;
-    u64 stStk;
+    u64 pgdPhyAddr;
 } TaskMemStruct;
 typedef struct tmpThreadStruct {
-    u64 rsp0; // the base of the stack
     u64 rip;
-    u64 rspKernel, rsp;
+    u64 rsp0, rsp3, rsp;
     u64 fs, gs;
     u64 cr2;
     u64 trapNum;
@@ -73,10 +69,6 @@ typedef struct tmpPtReg {
     u64 func, errCode;
     u64 rip, cs, rflags, rsp, ss;
 } PtReg;
-
-TaskStruct *Task_getCurrent();
-// the current task
-#define Task_current Task_getCurrent()
 
 void Init_task();
 

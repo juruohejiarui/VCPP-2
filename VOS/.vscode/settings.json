@@ -5,6 +5,8 @@
         "gate.h": "c",
         "memop.h": "c",
         "ds.h": "c",
-        "memory.h": "c"
+        "memory.h": "c",
+        "interrupt.h": "c",
+        "log.h": "c"
     }
 }

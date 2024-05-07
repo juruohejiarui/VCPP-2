@@ -47,6 +47,8 @@ extern char _end;
 
 #define Segment_kernelData 0x10
 #define Segment_kernelCode 0x08
+#define Segment_userData   0x28
+#define Segment_userCode   0x20
 
 struct tmpPage {
     u64 phyAddr;

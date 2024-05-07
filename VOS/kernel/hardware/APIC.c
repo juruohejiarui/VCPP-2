@@ -137,7 +137,7 @@ void APIC_initLocal() {
 }
 
 void APIC_mapIOAddr() {
-    PageTable_map(0xfec00000 + kernelAddrStart, 0xfec00000);
+    PageTable_map(getCR3(), 0xfec00000 + kernelAddrStart, 0xfec00000);
     APIC_ioMap.phyAddr = 0xfec00000;
     
     printk(WHITE, BLACK, "APIC IO Address: %#08x\n", APIC_ioMap.phyAddr);

@@ -28,14 +28,13 @@ u64 PageTable_alloc() {
     return page->phyAddr;
 }
 
-void PageTable_map2M(u64 vAddr, u64 pAddr) {
-    u64 cr3 = getCR3();
+void PageTable_map2M(u64 cr3, u64 vAddr, u64 pAddr) {
     u64 *pgdEntry = (u64 *)DMAS_phys2Virt(cr3) + ((vAddr >> 39) & 0x1ff);
     if (*pgdEntry == 0) *pgdEntry = PageTable_alloc() | 0x7;
     u64 *pudEntry = (u64 *)DMAS_phys2Virt(*pgdEntry & ~0xfff) + ((vAddr >> 30) & 0x1ff);
     if (*pudEntry == 0) *pudEntry = PageTable_alloc() | 0x7;
     u64 *pmdEntry = (u64 *)DMAS_phys2Virt(*pudEntry & ~0xfff) + ((vAddr >> 21) & 0x1ff);
-    if (*pmdEntry == 0) *pmdEntry = pAddr | 0x87;
+    if (*pmdEntry == 0) *pmdEntry = pAddr | 0x86 | (pAddr > 0);
     flushTLB();
 }
 
@@ -48,7 +47,7 @@ void PageTable_init() {
     pgd[0] = 0;
     // mapping the address [0x200000, 0x100000000] to [0xffff800000200000, 0xffff800100000000]
     for (u64 pAddr = 0x200000; pAddr < 0x100000000; pAddr += 0x200000)
-        PageTable_map2M(pAddr + 0xffff800000000000, pAddr);
+        PageTable_map2M(getCR3(), pAddr + 0xffff800000000000, pAddr);
 }
 
 void PGTable_free(u64 phyAddr) {
@@ -63,9 +62,8 @@ void PGTable_free(u64 phyAddr) {
 /// @brief Map a memory block [pAddr, pAddr + 4K - 1]
 /// @param vAddr
 /// @param pAddr
-void PageTable_map(u64 vAddr, u64 pAddr) {
+void PageTable_map(u64 cr3, u64 vAddr, u64 pAddr) {
     printk(BLUE, BLACK, "PageTable_map: vAddr = %#018lx, pAddr = %#018lx\n", vAddr, pAddr);
-    u64 cr3 = getCR3();
     u64 *pgdEntry = (u64 *)DMAS_phys2Virt(cr3) + ((vAddr >> 39) & 0x1ff);
     if (*pgdEntry == 0) *pgdEntry = PageTable_alloc() | 0x7;
     u64 *pudEntry = (u64 *)DMAS_phys2Virt(*pgdEntry & ~0xfff) + ((vAddr >> 30) & 0x1ff);
@@ -73,7 +71,7 @@ void PageTable_map(u64 vAddr, u64 pAddr) {
     u64 *pmdEntry = (u64 *)DMAS_phys2Virt(*pudEntry & ~0xfff) + ((vAddr >> 21) & 0x1ff);
     if (*pmdEntry == 0) *pmdEntry = PageTable_alloc() | 0x7;
     u64 *pldEntry = (u64 *)DMAS_phys2Virt(*pmdEntry & ~0xfff) + ((vAddr >> 12) & 0x1ff);
-    *pldEntry = pAddr | 0x7;
+    *pldEntry = pAddr | 0x6 | (pAddr > 0);
     flushTLB();
 }
 

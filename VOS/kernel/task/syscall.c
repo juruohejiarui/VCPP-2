@@ -1,14 +1,56 @@
 #include "syscall.h"
+#include "mgr.h"
 #include "desc.h"
+#include "../includes/interrupt.h"
 #include "../includes/memory.h"
 #include "../includes/log.h"
 
 void Syscall_entry();
 void Syscall_exit();
 
+void Syscall_noSystemCall() {
+    printk(WHITE, BLACK, "no such system call\n");
+}
+
+void *Syscall_list[Syscall_num] = { [0 ... Syscall_num - 1] = Syscall_noSystemCall };
+
 u64 Syscall_handler(u64 index, ...) {
+    // switch stack and segment registers
+    __asm__ __volatile__ (
+        "movq %%rsp, %0     \n\t"
+        "movq %2, %%rsp     \n\t"
+        "movq %%rsp, %1     \n\t"
+        "pushq %%rbp        \n\t"
+        "movq %%rsp, %%rbp  \n\t"
+        : "=m"(Task_current->thread->rsp3), "=m"(Task_current->thread->rsp)
+        : "m"(Task_current->thread->rsp0)
+        : "memory");
+    Init_TSS[0].rsp0 = Task_current->thread->rsp0;
+    Gate_setTSS(
+        Init_TSS[0].rsp0, Init_TSS[0].rsp1, Init_TSS[0].rsp2, Init_TSS[0].ist1, Init_TSS[0].ist2,
+        Init_TSS[0].ist3, Init_TSS[0].ist4, Init_TSS[0].ist5, Init_TSS[0].ist6, Init_TSS[0].ist7);
+    
+    
     printk(WHITE, BLACK, "try to handle syscall : %ld\n", index);
-    return 1919810;
+    // switch to user level
+    __asm__ __volatile__ (
+        "movq Syscall_list(%%rip), %%rax    \n\t"
+        "movq (%%rax, %%rdi, 8), %%rax      \n\t"
+        "movq %%rsi, %%rdi                  \n\t"
+        "movq %%rdx, %%rsi                  \n\t"
+        "movq %%rcx, %%rdx                  \n\t"
+        "movq %%r8, %%r9                    \n\t"
+        "movq %%r9, %%r8                    \n\t"
+        "call *%%rax                        \n\t"
+        "popq %%rbp                         \n\t"
+        "movq %%rsp, %0                     \n\t"
+        "movq %2, %%rsp                     \n\t"
+        "movq %%rsp, %1                     \n\t"
+        "retq                               \n\t"
+        : "=m"(Task_current->thread->rsp0), "=m"(Task_current->thread->rsp)
+        : "m"(Task_current->thread->rsp3)
+        : "memory"
+    );
 }
 
 u64 Syscall_usrAPI(u64 index, ...) {
@@ -32,6 +74,10 @@ void Task_switchToUsr(u64 (*entry)(), u64 rspUser, u64 arg) {
     regs.rcx = (u64)entry;
     regs.rdi = arg;
     regs.r11 = (1 << 9); // enable interrupt
+    regs.cs = Segment_userCode;
+    regs.ds = Segment_userData;
+    regs.es = Segment_userData;
+    regs.ss = Segment_userData;
     u64 rspKernel = 0, res = 0;
     __asm__ __volatile__ ( 
         "movq %%rsp, %0     \n\t"

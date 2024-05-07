@@ -26,7 +26,7 @@ ENTRY(_start)
     mov %ax, %gs
     mov %ax, %ss
     
-    movq Init_stack(%rip), %rsp
+    movq $0xffff800000007E00, %rsp
 
     movq $0x101000, %rax
     movq %rax, %cr3
@@ -44,7 +44,7 @@ entry64:
     movq %rax, %es
     movq %rax, %gs
     movq %rax, %ss
-    movq Init_stack(%rip), %rsp
+    movq $0xffff800000007E00, %rsp
 
 setupIDT:
     leaq ignoreInt(%rip), %rdx
@@ -159,8 +159,6 @@ ignoreInt_loop:
 intMsg:
     .asciz "Unknown interrupt or fault at RIP\n"
 
-ENTRY(Init_stack)
-    .quad Init_taskUnion + 32768
 
 // initial page table
 .align 8

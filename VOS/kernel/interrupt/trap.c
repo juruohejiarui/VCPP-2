@@ -1,5 +1,6 @@
 #include "../includes/lib.h"
 #include "../includes/log.h"
+#include "../includes/memory.h"
 #include "gate.h"
 
 extern void divideError();
