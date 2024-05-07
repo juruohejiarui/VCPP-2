@@ -13,13 +13,14 @@
             "movq %2, %%rsp         \n\t" \
             "movq 1f(%%rip), %%rax  \n\t" \
             "movq %%rax, %1         \n\t" \
+            "movq %%rbx, %%cr3      \n\t" \
             "pushq %3               \n\t" \
             "jmp Task_switchTo_inner\n\t" \
             "1:                     \n\t" \
             "popq %%rax             \n\t" \
             "popq %%rbp             \n\t" \
             : "=m"((prev)->thread->rsp), "=m"((prev)->thread->rip) \
-            : "m"((next)->thread->rsp), "m"((next)->thread->rip), "D"(prev), "S"(next) \
+            : "m"((next)->thread->rsp), "m"((next)->thread->rip), "D"(prev), "S"(next), "b"((next)->mem->pgdPhyAddr) \
             : "memory" \
         ); \
     } while (0)

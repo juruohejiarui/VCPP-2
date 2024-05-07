@@ -21,7 +21,6 @@ ENTRY(Task_kernelThreadEntry)
     movq %rax, %es
     popq %rax
     addq $0x38, %rsp
-    movq %rdx, %rdi
     call *%rbx // just to the function of the thread
     movq %rax, %rdi // get the return value of the thread and store it to the first param
     call Task_doExit
@@ -30,15 +29,16 @@ ENTRY(Syscall_entry)
     // save the registers
     subq $0x38, %rsp
     pushq $0
-    movq %es, %rax
-    pushq %rax
-    movq %ds, %rax
-    pushq %rax
+    movq %es, %rbx
+    pushq %rbx
+    movq %ds, %rbx
+    pushq %rbx
     pushq %rbp
     pushq %rdi
     pushq %rsi
     pushq %rdx
     pushq %rcx
+    movq %rax, %rcx
     pushq %rbx
     pushq %r8
     pushq %r9

@@ -8,20 +8,20 @@
 void Syscall_entry();
 void Syscall_exit();
 
-void Syscall_noSystemCall() {
+u64 Syscall_noSystemCall(u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5) {
     printk(WHITE, BLACK, "no such system call\n");
+    return 1919810;
 }
 
-void *Syscall_list[Syscall_num] = { [0 ... Syscall_num - 1] = Syscall_noSystemCall };
+typedef u64 (*Syscall)(u64, u64, u64, u64, u64);
+Syscall Syscall_list[Syscall_num] = { [0] = Syscall_noSystemCall, [1 ... Syscall_num - 1] = NULL };
 
-u64 Syscall_handler(u64 index, ...) {
+u64 Syscall_handler(u64 index, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5) {
     // switch stack and segment registers
     __asm__ __volatile__ (
         "movq %%rsp, %0     \n\t"
         "movq %2, %%rsp     \n\t"
         "movq %%rsp, %1     \n\t"
-        "pushq %%rbp        \n\t"
-        "movq %%rsp, %%rbp  \n\t"
         : "=m"(Task_current->thread->rsp3), "=m"(Task_current->thread->rsp)
         : "m"(Task_current->thread->rsp0)
         : "memory");
@@ -32,42 +32,40 @@ u64 Syscall_handler(u64 index, ...) {
     
     
     printk(WHITE, BLACK, "try to handle syscall : %ld\n", index);
+    u64 res = (Syscall_list[index])(arg1, arg2, arg3, arg4, arg5);
     // switch to user level
     __asm__ __volatile__ (
-        "movq Syscall_list(%%rip), %%rax    \n\t"
-        "movq (%%rax, %%rdi, 8), %%rax      \n\t"
-        "movq %%rsi, %%rdi                  \n\t"
-        "movq %%rdx, %%rsi                  \n\t"
-        "movq %%rcx, %%rdx                  \n\t"
-        "movq %%r8, %%r9                    \n\t"
-        "movq %%r9, %%r8                    \n\t"
-        "call *%%rax                        \n\t"
-        "popq %%rbp                         \n\t"
         "movq %%rsp, %0                     \n\t"
         "movq %2, %%rsp                     \n\t"
         "movq %%rsp, %1                     \n\t"
-        "retq                               \n\t"
         : "=m"(Task_current->thread->rsp0), "=m"(Task_current->thread->rsp)
         : "m"(Task_current->thread->rsp3)
         : "memory"
     );
+    return res;
 }
 
-u64 Syscall_usrAPI(u64 index, ...) {
+u64 Syscall_usrAPI(u64 index, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5) {
     // not necessary to switch the stack
     // directly use "syscall"
     u64 res;
     __asm__ __volatile__ (
+        "movq %1, %%rdi \n\t"
+        "movq %2, %%rsi \n\t"
+        "movq %3, %%rdx \n\t"
+        "movq %4, %%rax \n\t"
+        "movq %4, %%r9 \n\t"
+        "movq %5, %%r8  \n\t"
         "syscall        \n\t"
         "movq %%rax, %0 \n\t"
          : "=m"(res) 
-         :
+         : "m"(index), "m"(arg1), "m"(arg2), "m"(arg3), "m"(arg4), "m"(arg5)
          : "memory");
     return res;
 }
 
 
-void Task_switchToUsr(u64 (*entry)(), u64 rspUser, u64 arg) {
+void Task_switchToUsr(u64 (*entry)(), u64 arg) {
     PtReg regs;
     memset(&regs, 0, sizeof(PtReg));
     printk(RED, BLACK, "Task_switchToUsr: entry = %#018lx, arg = %#018lx\n", entry, arg);
@@ -78,35 +76,39 @@ void Task_switchToUsr(u64 (*entry)(), u64 rspUser, u64 arg) {
     regs.ds = Segment_userData;
     regs.es = Segment_userData;
     regs.ss = Segment_userData;
-    u64 rspKernel = 0, res = 0;
-    __asm__ __volatile__ ( 
+    memcpy(&regs, (void *)(Task_userStackEnd - sizeof(PtReg)), sizeof(PtReg));
+    __asm__ __volatile__ (
         "movq %%rsp, %0     \n\t"
-        "movq %%rsp, %1     \n\t"
-        "subq %%rax, %%rsp  \n\t"
-        : "=m"(rspKernel), "=m"(regs.r12)
-        : "a"(sizeof(PtReg))
-        : "memory");
-    memcpy(&regs, (void *)(rspKernel - sizeof(PtReg)), sizeof(PtReg));
-    printk(WHITE, BLACK, "try to switch to user level\n");
+        : "=m"(Task_current->thread->rsp0)
+        :
+        : "memory"
+    );
+    printk(BLACK, WHITE, "rsp: %#018lx\n", Task_current->thread->rsp0);
+    Init_TSS[0].rsp0 = Task_current->thread->rsp0;
+    Gate_setTSS(
+        Init_TSS[0].rsp0, Init_TSS[0].rsp1, Init_TSS[0].rsp2, Init_TSS[0].ist1, Init_TSS[0].ist2,
+        Init_TSS[0].ist3, Init_TSS[0].ist4, Init_TSS[0].ist5, Init_TSS[0].ist6, Init_TSS[0].ist7);
+    __asm__ __volatile__ (
+        "movq %1, %%rsp     \n\t"
+        "movq %%rsp, %0     \n\t"
+        : "=m"(Task_current->thread->rsp)
+        : "m"(Task_current->thread->rsp3)
+        : "memory"
+    );
     __asm__ __volatile__ (
         "jmp Syscall_exit   \n\t"
-        "movq %%rax, %0     \n\t"
-        : "=m"(res)
-        :
-        : "memory");
+        "movq %%rsp, %0     \n\t"
+        "movq %2, %%rsp     \n\t"
+        "movq %%rsp, %1     \n\t"
+        : "=m"(Task_current->thread->rsp3), "=m"(Task_current->thread->rsp)
+        : "m"(Task_current->thread->rsp0)
+        : "memory"
+    );
 }
 
 u64 Task_initUsrLevel(u64 arg) {
     printk(WHITE, BLACK, "user level function, arg: %ld\n", arg);
-    u64 res;
-    __asm__ __volatile__ (
-        "movq $10, %%rdi    \n\t"
-        "syscall           \n\t"
-        "movq %%rax, %0     \n\t"
-        : "=m"(res)
-        :
-        : "memory"
-    );
+    u64 res = Syscall_usrAPI(0, 1, 2, 3, 4, 5);
     printk(WHITE, BLACK, "syscall, res: %ld\n", res);
     while (1);
 }

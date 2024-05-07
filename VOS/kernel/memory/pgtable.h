@@ -25,6 +25,8 @@ void PageTable_map(u64 cr3, u64 vAddr, u64 pAddr);
 
 void PageTable_unmap(u64 cr3, u64 vAddr);
 
+u64 PageTable_getPldEntry(u64 cr3, u64 vAddr);
+
 u64 PageTable_fork();
 
 #endif

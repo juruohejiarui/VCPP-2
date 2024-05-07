@@ -34,7 +34,7 @@ extern void Task_kernelThreadEntry();
     .iomapBaseAddr = 0 \
 }
 
-const ThreadStruct Init_thread = {
+ThreadStruct Init_thread = {
     .rsp0   = (u64)(Task_kernelStackEnd),
     .rsp3   = (u64)(Task_userStackEnd),
     .rsp    = (u64)(Task_kernelStackEnd),
@@ -51,7 +51,7 @@ TaskMemStruct Init_mm = {0};
 TaskStruct Init_taskStruct = Task_initTask(NULL);
 TaskStruct *Init_tasks[Hardware_CPUNumber] = { &Init_taskStruct, 0 };
 
-inline TaskStruct *Task_getCurrent() { return (TaskStruct *)(0x0000000000000000); }
+inline TaskStruct *Task_getCurrent() { return (TaskStruct *)(Task_userBrkStart); }
 
 void Task_switchTo_inner(TaskStruct *prev, TaskStruct *next) {
     Init_TSS[0].rsp0 = next->thread->rsp0;
@@ -69,16 +69,17 @@ void Task_switchTo_inner(TaskStruct *prev, TaskStruct *next) {
 
 TaskStruct *Task_createTask(u64 (*kernelEntry)(u64), u64 arg, u64 flags) {
     u64 pgdPhyAddr = PageTable_alloc(); Page *tskStructPage = Buddy_alloc(0, Page_Flag_Active);
+    printk(WHITE, BLACK, "pgdPhyAddr: %#018lx, tskStructPage: %#018lx\n", pgdPhyAddr, tskStructPage->phyAddr);
     // copy the kernel part (except stack) of pgd
-    memcpy((u64 *)DMAS_phys2Virt(getCR3()) + 255, (u64 *)DMAS_phys2Virt(pgdPhyAddr) + 255, 255 * sizeof(u64));
-    PageTable_map(getCR3(), TASK_userBrkStart, pgdPhyAddr);
+    memcpy((u64 *)DMAS_phys2Virt(getCR3()) + 256, (u64 *)DMAS_phys2Virt(pgdPhyAddr) + 256, 255 * sizeof(u64));
+    PageTable_map(pgdPhyAddr, Task_userBrkStart, tskStructPage->phyAddr);
     // map the user stack without present flag
     for (u64 vAddr = Task_userStackEnd - Task_userStackSize; vAddr < Task_userStackEnd; vAddr += Page_4KSize)
         PageTable_map(pgdPhyAddr, vAddr, 0);
     // map the kernel stack without present flag
     Page *lstPage = Buddy_alloc(0, Page_Flag_Active);
-    for (u64 vAddr = Task_kernelStackEnd - Task_kernelStackSize; vAddr < Task_kernelStackEnd; vAddr += Page_4KSize)
-        PageTable_map(pgdPhyAddr, vAddr, vAddr == Task_kernelStackEnd - Page_4KSize ? lstPage->phyAddr : 0);
+    for (u64 vAddr = 0xFFFFFFFF00000000; vAddr != 0; vAddr += Page_4KSize)
+        PageTable_map(pgdPhyAddr, vAddr, vAddr == 0xFFFFFFFFFFFFF000 ? lstPage->phyAddr : 0);
     TaskStruct *task = (TaskStruct *)DMAS_phys2Virt(tskStructPage->phyAddr);
     memset(task, 0, sizeof(TaskStruct) + sizeof(ThreadStruct) + sizeof(TaskMemStruct));
     ThreadStruct *thread = (ThreadStruct *)(task + 1);
@@ -89,8 +90,10 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64), u64 arg, u64 flags) {
     task->counter = 1;
     task->mem->pgd = DMAS_phys2Virt(pgdPhyAddr);
     task->mem->pgdPhyAddr = pgdPhyAddr;
-    *task->thread = Init_thread;
-    task->thread->rip = (u64)Task_kernelThreadEntry;
+    *thread = Init_thread;
+    thread->rip = (u64)Task_kernelThreadEntry;
+    thread->rsp0 = thread->rsp = Task_kernelStackEnd - sizeof(PtReg);
+    thread->rsp3 = Task_userStackEnd - sizeof(PtReg);
 
     PtReg regs;
     memset(&regs, 0, sizeof(PtReg));
@@ -98,8 +101,10 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64), u64 arg, u64 flags) {
     regs.rdi = arg;
     regs.cs = Segment_kernelCode;
     regs.ds = Segment_kernelData;
-    regs.rax = (u64)kernelEntry;
-    memcpy(&regs, (u64 *)DMAS_phys2Virt(lstPage->phyAddr + Page_4KSize) - sizeof(PtReg), sizeof(PtReg));
+    regs.rbx = (u64)kernelEntry;
+    memcpy(&regs, (u64 *)DMAS_phys2Virt(lstPage->phyAddr + Page_4KSize - 16 - sizeof(PtReg)), sizeof(PtReg));
 
+    List_init(&task->listEle);
+    List_insBehind(&task->listEle, &Init_taskStruct.listEle);
     return task;
 }

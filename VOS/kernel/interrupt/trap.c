@@ -182,24 +182,32 @@ void doPageFault(u64 rsp, u64 errorCode) {
 	u64 cr2 = 0;
 	__asm__ __volatile__("movq %%cr2, %0":"=r"(cr2)::"memory");
 	p = (u64 *)(rsp + 0x98);
-	printk(RED,BLACK,"do_page_fault(14),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx,CR2:%#018lx\n",errorCode , rsp , *p , cr2);
-	if (errorCode & 0x01)
-		printk(RED,BLACK,"The page fault was caused by a non-present page.\n");
-	if (errorCode & 0x02)
-		printk(RED,BLACK,"The page fault was caused by a page-level protection violation.\n");
-	if (errorCode & 0x04)
-		printk(RED,BLACK,"The page fault was caused by a non-present page.\n");
-	if (errorCode & 0x08)
-		printk(RED,BLACK,"The page fault was caused by a page-level protection violation.\n");
-	if (errorCode & 0x10)
-		printk(RED,BLACK,"The page fault was caused by reading a reserved bit.\n");
-	if (errorCode & 0x20)
-		printk(RED,BLACK,"The page fault was caused by an instruction fetch.\n");
-	if (errorCode & 0x40)
-		printk(RED,BLACK,"The page fault was caused by reading a reserved bit.\n");
-	if (errorCode & 0x80)
-		printk(RED,BLACK,"The page fault was caused by an instruction fetch.\n");
-	while(1);
+	u64 pldEntry = PageTable_getPldEntry(getCR3(), cr2);
+	// blank pldEntry means the page is not mapped
+	if (pldEntry == 0) {
+		printk(RED,BLACK,"do_page_fault(14),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx,CR2:%#018lx\n",errorCode , rsp , *p , cr2);
+		if (errorCode & 0x01)
+			printk(RED,BLACK,"The page fault was caused by a non-present page.\n");
+		if (errorCode & 0x02)
+			printk(RED,BLACK,"The page fault was caused by a page-level protection violation.\n");
+		if (errorCode & 0x04)
+			printk(RED,BLACK,"The page fault was caused by a non-present page.\n");
+		if (errorCode & 0x08)
+			printk(RED,BLACK,"The page fault was caused by a page-level protection violation.\n");
+		if (errorCode & 0x10)
+			printk(RED,BLACK,"The page fault was caused by reading a reserved bit.\n");
+		if (errorCode & 0x20)
+			printk(RED,BLACK,"The page fault was caused by an instruction fetch.\n");
+		if (errorCode & 0x40)
+			printk(RED,BLACK,"The page fault was caused by reading a reserved bit.\n");
+		if (errorCode & 0x80)
+			printk(RED,BLACK,"The page fault was caused by an instruction fetch.\n");
+		while(1);
+	}
+	printk(WHITE, BLACK, "trying to map %#018lx\n", cr2);
+	// map this virtual address without physics page
+	Page *page = Buddy_alloc(0, Page_Flag_Active);
+	PageTable_map(getCR3(), cr2, page->phyAddr);
 }
 
 void doX87FPUError(u64 rsp, u64 errorCode) {
