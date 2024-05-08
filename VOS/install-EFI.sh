@@ -4,7 +4,7 @@ RESET='\E[0m'
 echo -e "${RED_COLOR}=== gen kernel.bin ===${RESET}"
 cd kernel
 python3 ./rely.py
-make 
+make all
 
 if [ $? -ne 0 ];then
     echo -e "${RED_COLOR}==kernel make failed!Please checkout first!==${RESET}"
@@ -12,7 +12,7 @@ if [ $? -ne 0 ];then
 else
     cd ../
     echo -e "${RED_COLOR}=== copying files ===${RESET}"
-    sudo mount /dev/sdb1 /mnt/
+    sudo mount /dev/sda1 /mnt/
     sudo cp ./BootLoader.efi /mnt/EFI/BOOT/bootx64.efi
     sudo cp ./kernel/kernel.bin /mnt/
     sudo sync
