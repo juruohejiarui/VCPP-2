@@ -1,13 +1,12 @@
 import os
 
-rely : dict[int, list] = {}
-eleDict : dict[str, int] = {}
-src : list[(str, str)] = []
+rely : dict = {}
+eleDict : dict = {}
+src : list = []
 
 def readDirectory(path : str) :
     global src, srcDict
     files = os.listdir(path)
-    print(f"Reading {path}")
     for element in files :
         subPath = os.path.join(path, element)
         if os.path.isdir(subPath) :
@@ -21,7 +20,6 @@ def readDirectory(path : str) :
 def readFileRelies(eleId : int) :
     global rely, eleDict, src
     path = src[eleId][0]
-    print(f"Reading {path}")
     lines = open(path, 'r', encoding = 'utf-8').readlines()
     rely[eleId] = []
     for line in lines :
@@ -38,11 +36,9 @@ def readFileRelies(eleId : int) :
             if nxtQuote != -1 :
                 includePath = os.path.abspath(os.path.join(src[eleId][1], line[i : nxtQuote]))
                 includePath = os.path.join("./", os.path.relpath(includePath, './'))       
-                print(f"\t-> {includePath}", end = '\t')
                 rely[eleId].append(eleDict[includePath])
-    print()
 
-visSet : set[int] = set()
+visSet : set = set()
 outFile = open('.depend', 'w', encoding = 'utf-8')
 def outputRely(path : str) :
     global rely, eleDict, visSet
@@ -61,15 +57,16 @@ def main() :
     objFiles = []
     for (path, _) in src :
         if path.endswith('.c') or path.endswith('.S') :
+            visSet.clear()
             objFiles.append(path[0 : -2] + '.o')
             outFile.write(f"{path[0 : -2]}.o : ")
             outputRely(path)
             outFile.write('\n')
             if path.endswith('.c') :
-                outFile.write('\t${CC} ${CFLAGS} -c ' + f"{path}\n")
+                outFile.write('\t${CC} ${CFLAGS} -c ' + f"{path} -o {path[0 : -2]}.o \n\n")
             else :
                 outFile.write('\t${CC} -E ' + f"{path} > " + f"{path[0 : -2]}.s\n")
-                outFile.write('\t${ASM} {ASMFLAG} -o ' + f"{path[0 : -2]}.o {path[0 : -2]}.s\n")
+                outFile.write('\t${ASM} ${ASMFLAG} -o ' + f"{path[0 : -2]}.o {path[0 : -2]}.s\n\n")
     objList : str = ''
     for objFile in objFiles :
         objList += objFile + ' '
