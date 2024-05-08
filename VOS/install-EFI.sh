@@ -3,6 +3,7 @@ RESET='\E[0m'
 
 echo -e "${RED_COLOR}=== gen kernel.bin ===${RESET}"
 cd kernel
+python3 ./rely.py
 make 
 
 if [ $? -ne 0 ];then
