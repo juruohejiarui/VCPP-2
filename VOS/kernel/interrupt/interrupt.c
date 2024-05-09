@@ -2,13 +2,11 @@
 #include "../includes/hardware.h"
 #include "../includes/linkage.h"
 #include "../includes/log.h"
-#include "../includes/task.h"
-#include "../includes/interrupt.h"
 
 #define saveAll \
     "cld            \n\t" \
     "pushq %rax     \n\t" \
-    "pushq %rax     \n\t" \
+    "pushq %rbx     \n\t" \
     "movq %es, %rax \n\t" \
     "pushq %rax     \n\t" \
     "movq %ds, %rax \n\t" \
@@ -82,31 +80,14 @@ void (*intrList[24])(void) = {
     irq0x34Interrupt, irq0x35Interrupt, irq0x36Interrupt, irq0x37Interrupt
 };
 
-void Intr_timer(u64 rsp) {
-    if (Task_countDown()) {
-        for (int i = 0; i < 30; i++) printk(BLACK, WHITE, "%#04lx(%%rsp) = %#018lx\t", i * 8, ((u64 *)rsp)[i]);
-        putchar(BLACK, WHITE, '\n');
-        u64 *rip = (u64 *)(rsp + 0x98);
-        Task_current->thread->rip = *rip;
-        *rip = (u64)Task_switchTask;
-    }
-}
-
-void Intr_keyboard() {
-    u8 x = IO_in8(0x60);
-    printk(RED, BLACK, "\tkey: %#08x", x);
-}
-
 void irqHandler(u64 regs, u64 num) {
-    // printk(RED, BLACK, "irqHandler: %d", num);
-    switch (num) {
-        case 0x24:
-            Intr_timer(regs);
-            break;
-        case 0x22:
-            Intr_keyboard();
-            break;
+    u8 x;
+    printk(RED, BLACK, "irqHandler: %d", num);
+    if (num == 0x22) {
+         x = IO_in8(0x60);
+        printk(RED, BLACK, "\tkey: %#08x", x);
     }
+    putchar(RED, BLACK, '\n');
     __asm__ __volatile__ (
         "movq $0x00, %%rdx  \n\t"
         "movq $0x00, %%rax  \n\t"
@@ -127,15 +108,4 @@ void Init_interrupt() {
 #else
     Init_8259A();
 #endif
-}
-void Intr_disableIntr() {
-    __asm__ __volatile__ (
-        "cli \n\t"
-    );
-}
-
-void Intr_enableIntr() {
-    __asm__ __volatile__ (
-        "sti \n\t"
-    );
 }

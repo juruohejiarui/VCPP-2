@@ -39,7 +39,7 @@ def readFileRelies(eleId : int) :
                 rely[eleId].append(eleDict[includePath[2 : ]])
 
 visSet : set = set()
-outFile = open('.depend', 'w', encoding = 'utf-8') 
+outFile = open('.depend', 'w', encoding = 'utf-8')
 def outputRely(path : str) :
     global rely, eleDict, visSet
     eleId = eleDict[path]

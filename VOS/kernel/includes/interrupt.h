@@ -7,7 +7,4 @@
 extern void (*intrList[24])(void);
 
 void Init_interrupt();
-
-void Intr_disableIntr();
-void Intr_enableIntr();
 #endif

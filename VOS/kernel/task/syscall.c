@@ -13,13 +13,8 @@ u64 Syscall_noSystemCall(u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5) {
     return 1919810;
 }
 
-u64 Syscall_printStr(u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5) {
-    printk(WHITE, BLACK, "printStr: %s\n", arg1);
-    return 0;
-}
-
 typedef u64 (*Syscall)(u64, u64, u64, u64, u64);
-Syscall Syscall_list[Syscall_num] = { [0] = Syscall_noSystemCall, [1] = Syscall_printStr, [2 ... Syscall_num - 1] = NULL };
+Syscall Syscall_list[Syscall_num] = { [0] = Syscall_noSystemCall, [1 ... Syscall_num - 1] = NULL };
 
 u64 Syscall_handler(u64 index, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5) {
     // switch stack and segment registers
@@ -113,14 +108,11 @@ void Task_switchToUsr(u64 (*entry)(), u64 arg) {
 }
 
 u64 Task_initUsrLevel(u64 arg) {
-    u64 res = Syscall_usrAPI(1, (u64)"user level function", 2, 3, 4, 5);
+    printk(WHITE, BLACK, "user level function, arg: %ld\n", arg);
+    u64 res = Syscall_usrAPI(0, 1, 2, 3, 4, 5);
+    printk(WHITE, BLACK, "syscall, res: %ld\n", res);
     
-    int t = 0;
-    while (1) {
-        t++;
-        if (t == 100000000) printk(RED, BLACK, "%2d", arg), t = 0;
-    }
-    while (1) ;
+    while (1);
 }
 
 void Init_syscall() {

@@ -34,7 +34,7 @@ typedef struct tmpThreadStruct {
     u64 cr2;
     u64 trapNum;
     u64 errCode;
-    u64 rflags;
+    u64 flags;
 } ThreadStruct;
 
 typedef struct tmpTaskStruct {

@@ -53,82 +53,21 @@ TaskStruct *Init_tasks[Hardware_CPUNumber] = { &Init_taskStruct, 0 };
 
 inline TaskStruct *Task_getCurrent() { return (TaskStruct *)(Task_userBrkStart); }
 
-u64 Task_pidCounter = 0;
-
 void Task_switchTo_inner(TaskStruct *prev, TaskStruct *next) {
-    printk(WHITE, BLACK, "switch from %#018lx -> %#018lx, which rflag is %ld, rip = %#018lx\n", prev, next, next->thread->rflags, next->thread->rip);
-    __asm__ __volatile__ ( "movq %%fs, %0 \n\t" : "=a"(prev->thread->fs));
-    __asm__ __volatile__ ( "movq %%gs, %0 \n\t" : "=a"(prev->thread->gs));
-
     Init_TSS[0].rsp0 = next->thread->rsp0;
     Gate_setTSS(
             Init_TSS[0].rsp0, Init_TSS[0].rsp1, Init_TSS[0].rsp2, Init_TSS[0].ist1, Init_TSS[0].ist2,
             Init_TSS[0].ist3, Init_TSS[0].ist4, Init_TSS[0].ist5, Init_TSS[0].ist6, Init_TSS[0].ist7);
-    
+    __asm__ __volatile__ ( "movq %%fs, %0 \n\t" : "=a"(prev->thread->fs));
+    __asm__ __volatile__ ( "movq %%gs, %0 \n\t" : "=a"(prev->thread->gs));
     __asm__ __volatile__ ( "movq %0, %%fs \n\t" : : "a"(next->thread->fs));
     __asm__ __volatile__ ( "movq %0, %%gs \n\t" : : "a"(next->thread->gs));
+
+    printk(BLUE, BLACK, "prev->thread->rsp0: %#018lx\t", prev->thread->rsp0);
+    printk(BLUE, BLACK, "next->thread->rsp0: %#018lx\n", next->thread->rsp0);
 }
 
-__asm__ (
-    ".global Task_switchTask \n\t"
-    "Task_switchTask: \n\t"
-    "pushq %rax             \n\t"
-    "movq $0x0000000000100000, %rax \n\t"
-    "movq 0x18(%rax), %rax  \n\t"
-    "movq (%rax), %rax      \n\t"
-    "xchgq %rax, (%rsp)     \n\t"
-    "subq $0x38, %rsp       \n\t"
-    "pushq %rax             \n\t"
-    "movq %es, %rax         \n\t"
-    "pushq %rax             \n\t"
-    "movq %ds, %rax         \n\t"
-    "pushq %rax             \n\t"
-    "pushq %rbp             \n\t"
-    "pushq %rdi             \n\t"
-    "pushq %rsi             \n\t"
-    "pushq %rdx             \n\t"
-    "pushq %rcx             \n\t"
-    "pushq %rbx             \n\t"
-    "pushq %r8              \n\t"
-    "pushq %r9              \n\t"
-    "pushq %r10             \n\t"
-    "pushq %r11             \n\t"
-    "pushq %r12             \n\t"
-    "pushq %r13             \n\t"
-    "pushq %r14             \n\t"
-    "pushq %r15             \n\t"
-    "movq 1f(%rip), %rax    \n\t"
-    "jmp Task_switchTask_inner \n\t"
-    "1:                     \n\t"
-    "popq %r15              \n\t"
-    "popq %r14              \n\t"
-    "popq %r13              \n\t"
-    "popq %r12              \n\t"
-    "popq %r11              \n\t"
-    "popq %r10              \n\t"
-    "popq %r9               \n\t"
-    "popq %r8               \n\t"
-    "popq %rbx              \n\t"
-    "popq %rcx              \n\t"
-    "popq %rdx              \n\t"
-    "popq %rsi              \n\t"
-    "popq %rdi              \n\t"
-    "popq %rbp              \n\t"
-    "popq %rax              \n\t"
-    "movq %rax, %ds         \n\t"
-    "popq %rax              \n\t"
-    "movq %rax, %es         \n\t"
-    "popq %rax              \n\t"
-    "addq $0x38, %rsp       \n\t"
-    "retq                   \n\t"
-);
-void Task_switchTask_inner() {
-    TaskStruct *next = container(Task_current->listEle.next, TaskStruct, listEle);
-    Task_switchTo(Task_current, next);
-}
-
-TaskStruct *Task_createTask(u64 (*kernelEntry)(u64), u64 arg, u64 flags)
-{
+TaskStruct *Task_createTask(u64 (*kernelEntry)(u64), u64 arg, u64 flags) {
     u64 pgdPhyAddr = PageTable_alloc(); Page *tskStructPage = Buddy_alloc(0, Page_Flag_Active);
     printk(WHITE, BLACK, "pgdPhyAddr: %#018lx, tskStructPage: %#018lx\n", pgdPhyAddr, tskStructPage->phyAddr);
     // copy the kernel part (except stack) of pgd
@@ -148,8 +87,7 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64), u64 arg, u64 flags)
     task->flags = flags;
     task->mem = (TaskMemStruct *)(thread + 1);
     task->thread = thread;
-    task->counter = 10;
-    task->pid = Task_pidCounter++;
+    task->counter = 1;
     task->mem->pgd = DMAS_phys2Virt(pgdPhyAddr);
     task->mem->pgdPhyAddr = pgdPhyAddr;
     *thread = Init_thread;
@@ -157,7 +95,6 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64), u64 arg, u64 flags)
     thread->rbp = Task_kernelStackEnd;
     thread->rsp0 = thread->rsp = Task_kernelStackEnd - sizeof(PtReg);
     thread->rsp3 = Task_userStackEnd - sizeof(PtReg);
-    thread->rflags = (1 << 9);
 
     PtReg regs;
     memset(&regs, 0, sizeof(PtReg));
@@ -171,13 +108,4 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64), u64 arg, u64 flags)
     List_init(&task->listEle);
     List_insBehind(&task->listEle, &Init_taskStruct.listEle);
     return task;
-}
-
-u64 Task_tick;
-int Task_countDown() {
-    Task_current->counter--;
-    if (Task_current->counter == 0) {
-        Task_current->counter = 10;
-        return 1;
-    } else return 0;
 }

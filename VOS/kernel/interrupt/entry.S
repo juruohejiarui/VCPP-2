@@ -71,8 +71,6 @@ errorCode:
     movq $0x10, %rdi
     movq %rdi, %ds
     movq %rdi, %es
-    movq %rdi, %ss
-    movq %rdi, %cs
     movq %rsp, %rdi
 
     call *%rdx
