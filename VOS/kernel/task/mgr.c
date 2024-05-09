@@ -98,7 +98,6 @@ __asm__ (
     "pushq %r14             \n\t"
     "pushq %r15             \n\t"
     "movq 1f(%rip), %rax    \n\t"
-    "pushq %rax             \n\t"
     "jmp Task_switchTask_inner \n\t"
     "1:                     \n\t"
     "popq %r15              \n\t"
