@@ -1,18 +1,21 @@
-task/inittask.o : task/inittask.c task/desc.h includes/lib.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h includes/memory.h memory/desc.h memory/DMAS.h memory/pgtable.h memory/buddy.h memory/SLAB.h task/syscall.h task/mgr.h includes/interrupt.h interrupt/gate.h interrupt/trap.h includes/hardware.h hardware/cpu.h hardware/UEFI.h hardware/8259A.h hardware/APIC.h includes/log.h includes/linkage.h 
-	$(CC) $(CFLAGS) -c task/inittask.c -o task/inittask.o 
+memory/SLAB.o : memory/SLAB.c memory/SLAB.h includes/lib.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h memory/desc.h memory/DMAS.h memory/buddy.h memory/pgtable.h includes/log.h includes/linkage.h 
+	$(CC) $(CFLAGS) -c memory/SLAB.c -o memory/SLAB.o 
 
-task/entry.o : task/entry.S includes/linkage.h 
-	$(CC) -E task/entry.S > task/entry.s
-	$(ASM) $(ASMFLAG) -o task/entry.o task/entry.s
+memory/buddy.o : memory/buddy.c memory/buddy.h memory/desc.h includes/lib.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h memory/DMAS.h includes/log.h includes/linkage.h 
+	$(CC) $(CFLAGS) -c memory/buddy.c -o memory/buddy.o 
 
-task/mgr.o : task/mgr.c task/mgr.h task/desc.h includes/lib.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h includes/memory.h memory/desc.h memory/DMAS.h memory/pgtable.h memory/buddy.h memory/SLAB.h includes/interrupt.h interrupt/gate.h interrupt/trap.h includes/hardware.h hardware/cpu.h hardware/UEFI.h hardware/8259A.h hardware/APIC.h includes/log.h includes/linkage.h 
-	$(CC) $(CFLAGS) -c task/mgr.c -o task/mgr.o 
+memory/DMAS.o : memory/DMAS.c memory/DMAS.h memory/desc.h includes/lib.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h memory/pgtable.h includes/log.h includes/linkage.h 
+	$(CC) $(CFLAGS) -c memory/DMAS.c -o memory/DMAS.o 
 
-task/syscall.o : task/syscall.c task/syscall.h includes/lib.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h task/mgr.h task/desc.h includes/memory.h memory/desc.h memory/DMAS.h memory/pgtable.h memory/buddy.h memory/SLAB.h includes/interrupt.h interrupt/gate.h interrupt/trap.h includes/hardware.h hardware/cpu.h hardware/UEFI.h hardware/8259A.h hardware/APIC.h includes/log.h includes/linkage.h 
-	$(CC) $(CFLAGS) -c task/syscall.c -o task/syscall.o 
+memory/pgtable.o : memory/pgtable.c memory/pgtable.h includes/lib.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h memory/buddy.h memory/desc.h memory/DMAS.h includes/task.h task/desc.h includes/memory.h memory/SLAB.h task/mgr.h includes/interrupt.h interrupt/gate.h interrupt/trap.h includes/hardware.h hardware/cpu.h hardware/UEFI.h hardware/8259A.h hardware/APIC.h task/syscall.h includes/log.h includes/linkage.h 
+	$(CC) $(CFLAGS) -c memory/pgtable.c -o memory/pgtable.o 
 
-main.o : main.c includes/lib.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h includes/log.h includes/linkage.h includes/hardware.h hardware/cpu.h hardware/UEFI.h hardware/8259A.h hardware/APIC.h includes/interrupt.h interrupt/gate.h interrupt/trap.h includes/memory.h memory/desc.h memory/DMAS.h memory/pgtable.h memory/buddy.h memory/SLAB.h includes/task.h task/desc.h task/mgr.h task/syscall.h 
-	$(CC) $(CFLAGS) -c main.c -o main.o 
+memory/initmm.o : memory/initmm.c memory/desc.h includes/lib.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h memory/pgtable.h includes/hardware.h hardware/cpu.h hardware/UEFI.h hardware/8259A.h hardware/APIC.h includes/log.h includes/linkage.h memory/DMAS.h memory/buddy.h memory/SLAB.h 
+	$(CC) $(CFLAGS) -c memory/initmm.c -o memory/initmm.o 
+
+memory/croper.o : memory/croper.S includes/linkage.h 
+	$(CC) -E memory/croper.S > memory/croper.s
+	$(ASM) $(ASMFLAG) -o memory/croper.o memory/croper.s
 
 lib/ds.o : lib/ds.c lib/ds.h includes/log.h includes/linkage.h 
 	$(CC) $(CFLAGS) -c lib/ds.c -o lib/ds.o 
@@ -23,55 +26,52 @@ lib/memop.o : lib/memop.c lib/memop.h lib/ds.h includes/log.h includes/linkage.h
 lib/io.o : lib/io.c lib/io.h lib/ds.h 
 	$(CC) $(CFLAGS) -c lib/io.c -o lib/io.o 
 
-interrupt/interrupt.o : interrupt/interrupt.c interrupt/gate.h includes/lib.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h includes/hardware.h hardware/cpu.h hardware/UEFI.h hardware/8259A.h hardware/APIC.h includes/linkage.h includes/log.h 
-	$(CC) $(CFLAGS) -c interrupt/interrupt.c -o interrupt/interrupt.o 
+head.o : head.S includes/linkage.h 
+	$(CC) -E head.S > head.s
+	$(ASM) $(ASMFLAG) -o head.o head.s
+
+log/printk.o : log/printk.c includes/log.h includes/linkage.h includes/lib.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h includes/hardware.h hardware/cpu.h hardware/UEFI.h hardware/8259A.h hardware/APIC.h log/font.h 
+	$(CC) $(CFLAGS) -c log/printk.c -o log/printk.o 
+
+hardware/UEFI.o : hardware/UEFI.c hardware/UEFI.h includes/lib.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h 
+	$(CC) $(CFLAGS) -c hardware/UEFI.c -o hardware/UEFI.o 
+
+hardware/cpu.o : hardware/cpu.c hardware/cpu.h includes/lib.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h includes/log.h includes/linkage.h 
+	$(CC) $(CFLAGS) -c hardware/cpu.c -o hardware/cpu.o 
+
+hardware/8259A.o : hardware/8259A.c includes/interrupt.h interrupt/gate.h includes/lib.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h interrupt/trap.h includes/linkage.h 
+	$(CC) $(CFLAGS) -c hardware/8259A.c -o hardware/8259A.o 
+
+hardware/APIC.o : hardware/APIC.c hardware/APIC.h includes/lib.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h hardware/cpu.h includes/log.h includes/linkage.h includes/memory.h memory/desc.h memory/DMAS.h memory/pgtable.h memory/buddy.h memory/SLAB.h 
+	$(CC) $(CFLAGS) -c hardware/APIC.c -o hardware/APIC.o 
+
+task/inittask.o : task/inittask.c task/desc.h includes/lib.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h includes/memory.h memory/desc.h memory/DMAS.h memory/pgtable.h memory/buddy.h memory/SLAB.h task/syscall.h task/mgr.h includes/interrupt.h interrupt/gate.h interrupt/trap.h includes/hardware.h hardware/cpu.h hardware/UEFI.h hardware/8259A.h hardware/APIC.h includes/log.h includes/linkage.h 
+	$(CC) $(CFLAGS) -c task/inittask.c -o task/inittask.o 
+
+task/mgr.o : task/mgr.c task/mgr.h task/desc.h includes/lib.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h includes/memory.h memory/desc.h memory/DMAS.h memory/pgtable.h memory/buddy.h memory/SLAB.h includes/interrupt.h interrupt/gate.h interrupt/trap.h includes/hardware.h hardware/cpu.h hardware/UEFI.h hardware/8259A.h hardware/APIC.h includes/log.h includes/linkage.h 
+	$(CC) $(CFLAGS) -c task/mgr.c -o task/mgr.o 
+
+task/syscall.o : task/syscall.c task/syscall.h includes/lib.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h task/mgr.h task/desc.h includes/memory.h memory/desc.h memory/DMAS.h memory/pgtable.h memory/buddy.h memory/SLAB.h includes/interrupt.h interrupt/gate.h interrupt/trap.h includes/hardware.h hardware/cpu.h hardware/UEFI.h hardware/8259A.h hardware/APIC.h includes/log.h includes/linkage.h 
+	$(CC) $(CFLAGS) -c task/syscall.c -o task/syscall.o 
+
+task/entry.o : task/entry.S includes/linkage.h 
+	$(CC) -E task/entry.S > task/entry.s
+	$(ASM) $(ASMFLAG) -o task/entry.o task/entry.s
+
+main.o : main.c includes/lib.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h includes/log.h includes/linkage.h includes/hardware.h hardware/cpu.h hardware/UEFI.h hardware/8259A.h hardware/APIC.h includes/interrupt.h interrupt/gate.h interrupt/trap.h includes/memory.h memory/desc.h memory/DMAS.h memory/pgtable.h memory/buddy.h memory/SLAB.h includes/task.h task/desc.h task/mgr.h task/syscall.h 
+	$(CC) $(CFLAGS) -c main.c -o main.o 
+
+interrupt/trap.o : interrupt/trap.c includes/lib.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h includes/log.h includes/linkage.h includes/memory.h memory/desc.h memory/DMAS.h memory/pgtable.h memory/buddy.h memory/SLAB.h interrupt/gate.h 
+	$(CC) $(CFLAGS) -c interrupt/trap.c -o interrupt/trap.o 
+
+interrupt/gate.o : interrupt/gate.c interrupt/gate.h includes/lib.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h 
+	$(CC) $(CFLAGS) -c interrupt/gate.c -o interrupt/gate.o 
 
 interrupt/entry.o : interrupt/entry.S includes/linkage.h 
 	$(CC) -E interrupt/entry.S > interrupt/entry.s
 	$(ASM) $(ASMFLAG) -o interrupt/entry.o interrupt/entry.s
 
-interrupt/gate.o : interrupt/gate.c interrupt/gate.h includes/lib.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h 
-	$(CC) $(CFLAGS) -c interrupt/gate.c -o interrupt/gate.o 
+interrupt/interrupt.o : interrupt/interrupt.c interrupt/gate.h includes/lib.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h includes/hardware.h hardware/cpu.h hardware/UEFI.h hardware/8259A.h hardware/APIC.h includes/linkage.h includes/log.h includes/task.h task/desc.h includes/memory.h memory/desc.h memory/DMAS.h memory/pgtable.h memory/buddy.h memory/SLAB.h task/mgr.h includes/interrupt.h interrupt/trap.h task/syscall.h 
+	$(CC) $(CFLAGS) -c interrupt/interrupt.c -o interrupt/interrupt.o 
 
-interrupt/trap.o : interrupt/trap.c includes/lib.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h includes/log.h includes/linkage.h includes/memory.h memory/desc.h memory/DMAS.h memory/pgtable.h memory/buddy.h memory/SLAB.h interrupt/gate.h 
-	$(CC) $(CFLAGS) -c interrupt/trap.c -o interrupt/trap.o 
-
-hardware/8259A.o : hardware/8259A.c includes/interrupt.h interrupt/gate.h includes/lib.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h interrupt/trap.h includes/linkage.h 
-	$(CC) $(CFLAGS) -c hardware/8259A.c -o hardware/8259A.o 
-
-hardware/UEFI.o : hardware/UEFI.c hardware/UEFI.h includes/lib.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h 
-	$(CC) $(CFLAGS) -c hardware/UEFI.c -o hardware/UEFI.o 
-
-hardware/APIC.o : hardware/APIC.c hardware/APIC.h includes/lib.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h hardware/cpu.h includes/log.h includes/linkage.h includes/memory.h memory/desc.h memory/DMAS.h memory/pgtable.h memory/buddy.h memory/SLAB.h 
-	$(CC) $(CFLAGS) -c hardware/APIC.c -o hardware/APIC.o 
-
-hardware/cpu.o : hardware/cpu.c hardware/cpu.h includes/lib.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h includes/log.h includes/linkage.h 
-	$(CC) $(CFLAGS) -c hardware/cpu.c -o hardware/cpu.o 
-
-memory/DMAS.o : memory/DMAS.c memory/DMAS.h memory/desc.h includes/lib.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h memory/pgtable.h includes/log.h includes/linkage.h 
-	$(CC) $(CFLAGS) -c memory/DMAS.c -o memory/DMAS.o 
-
-memory/initmm.o : memory/initmm.c memory/desc.h includes/lib.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h memory/pgtable.h includes/hardware.h hardware/cpu.h hardware/UEFI.h hardware/8259A.h hardware/APIC.h includes/log.h includes/linkage.h memory/DMAS.h memory/buddy.h memory/SLAB.h 
-	$(CC) $(CFLAGS) -c memory/initmm.c -o memory/initmm.o 
-
-memory/pgtable.o : memory/pgtable.c memory/pgtable.h includes/lib.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h memory/buddy.h memory/desc.h memory/DMAS.h includes/task.h task/desc.h includes/memory.h memory/SLAB.h task/mgr.h includes/interrupt.h interrupt/gate.h interrupt/trap.h includes/hardware.h hardware/cpu.h hardware/UEFI.h hardware/8259A.h hardware/APIC.h task/syscall.h includes/log.h includes/linkage.h 
-	$(CC) $(CFLAGS) -c memory/pgtable.c -o memory/pgtable.o 
-
-memory/buddy.o : memory/buddy.c memory/buddy.h memory/desc.h includes/lib.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h memory/DMAS.h includes/log.h includes/linkage.h 
-	$(CC) $(CFLAGS) -c memory/buddy.c -o memory/buddy.o 
-
-memory/croper.o : memory/croper.S includes/linkage.h 
-	$(CC) -E memory/croper.S > memory/croper.s
-	$(ASM) $(ASMFLAG) -o memory/croper.o memory/croper.s
-
-memory/SLAB.o : memory/SLAB.c memory/SLAB.h includes/lib.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h memory/desc.h memory/DMAS.h memory/buddy.h memory/pgtable.h includes/log.h includes/linkage.h 
-	$(CC) $(CFLAGS) -c memory/SLAB.c -o memory/SLAB.o 
-
-log/printk.o : log/printk.c includes/log.h includes/linkage.h includes/lib.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h includes/hardware.h hardware/cpu.h hardware/UEFI.h hardware/8259A.h hardware/APIC.h log/font.h 
-	$(CC) $(CFLAGS) -c log/printk.c -o log/printk.o 
-
-head.o : head.S includes/linkage.h 
-	$(CC) -E head.S > head.s
-	$(ASM) $(ASMFLAG) -o head.o head.s
-
-ALLOBJS = head.o task/inittask.o task/entry.o task/mgr.o task/syscall.o main.o lib/ds.o lib/memop.o lib/io.o interrupt/interrupt.o interrupt/entry.o interrupt/gate.o interrupt/trap.o hardware/8259A.o hardware/UEFI.o hardware/APIC.o hardware/cpu.o memory/DMAS.o memory/initmm.o memory/pgtable.o memory/buddy.o memory/croper.o memory/SLAB.o log/printk.o 
+ALLOBJS = head.o memory/SLAB.o memory/buddy.o memory/DMAS.o memory/pgtable.o memory/initmm.o memory/croper.o lib/ds.o lib/memop.o lib/io.o log/printk.o hardware/UEFI.o hardware/cpu.o hardware/8259A.o hardware/APIC.o task/inittask.o task/mgr.o task/syscall.o task/entry.o main.o interrupt/trap.o interrupt/gate.o interrupt/entry.o interrupt/interrupt.o 

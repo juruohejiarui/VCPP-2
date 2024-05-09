@@ -37,6 +37,11 @@ void startKernel() {
 
     Init_interrupt();
 
+    u64 t = (u64)&(((TaskStruct *)0)->thread);
+    printk(WHITE, BLACK, "t = %#018lx\n", t);
+    t = (u64)&((ThreadStruct *)0)->rip;
+    printk(WHITE, BLACK, "rip = %#018lx\n", t);
+
     int *arr = (int *)kmalloc(100 * sizeof(int), 0);
     printk(RED, BLACK, "malloc 100 32-bit integer. %p\n", arr);
 

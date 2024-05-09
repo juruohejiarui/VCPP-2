@@ -28,11 +28,11 @@ ENTRY(Task_kernelThreadEntry)
 ENTRY(Syscall_entry)
     // save the registers
     subq $0x38, %rsp
-    pushq $0
-    movq %es, %rbx
-    pushq %rbx
-    movq %ds, %rbx
-    pushq %rbx
+    pushq %rax
+    movq %es, %rax
+    pushq %rax
+    movq %ds, %rax
+    pushq %rax
     pushq %rbp
     pushq %rdi
     pushq %rsi
@@ -66,11 +66,10 @@ ENTRY(Syscall_exit)
     popq %rsi
     popq %rdi
     popq %rbp
-    popq %rbx
-    movq %rbx, %ds
-    popq %rbx
-    movq %rbx, %es
-    // skip the zero
-    addq $8, %rsp
+    popq %rax
+    movq %rax, %ds
+    popq %rax
+    movq %rax, %es
+    popq %rax
     addq $0x38, %rsp
     sysretq
