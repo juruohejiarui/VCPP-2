@@ -10,8 +10,8 @@ ENTRY(Syscall_entry)
     movq $0x100000, %rbx
     movq 0x18(%rbx), %rbx
     movq %rsp, 0x10(%rbx)
-    movq 0x18(%rbx), %rsp
-    movq %rsp, 0x08(%rbx)
+    movq 0x8(%rbx), %rsp
+    movq %rsp, 0x18(%rbx)
     // save the registers
     subq $0x38, %rsp
     pushq %rax

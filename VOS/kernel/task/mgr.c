@@ -71,8 +71,7 @@ __asm__ (
 	"movq 0x20(%rsi), %r8		\n\t"
 	"movq 0x8(%r8), %rax		\n\t"
 	"movq %rax, %cr3			\n\t"
-    "mfence                     \n\t"
-	"movq 0x18(%rsi), %rax		\n\t"
+	"movq 0x18(%rdi), %rax		\n\t"
 	"movq 0x18(%rax), %rsp		\n\t"
     "pushq 0x50(%rax)           \n\t"
     "popfq                      \n\t"
@@ -89,10 +88,8 @@ void Task_switchTo_inner(TaskStruct *prev, TaskStruct *next) {
     __asm__ volatile ( "movq %%gs, %0 \n\t" : "=a"(prev->thread->gs));
     __asm__ volatile ( "movq %0, %%fs \n\t" : : "a"(next->thread->fs));
     __asm__ volatile ( "movq %0, %%gs \n\t" : : "a"(next->thread->gs));
-    if (next->pid == 1) {
-        printk(BLUE, BLACK, "prev: %#018lx, prev->thread->rip: %#018lx\t", prev, prev->thread->rip);
-        printk(BLUE, BLACK, "next: %#018lx, next->thread->rip: %#018lx\n", next, next->thread->rip);
-    }
+    // printk(BLUE, BLACK, "prev: %#018lx, prev->thread->rsp: %#018lx\t", prev, prev->thread->rsp);
+    // printk(BLUE, BLACK, "next: %#018lx, next->thread->rsp: %#018lx\n", next, next->thread->rsp);
 }
 
 TaskStruct *Task_createTask(u64 (*kernelEntry)(u64), u64 arg, u64 flags) {

@@ -15,14 +15,13 @@ u64 Syscall_noSystemCall(u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5) {
 }
 
 u64 Syscall_enableIntr(u64 intrId, u64 arg2, u64 arg3, u64 arg4, u64 arg5) {
-    printk(WHITE, BLACK, "enable interrupt: %ld\n", intrId);
     APIC_enableIntr(intrId);
     return 0;
 }
 
 u64 Syscall_abort(u64 intrId, u64 arg2, u64 arg3, u64 arg4, u64 arg5) {
-    printk(WHITE, BLACK, "abort: %ld\n", intrId);
-    while (1) ;
+    int t = 1000000000;
+    while (t--) ;
     return 0;
 }
 
@@ -37,7 +36,6 @@ u64 Syscall_handler(u64 index, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5)
     Gate_setTSS(
         Init_TSS[0].rsp0, Init_TSS[0].rsp1, Init_TSS[0].rsp2, Init_TSS[0].ist1, Init_TSS[0].ist2,
         Init_TSS[0].ist3, Init_TSS[0].ist4, Init_TSS[0].ist5, Init_TSS[0].ist6, Init_TSS[0].ist7);
-    printk(WHITE, BLACK, "try to handle syscall : %ld\n", index);
     u64 res = (Syscall_list[index])(arg1, arg2, arg3, arg4, arg5);
     // switch to user level
     return res;
@@ -88,7 +86,7 @@ void Task_switchToUsr(u64 (*entry)(), u64 arg) {
     Gate_setTSS(
         Init_TSS[0].rsp0, Init_TSS[0].rsp1, Init_TSS[0].rsp2, Init_TSS[0].ist1, Init_TSS[0].ist2,
         Init_TSS[0].ist3, Init_TSS[0].ist4, Init_TSS[0].ist5, Init_TSS[0].ist6, Init_TSS[0].ist7);
-    printk(RED, BLACK, "finish TSS\n");
+    printk(ORANGE, BLACK, "finish TSS\n");
     __asm__ volatile (
         "movq %0, %%rsp     \n\t"
         "jmp Syscall_exit     \n\t"
@@ -102,10 +100,14 @@ u64 Task_initUsrLevel(u64 arg) {
     printk(WHITE, BLACK, "user level function, arg: %ld\n", arg);
     u64 res = Syscall_usrAPI((arg != 1), 0x14, 2, 3, 4, 5);
     printk(WHITE, BLACK, "syscall, res: %ld\n", res);
-    int t = 10000000;
-    while (1) 
-        (--t == 0 ? printk(WHITE, BLACK, "%d ", Task_current->pid), t = 100000000 : 0);
-    
+    int t = 10000000 * (arg + 3), initCounter = 100000000;
+    int tmp = arg;
+    while (tmp > 0) initCounter <<= 1, tmp--;
+    if (arg == 1) initCounter = t = 1;
+    while (1) {
+        if (arg == 1) Syscall_usrAPI(0, 0x14, 2, 3, 4, 5);
+        (--t == 0 ? printk(WHITE, BLACK, "%d ", Task_current->pid), t = initCounter : 0);
+    }
     while (1) ;
 }
 
@@ -113,7 +115,7 @@ void Init_syscall() {
     // set IA32_EFER.SCE
     IO_writeMSR(0xC0000080, IO_readMSR(0xC0000080) | 1);
     // set IA32_STAR
-    IO_writeMSR(0xC0000081, ((u64)0x28 << 48) | ((u64)0x8 << 32));
+    IO_writeMSR(0xC0000081, ((u64)0x28 << 48) | ((u64)0x08 << 32));
     // set IA32_LSTAR
     IO_writeMSR(0xC0000082, (u64)Syscall_entry);
     // set IA32_FMASK

@@ -91,8 +91,16 @@ u64 irqHandler(u64 regs, u64 num) {
     } else if (num == 0x24) {
         if (Task_countDown()) {
             Task_current->counter = 1;
-            Task_current->thread->rsp = Task_current->thread->rsp0 = regs;
-            Task_current->thread->rflags = 0;
+            u64 cs = *(u64 *)(regs + 0xA0);
+            Task_current->thread->rsp = (cs & 3 == 3 ? Task_current->thread->rsp0 : Task_current->thread->rsp3);
+            memcpy((PtReg *)regs, (PtReg *)(Task_current->thread->rsp -= sizeof(PtReg)), sizeof(PtReg));
+            __asm__ volatile (
+                "pushfq		\n\t"
+				"popq %0	\n\t"
+				: "=m"(Task_current->thread->rflags)
+				:
+				: "memory"
+            );
             Task_current->thread->rip = (u64)restoreAll;
             res = (u64)Task_switch;
         }
