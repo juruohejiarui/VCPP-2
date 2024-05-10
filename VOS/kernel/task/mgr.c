@@ -3,6 +3,12 @@
 
 extern void Task_kernelThreadEntry();
 
+void checkTaskStack(u64 rsp) {
+    printk(WHITE, BLACK, "rsp: %#018lx\n", rsp);
+    for (int i = 0; i < sizeof(PtReg) / sizeof(u64); i++)
+        printk(WHITE, BLACK, "rsp + %03d: %#018lx%c", i * 8, *(u64 *)(rsp + i * 8), (i + 1) % 4 == 0 ? '\n' : ' ');
+}
+
 #define Task_initTask(task) \
 { \
     .state      = Task_State_Uninterruptible, \
@@ -51,23 +57,46 @@ TaskMemStruct Init_mm = {0};
 TaskStruct Init_taskStruct = Task_initTask(NULL);
 TaskStruct *Init_tasks[Hardware_CPUNumber] = { &Init_taskStruct, 0 };
 
-inline TaskStruct *Task_getCurrent() { return (TaskStruct *)(Task_userBrkStart); }
+__asm__ (
+	".global Task_switch		\n\t"
+	"Task_switch:				\n\t"
+	"movq $0x100000, %rdi		\n\t"
+	// next(rsi) = prev->listEle->next
+	"movq 0x8(%rdi), %rsi		\n\t"
+	"pushq %rsi					\n\t"
+	"pushq %rdi					\n\t"
+	"call Task_switchTo_inner	\n\t"
+	"popq %rdi					\n\t"
+	"popq %rsi					\n\t"
+	"movq 0x20(%rsi), %r8		\n\t"
+	"movq 0x8(%r8), %rax		\n\t"
+	"movq %rax, %cr3			\n\t"
+    "mfence                     \n\t"
+	"movq 0x18(%rsi), %rax		\n\t"
+	"movq 0x18(%rax), %rsp		\n\t"
+    "pushq 0x50(%rax)           \n\t"
+    "popfq                      \n\t"
+	"movq 0x0(%rax), %rax		\n\t"
+	"jmp *%rax					\n\t"
+);
 
 void Task_switchTo_inner(TaskStruct *prev, TaskStruct *next) {
     Init_TSS[0].rsp0 = next->thread->rsp0;
     Gate_setTSS(
             Init_TSS[0].rsp0, Init_TSS[0].rsp1, Init_TSS[0].rsp2, Init_TSS[0].ist1, Init_TSS[0].ist2,
             Init_TSS[0].ist3, Init_TSS[0].ist4, Init_TSS[0].ist5, Init_TSS[0].ist6, Init_TSS[0].ist7);
-    __asm__ __volatile__ ( "movq %%fs, %0 \n\t" : "=a"(prev->thread->fs));
-    __asm__ __volatile__ ( "movq %%gs, %0 \n\t" : "=a"(prev->thread->gs));
-    __asm__ __volatile__ ( "movq %0, %%fs \n\t" : : "a"(next->thread->fs));
-    __asm__ __volatile__ ( "movq %0, %%gs \n\t" : : "a"(next->thread->gs));
-
-    printk(BLUE, BLACK, "prev->thread->rsp0: %#018lx\t", prev->thread->rsp0);
-    printk(BLUE, BLACK, "next->thread->rsp0: %#018lx\n", next->thread->rsp0);
+    __asm__ volatile ( "movq %%fs, %0 \n\t" : "=a"(prev->thread->fs));
+    __asm__ volatile ( "movq %%gs, %0 \n\t" : "=a"(prev->thread->gs));
+    __asm__ volatile ( "movq %0, %%fs \n\t" : : "a"(next->thread->fs));
+    __asm__ volatile ( "movq %0, %%gs \n\t" : : "a"(next->thread->gs));
+    if (next->pid == 1) {
+        printk(BLUE, BLACK, "prev: %#018lx, prev->thread->rip: %#018lx\t", prev, prev->thread->rip);
+        printk(BLUE, BLACK, "next: %#018lx, next->thread->rip: %#018lx\n", next, next->thread->rip);
+    }
 }
 
 TaskStruct *Task_createTask(u64 (*kernelEntry)(u64), u64 arg, u64 flags) {
+    static int Task_pidCounter = 0;
     u64 pgdPhyAddr = PageTable_alloc(); Page *tskStructPage = Buddy_alloc(0, Page_Flag_Active);
     printk(WHITE, BLACK, "pgdPhyAddr: %#018lx, tskStructPage: %#018lx\n", pgdPhyAddr, tskStructPage->phyAddr);
     // copy the kernel part (except stack) of pgd
@@ -88,6 +117,7 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64), u64 arg, u64 flags) {
     task->mem = (TaskMemStruct *)(thread + 1);
     task->thread = thread;
     task->counter = 1;
+    task->pid = Task_pidCounter++;
     task->mem->pgd = DMAS_phys2Virt(pgdPhyAddr);
     task->mem->pgdPhyAddr = pgdPhyAddr;
     *thread = Init_thread;
@@ -95,6 +125,7 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64), u64 arg, u64 flags) {
     thread->rbp = Task_kernelStackEnd;
     thread->rsp0 = thread->rsp = Task_kernelStackEnd - sizeof(PtReg);
     thread->rsp3 = Task_userStackEnd - sizeof(PtReg);
+	thread->fs = thread->gs = Segment_kernelData;
 
     PtReg regs;
     memset(&regs, 0, sizeof(PtReg));
@@ -102,7 +133,10 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64), u64 arg, u64 flags) {
     regs.rdi = arg;
     regs.cs = Segment_kernelCode;
     regs.ds = Segment_kernelData;
-    regs.rbx = (u64)kernelEntry;
+	regs.es = Segment_kernelData;
+	regs.ss = Segment_kernelData;
+	regs.rip = (u64)kernelEntry;
+	regs.rsp = Task_kernelStackEnd;
     memcpy(&regs, (u64 *)DMAS_phys2Virt(lstPage->phyAddr + Page_4KSize - 16 - sizeof(PtReg)), sizeof(PtReg));
 
     List_init(&task->listEle);

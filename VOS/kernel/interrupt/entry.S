@@ -10,7 +10,7 @@ ENTRY(Gate_loadTR)
     xorw %ax, %ax
     retq
 
-restoreAll:
+ENTRY(restoreAll)
     popq %r15
     popq %r14
     popq %r13
@@ -35,7 +35,9 @@ restoreAll:
 
 retFromException:
 ENTRY(Intr_retFromIntr)
-    jmp restoreAll
+    test %rax, %rax
+    jz restoreAll
+    jmp Task_switch
 
 ENTRY(divideError)
     pushq $0

@@ -9,8 +9,12 @@
 extern void Intr_retFromIntr();
 
 u64 init(u64 arg) {
+    if (Task_current->pid == 0) {
+        APIC_enableIntr(0x14);
+        List_del(&Init_taskStruct.listEle);
+    }
     printk(RED, BLACK, "init is running, arg = %#018lx\n", arg);
-    Task_switchToUsr(Task_initUsrLevel, 114514);
+    Task_switchToUsr(Task_initUsrLevel, arg);
     return 1;
 }
 
@@ -25,6 +29,9 @@ void Init_task() {
     Init_taskStruct.thread->fs = Init_taskStruct.thread->gs = Segment_kernelData;
     List_init(&Init_taskStruct.listEle);
     
-    TaskStruct *initTask = Task_createTask(init, 10, 0);
-    Task_switchTo(&Init_taskStruct, initTask);
+    TaskStruct *initTask[3] = { NULL };
+    for (int i = 0; i < 3; i++)
+        initTask[i] = Task_createTask(init, i, 0);
+    List_del(&Init_taskStruct.listEle);
+    Task_switchTo(&Init_taskStruct, initTask[0]);
 }

@@ -2,11 +2,13 @@
 #include "../includes/hardware.h"
 #include "../includes/linkage.h"
 #include "../includes/log.h"
+#include "../includes/task.h"
+
+void restoreAll();
 
 #define saveAll \
-    "cld            \n\t" \
     "pushq %rax     \n\t" \
-    "pushq %rbx     \n\t" \
+    "pushq %rax     \n\t" \
     "movq %es, %rax \n\t" \
     "pushq %rax     \n\t" \
     "movq %ds, %rax \n\t" \
@@ -37,7 +39,8 @@
 void irqName(num);      \
 __asm__ ( \
     SYMBOL_NAME_STR(irq)#num"Interrupt: \n\t" \
-    "pushq $0 \n\t" \
+    "cld        \n\t" \
+    "pushq $0   \n\t" \
     saveAll \
     "movq %rsp, %rdi \n\t" \
     "leaq Intr_retFromIntr(%rip), %rax \n\t" \
@@ -80,15 +83,21 @@ void (*intrList[24])(void) = {
     irq0x34Interrupt, irq0x35Interrupt, irq0x36Interrupt, irq0x37Interrupt
 };
 
-void irqHandler(u64 regs, u64 num) {
-    u8 x;
-    printk(RED, BLACK, "irqHandler: %d", num);
+u64 irqHandler(u64 regs, u64 num) {
+    u8 x; u64 res = 0;
     if (num == 0x22) {
          x = IO_in8(0x60);
         printk(RED, BLACK, "\tkey: %#08x", x);
+    } else if (num == 0x24) {
+        if (Task_countDown()) {
+            Task_current->counter = 1;
+            Task_current->thread->rsp = Task_current->thread->rsp0 = regs;
+            Task_current->thread->rflags = 0;
+            Task_current->thread->rip = (u64)restoreAll;
+            res = (u64)Task_switch;
+        }
     }
-    putchar(RED, BLACK, '\n');
-    __asm__ __volatile__ (
+    __asm__ volatile (
         "movq $0x00, %%rdx  \n\t"
         "movq $0x00, %%rax  \n\t"
         "movq $0x80b, %%rcx \n\t"
@@ -97,6 +106,7 @@ void irqHandler(u64 regs, u64 num) {
         : 
         : "memory"
     );
+    return res;
 }
 
 void Init_interrupt() {

@@ -212,6 +212,7 @@ ENTRY(gdtTable)
     .quad 0x0000000000000000    /* NULL */
     .quad 0x0020980000000000    /* kernel code 64-bit */
     .quad 0x0000920000000000    /* kernel data 64-bit */
+    .quad 0x0020980000000000    /* kernel code 64-bit */
     .quad 0x0000000000000000 
     .quad 0x0000000000000000
     .quad 0x0000f20000000000    /* user data 64-bit */

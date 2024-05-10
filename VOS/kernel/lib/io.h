@@ -10,7 +10,7 @@ u32 IO_in32(u16 port);
 void IO_writeMSR(u64 msrAddr, u64 data);
 u64 IO_readMSR(u64 msrAddr);
 
-#define IO_mfence() __asm__ __volatile__ ("mfence \n\t" : : : "memory")
+#define IO_mfence() __asm__ volatile ("mfence \n\t" : : : "memory")
 
 void sti();
 void cli();

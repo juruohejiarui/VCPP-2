@@ -48,7 +48,7 @@ static inline Page *popFreePageFrame(int ord) {
     Page *headPage = mmStruct.freeList[ord];
     if (headPage == NULL) return NULL;
     if (List_isEmpty(&headPage->listEle)) mmStruct.freeList[ord] = NULL;
-    else List_del(&headPage->listEle);
+    else mmStruct.freeList[ord] = container(headPage->listEle.next, Page, listEle), List_del(&headPage->listEle);
     return headPage;
 }
 
@@ -119,6 +119,7 @@ Page *Buddy_alloc(u64 log2Size, u64 attr) {
             revBit(rPage);
         }
         headPage->attr |= attr;
+        printk(RED, BLACK, "Buddy_alloc(%d) = %p\n", log2Size, headPage);
         return headPage;
     }
     return NULL;

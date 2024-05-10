@@ -23,7 +23,7 @@ lib/memop.o : lib/memop.c lib/memop.h lib/ds.h includes/log.h includes/linkage.h
 lib/io.o : lib/io.c lib/io.h lib/ds.h 
 	$(CC) $(CFLAGS) -c lib/io.c -o lib/io.o 
 
-interrupt/interrupt.o : interrupt/interrupt.c interrupt/gate.h includes/lib.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h includes/hardware.h hardware/cpu.h hardware/UEFI.h hardware/8259A.h hardware/APIC.h includes/linkage.h includes/log.h 
+interrupt/interrupt.o : interrupt/interrupt.c interrupt/gate.h includes/lib.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h includes/hardware.h hardware/cpu.h hardware/UEFI.h hardware/8259A.h hardware/APIC.h includes/linkage.h includes/log.h includes/task.h task/desc.h includes/memory.h memory/desc.h memory/DMAS.h memory/pgtable.h memory/buddy.h memory/SLAB.h task/mgr.h includes/interrupt.h interrupt/trap.h task/syscall.h 
 	$(CC) $(CFLAGS) -c interrupt/interrupt.c -o interrupt/interrupt.o 
 
 interrupt/entry.o : interrupt/entry.S includes/linkage.h 

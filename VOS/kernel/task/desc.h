@@ -34,13 +34,13 @@ typedef struct tmpThreadStruct {
     u64 cr2;
     u64 trapNum;
     u64 errCode;
-    u64 flags;
+    u64 rflags;
 } ThreadStruct;
 
 typedef struct tmpTaskStruct {
     List listEle;
     volatile i64 state;
-    ThreadStruct *thread;
+    volatile ThreadStruct *thread;
     TaskMemStruct *mem;
     u64 flags;
     i64 pid, counter, signal, priority;

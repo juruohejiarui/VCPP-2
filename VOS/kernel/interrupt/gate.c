@@ -3,7 +3,7 @@
 #define setGate(idtAddr, attr, istIndex, codeAddr) \
     do { \
         u64 d0, d1; \
-        __asm__ __volatile__ ( \
+        __asm__ volatile ( \
             /* set the 0...15-th bits of code addr */ \
             "movw %%dx, %%ax        \n\t" \
             /* set the ist index and attr */ \

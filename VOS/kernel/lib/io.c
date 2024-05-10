@@ -1,7 +1,7 @@
 #include "io.h"
 
 void IO_out8(u16 port, u8 data) {
-    __asm__ __volatile__ (
+    __asm__ volatile (
         "outb %0, %%dx   \n\t"
         "mfence          \n\t"
         :
@@ -11,7 +11,7 @@ void IO_out8(u16 port, u8 data) {
 }
 
 void IO_out32(u16 port, u32 data) {
-    __asm__ __volatile__ (
+    __asm__ volatile (
         "outl %0, %%dx   \n\t"
         "mfence          \n\t"
         :
@@ -22,7 +22,7 @@ void IO_out32(u16 port, u32 data) {
 
 u8 IO_in8(u16 port) {
     u8 ret = 0;
-    __asm__ __volatile__ (
+    __asm__ volatile (
         "inb %%dx, %0   \n\t"
         "mfence         \n\t"
         : "=a"(ret)
@@ -34,7 +34,7 @@ u8 IO_in8(u16 port) {
 
 u32 IO_in32(u16 port) {
     u32 ret = 0;
-    __asm__ __volatile__ (
+    __asm__ volatile (
         "inl %%dx, %0   \n\t"
         "mfence         \n\t"
         : "=a"(ret)
@@ -45,7 +45,7 @@ u32 IO_in32(u16 port) {
 }
 
 void IO_writeMSR(u64 msrAddr, u64 data) { 
-    __asm__ __volatile__ (
+    __asm__ volatile (
         "wrmsr \n\t"
         :
         : "c"(msrAddr), "A"(data & 0xFFFFFFFF), "d"((data >> 32) & 0xFFFFFFFF)
@@ -55,7 +55,7 @@ void IO_writeMSR(u64 msrAddr, u64 data) {
 
 u64 IO_readMSR(u64 msrAddr) {
     u32 data1, data2;
-    __asm__ __volatile__ (
+    __asm__ volatile (
         "rdmsr \n\t"
         : "=d"(data1), "=a"(data2)
         : "c"(msrAddr)
@@ -64,20 +64,20 @@ u64 IO_readMSR(u64 msrAddr) {
     return (((u64) data1) << 32) | data2;
 }
 void sti() {
-    __asm__ __volatile__ (
+    __asm__ volatile (
         "sti \n\t"
     );
 }
 
 void cli() {
-    __asm__ __volatile__ (
+    __asm__ volatile (
         "cli \n\t"
     );
 }
 
 u64 IO_getRIP() {
     u64 ret = 0;
-    __asm__ __volatile__ (
+    __asm__ volatile (
         "lea (%%rip), %0 \n\t"
         : "=r"(ret)
     );

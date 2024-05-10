@@ -4,7 +4,7 @@
 void *memset(void *addr, u8 dt, u64 size) {
     int d0, d1;
     u64 tmp = dt * 0x0101010101010101UL;
-    __asm__ __volatile__ (
+    __asm__ volatile (
         "cld                    \n\t"
         "rep                    \n\t"
         "stosq                  \n\t"
@@ -28,7 +28,7 @@ void *memset(void *addr, u8 dt, u64 size) {
 void *memcpy(void *src, void *dst, i64 num)
 {
 	int d0, d1, d2;
-	__asm__ __volatile__(
+	__asm__ volatile(
         "cld				\n\t"
         "rep				\n\t"
         "movsq				\n\t"
@@ -50,7 +50,7 @@ void *memcpy(void *src, void *dst, i64 num)
 
 int memcmp(void *fir, void *sec, u64 size) {
     register int res;
-    __asm__ __volatile__ (
+    __asm__ volatile (
         "cld            \n\t"
         "repe           \n\t"
         "cmpsb          \n\t"
@@ -68,7 +68,7 @@ int memcmp(void *fir, void *sec, u64 size) {
 
 i64 strlen(u8 *str) {
     register i64 res;
-    __asm__ __volatile__ (
+    __asm__ volatile (
         "cld        \n\t"
         "repne      \n\t"
         "scasb      \n\t"

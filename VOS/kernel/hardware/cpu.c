@@ -2,7 +2,7 @@
 #include "../includes/log.h"
 
 void CPU_getID(u32 mop, u32 sop, u32 *eax, u32 *ebx, u32 *ecx, u32 *edx) {
-    __asm__ __volatile__ (
+    __asm__ volatile (
         "cpuid \n\t"
         : "=a"(*eax), "=b"(*ebx), "=c"(*ecx), "=d"(*edx)
         : "0"(mop), "2"(sop)

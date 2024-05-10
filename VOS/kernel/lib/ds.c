@@ -29,7 +29,7 @@ u64 Bit_get(u64 *addr, u64 index) { return ((*addr) >> index) & 1; }
 void Bit_set1(u64 *addr, u64 index) { *addr |= (1ul << index); }
 void Bit_set0(u64 *addr, u64 index) { *addr &= (~(1ul << index)); }
 void Bit_rev(u64 *addr, u64 index) {
-    __asm__ __volatile__ (
+    __asm__ volatile (
         "btsq %1, %0    \n\t"
         : "+m"(*addr)
         : "r"(index)

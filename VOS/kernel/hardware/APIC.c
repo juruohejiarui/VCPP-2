@@ -36,7 +36,7 @@ void APIC_initLocal() {
 
     // enable xAPIC & x2APIC
     u32 x, y;
-    __asm__ __volatile__ (
+    __asm__ volatile (
         "movq $0x1b, %%rcx          \n\t"
         "rdmsr                      \n\t"
         "btsq $10, %%rax            \n\t" // set the bits of xAPIC & x2APIC
@@ -52,7 +52,7 @@ void APIC_initLocal() {
     if (0xC00 & x) printk(WHITE, BLACK, "xAPIC & x2APIC enabled\n");
 
     // enable SVR[8] & SVR[12]
-    __asm__ __volatile__ (
+    __asm__ volatile (
         "movq $0x80f, %%rcx         \n\t"
         "rdmsr                      \n\t"
         "btsq $8, %%rax             \n\t"
@@ -69,7 +69,7 @@ void APIC_initLocal() {
     if (0x1000 &x) printk(WHITE, BLACK, "SVR[12] enabled\n");
 
     // get local APIC ID
-    __asm__ __volatile__ (
+    __asm__ volatile (
         "movl $0x802, %%ecx           \n\t"
         "rdmsr                        \n\t"
         : "=a"(x), "=d"(y)
@@ -79,7 +79,7 @@ void APIC_initLocal() {
     printk(WHITE, BLACK, "Local APIC ID: %d\n", x);
 
     // get local APIC version
-    __asm__ __volatile__ (
+    __asm__ volatile (
         "movl $0x803, %%ecx           \n\t"
         "rdmsr                        \n\t"
         : "=a"(x), "=d"(y)
@@ -95,7 +95,7 @@ void APIC_initLocal() {
         printk(WHITE, BLACK, "Integrated APIC\n");
 
     // mask all LVT entries
-    __asm__ __volatile__ (
+    __asm__ volatile (
         "movq $0x82f, %%rcx           \n\t" // CMCI
         "wrmsr                        \n\t"
         "movq $0x832, %%rcx           \n\t" // Timer
@@ -116,7 +116,7 @@ void APIC_initLocal() {
     );
     
     // get TPR
-    __asm__ __volatile__ (
+    __asm__ volatile (
         "movq $0x808, %%rcx           \n\t"
         "rdmsr                        \n\t"
         : "=a"(x), "=d"(y)
@@ -126,7 +126,7 @@ void APIC_initLocal() {
     printk(WHITE, BLACK, "TPR: %#010x\n", x & 0xff);
 
     // get PPR
-    __asm__ __volatile__ (
+    __asm__ volatile (
         "movq $0x80a, %%rcx           \n\t"
         "rdmsr                        \n\t"
         : "=a"(x), "=d"(y)

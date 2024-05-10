@@ -46,9 +46,9 @@ extern char _end;
 #define availVirtAddrSt ((u64 *)Page_4KUpAlign(0xffff800003000000ul + bootParamInfo->graphicsInfo.FrameBufferSize))
 
 #define Segment_kernelData 0x10
-#define Segment_kernelCode 0x08
-#define Segment_userData   0x28
-#define Segment_userCode   0x20
+#define Segment_kernelCode 0x18
+#define Segment_userData   0x30
+#define Segment_userCode   0x38
 
 struct tmpPage {
     u64 phyAddr;

@@ -1,34 +1,20 @@
 #include "../includes/linkage.h"
 
 ENTRY(Task_kernelThreadEntry)
-    popq %r15
-    popq %r14
-    popq %r13
-    popq %r12
-    popq %r11
-    popq %r10
-    popq %r9
-    popq %r8
-    popq %rbx
-    popq %rcx
-    popq %rdx
-    popq %rsi
-    popq %rdi
-    popq %rbp
-    popq %rax
-    movq %rax, %ds
-    popq %rax
-    movq %rax, %es
-    popq %rax
-    addq $0x38, %rsp
-    call *%rbx // just to the function of the thread
-    movq %rax, %rdi // get the return value of the thread and store it to the first param
-    call Task_doExit
+    movq %rsp, %rdi
+    call checkTaskStack
+    jmp restoreAll
 
 ENTRY(Syscall_entry)
+    // switch to kernel stack
+    movq $0x100000, %rbx
+    movq 0x18(%rbx), %rbx
+    movq %rsp, 0x10(%rbx)
+    movq 0x18(%rbx), %rsp
+    movq %rsp, 0x08(%rbx)
     // save the registers
     subq $0x38, %rsp
-    pushq $0
+    pushq %rax
     movq %es, %rbx
     pushq %rbx
     movq %ds, %rbx
@@ -48,8 +34,10 @@ ENTRY(Syscall_entry)
     pushq %r13
     pushq %r14
     pushq %r15
-    call Syscall_handler
-    jmp Syscall_exit
+
+    leaq Syscall_exit(%rip), %rax
+    pushq %rax
+    jmp Syscall_handler
 
 ENTRY(Syscall_exit)
     popq %r15
@@ -70,7 +58,11 @@ ENTRY(Syscall_exit)
     movq %rbx, %ds
     popq %rbx
     movq %rbx, %es
-    // skip the zero
     addq $8, %rsp
     addq $0x38, %rsp
+    movq $0x100000, %rbx
+    movq 0x18(%rbx), %rbx
+    movq %rsp, 0x8(%rbx)
+    movq 0x10(%rbx), %rsp
+    movq %rsp, 0x18(%rbx)
     sysretq
