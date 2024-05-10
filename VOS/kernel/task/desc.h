@@ -13,7 +13,7 @@
 #define Task_Flag_Kernel    (1 << 2)
 
 #define Task_State_Uninterruptible  (1 << 0)
-#define Task_State_Running          (1 << 0)
+#define Task_State_Running          (1 << 1)
 
 #define Task_userStackEnd       0x0000800000000000ul
 #define Task_kernelStackEnd     0xfffffffffffffff0ul

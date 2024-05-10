@@ -9,9 +9,36 @@
 #define PageTable_MapSize_2M (1 << 1)
 #define PageTable_MapSize_1G (1 << 2)
 
-u64 getCR3();
-void setCR3(u64 cr3);
-void flushTLB();
+#define getCR3() \
+	({ \
+		u64 cr3; \
+		__asm__ volatile ( \
+			"movq %%cr3, %0" \
+			: "=r"(cr3) \
+			: \
+			: "memory" \
+		); \
+		cr3; \
+	})
+#define setCR3(cr3) \
+	do { \
+		__asm__ volatile ( \
+			"movq %0, %%cr3" \
+			: \
+			: "r"(cr3) \
+			: "memory" \
+		); \
+	} while (0)
+#define flushTLB() \
+	do { \
+		__asm__ volatile ( \
+			"movq %%cr3, %%rax	\n\t" \
+			"movq %%rax, %%cr3	\n\t" \
+			: \
+			: \
+			: "rax", "memory" \
+		); \
+	} while (0)
 
 typedef struct { u64 entry[512]; } PageTable;
 void PageTable_init();

@@ -76,13 +76,14 @@ void Task_switchToUsr(u64 (*entry)(), u64 arg) {
     regs.ss = Segment_userData;
     __asm__ volatile (
         "subq %1, %%rsp     \n\t"
-        "movq %%rsp, %0     \n\t"
+		"movq %%rsp, %0     \n\t"
         : "=m"(Task_current->thread->rsp0)
         : "a"(sizeof(PtReg))
-        : "memory"
+        :
     );
     Task_current->thread->rsp = Task_current->thread->rsp3 = regs.rsp;
     memcpy(&regs, (void *)(Task_current->thread->rsp0), sizeof(PtReg));
+	printk(YELLOW, BLACK, "finished copying\n");
     Init_TSS[0].rsp0 = Task_current->thread->rsp0;
     Gate_setTSS(
         Init_TSS[0].rsp0, Init_TSS[0].rsp1, Init_TSS[0].rsp2, Init_TSS[0].ist1, Init_TSS[0].ist2,
@@ -98,9 +99,10 @@ void Task_switchToUsr(u64 (*entry)(), u64 arg) {
 }
 
 u64 Task_initUsrLevel(u64 arg) {
+	Task_current->state = Task_State_Running;
     printk(WHITE, BLACK, "user level function, arg: %ld\n", arg);
-    u64 res = Syscall_usrAPI((arg != 1) * 2, 0x14, 2, 3, 4, 5);
-    printk(WHITE, BLACK, "syscall, res: %ld\n", res);
+    // u64 res = Syscall_usrAPI((arg != 1) * 2, 0x14, 2, 3, 4, 5);
+    // printk(WHITE, BLACK, "syscall, res: %ld\n", res);
     int t = 10000000 * (arg + 3), initCounter = 100000000;
     int tmp = arg;
     while (tmp > 0) initCounter <<= 1, tmp--;
@@ -116,7 +118,7 @@ void Init_syscall() {
     // set IA32_EFER.SCE
     IO_writeMSR(0xC0000080, IO_readMSR(0xC0000080) | 1);
     // set IA32_STAR
-    IO_writeMSR(0xC0000081, ((u64)0x28 << 48) | ((u64)0x08 << 32));
+    IO_writeMSR(0xC0000081, ((u64)0x28 << 48) | ((u64)0x8 << 32));
     // set IA32_LSTAR
     IO_writeMSR(0xC0000082, (u64)Syscall_entry);
     // set IA32_FMASK

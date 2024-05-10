@@ -3,10 +3,17 @@
 
 extern void Task_kernelThreadEntry();
 
-void checkTaskStack(u64 rsp) {
-    printk(WHITE, BLACK, "rsp: %#018lx\n", rsp);
+void Task_checkPtRegInStack(u64 rsp) {
+	u64 rflags = 0;
+	__asm__ volatile (
+		"pushfq		\n\t"
+		"popq %0	\n\t"
+		: "=m"(rflags)
+		:
+		: "memory");
+    printk(WHITE, BLACK, "rsp: %#018lx, cr3 = %#018lx, rflags = %#018lx\n", rsp, getCR3(), rflags);
     for (int i = 0; i < sizeof(PtReg) / sizeof(u64); i++)
-        printk(WHITE, BLACK, "rsp + %03d: %#018lx%c", i * 8, *(u64 *)(rsp + i * 8), (i + 1) % 4 == 0 ? '\n' : ' ');
+        printk(WHITE, BLACK, "rsp + %#04x: %#018lx%c", i * 8, *(u64 *)(rsp + i * 8), (i + 1) % 8 == 0 ? '\n' : ' ');
 }
 
 #define Task_initTask(task) \
@@ -61,7 +68,6 @@ __asm__ (
 	".global Task_switch		\n\t"
 	"Task_switch:				\n\t"
 	"movq $0x100000, %rdi		\n\t"
-	// next(rsi) = prev->listEle->next
 	"movq 0x8(%rdi), %rsi		\n\t"
 	"pushq %rsi					\n\t"
 	"pushq %rdi					\n\t"
@@ -71,6 +77,7 @@ __asm__ (
 	"movq 0x20(%rsi), %r8		\n\t"
 	"movq 0x8(%r8), %rax		\n\t"
 	"movq %rax, %cr3			\n\t"
+	"mfence						\n\t"
 	"movq 0x18(%rdi), %rax		\n\t"
 	"movq 0x18(%rax), %rsp		\n\t"
     "pushq 0x50(%rax)           \n\t"
@@ -99,17 +106,17 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64), u64 arg, u64 flags) {
     // copy the kernel part (except stack) of pgd
     memcpy((u64 *)DMAS_phys2Virt(getCR3()) + 256, (u64 *)DMAS_phys2Virt(pgdPhyAddr) + 256, 255 * sizeof(u64));
     PageTable_map(pgdPhyAddr, Task_userBrkStart, tskStructPage->phyAddr);
+	Page *lstPage = Buddy_alloc(0, Page_Flag_Active);
     // map the user stack without present flag
     for (u64 vAddr = Task_userStackEnd - Task_userStackSize; vAddr < Task_userStackEnd; vAddr += Page_4KSize)
-        PageTable_map(pgdPhyAddr, vAddr, 0);
+        PageTable_map(pgdPhyAddr, vAddr, (vAddr == Task_userStackEnd - Page_4KSize) ? lstPage->phyAddr : 0);
     // map the kernel stack without present flag
-    Page *lstPage = Buddy_alloc(0, Page_Flag_Active);
+    lstPage = Buddy_alloc(0, Page_Flag_Active);
     for (u64 vAddr = 0xFFFFFFFFFF800000; vAddr != 0; vAddr += Page_4KSize)
         PageTable_map(pgdPhyAddr, vAddr, vAddr == 0xFFFFFFFFFFFFF000 ? lstPage->phyAddr : 0);
     TaskStruct *task = (TaskStruct *)DMAS_phys2Virt(tskStructPage->phyAddr);
     memset(task, 0, sizeof(TaskStruct) + sizeof(ThreadStruct) + sizeof(TaskMemStruct));
     ThreadStruct *thread = (ThreadStruct *)(task + 1);
-    task->state = Task_State_Uninterruptible;
     task->flags = flags;
     task->mem = (TaskMemStruct *)(thread + 1);
     task->thread = thread;
@@ -117,11 +124,13 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64), u64 arg, u64 flags) {
     task->pid = Task_pidCounter++;
     task->mem->pgd = DMAS_phys2Virt(pgdPhyAddr);
     task->mem->pgdPhyAddr = pgdPhyAddr;
+	task->state = Task_State_Uninterruptible;
+
     *thread = Init_thread;
     thread->rip = (u64)Task_kernelThreadEntry;
     thread->rbp = Task_kernelStackEnd;
     thread->rsp0 = thread->rsp = Task_kernelStackEnd - sizeof(PtReg);
-    thread->rsp3 = Task_userStackEnd - sizeof(PtReg);
+    thread->rsp3 = Task_userStackEnd;
 	thread->fs = thread->gs = Segment_kernelData;
 
     PtReg regs;

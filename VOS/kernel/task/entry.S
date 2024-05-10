@@ -1,11 +1,12 @@
 #include "../includes/linkage.h"
 
 ENTRY(Task_kernelThreadEntry)
-    movq %rsp, %rdi
-    call checkTaskStack
+	movq %rsp, %rdi
+	call Task_checkPtRegInStack
     jmp restoreAll
 
 ENTRY(Syscall_entry)
+    cli
     // switch to kernel stack
     movq $0x100000, %rbx
     movq 0x18(%rbx), %rbx
@@ -15,10 +16,12 @@ ENTRY(Syscall_entry)
     // save the registers
     subq $0x38, %rsp
     pushq %rax
+    pushq %rbx
     movq %es, %rbx
+    xchgq %rbx, (%rsp)
     pushq %rbx
     movq %ds, %rbx
-    pushq %rbx
+    xchgq %rbx, (%rsp)
     pushq %rbp
     pushq %rdi
     pushq %rsi
@@ -34,12 +37,16 @@ ENTRY(Syscall_entry)
     pushq %r13
     pushq %r14
     pushq %r15
-
+	movq $0x10, %rax
+	movq %rax, %ds
+	movq %rax, %es
     leaq Syscall_exit(%rip), %rax
     pushq %rax
+    sti
     jmp Syscall_handler
 
 ENTRY(Syscall_exit)
+    cli
     popq %r15
     popq %r14
     popq %r13
@@ -65,4 +72,5 @@ ENTRY(Syscall_exit)
     movq %rsp, 0x8(%rbx)
     movq 0x10(%rbx), %rsp
     movq %rsp, 0x18(%rbx)
+	sti
     sysretq

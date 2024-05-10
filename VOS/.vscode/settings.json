@@ -1,5 +1,6 @@
 {
     "files.associations": {
+        "*.S": "gas",
         "memoryinner.h": "c",
         "lib.h": "c",
         "gate.h": "c",
@@ -7,6 +8,7 @@
         "ds.h": "c",
         "memory.h": "c",
         "interrupt.h": "c",
-        "log.h": "c"
+        "log.h": "c",
+        "hardware.h": "c"
     }
 }

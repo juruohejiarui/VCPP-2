@@ -12,6 +12,18 @@ u64 IO_readMSR(u64 msrAddr);
 
 #define IO_mfence() __asm__ volatile ("mfence \n\t" : : : "memory")
 
+#define IO_getRflags() \
+	({ \
+		u64 rflags; \
+		__asm__ volatile ( \
+			"pushfq     \n\t" \
+			"popq %0    \n\t" \
+			: "=m"(rflags) \
+			: \
+			: "memory"); \
+		rflags; \
+	})
+
 void sti();
 void cli();
 

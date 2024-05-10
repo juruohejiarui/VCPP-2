@@ -89,7 +89,7 @@ u64 irqHandler(u64 regs, u64 num) {
          x = IO_in8(0x60);
         printk(RED, BLACK, "\tkey: %#08x", x);
     } else if (num == 0x24) {
-        if (Task_countDown()) {
+        if (Task_current->state != Task_State_Uninterruptible && Task_countDown()) {
             Task_current->counter = 1;
             u64 cs = *(u64 *)(regs + 0xA0);
             Task_current->thread->rsp = (cs & 3 == 3 ? Task_current->thread->rsp0 : Task_current->thread->rsp3);

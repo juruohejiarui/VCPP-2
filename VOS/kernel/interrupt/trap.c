@@ -1,6 +1,7 @@
 #include "../includes/lib.h"
 #include "../includes/log.h"
 #include "../includes/memory.h"
+#include "../includes/task.h"
 #include "gate.h"
 
 extern void divideError();
@@ -190,10 +191,18 @@ void doPageFault(u64 rsp, u64 errorCode) {
 	u64 cr2 = 0;
 	__asm__ volatile("movq %%cr2, %0":"=r"(cr2)::"memory");
 	p = (u64 *)(rsp + 0x98);
-	u64 pldEntry = PageTable_getPldEntry(getCR3(), cr2);
+	printk(RED,BLACK,"do_page_fault(14),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx,CR2:%#018lx\n",errorCode , rsp , *p , cr2);
+	u64 pldEntry = PageTable_getPldEntry(Task_current->mem->pgdPhyAddr, cr2);
 	// blank pldEntry means the page is not mapped
+	for (int i = 0; i < sizeof(PtReg) / sizeof(u64); i++)
+		printk(WHITE, BLACK, "%#04lx(%%rsp) = %#018lx%c", i * 8, *(u64 *)(rsp + i * 8), (i + 1) % 4 == 0 ? '\n' : ' ');
+	u64 orgRsp = *(u64 *)(rsp + 0xB0);
+	printk(WHITE, BLACK, "orgRsp = %#018lx\n", orgRsp);
+	for (int i = 0; i <= 6; i++) {
+		printk(WHITE, BLACK, "%#04lx(%%orgRsp) = %#018lx%c", i * 8, *(u64 *)(orgRsp + i * 8), (i + 1) % 4 == 0 ? '\n' : ' ');
+	}
+	printk(WHITE, BLACK, "\n");
 	if (pldEntry == 0) {
-		printk(RED,BLACK,"do_page_fault(14),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx,CR2:%#018lx\n",errorCode , rsp , *p , cr2);
 		if (errorCode & 0x01)
 			printk(RED,BLACK,"The page fault was caused by a non-present page.\n");
 		if (errorCode & 0x02)
@@ -212,10 +221,9 @@ void doPageFault(u64 rsp, u64 errorCode) {
 			printk(RED,BLACK,"The page fault was caused by an instruction fetch.\n");
 		while(1);
 	}
-	printk(WHITE, BLACK, "trying to map %#018lx\n", cr2);
 	// map this virtual address without physics page
 	Page *page = Buddy_alloc(0, Page_Flag_Active);
-	PageTable_map(getCR3(), cr2 & ~0xfff, page->phyAddr);
+	PageTable_map(Task_current->mem->pgdPhyAddr, cr2 & ~0xfff, page->phyAddr);
 }
 
 void doX87FPUError(u64 rsp, u64 errorCode) {

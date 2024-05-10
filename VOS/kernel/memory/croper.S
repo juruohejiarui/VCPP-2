@@ -6,6 +6,7 @@ ENTRY(getCR3)
 
 ENTRY(setCR3)
     movq %rdi, %cr3
+	xorq %rax, %rax
     retq
 
 ENTRY(flushTLB)

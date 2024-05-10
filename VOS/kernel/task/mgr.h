@@ -46,6 +46,7 @@
 			"movq 0x50(%%r8), %%rcx	\n\t" \
 			"movq 0x8(%%r9), %%rax 	\n\t" \
 			"movq %%rax, %%cr3		\n\t" \
+			"mfence					\n\t" \
 			"movq %%rdx, %%rsp		\n\t" \
 			"pushq %%rcx			\n\t" \
 			"popfq					\n\t" \
@@ -66,7 +67,7 @@ void Task_switch();
 
 TaskStruct *Task_createTask(u64 (*kernelEntry)(u64), u64 arg, u64 flags);
 
-#define Task_countDown() ((Task_current->counter--) == 0)
+#define Task_countDown() ((--Task_current->counter) == 0)
 
 int Task_getRing();
 

@@ -1,7 +1,32 @@
 #include "../includes/linkage.h"
 
-funcOffset      = 0x88
-errCodeOffset   = 0x90
+
+offsetR15		= 0x00
+offsetR14		= 0x08
+offsetR13		= 0x10
+offsetR12		= 0x18
+offsetR11		= 0x20
+offsetR10		= 0x28
+offsetR9		= 0x30
+offsetR8		= 0x38
+offsetRbx		= 0x40
+offsetRcx		= 0x48
+offsetRdx		= 0x50
+offsetRsi		= 0x58
+offsetRdi		= 0x60
+offsetRbp		= 0x68
+offsetDs		= 0x70
+offsetEs		= 0x78
+offsetRax		= 0x80
+offsetFunc		= 0x88
+offsetErrorCode	= 0x90
+offsetRip		= 0x98
+offsetCs		= 0xa0
+offsetRflags	= 0xa8
+offsetRsp		= 0xb0
+offsetSs		= 0xb8
+
+
 
 ENTRY(Gate_loadTR)
     movw %di, %ax
@@ -11,6 +36,8 @@ ENTRY(Gate_loadTR)
     retq
 
 ENTRY(restoreAll)
+	// movq %rsp, %rdi
+	// call Task_checkPtRegInStack
     popq %r15
     popq %r14
     popq %r13
@@ -40,6 +67,7 @@ ENTRY(Intr_retFromIntr)
     jmp Task_switch
 
 ENTRY(divideError)
+    cld 
     pushq $0
     pushq %rax
     leaq doDivideError(%rip), %rax
@@ -67,9 +95,8 @@ errorCode:
     pushq %r14
     pushq %r15
 
-    cld 
-    movq errCodeOffset(%rsp), %rsi
-    movq funcOffset(%rsp), %rdx
+    movq offsetErrorCode(%rsp), %rsi
+    movq offsetFunc(%rsp), %rdx
     movq $0x10, %rdi
     movq %rdi, %ds
     movq %rdi, %es
@@ -86,9 +113,9 @@ ENTRY(debug)
     jmp errorCode
 
 ENTRY(nmi)
+    cld
     /* no error code since it is not an exception */
     pushq %rax
-    cld
     pushq %rax
     pushq %rax
     movq %es, %rax
@@ -121,6 +148,7 @@ ENTRY(nmi)
     jmp restoreAll
 
 ENTRY(int3)
+    cld 
     pushq $0
     pushq %rax
     leaq doInt3(%rip), %rax
@@ -128,6 +156,7 @@ ENTRY(int3)
     jmp errorCode
 
 ENTRY(overflow)
+    cld 
     pushq $0
     pushq %rax
     leaq doOverflow(%rip), %rax
@@ -135,6 +164,7 @@ ENTRY(overflow)
     jmp errorCode
 
 ENTRY(bounds)
+    cld 
     pushq $0
     pushq %rax
     leaq doBounds(%rip), %rax
@@ -142,6 +172,7 @@ ENTRY(bounds)
     jmp errorCode
 
 ENTRY(undefinedOpcode)
+    cld 
     pushq	$0
 	pushq	%rax
     leaq doUndefinedOpcode(%rip), %rax
@@ -149,6 +180,7 @@ ENTRY(undefinedOpcode)
     jmp errorCode
     
 ENTRY(devNotAvailable)
+    cld 
     pushq $0
     pushq %rax
     leaq doDevNotAvailable(%rip), %rax
@@ -156,12 +188,14 @@ ENTRY(devNotAvailable)
     jmp errorCode
 
 ENTRY(doubleFault)
+    cld 
     pushq %rax
     leaq doDoubleFault(%rip), %rax
     xchgq %rax, (%rsp)
     jmp errorCode
 
 ENTRY(coprocessorSegmentOverrun)
+    cld 
     pushq $0
     pushq %rax
     leaq doCoprocessorSegmentOverrun(%rip), %rax
@@ -169,36 +203,42 @@ ENTRY(coprocessorSegmentOverrun)
     jmp errorCode
 
 ENTRY(invalidTSS)
+    cld 
     pushq %rax
     leaq doInvalidTSS(%rip), %rax
     xchgq %rax, (%rsp)
     jmp errorCode
 
 ENTRY(segmentNotPresent)
+    cld 
     pushq %rax
     leaq doSegmentNotPresent(%rip), %rax
     xchgq %rax, (%rsp)
     jmp errorCode
 
 ENTRY(stackSegmentFault)
+    cld 
     pushq %rax
     leaq doStackSegmentFault(%rip), %rax
     xchgq %rax, (%rsp)
     jmp errorCode
 
 ENTRY(generalProtection)
+    cld 
     pushq %rax
     leaq doGeneralProtection(%rip), %rax
     xchgq %rax, (%rsp)
     jmp errorCode
 
 ENTRY(pageFault)
+	cld
     pushq %rax
     leaq doPageFault(%rip), %rax
     xchgq %rax, (%rsp)
     jmp errorCode
 
 ENTRY(x87FPUError)
+    cld 
     pushq $0
     pushq %rax
     leaq doX87FPUError(%rip), %rax
@@ -206,12 +246,14 @@ ENTRY(x87FPUError)
     jmp errorCode
 
 ENTRY(alignmentCheck)
+    cld 
     pushq %rax
     leaq doAlignmentCheck(%rip), %rax
     xchgq %rax, (%rsp)
     jmp errorCode
 
 ENTRY(machineCheck)
+    cld 
     pushq $0
     pushq %rax
     leaq doMachineCheck(%rip), %rax
@@ -219,6 +261,7 @@ ENTRY(machineCheck)
     jmp errorCode
 
 ENTRY(simdError)
+    cld 
     pushq $0
     pushq %rax
     leaq doSIMDError(%rip), %rax
@@ -226,6 +269,7 @@ ENTRY(simdError)
     jmp errorCode
 
 ENTRY(virtualizationError)
+    cld 
     pushq $0
     pushq %rax
     leaq doVirtualizationError(%rip), %rax

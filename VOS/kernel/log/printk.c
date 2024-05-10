@@ -227,13 +227,15 @@ inline void putchar(unsigned int fcol, unsigned int bcol, char ch) {
 }
 
 void printStr(unsigned int fcol, unsigned int bcol, const char *str, int len) {
-    cli();
+    // close the interrupt if it is open now
+	u64 prevState = (IO_getRflags() >> 9) & 1;
+	if (prevState) cli();
     while (len--) putchar(fcol, bcol, *str++);
-    sti();
+    if (prevState) sti();
 }   
 
 void printk(unsigned int fcol, unsigned int bcol, const char *fmt, ...) {
-    char buf[4096] = {0};
+    char buf[1024] = {0};
     int len = 0, i;
     va_list args;
     va_start(args, fmt);
