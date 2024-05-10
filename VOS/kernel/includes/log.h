@@ -2,6 +2,7 @@
 #define __LOG_H__
 #include "linkage.h"
 #include <stdarg.h>
+#include "lib.h"
 
 #define RED     0x00ff0000
 #define WHITE   0x00ffffff
@@ -24,4 +25,6 @@ struct Position {
 void putchar(unsigned int fcol, unsigned int bcol, char ch);
 
 void printk(unsigned int fcol, unsigned int bcol, const char *fmt, ...);
+
+u64 Syscall_printStr(u64 fcol, u64 bcol, u64 str, u64 len, u64 _5);
 #endif

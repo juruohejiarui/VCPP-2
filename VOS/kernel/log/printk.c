@@ -2,9 +2,9 @@
 #include "../includes/log.h"
 #include "../includes/lib.h"
 #include "../includes/hardware.h"
+#include "../includes/task.h"
 #include "font.h"
 
-char buf[4096] = {0};
 u32 lineLength[4096] = { [0 ... 4095] = 0 };
 
 #define isDigit(ch) ((ch) >= '0' && (ch) <= '9')
@@ -226,12 +226,23 @@ inline void putchar(unsigned int fcol, unsigned int bcol, char ch) {
     }
 }
 
+void printStr(unsigned int fcol, unsigned int bcol, const char *str, int len) {
+    cli();
+    while (len--) putchar(fcol, bcol, *str++);
+    sti();
+}   
+
 void printk(unsigned int fcol, unsigned int bcol, const char *fmt, ...) {
+    char buf[4096] = {0};
     int len = 0, i;
     va_list args;
     va_start(args, fmt);
     len = sprintf(buf, fmt, args);
     va_end(args);
-    for (i = 0; i < len; i++) 
-        putchar(fcol, bcol, buf[i]);
+    if (Task_getRing() == 0) printStr(fcol, bcol, buf, len);
+    else Syscall_usrAPI(1, fcol, bcol, (u64)buf, len, 0);
+}
+u64 Syscall_printStr(u64 fcol, u64 bcol, u64 str, u64 len, u64 _5) {
+    printStr(fcol, bcol, (char *)str, len);
+    return 0;
 }

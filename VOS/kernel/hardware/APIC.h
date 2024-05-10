@@ -9,9 +9,13 @@ void APIC_writeRTE(u8 index, u64 val);
 
 void APIC_disableAll();
 void APIC_enableAll();
+void APIC_suspend();
+void APIC_resume();
 
 void APIC_disableIntr(u8 intrId);
 void APIC_enableIntr(u8 intrId);
 
 void Init_APIC();
+
+int APIC_finishedInit();
 #endif

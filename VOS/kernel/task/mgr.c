@@ -140,3 +140,9 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64), u64 arg, u64 flags) {
     List_insBehind(&task->listEle, &Init_taskStruct.listEle);
     return task;
 }
+
+int Task_getRing() {
+    u64 cs;
+    __asm__ volatile ("movq %%cs, %0" : "=a"(cs));
+    return cs & 3;
+}

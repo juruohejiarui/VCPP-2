@@ -68,6 +68,8 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64), u64 arg, u64 flags);
 
 #define Task_countDown() ((Task_current->counter--) == 0)
 
+int Task_getRing();
+
 // the current task
 #define Task_current ((TaskStruct *)(Task_userBrkStart))
 

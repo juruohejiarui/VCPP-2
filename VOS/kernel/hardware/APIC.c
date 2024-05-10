@@ -174,19 +174,30 @@ void APIC_writeRTE(u8 index, u64 val) {
     IO_mfence();
 }
 
+
+
+int enable[0x40] = {0};
+
 void APIC_disableAll() {
-    for (int i = 0x10; i < 0x40; i += 2) APIC_writeRTE(i, 0x10000 + i);
+    for (int i = 0x10; i < 0x40; i += 2) enable[i] = 0, APIC_writeRTE(i, 0x10000 + i);
 }
 void APIC_enableAll() {
-    for (int i = 0x10; i < 0x40; i += 2) APIC_writeRTE(i, i + 0x10);
+    for (int i = 0x10; i < 0x40; i += 2) enable[i] = 1, APIC_writeRTE(i, i + 0x10);
+}
+
+void APIC_suspend() {
+    for (int i = 0x10; i < 0x40; i += 2) if (enable[i]) APIC_writeRTE(i, 0x10000 + i);
+}
+void APIC_resume() {
+    for (int i = 0x10; i < 0x40; i += 2) if (enable[i]) APIC_writeRTE(i, i + 0x10);
 }
 
 void APIC_disableIntr(u8 intrId) {
-    APIC_writeRTE(intrId, 0x10000 + intrId);
+    APIC_writeRTE(intrId, 0x10000 + intrId), enable[intrId] = 0;
 }
 
 void APIC_enableIntr(u8 intrId) {
-    APIC_writeRTE(intrId, intrId + 0x10);
+    APIC_writeRTE(intrId, intrId + 0x10), enable[intrId] = 1;
 }
 
 void APIC_initIO() {
@@ -203,6 +214,8 @@ void APIC_initIO() {
     APIC_disableAll();
     printk(GREEN, BLACK, "IOAPIC Redirection Table Entries initialized\n");
 }
+
+int APIC_flag = 0;
 
 void Init_APIC() {
     APIC_mapIOAddr();
@@ -230,4 +243,7 @@ void Init_APIC() {
     }
     IO_mfence();
     sti();
+    APIC_flag = 1;
 }
+
+int APIC_finishedInit() { return APIC_flag; }
