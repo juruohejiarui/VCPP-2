@@ -16,5 +16,5 @@ void Init_8259A() {
     IO_out8(0x21, 0xfd);
     IO_out8(0xa1, 0xff);
 
-    sti();
+    IO_sti();
 }

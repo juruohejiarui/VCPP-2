@@ -67,7 +67,7 @@ ENTRY(Intr_retFromIntr)
     jmp Task_switch
 
 ENTRY(divideError)
-    cld 
+    cli 
     pushq $0
     pushq %rax
     leaq doDivideError(%rip), %rax
@@ -113,7 +113,7 @@ ENTRY(debug)
     jmp errorCode
 
 ENTRY(nmi)
-    cld
+    cli
     /* no error code since it is not an exception */
     pushq %rax
     pushq %rax
@@ -148,7 +148,7 @@ ENTRY(nmi)
     jmp restoreAll
 
 ENTRY(int3)
-    cld 
+    cli 
     pushq $0
     pushq %rax
     leaq doInt3(%rip), %rax
@@ -156,7 +156,7 @@ ENTRY(int3)
     jmp errorCode
 
 ENTRY(overflow)
-    cld 
+    cli 
     pushq $0
     pushq %rax
     leaq doOverflow(%rip), %rax
@@ -164,7 +164,7 @@ ENTRY(overflow)
     jmp errorCode
 
 ENTRY(bounds)
-    cld 
+    cli 
     pushq $0
     pushq %rax
     leaq doBounds(%rip), %rax
@@ -172,7 +172,7 @@ ENTRY(bounds)
     jmp errorCode
 
 ENTRY(undefinedOpcode)
-    cld 
+    cli 
     pushq	$0
 	pushq	%rax
     leaq doUndefinedOpcode(%rip), %rax
@@ -180,7 +180,7 @@ ENTRY(undefinedOpcode)
     jmp errorCode
     
 ENTRY(devNotAvailable)
-    cld 
+    cli 
     pushq $0
     pushq %rax
     leaq doDevNotAvailable(%rip), %rax
@@ -188,14 +188,14 @@ ENTRY(devNotAvailable)
     jmp errorCode
 
 ENTRY(doubleFault)
-    cld 
+    cli 
     pushq %rax
     leaq doDoubleFault(%rip), %rax
     xchgq %rax, (%rsp)
     jmp errorCode
 
 ENTRY(coprocessorSegmentOverrun)
-    cld 
+    cli 
     pushq $0
     pushq %rax
     leaq doCoprocessorSegmentOverrun(%rip), %rax
@@ -203,42 +203,42 @@ ENTRY(coprocessorSegmentOverrun)
     jmp errorCode
 
 ENTRY(invalidTSS)
-    cld 
+    cli 
     pushq %rax
     leaq doInvalidTSS(%rip), %rax
     xchgq %rax, (%rsp)
     jmp errorCode
 
 ENTRY(segmentNotPresent)
-    cld 
+    cli 
     pushq %rax
     leaq doSegmentNotPresent(%rip), %rax
     xchgq %rax, (%rsp)
     jmp errorCode
 
 ENTRY(stackSegmentFault)
-    cld 
+    cli 
     pushq %rax
     leaq doStackSegmentFault(%rip), %rax
     xchgq %rax, (%rsp)
     jmp errorCode
 
 ENTRY(generalProtection)
-    cld 
+    cli 
     pushq %rax
     leaq doGeneralProtection(%rip), %rax
     xchgq %rax, (%rsp)
     jmp errorCode
 
 ENTRY(pageFault)
-	cld
+	cli
     pushq %rax
     leaq doPageFault(%rip), %rax
     xchgq %rax, (%rsp)
     jmp errorCode
 
 ENTRY(x87FPUError)
-    cld 
+    cli 
     pushq $0
     pushq %rax
     leaq doX87FPUError(%rip), %rax
@@ -246,14 +246,14 @@ ENTRY(x87FPUError)
     jmp errorCode
 
 ENTRY(alignmentCheck)
-    cld 
+    cli 
     pushq %rax
     leaq doAlignmentCheck(%rip), %rax
     xchgq %rax, (%rsp)
     jmp errorCode
 
 ENTRY(machineCheck)
-    cld 
+    cli 
     pushq $0
     pushq %rax
     leaq doMachineCheck(%rip), %rax
@@ -261,7 +261,7 @@ ENTRY(machineCheck)
     jmp errorCode
 
 ENTRY(simdError)
-    cld 
+    cli 
     pushq $0
     pushq %rax
     leaq doSIMDError(%rip), %rax
@@ -269,7 +269,7 @@ ENTRY(simdError)
     jmp errorCode
 
 ENTRY(virtualizationError)
-    cld 
+    cli 
     pushq $0
     pushq %rax
     leaq doVirtualizationError(%rip), %rax

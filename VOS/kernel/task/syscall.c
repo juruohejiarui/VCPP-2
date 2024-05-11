@@ -101,8 +101,8 @@ void Task_switchToUsr(u64 (*entry)(), u64 arg) {
 u64 Task_initUsrLevel(u64 arg) {
 	Task_current->state = Task_State_Running;
     printk(WHITE, BLACK, "user level function, arg: %ld\n", arg);
-    // u64 res = Syscall_usrAPI((arg != 1) * 2, 0x14, 2, 3, 4, 5);
-    // printk(WHITE, BLACK, "syscall, res: %ld\n", res);
+    u64 res = Syscall_usrAPI((arg != 1) * 2, 0x14, 2, 3, 4, 5);
+    printk(WHITE, BLACK, "syscall, res: %ld\n", res);
     int t = 10000000 * (arg + 3), initCounter = 100000000;
     int tmp = arg;
     while (tmp > 0) initCounter <<= 1, tmp--;

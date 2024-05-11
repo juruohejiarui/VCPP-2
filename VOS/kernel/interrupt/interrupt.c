@@ -39,7 +39,7 @@ void restoreAll();
 void irqName(num);      \
 __asm__ ( \
     SYMBOL_NAME_STR(irq)#num"Interrupt: \n\t" \
-    "cld        \n\t" \
+    "cli        \n\t" \
     "pushq $0   \n\t" \
     saveAll \
     "movq %rsp, %rdi \n\t" \

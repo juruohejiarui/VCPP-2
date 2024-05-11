@@ -63,17 +63,6 @@ u64 IO_readMSR(u64 msrAddr) {
     );
     return (((u64) data1) << 32) | data2;
 }
-void sti() {
-    __asm__ volatile (
-        "sti \n\t"
-    );
-}
-
-void cli() {
-    __asm__ volatile (
-        "cli \n\t"
-    );
-}
 
 u64 IO_getRIP() {
     u64 ret = 0;

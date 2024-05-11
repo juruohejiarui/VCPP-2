@@ -242,7 +242,6 @@ void Init_APIC() {
         printk(RED, BLACK, "RCBA: %#010x\n", x);
     }
     IO_mfence();
-    sti();
     APIC_flag = 1;
 }
 

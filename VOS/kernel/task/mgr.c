@@ -109,9 +109,9 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64), u64 arg, u64 flags) {
 	Page *lstPage = Buddy_alloc(0, Page_Flag_Active);
     // map the user stack without present flag
     for (u64 vAddr = Task_userStackEnd - Task_userStackSize; vAddr < Task_userStackEnd; vAddr += Page_4KSize)
-        PageTable_map(pgdPhyAddr, vAddr, (vAddr == Task_userStackEnd - Page_4KSize) ? lstPage->phyAddr : 0);
+        PageTable_map(pgdPhyAddr, vAddr, 0);
     // map the kernel stack without present flag
-    lstPage = Buddy_alloc(0, Page_Flag_Active);
+    // lstPage = Buddy_alloc(0, Page_Flag_Active);
     for (u64 vAddr = 0xFFFFFFFFFF800000; vAddr != 0; vAddr += Page_4KSize)
         PageTable_map(pgdPhyAddr, vAddr, vAddr == 0xFFFFFFFFFFFFF000 ? lstPage->phyAddr : 0);
     TaskStruct *task = (TaskStruct *)DMAS_phys2Virt(tskStructPage->phyAddr);

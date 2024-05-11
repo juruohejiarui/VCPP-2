@@ -24,8 +24,8 @@ u64 IO_readMSR(u64 msrAddr);
 		rflags; \
 	})
 
-void sti();
-void cli();
+#define IO_sti() __asm__ volatile ("sti \n\t" : : : "memory")
+#define IO_cli() __asm__ volatile ("cli \n\t" : : : "memory")
 
 u64 IO_getRIP();
 #endif
