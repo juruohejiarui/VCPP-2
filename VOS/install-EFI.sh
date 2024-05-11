@@ -1,5 +1,7 @@
 RED_COLOR='\E[1;31m'
 RESET='\E[0m'
+GOAL_DISK="/dev/sde1"
+
 
 echo -e "${RED_COLOR}=== gen kernel.bin ===${RESET}"
 cd kernel
@@ -12,7 +14,8 @@ if [ $? -ne 0 ];then
 else
     cd ../
     echo -e "${RED_COLOR}=== copying files ===${RESET}"
-    sudo mount /dev/sde1 /mnt/
+	python3 waitForGoalDisk.py ${GOAL_DISK}
+    sudo mount ${GOAL_DISK} /mnt/
     sudo cp ./BootLoader.efi /mnt/EFI/BOOT/bootx64.efi
     sudo cp ./kernel/kernel.bin /mnt/
     sudo sync

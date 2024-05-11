@@ -4,14 +4,7 @@
 extern void Task_kernelThreadEntry();
 
 void Task_checkPtRegInStack(u64 rsp) {
-	u64 rflags = 0;
-	__asm__ volatile (
-		"pushfq		\n\t"
-		"popq %0	\n\t"
-		: "=m"(rflags)
-		:
-		: "memory");
-    printk(WHITE, BLACK, "rsp: %#018lx, cr3 = %#018lx, rflags = %#018lx\n", rsp, getCR3(), rflags);
+    printk(WHITE, BLACK, "rsp: %#018lx, cr3 = %#018lx, rflags = %#018lx\n", rsp, getCR3(), IO_getRflags());
     for (int i = 0; i < sizeof(PtReg) / sizeof(u64); i++)
         printk(WHITE, BLACK, "rsp + %#04x: %#018lx%c", i * 8, *(u64 *)(rsp + i * 8), (i + 1) % 8 == 0 ? '\n' : ' ');
 }
@@ -28,20 +21,20 @@ void Task_checkPtRegInStack(u64 rsp) {
     .priority   = 0 \
 }
 
-#define Task_initTSS() \
+#define Task_initTSS(intrStackEnd) \
 { \
     .reserved0 = 0, \
     .rsp0 = Task_kernelStackEnd, \
     .rsp1 = Task_kernelStackEnd, \
     .rsp2 = Task_kernelStackEnd, \
     .reserved1 = 0, \
-    .ist1 = 0xffff800000007c00, \
-    .ist2 = 0xffff800000007c00, \
-    .ist3 = 0xffff800000007c00, \
-    .ist4 = 0xffff800000007c00, \
-    .ist5 = 0xffff800000007c00, \
-    .ist6 = 0xffff800000007c00, \
-    .ist7 = 0xffff800000007c00, \
+    .ist1 = (intrStackEnd), \
+    .ist2 = (intrStackEnd), \
+    .ist3 = (intrStackEnd), \
+    .ist4 = (intrStackEnd), \
+    .ist5 = (intrStackEnd), \
+    .ist6 = (intrStackEnd), \
+    .ist7 = (intrStackEnd), \
     .reserved2 = 0, \
     .reserved3 = 0, \
     .iomapBaseAddr = 0 \
@@ -58,7 +51,7 @@ ThreadStruct Init_thread = {
     .errCode= 0
 };
 
-TSS Init_TSS[Hardware_CPUNumber] = { [0 ... Hardware_CPUNumber - 1] = Task_initTSS() };
+TSS Init_TSS[Hardware_CPUNumber] = { [0 ... Hardware_CPUNumber - 1] = Task_initTSS(0xffff800000007c00) };
 TaskMemStruct Init_mm = {0};
 
 TaskStruct Init_taskStruct = Task_initTask(NULL);
@@ -87,10 +80,10 @@ __asm__ (
 );
 
 void Task_switchTo_inner(TaskStruct *prev, TaskStruct *next) {
-    Init_TSS[0].rsp0 = next->thread->rsp0;
+    next->tss->rsp0 = next->thread->rsp0;
     Gate_setTSS(
-            Init_TSS[0].rsp0, Init_TSS[0].rsp1, Init_TSS[0].rsp2, Init_TSS[0].ist1, Init_TSS[0].ist2,
-            Init_TSS[0].ist3, Init_TSS[0].ist4, Init_TSS[0].ist5, Init_TSS[0].ist6, Init_TSS[0].ist7);
+            next->tss->rsp0, next->tss->rsp1, next->tss->rsp2, next->tss->ist1, next->tss->ist2,
+			next->tss->ist3, next->tss->ist4, next->tss->ist5, next->tss->ist6, next->tss->ist7);
     __asm__ volatile ( "movq %%fs, %0 \n\t" : "=a"(prev->thread->fs));
     __asm__ volatile ( "movq %%gs, %0 \n\t" : "=a"(prev->thread->gs));
     __asm__ volatile ( "movq %0, %%fs \n\t" : : "a"(next->thread->fs));
@@ -100,20 +93,26 @@ void Task_switchTo_inner(TaskStruct *prev, TaskStruct *next) {
 }
 
 TaskStruct *Task_createTask(u64 (*kernelEntry)(u64), u64 arg, u64 flags) {
-    static int Task_pidCounter = 0;
+	static int Task_pidCounter = 0;
     u64 pgdPhyAddr = PageTable_alloc(); Page *tskStructPage = Buddy_alloc(0, Page_Flag_Active);
     printk(WHITE, BLACK, "pgdPhyAddr: %#018lx, tskStructPage: %#018lx\n", pgdPhyAddr, tskStructPage->phyAddr);
+
     // copy the kernel part (except stack) of pgd
     memcpy((u64 *)DMAS_phys2Virt(getCR3()) + 256, (u64 *)DMAS_phys2Virt(pgdPhyAddr) + 256, 255 * sizeof(u64));
     PageTable_map(pgdPhyAddr, Task_userBrkStart, tskStructPage->phyAddr);
-	Page *lstPage = Buddy_alloc(0, Page_Flag_Active);
+
+	Page *lstPage = Buddy_alloc(5, Page_Flag_Active);
+	// map the interrupt stack with full present pages
+	for (u64 vAddr = Task_intrStackEnd - Task_intrStackSize; vAddr < Task_intrStackEnd; vAddr += Page_4KSize)
+		PageTable_map(pgdPhyAddr, vAddr, lstPage->phyAddr + vAddr - (Task_intrStackEnd - Task_intrStackSize));
     // map the user stack without present flag
     for (u64 vAddr = Task_userStackEnd - Task_userStackSize; vAddr < Task_userStackEnd; vAddr += Page_4KSize)
         PageTable_map(pgdPhyAddr, vAddr, 0);
-    // map the kernel stack without present flag
-    // lstPage = Buddy_alloc(0, Page_Flag_Active);
+    // map the kernel stack with one present page
+	lstPage = Buddy_alloc(0, Page_Flag_Active);
     for (u64 vAddr = 0xFFFFFFFFFF800000; vAddr != 0; vAddr += Page_4KSize)
         PageTable_map(pgdPhyAddr, vAddr, vAddr == 0xFFFFFFFFFFFFF000 ? lstPage->phyAddr : 0);
+	
     TaskStruct *task = (TaskStruct *)DMAS_phys2Virt(tskStructPage->phyAddr);
     memset(task, 0, sizeof(TaskStruct) + sizeof(ThreadStruct) + sizeof(TaskMemStruct));
     ThreadStruct *thread = (ThreadStruct *)(task + 1);
@@ -125,6 +124,14 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64), u64 arg, u64 flags) {
     task->mem->pgd = DMAS_phys2Virt(pgdPhyAddr);
     task->mem->pgdPhyAddr = pgdPhyAddr;
 	task->state = Task_State_Uninterruptible;
+
+	task->tss = (TSS *)(task->mem + 1);
+	printk(WHITE, BLACK, "task=%#018lx, mem=%#018lx, thread=%#018lx, tss=%#018lx\n", task, task->mem, task->thread, task->tss);
+	memset(task->tss, 0, sizeof(TSS));
+	task->tss->ist1	= Task_intrStackEnd;
+	task->tss->ist2 = Task_intrStackEnd - (Task_intrStackSize >> 1);
+	task->tss->ist3 = task->tss->ist4 = task->tss->ist5 = task->tss->ist6 = task->tss->ist7 = Task_intrStackEnd;
+	task->tss->rsp0 = task->tss->rsp1 = task->tss->rsp2 = Task_kernelStackEnd;
 
     *thread = Init_thread;
     thread->rip = (u64)Task_kernelThreadEntry;

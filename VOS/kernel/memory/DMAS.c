@@ -19,7 +19,6 @@ void DMAS_init() {
     memManageStruct.edOfStruct = Page_4KUpAlign((u64)ptStart + ptSize);
     // set the PGD entry of DMAS
     u64 *pgd = (u64 *)(getCR3() + Init_virtAddrStart);
-    // printk(RED, BLACK, "pgd = %#018lx, pgd[256] = %#018lx\n", pgd, pgd[256]);
     for (int i = 256 + 16; i < 256 + 16 + pudCnt; i++) {
         pgd[i] = ((u64)ptStart + (i - 256 - 16) * Page_4KSize) - Init_virtAddrStart;
         pgd[i] |= 0x07;

@@ -19,6 +19,11 @@ u64 Syscall_enableIntr(u64 intrId, u64 arg2, u64 arg3, u64 arg4, u64 arg5) {
     return 0;
 }
 
+u64 Syscall_divZero(u64 intrId, u64 arg2, u64 arg3, u64 arg4, u64 arg5) {
+	int i = 1 / 0;
+	return 0;
+}
+
 u64 Syscall_abort(u64 intrId, u64 arg2, u64 arg3, u64 arg4, u64 arg5) {
     int t = 1000000000;
     while (t--) ;
@@ -29,14 +34,15 @@ typedef u64 (*Syscall)(u64, u64, u64, u64, u64);
 Syscall Syscall_list[Syscall_num] = { 
     [0] = Syscall_abort,
     [1] = Syscall_printStr,
-    [2 ... Syscall_num - 1] = Syscall_noSystemCall };
+	[2] = Syscall_divZero,
+    [3 ... Syscall_num - 1] = Syscall_noSystemCall };
 
 u64 Syscall_handler(u64 index, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5) {
     // switch stack and segment registers
-    Init_TSS[0].rsp0 = Task_current->thread->rsp0;
+    Task_current->tss->rsp0 = Task_current->thread->rsp0;
     Gate_setTSS(
-        Init_TSS[0].rsp0, Init_TSS[0].rsp1, Init_TSS[0].rsp2, Init_TSS[0].ist1, Init_TSS[0].ist2,
-        Init_TSS[0].ist3, Init_TSS[0].ist4, Init_TSS[0].ist5, Init_TSS[0].ist6, Init_TSS[0].ist7);
+        Task_current->tss->rsp0, Task_current->tss->rsp1, Task_current->tss->rsp2, Task_current->tss->ist1, Task_current->tss->ist2,
+		Task_current->tss->ist3, Task_current->tss->ist4, Task_current->tss->ist5, Task_current->tss->ist6, Task_current->tss->ist7);
     u64 res = (Syscall_list[index])(arg1, arg2, arg3, arg4, arg5);
     // switch to user level
     return res;
@@ -84,10 +90,10 @@ void Task_switchToUsr(u64 (*entry)(), u64 arg) {
     Task_current->thread->rsp = Task_current->thread->rsp3 = regs.rsp;
     memcpy(&regs, (void *)(Task_current->thread->rsp0), sizeof(PtReg));
 	printk(YELLOW, BLACK, "finished copying\n");
-    Init_TSS[0].rsp0 = Task_current->thread->rsp0;
+    Task_current->tss->rsp0 = Task_current->thread->rsp0;
     Gate_setTSS(
-        Init_TSS[0].rsp0, Init_TSS[0].rsp1, Init_TSS[0].rsp2, Init_TSS[0].ist1, Init_TSS[0].ist2,
-        Init_TSS[0].ist3, Init_TSS[0].ist4, Init_TSS[0].ist5, Init_TSS[0].ist6, Init_TSS[0].ist7);
+        Task_current->tss->rsp0, Task_current->tss->rsp1, Task_current->tss->rsp2, Task_current->tss->ist1, Task_current->tss->ist2,
+		Task_current->tss->ist3, Task_current->tss->ist4, Task_current->tss->ist5, Task_current->tss->ist6, Task_current->tss->ist7);
     printk(ORANGE, BLACK, "finish TSS\n");
     __asm__ volatile (
         "movq %0, %%rsp     \n\t"
@@ -101,7 +107,7 @@ void Task_switchToUsr(u64 (*entry)(), u64 arg) {
 u64 Task_initUsrLevel(u64 arg) {
 	Task_current->state = Task_State_Running;
     printk(WHITE, BLACK, "user level function, arg: %ld\n", arg);
-    u64 res = Syscall_usrAPI((arg != 1) * 2, 0x14, 2, 3, 4, 5);
+    u64 res = Syscall_usrAPI(arg, BLACK, WHITE, (u64)"Up Down Up Down baba", 20, 5);
     printk(WHITE, BLACK, "syscall, res: %ld\n", res);
     int t = 10000000 * (arg + 3), initCounter = 100000000;
     int tmp = arg;
