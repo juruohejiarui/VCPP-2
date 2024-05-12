@@ -64,7 +64,7 @@ retFromException:
 ENTRY(Intr_retFromIntr)
     test %rax, %rax
     jz restoreAll
-    jmp Task_switch
+    jmp *%rax
 
 ENTRY(divideError)
     cli 

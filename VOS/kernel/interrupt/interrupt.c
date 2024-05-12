@@ -39,14 +39,24 @@ void restoreAll();
 void irqName(num);      \
 __asm__ ( \
     SYMBOL_NAME_STR(irq)#num"Interrupt: \n\t" \
-    "cli        \n\t" \
-    "pushq $0   \n\t" \
+    "cli       			\n\t" \
+    "pushq $0   		\n\t" \
     saveAll \
     "movq %rsp, %rdi \n\t" \
-    "leaq Intr_retFromIntr(%rip), %rax \n\t" \
-    "pushq %rax \n\t" \
+    "leaq "SYMBOL_NAME_STR(irq)#num"Interrupt_end(%rip), %rax	\n\t" \
+    "pushq %rax 		\n\t" \
     "movq $"#num", %rsi \n\t" \
-    "jmp irqHandler \n\t" \
+    "leaq irqHandlerList(%rip), %rax 	\n\t" \
+	"movq -0x100(%rax, %rsi, 8), %rax 		\n\t" \
+	"jmp *%rax			\n\t" \
+	SYMBOL_NAME_STR(irq)#num"Interrupt_end: \n\t" \
+	"movq %rax, %rdi 	\n\t" \
+	"movq $0x00, %rdx  	\n\t" \
+	"movq $0x00, %rax  	\n\t" \
+	"movq $0x80b, %rcx 	\n\t" \
+	"wrmsr              \n\t" \
+	"movq %rdi, %rax	\n\t" \
+	"jmp Intr_retFromIntr \n\t" \
 ); \
 
 buildIrq(0x20)
@@ -83,39 +93,39 @@ void (*intrList[24])(void) = {
     irq0x34Interrupt, irq0x35Interrupt, irq0x36Interrupt, irq0x37Interrupt
 };
 
-u64 irqHandler(u64 regs, u64 num) {
-    u8 x; u64 res = 0;
-    if (num == 0x22) {
-         x = IO_in8(0x60);
-        printk(RED, BLACK, "\tkey: %#08x", x);
-    } else if (num == 0x24) {
-        if (Task_current->state != Task_State_Uninterruptible && Task_countDown()) {
-            Task_current->counter = 1;
-            u64 cs = *(u64 *)(regs + 0xA0);
-            Task_current->thread->rsp = (cs & 3 == 3 ? Task_current->thread->rsp0 : Task_current->thread->rsp3);
-            memcpy((PtReg *)regs, (PtReg *)(Task_current->thread->rsp -= sizeof(PtReg)), sizeof(PtReg));
-            __asm__ volatile (
-                "pushfq		\n\t"
-				"popq %0	\n\t"
-				: "=m"(Task_current->thread->rflags)
-				:
-				: "memory"
-            );
-            Task_current->thread->rip = (u64)restoreAll;
-            res = (u64)Task_switch;
-        }
-    }
-    __asm__ volatile (
-        "movq $0x00, %%rdx  \n\t"
-        "movq $0x00, %%rax  \n\t"
-        "movq $0x80b, %%rcx \n\t"
-        "wrmsr              \n\t"
-        :
-        : 
-        : "memory"
-    );
-    return res;
+u64 Intr_keyboard(u64 rsp, u64 num) {
+	u8 x = IO_in8(0x60);
+	printk(RED, BLACK, "\tkey: %#08x", x);
+	return 0;
 }
+
+u64 Intr_timer(u64 rsp, u64 num) {
+	if (Task_current->state != Task_State_Uninterruptible && Task_countDown()) {
+		Task_current->counter = 1;
+		memcpy((void *)rsp, Task_current->regSaver, sizeof(PtReg));
+		Task_current->thread->rsp = (u64)Task_current->regSaver;
+		__asm__ volatile (
+			"pushfq		\n\t"
+			"popq %0	\n\t"
+			: "=m"(Task_current->thread->rflags)
+			:
+			: "memory"
+		);
+		Task_current->thread->rip = (u64)restoreAll;
+		// printk(GREEN, BLACK, "next cr3 = %#018lx\n", container(Task_current->listEle.next, TaskStruct, listEle)->mem->pgdPhyAddr);
+		return (u64)Task_switch;
+	}
+	return NULL;
+}
+
+u64 (*irqHandlerList[24])(u64, u64) = {
+	NULL,			Intr_keyboard, 		Intr_timer, 	NULL,
+	NULL,			NULL,				NULL,			NULL,
+	NULL,			NULL,				NULL,			NULL,
+	NULL,			NULL,				NULL,			NULL,
+	NULL,			NULL,				NULL,			NULL,
+	NULL,			NULL,				NULL,			NULL
+};
 
 void Init_interrupt() {
     for (int i = 32; i < 56; i++) Gate_setIntr(i, 2, intrList[i - 32]);

@@ -61,7 +61,7 @@ __asm__ (
 	".global Task_switch		\n\t"
 	"Task_switch:				\n\t"
 	"movq $0x100000, %rdi		\n\t"
-	"movq 0x8(%rdi), %rsi		\n\t"
+	"movq (%rdi), %rsi			\n\t"
 	"pushq %rsi					\n\t"
 	"pushq %rdi					\n\t"
 	"call Task_switchTo_inner	\n\t"
@@ -139,6 +139,10 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64), u64 arg, u64 flags) {
     thread->rsp0 = thread->rsp = Task_kernelStackEnd - sizeof(PtReg);
     thread->rsp3 = Task_userStackEnd;
 	thread->fs = thread->gs = Segment_kernelData;
+
+	PtReg *saver = (PtReg *)(task->tss + 1);
+	memset(saver, 0, sizeof(PtReg));
+	task->regSaver = saver;
 
     PtReg regs;
     memset(&regs, 0, sizeof(PtReg));

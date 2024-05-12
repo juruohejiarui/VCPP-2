@@ -178,18 +178,20 @@ void APIC_writeRTE(u8 index, u64 val) {
 
 int enable[0x40] = {0};
 
+#define handlerId(intrId) ((((intrId) - 0x10) >> 1) + 0x20)
+
 void APIC_disableAll() {
     for (int i = 0x10; i < 0x40; i += 2) enable[i] = 0, APIC_writeRTE(i, 0x10000 + i);
 }
 void APIC_enableAll() {
-    for (int i = 0x10; i < 0x40; i += 2) enable[i] = 1, APIC_writeRTE(i, i + 0x10);
+    for (int i = 0x10; i < 0x40; i += 2) enable[i] = 1, APIC_writeRTE(i, handlerId(i));
 }
 
 void APIC_suspend() {
     for (int i = 0x10; i < 0x40; i += 2) if (enable[i]) APIC_writeRTE(i, 0x10000 + i);
 }
 void APIC_resume() {
-    for (int i = 0x10; i < 0x40; i += 2) if (enable[i]) APIC_writeRTE(i, i + 0x10);
+    for (int i = 0x10; i < 0x40; i += 2) if (enable[i]) APIC_writeRTE(i, handlerId(i));
 }
 
 void APIC_disableIntr(u8 intrId) {
@@ -197,7 +199,7 @@ void APIC_disableIntr(u8 intrId) {
 }
 
 void APIC_enableIntr(u8 intrId) {
-    APIC_writeRTE(intrId, intrId + 0x10), enable[intrId] = 1;
+    APIC_writeRTE(intrId, handlerId(intrId)), enable[intrId] = 1;
 }
 
 void APIC_initIO() {

@@ -49,22 +49,6 @@ typedef struct tmpTSS {
     u16 iomapBaseAddr;
 } __attribute__((packed)) TSS;
 
-
-typedef struct tmpTaskStruct {
-    List listEle;
-    volatile i64 state;
-    ThreadStruct *thread;
-    TaskMemStruct *mem;
-	TSS *tss;
-    u64 flags;
-    i64 pid, counter, signal, priority;
-} TaskStruct; 
-
-union TaskUnion {
-    TaskStruct task;
-    u64 stk[Init_taskStackSize / sizeof(u64)];
-} __attribute__((aligned (8)));
-
 typedef struct tmpPtReg {
     u64 r15, r14, r13, r12, r11, r10, r9, r8;
     u64 rbx, rcx, rdx, rsi, rdi, rbp;
@@ -73,6 +57,22 @@ typedef struct tmpPtReg {
     u64 func, errCode;
     u64 rip, cs, rflags, rsp, ss;
 } PtReg;
+
+typedef struct tmpTaskStruct {
+    List listEle;
+    volatile i64 state;
+    ThreadStruct *thread;
+    TaskMemStruct *mem;
+	PtReg *regSaver;
+	TSS *tss;
+    u64 flags;
+    i64 pid, counter, signal, priority;
+} __attribute__((packed)) TaskStruct; 
+
+union TaskUnion {
+    TaskStruct task;
+    u64 stk[Init_taskStackSize / sizeof(u64)];
+} __attribute__((aligned (8)));
 
 void Init_task();
 
