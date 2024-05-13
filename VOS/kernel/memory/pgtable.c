@@ -49,9 +49,6 @@ void PageTable_init() {
     u64 cr3 = getCR3();
     u64 *pgd = (u64 *)DMAS_phys2Virt(cr3);
     pgd[0] = 0;
-    // mapping the address [0x200000, 0x100000000] to [0xffff800000200000, 0xffff800100000000]
-    for (u64 pAddr = 0x200000; pAddr < 0x100000000; pAddr += 0x200000)
-        PageTable_map2M(getCR3(), pAddr + 0xffff800000000000, pAddr);
 }
 
 void PGTable_free(u64 phyAddr) {

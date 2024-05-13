@@ -6,7 +6,6 @@ ENTRY(Task_kernelThreadEntry)
     jmp restoreAll
 
 ENTRY(Syscall_entry)
-    cli
     // switch to kernel stack
     movq $0x100000, %rbx
     movq 0x18(%rbx), %rbx
@@ -42,7 +41,6 @@ ENTRY(Syscall_entry)
 	movq %rax, %es
     leaq Syscall_exit(%rip), %rax
     pushq %rax
-    sti
     jmp Syscall_handler
 
 ENTRY(Syscall_exit)

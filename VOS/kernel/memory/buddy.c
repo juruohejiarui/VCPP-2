@@ -119,7 +119,7 @@ Page *Buddy_alloc(u64 log2Size, u64 attr) {
             revBit(rPage);
         }
         headPage->attr |= attr;
-        printk(RED, BLACK, "Buddy_alloc(%d) = %p\n", log2Size, headPage);
+        printk(GREEN, BLACK, "Buddy_alloc(%d) = %p [%#018lx, %#018lx]\n", log2Size, headPage, headPage->phyAddr, headPage->phyAddr + (1 << (log2Size + Page_4KShift)) - 1);
         return headPage;
     }
     return NULL;
