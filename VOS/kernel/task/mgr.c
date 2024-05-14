@@ -92,7 +92,7 @@ void Task_switchTo_inner(TaskStruct *prev, TaskStruct *next) {
     // printk(BLUE, BLACK, "next: %#018lx, next->thread->rsp: %#018lx\n", next, next->thread->rsp);
 }
 
-TaskStruct *Task_createTask(u64 (*kernelEntry)(u64), u64 arg, u64 flags) {
+TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntry)(u64), u64 arg, u64 flags) {
 	static int Task_pidCounter = 0;
     u64 pgdPhyAddr = PageTable_alloc(); Page *tskStructPage = Buddy_alloc(0, Page_Flag_Active);
     printk(WHITE, BLACK, "pgdPhyAddr: %#018lx, tskStructPage: %#018lx\n", pgdPhyAddr, tskStructPage->phyAddr);
@@ -147,7 +147,8 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64), u64 arg, u64 flags) {
     PtReg regs;
     memset(&regs, 0, sizeof(PtReg));
     regs.rflags = (1 << 9);
-    regs.rdi = arg;
+    regs.rdi = (u64)usrEntry;
+	regs.rsi = arg;
     regs.cs = Segment_kernelCode;
     regs.ds = Segment_kernelData;
 	regs.es = Segment_kernelData;

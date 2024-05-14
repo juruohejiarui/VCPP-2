@@ -12,8 +12,7 @@
 /// @return the result of the syscall
 u64 Syscall_usrAPI(u64 index, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5);
 
-void Task_switchToUsr(u64 (*entry)(), u64 arg);
-u64 Task_initUsrLevel(u64 arg);
+void Task_switchToUsr(u64 (*entry)(u64), u64 arg);
 
 void Init_syscall();
 

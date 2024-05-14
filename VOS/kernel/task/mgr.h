@@ -65,7 +65,7 @@ extern TaskStruct Init_taskStruct;
 
 void Task_switch();
 
-TaskStruct *Task_createTask(u64 (*kernelEntry)(u64), u64 arg, u64 flags);
+TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntry)(u64), u64 arg, u64 flags);
 
 #define Task_countDown() ((--Task_current->counter) == 0)
 

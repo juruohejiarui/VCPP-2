@@ -232,7 +232,16 @@ void printStr(unsigned int fcol, unsigned int bcol, const char *str, int len) {
 	if (prevState) IO_cli();
     while (len--) putchar(fcol, bcol, *str++);
     if (prevState) IO_sti();
-}   
+}
+
+void clearScreen() {
+	u64 prevState = (IO_getRflags() >> 9) & 1;
+	if (prevState) IO_cli();
+	memset(position.FBAddr, 0, (position.YPosition + 1) * position.YCharSize * bootParamInfo->graphicsInfo.PixelsPerScanLine * sizeof(u32));
+	memset(lineLength, 0, 4096 * sizeof(u32));
+	position.XPosition = 0, position.YPosition = 0;
+	 if (prevState) IO_sti();
+}
 
 void printk(unsigned int fcol, unsigned int bcol, const char *fmt, ...) {
     char buf[2048] = {0};
@@ -243,6 +252,11 @@ void printk(unsigned int fcol, unsigned int bcol, const char *fmt, ...) {
     va_end(args);
     if (Task_getRing() == 0) printStr(fcol, bcol, buf, len);
     else Syscall_usrAPI(1, fcol, bcol, (u64)buf, len, 0);
+}
+
+u64 Syscall_clearScreen(u64 _1, u64 _2, u64 _3, u64 _4, u64 _5) {
+	clearScreen();
+	return 0;
 }
 u64 Syscall_printStr(u64 fcol, u64 bcol, u64 str, u64 len, u64 _5) {
     printStr(fcol, bcol, (char *)str, len);

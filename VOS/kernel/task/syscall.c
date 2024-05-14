@@ -35,7 +35,8 @@ Syscall Syscall_list[Syscall_num] = {
     [0] = Syscall_abort,
     [1] = Syscall_printStr,
 	[2] = Syscall_divZero,
-    [3 ... Syscall_num - 1] = Syscall_noSystemCall };
+	[3] = Syscall_clearScreen,
+    [4 ... Syscall_num - 1] = Syscall_noSystemCall };
 
 u64 Syscall_handler(u64 index, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5) {
     // switch stack and segment registers
@@ -69,7 +70,8 @@ u64 Syscall_usrAPI(u64 index, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5) 
 }
 
 
-void Task_switchToUsr(u64 (*entry)(), u64 arg) {
+void Task_switchToUsr(u64 (*entry)(u64), u64 arg) {
+	IO_cli();
     PtReg regs;
     memset(&regs, 0, sizeof(PtReg));
     printk(RED, BLACK, "Task_switchToUsr: entry = %#018lx, arg = %#018lx\n", entry, arg);
@@ -98,27 +100,11 @@ void Task_switchToUsr(u64 (*entry)(), u64 arg) {
     printk(ORANGE, BLACK, "finish TSS\n");
     __asm__ volatile (
         "movq %0, %%rsp     \n\t"
-        "jmp Syscall_exit     \n\t"
+        "jmp Syscall_exit	\n\t"
         :
         : "m"(Task_current->thread->rsp0)
         : "memory"
     );
-}
-
-u64 Task_initUsrLevel(u64 arg) {
-	Task_current->state = Task_State_Running;
-    printk(WHITE, BLACK, "user level function, arg: %ld\n", arg);
-    u64 res = Syscall_usrAPI(arg, BLACK, WHITE, (u64)"Up Down Up Down baba", 20, 5);
-    printk(WHITE, BLACK, "syscall, res: %ld\n", res);
-    int t = 10000000 * (arg + 3), initCounter = 100000000;
-    int tmp = arg;
-    while (tmp > 0) initCounter <<= 1, tmp--;
-    if (arg == 1) initCounter = t = 1;
-    while (1) {
-        if (arg == 1) Syscall_usrAPI(0, 0x14, 2, 3, 4, 5);
-        (--t == 0 ? printk(WHITE, BLACK, "%d ", Task_current->pid), t = initCounter : 0);
-    }
-    while (1) ;
 }
 
 void Init_syscall() {
