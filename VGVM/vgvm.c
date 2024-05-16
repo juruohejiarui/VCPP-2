@@ -9,8 +9,53 @@ uint32 rBlkCnt = 0;
 
 TrieNode vobjPathTrieRoot;
 
+void freeRuntimeblock() {
+    for (int i = 0; i < rBlkCnt; i++)
+        munmap(rBlks[i].instBlk, rBlks[i].instBlkSize);
+}
+
 int launch(RuntimeBlock *rBlk) {
-    return ((uint64 (*)(RuntimeBlock *))(rBlk->entryList[rBlk->mainOffset]))(rBlk);
+    // save all registers
+    __asm__ volatile (
+        "pushq %%r15     \n\t"
+        "pushq %%r14     \n\t"
+        "pushq %%r13     \n\t"
+        "pushq %%r12     \n\t"
+        "pushq %%r11     \n\t"
+        "pushq %%r10     \n\t"
+        "pushq %%r9      \n\t"
+        "pushq %%r8      \n\t"
+        "pushq %%rsi     \n\t"
+        "pushq %%rdi     \n\t"
+        "pushq %%rdx     \n\t"
+        "pushq %%rcx     \n\t"
+        "pushq %%rbx     \n\t"
+        "pushq %%rax     \n\t"
+        :
+        :
+        : "memory"
+    );
+    uint64 res = ((uint64 (*)(RuntimeBlock *))(rBlk->entryList[rBlk->mainOffset]))(rBlk);
+    __asm__ volatile (
+        "popq %%rax     \n\t"
+        "popq %%rbx     \n\t"
+        "popq %%rcx     \n\t"
+        "popq %%rdx     \n\t"
+        "popq %%rdi     \n\t"
+        "popq %%rsi     \n\t"
+        "popq %%r8      \n\t"
+        "popq %%r9      \n\t"
+        "popq %%r10     \n\t"
+        "popq %%r11     \n\t"
+        "popq %%r12     \n\t"
+        "popq %%r13     \n\t"
+        "popq %%r14     \n\t"
+        "popq %%r15     \n\t"
+        :
+        :
+        : "memory"
+    );
+    return res;
 }
 
 void genInstBlk(RuntimeBlock *rblk) {

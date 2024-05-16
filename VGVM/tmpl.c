@@ -1445,7 +1445,8 @@ void addVInst(uint64 offset, uint32 vinst, uint32 dtMdf1, uint32 dtMdf2, uint64 
 }
 
 void setInstBlk() {
-    tgBlk->instBlk = mmap(NULL, max(1024, tgList->size), PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    tgBlk->instBlkSize = max(1024, tgList->size);
+    tgBlk->instBlk = mmap(NULL, tgBlk->instBlkSize, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     memcpy(tgBlk->instBlk, tgList->data, sizeof(uint8) * tgList->size);
 
     tgBlk->entryListSize = *(uint64 *)DArray_get(offList, offList->len - 1);

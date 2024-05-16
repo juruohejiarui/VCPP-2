@@ -26,6 +26,7 @@ typedef struct tmpRuntimeBlock {
     void **entryList;
     uint64 entryListSize;
     void *instBlk;
+    uint64 instBlkSize;
 } RuntimeBlock;
 
 typedef struct tmpCallFrame {
@@ -36,7 +37,6 @@ typedef struct tmpCallFrame {
     RuntimeBlock *blgBlk;
 } CallFrame;
 
-CallFrame *getCallStackBottom();
 
 #pragma region Interface for accessing the information and function of VM
 void pauseVM(uint64 rbp, uint64 rsp);
@@ -56,5 +56,7 @@ RuntimeBlock *loadRuntimeBlock(const char *vobjPath);
 
 #pragma endregion
 
+
+void freeRuntimeblock();
 
 int launch(RuntimeBlock *rBlk);

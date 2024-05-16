@@ -29,7 +29,7 @@ uint64 getGenSize(int genId);
 void initGC();
 Object *newObject(uint64 size);
 void refGC(Object *obj);
-void genGC();
+void genGC(int isFinal);
 
 /// @brief check if it is necessary to run genGC()
 /// @return 

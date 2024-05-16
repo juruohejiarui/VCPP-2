@@ -36,7 +36,7 @@ uint64 inputUInt64() {
     uint64 data; scanf("%llu", &data); return data;
     cancelAlignRsp 
 }
-uint64 getTime() { return time(NULL); }
+uint64 getTime() { AlignRsp return time(NULL); cancelAlignRsp }
 
 void printFloat32(uint64 data) {
     AlignRsp
