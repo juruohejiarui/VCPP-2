@@ -19,7 +19,11 @@ target_link_libraries(VGVM ${CMAKE_THREAD_LIBS_INIT})
 
 
 # set the compiler
-set(CMAKE_C_COMPILER "gcc")
+if(APPLE)
+	set(CMAKE_C_COMPILER "gcc-11")
+else()
+	set(CMAKE_C_COMPILER "gcc")
+endif()
 
  
 # set the arguments

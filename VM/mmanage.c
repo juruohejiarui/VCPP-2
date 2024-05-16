@@ -72,7 +72,7 @@ void refGC(Object *obj) {
     obj->state = ObjectState_Free;
     for (uint32 i = 0; i < obj->flagSize; i++) if (obj->flag[i]) {
         for (int j = 0; j < 64 && (j + i * 64) * 8 + 8 <= obj->dataSize; j++) if (obj->flag[i] & (1ull << j)) {
-            Object *ref = *(uint64*)&obj->data[(i * 64 + j) * 8];
+            Object *ref = (Object *)*(uint64*)&obj->data[(i * 64 + j) * 8];
             if (ref == NULL || --ref->refCount) continue;
             refGC(ref);
         }
@@ -85,7 +85,7 @@ void scanObj(Object *obj, uint32 mxGen) {
     obj->state = ObjectState_Active;
     for (uint64 i = 0; i < obj->flagSize; i++) if (obj->flag[i]) {
         for (int j = 0; j < 64 && (j + i * 64) * 8 + 8 <= obj->dataSize; i++) if (obj->flag[i] & (1ull << j)) {
-            Object *ref = *(uint64*) &obj->data[(i * 64 + j) * 8];
+            Object *ref = (Object *)*(uint64*) &obj->data[(i * 64 + j) * 8];
             if (ref == NULL || ref->genId > mxGen || ref->state == ObjectState_Active) continue;
             scanObj(ref, mxGen);
         }

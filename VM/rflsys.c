@@ -78,7 +78,9 @@ NamespaceTypeData *loadTypeData_nsp(FILE *fPtr) {
     for (size_t i = 0; i < nsp->clsCount; i++) {
         ClassTypeData *cls = loadTypeData_cls(fPtr);
         Trie_insert(nsp->clsTrie, cls->name, cls);
-        List_insert(&clsListEnd, cls);
+		ListElement *ele = mallocObj(ListElement);
+		ele->content = cls;
+        List_insert(&clsListEnd, ele);
     }
     for (size_t i = 0; i < nsp->nspCount; i++) {
         NamespaceTypeData *subNsp = loadTypeData_nsp(fPtr);

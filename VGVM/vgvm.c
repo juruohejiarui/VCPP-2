@@ -111,8 +111,8 @@ void pauseVM(uint64 rbp, uint64 rsp) {
     printf("VGVM Log: pause\n");
     uint64 i;
     for (i = 0; rbp - (i + 1) * sizeof(uint64) >= rsp; i++) stkData[i] = *(uint64 *)(rbp - (i + 1) * sizeof(uint64));
-    printf("%%rbp = %p, %%rsp = %p\n", rbp, rsp + sizeof(uint64) * 14);
-    printf("runtimeBlock Address: %p\n", stkData[0]);
+    printf("%%rbp = %#018llx, %%rsp = %#018llx\n", rbp, rsp + sizeof(uint64) * 14);
+    printf("runtimeBlock Address: %#018llx\n", stkData[0]);
     RuntimeBlock *rblk = (RuntimeBlock *)stkData[0];
     for (int i = 0; i * sizeof(uint64) < rblk->gloMemSize; i++) printf("%#018llx%c", ((uint64 *)rblk->gloMem)[i], ((((i + 1)) % 4 == 0 ? '\n' : ' ')));
     if (rblk->gloMemSize / sizeof(uint64) % 4 != 0) putchar('\n');
@@ -131,7 +131,7 @@ uint64 callFunc(uint64 id) {
     return ((uint64 (*)(RuntimeBlock *))(rBlk->entryList[offset]))(rBlk);
 }
 
-uint64 *getRelyId(RuntimeBlock *curBlk, uint64 id) {
+uint32 getRelyId(RuntimeBlock *curBlk, uint64 id) {
     if (curBlk->relyBlk[id] == NULL) curBlk->relyBlk[id] = loadRuntimeBlock(curBlk->relyPath[id]);
     return curBlk->relyBlk[id]->id;
 }

@@ -16,13 +16,13 @@ const int8 argCnt[] = {
     9,
 };
 
-uint32 calcHash(char *str, uint32 range) {
+uint32 calcHash(const char *str, uint32 range) {
     uint32 res = 0;
     while (*str != '\0') res = ((((uint64)res) << 8) + *str) % range, str++;
     return res;
 }
 
-Pair *makePair(const char *key, void *value) {
+Pair *makePair(char *key, void *value) {
     Pair *res = (Pair *)malloc(sizeof(Pair));
     res->keyLength = strlen(key) + 1;
     res->key = malloc(sizeof(res->keyLength));
@@ -80,10 +80,12 @@ void List_clear(ListElement *start, ListElement *end) {
 
 void HashMap_init(HashMap *map, uint32 range) {
     map->hashRange = range;
-    map->listStart = mallocArray(ListElement, range);
-    map->listEnd = mallocArray(ListElement, range);
+    map->listStart = mallocArray(PairListElement *, range);
+    map->listEnd = mallocArray(PairListElement *, range);
     for (int i = 0; i < range; i++)
-        List_init(&map->listStart[i], &map->listEnd[i]);
+		map->listStart[i] = mallocObj(PairListElement),
+		map->listEnd[i] = mallocObj(PairListElement),
+        PairList_init(map->listStart[i], map->listEnd[i]);
 }
 
 void HashMap_insert(HashMap *map, Pair *pir) {
@@ -117,7 +119,7 @@ void HashMap_erase(HashMap *map, const char *key) {
     for (PairListElement *ele = map->listStart[hash]->next; ele != map->listEnd[hash]; ele = ele->next) {
         // the key exists
         if (ele->content->keyLength == len && strcmp(ele->content->key, key)) {
-            List_remove(ele);
+            PairList_remove(ele);
             free(ele->content->key), free(ele->content), free(ele);
             return ;
         }
@@ -125,7 +127,7 @@ void HashMap_erase(HashMap *map, const char *key) {
 }
 
 void Trie_init(TrieNode *root) {
-    memset(root->child, NULL, sizeof(root->child));
+    memset(root->child, 0, sizeof(root->child));
     root->content = NULL;
 }
 
@@ -135,7 +137,7 @@ void Trie_insert(TrieNode *root, const char *str, void *val) {
     for (int i = 0; i < len; i++) {
         if (cur->child[str[i]] == NULL) {
             cur->child[str[i]] = mallocObj(TrieNode);
-            memset(cur->child[str[i]]->child, NULL, sizeof(root->child));
+            memset(cur->child[str[i]]->child, 0, sizeof(root->child));
             cur->child[str[i]]->content = NULL;
         }
         cur = cur->child[str[i]];
@@ -164,7 +166,7 @@ void DArray_clear(DArray *arr) {
     DArray_init(arr, arr->elemSize);
 }
 
-void DArray_push(DArray *arr, uint8 *data) {
+void DArray_push(DArray *arr, void *data) {
     if (arr->data == NULL) {
         arr->cap = 1;
         arr->data = malloc(arr->elemSize);
@@ -197,7 +199,7 @@ void *DArray_get(DArray *arr, uint64 index) {
 static char strBuf[1048576];
 static const uint32 maxStrBufSize = 1048576;
 static uint32 strBufSize;
-const char *readString(FILE *filePtr) {
+char *readString(FILE *filePtr) {
     strBufSize = 0;
     char *res = NULL;
     uint32 resSize = 0;

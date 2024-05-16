@@ -1,7 +1,7 @@
 #include "instruction.h"
 #include "insttmpl.h"
 
-extern uint32 dataSize[] = { 1, 2, 4, 8, TM_byte, TM_sbyte, TM_sword, TM_sdword, TM_sqword, 4, 8, TM_float128,
+uint32 dataSize[] = { 1, 2, 4, 8, TM_byte, TM_sbyte, TM_sword, TM_sdword, TM_sqword, 4, 8, TM_float128,
     8, TM_generic0, TM_generic1, TM_generic2, TM_generic3, TM_generic4, TM_unknown };
 SBool isInterger(TypeModifier dtmdf) { return dtmdf >= TM_none && dtmdf <= TM_qword; }
 SBool isFloat(TypeModifier dtmdf) { return dtmdf >= TM_float32 && dtmdf <= TM_float64; }

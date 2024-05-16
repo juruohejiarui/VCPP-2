@@ -26,18 +26,18 @@ typedef short SBool;
 #define mallocObj(type) ((type *)malloc(sizeof(type)))
 #define mallocArray(type, size) ((type *)malloc(sizeof(type) * (size)))
 
-uint32 calcHash(char *str, uint32 range);
+uint32 calcHash(const char *str, uint32 range);
 
 typedef struct tmpPair {
     size_t keyLength;
-    const char *key;
+    char *key;
     void *value;
 } Pair;
 /// @brief allocate a pair
 /// @param key the key of this pair
 /// @param value the value of this pair
 /// @return the pair
-Pair *makePair(const char *key, void *value);
+Pair *makePair(char *key, void *value);
 
 typedef struct tmpPairListElement {
     Pair *content;
@@ -128,7 +128,7 @@ typedef struct tmpDArray {
 
 void DArray_init(DArray *arr, uint64 elemSize);
 void DArray_clear(DArray *arr);
-void DArray_push(DArray *arr, uint8 *elem);
+void DArray_push(DArray *arr, void *elem);
 void DArray_merge(DArray *src, DArray *dst);
 void DArray_pop(DArray *arr);
 void *DArray_get(DArray *arr, uint64 index);
@@ -140,7 +140,7 @@ void *DArray_get(DArray *arr, uint64 index);
 /// @brief read a string from the file, and create a memory block to store the string
 /// @param filePtr 
 /// @return 
-const char *readString(FILE *filePtr);
+char *readString(FILE *filePtr);
 void writeString(FILE *filePtr, const char *str);
 void ignoreString(FILE *filePtr);
 

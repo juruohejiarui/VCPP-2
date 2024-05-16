@@ -47,7 +47,7 @@ void connectMember(Object *obj, Object *mem, uint64 offset);
 void *getGloAddr(RuntimeBlock *curBlk, uint64 id);
 
 // get the blkId of the rely block of curBlk
-uint64 *getRelyId(RuntimeBlock *curBlk, uint64 id);
+uint32 getRelyId(RuntimeBlock *curBlk, uint64 id);
 RuntimeBlock *getRelyAddr(RuntimeBlock *curBlk, uint64 id);
 RuntimeBlock *getRuntimeBlock(uint64 blkId);
 void *getFuncEntry(RuntimeBlock *blgBlk, uint64 funcId);

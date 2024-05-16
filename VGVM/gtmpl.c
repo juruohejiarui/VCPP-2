@@ -78,9 +78,9 @@ uint64 pmemGenericI64(Object *obj, uint64 offset) {
 }
 uint64 pmemGenericO(Object *obj, uint64 offset) {
     obj->refCount--, obj->rootRefCount--;
-    uint64 data = *(uint64 *)&obj->data[offset];
-    if (data != NULL) ((Object *)data)->refCount++, ((Object *)data)->rootRefCount++;
-    return data;
+    Object *data = (Object *)*(uint64 *)&obj->data[offset];
+    if (data != NULL) data->refCount++, data->rootRefCount++;
+    return (uint64) data;
 }
 void *pmemGeneric[] = {
     pmemGenericI8, pmemGenericI8, pmemGenericI16, pmemGenericI16, pmemGenericI32, pmemGenericI32, pmemGenericI64, pmemGenericI64, 
@@ -104,7 +104,7 @@ void setmemGenericI64(Object *obj, uint64 offset, uint64 data) {
     *(uint64 *)&obj->data[offset] = data;
 }
 void setmemGenericO(Object *obj, uint64 offset, Object * data) {
-    if (*(uint64 *)&obj->data[offset] != NULL) {
+    if ((Object *)*(uint64 *)&obj->data[offset] != NULL) {
         Object *lstObj = (Object *)*(uint64 *)&obj->data[offset];
         lstObj->refCount--;
         if (!lstObj->refCount) refGC(obj);
