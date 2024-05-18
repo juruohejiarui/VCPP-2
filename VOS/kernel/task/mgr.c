@@ -140,10 +140,6 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntr
     thread->rsp3 = Task_userStackEnd;
 	thread->fs = thread->gs = Segment_kernelData;
 
-	PtReg *saver = (PtReg *)(task->tss + 1);
-	memset(saver, 0, sizeof(PtReg));
-	task->regSaver = saver;
-
     PtReg regs;
     memset(&regs, 0, sizeof(PtReg));
     regs.rflags = (1 << 9);

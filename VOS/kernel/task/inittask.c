@@ -11,7 +11,7 @@ extern void Intr_retFromIntr();
 u64 init(u64 (*usrEntry)(u64), u64 arg) {
     if (Task_current->pid == 0) {
         List_del(&Init_taskStruct.listEle);
-        APIC_enableIntr(0x14);
+        APIC_enableAll();
     }
 	Task_current->state = Task_State_Running;
     printk(RED, BLACK, "init is running, arg = %#018lx\n", arg);

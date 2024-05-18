@@ -4,6 +4,15 @@
 #include "../includes/task.h"
 #include "gate.h"
 
+char *_regName[] = {
+	"r15", "r14", "r13", "r12", "r11", "r10", "r9", "r8",
+	"rbx", "rcx", "rdx", "rsi", "rdi", "rbp",
+	"ds", "es",
+	"rax",
+	"func", "error",
+	"rip", "cs", "rflags", "rsp", "ss"
+};
+
 extern void divideError();
 extern void debug();
 extern void nmi();
@@ -178,7 +187,7 @@ void doGeneralProtection(u64 rsp, u64 errorCode) {
 	printk(RED,BLACK,"Segment Selector Index:%#018lx\n",errorCode & 0xfff8);
 	printk(WHITE, BLACK, "registers: \n");
 	for (int i = 0; i < sizeof(PtReg) / sizeof(u64); i++)
-		printk(WHITE, BLACK, "%#04lx(%%rsp) = %#018lx%c", i * 8, *(u64 *)(rsp + i * 8), (i + 1) % 4 == 0 ? '\n' : ' ');
+		printk(WHITE, BLACK, "%6s = %#018lx%c", _regName[i], *(u64 *)(rsp + i * 8), (i + 1) % 4 == 0 ? '\n' : ' ');
 	while(1);
 }
 

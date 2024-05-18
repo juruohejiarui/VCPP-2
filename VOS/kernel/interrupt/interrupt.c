@@ -96,14 +96,14 @@ void (*intrList[24])(void) = {
 u64 Intr_keyboard(u64 rsp, u64 num) {
 	u8 x = IO_in8(0x60);
 	printk(RED, BLACK, "\tkey: %#08x", x);
-	return 0;
+	return NULL;
 }
 
 u64 Intr_timer(u64 rsp, u64 num) {
+	printk(RED, BLACK, "timer interrupt\n");
 	if (Task_current->state != Task_State_Uninterruptible && Task_countDown()) {
 		Task_current->counter = 1;
-		memcpy((void *)rsp, Task_current->regSaver, sizeof(PtReg));
-		Task_current->thread->rsp = (u64)Task_current->regSaver;
+		Task_current->thread->rsp = rsp;
 		__asm__ volatile (
 			"pushfq		\n\t"
 			"popq %0	\n\t"
@@ -118,13 +118,18 @@ u64 Intr_timer(u64 rsp, u64 num) {
 	return NULL;
 }
 
+u64 Intr_noHandler(u64 rsp, u64 num) {
+	printk(RED, BLACK, "No handler for interrupt %d\n", num);
+	return NULL;
+}
+
 u64 (*irqHandlerList[24])(u64, u64) = {
-	NULL,			Intr_keyboard, 		Intr_timer, 	NULL,
-	NULL,			NULL,				NULL,			NULL,
-	NULL,			NULL,				NULL,			NULL,
-	NULL,			NULL,				NULL,			NULL,
-	NULL,			NULL,				NULL,			NULL,
-	NULL,			NULL,				NULL,			NULL
+	Intr_noHandler,	Intr_keyboard, 	Intr_timer, 	Intr_noHandler,
+	Intr_noHandler,	Intr_noHandler,	Intr_noHandler,	Intr_noHandler,
+	Intr_noHandler,	Intr_noHandler,	Intr_noHandler,	Intr_noHandler,
+	Intr_noHandler,	Intr_noHandler,	Intr_noHandler,	Intr_noHandler,
+	Intr_noHandler,	Intr_noHandler,	Intr_noHandler,	Intr_noHandler,
+	Intr_noHandler,	Intr_noHandler,	Intr_noHandler,	Intr_noHandler,
 };
 
 void Init_interrupt() {
@@ -132,7 +137,7 @@ void Init_interrupt() {
 #ifdef APIC
     Init_APIC();
     // enable keyboard interrupt
-    APIC_enableIntr(0x12);
+	APIC_enableIntr(0x12);
 #else
     Init_8259A();
 #endif

@@ -63,7 +63,6 @@ typedef struct tmpTaskStruct {
     volatile i64 state;
     ThreadStruct *thread;
     TaskMemStruct *mem;
-	PtReg *regSaver;
 	TSS *tss;
     u64 flags;
     i64 pid, counter, signal, priority;
