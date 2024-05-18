@@ -63,6 +63,8 @@
 extern TSS Init_TSS[Hardware_CPUNumber];
 extern TaskStruct Init_taskStruct;
 
+extern int Task_pidCounter;
+
 void Task_switch();
 
 TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntry)(u64), u64 arg, u64 flags);

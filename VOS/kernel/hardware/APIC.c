@@ -137,7 +137,7 @@ void APIC_initLocal() {
 }
 
 void APIC_mapIOAddr() {
-	for (int i = 0; i < 0x200000; i += Page_4KSize) PageTable_map(getCR3(), 0xfec00000 + i + kernelAddrStart, 0xfec00000 + i);
+	PageTable_map(getCR3(), 0xfec00000 + kernelAddrStart, 0xfec00000);
     APIC_ioMap.phyAddr = 0xfec00000;
     
     printk(WHITE, BLACK, "APIC IO Address: %#08x\n", APIC_ioMap.phyAddr);
@@ -233,16 +233,6 @@ void Init_APIC() {
     APIC_initIO();
 
     IO_out32(0xcf8, 0x8000f8f0);
-    u32 x = IO_in32(0xcfc);
-    x &= 0xffffc000;
-
-    if (x > 0xfec00000 && x < 0xfee00000) {
-        u32 *p = (u32 *)(x + 0x31feUL + kernelAddrStart);
-        x = (*p & 0xffffff00) | 0x100;
-        IO_mfence();
-        *p = x;
-        printk(RED, BLACK, "RCBA: %#010x\n", x);
-    }
     IO_mfence();
     APIC_flag = 1;
 }

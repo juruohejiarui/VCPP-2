@@ -3,6 +3,8 @@
 
 extern void Task_kernelThreadEntry();
 
+int Task_pidCounter;
+
 void Task_checkPtRegInStack(u64 rsp) {
     printk(WHITE, BLACK, "rsp: %#018lx, cr3 = %#018lx, rflags = %#018lx\n", rsp, getCR3(), IO_getRflags());
     for (int i = 0; i < sizeof(PtReg) / sizeof(u64); i++)
@@ -93,7 +95,6 @@ void Task_switchTo_inner(TaskStruct *prev, TaskStruct *next) {
 }
 
 TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntry)(u64), u64 arg, u64 flags) {
-	static int Task_pidCounter = 0;
     u64 pgdPhyAddr = PageTable_alloc(); Page *tskStructPage = Buddy_alloc(0, Page_Flag_Active);
     printk(WHITE, BLACK, "pgdPhyAddr: %#018lx, tskStructPage: %#018lx\n", pgdPhyAddr, tskStructPage->phyAddr);
 

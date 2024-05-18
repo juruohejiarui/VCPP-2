@@ -11,7 +11,9 @@ extern void Intr_retFromIntr();
 u64 init(u64 (*usrEntry)(u64), u64 arg) {
     if (Task_current->pid == 0) {
         List_del(&Init_taskStruct.listEle);
-        APIC_enableAll();
+        APIC_enableIntr(0x12);
+        APIC_enableIntr(0x14);
+        IO_sti();
     }
 	Task_current->state = Task_State_Running;
     printk(RED, BLACK, "init is running, arg = %#018lx\n", arg);
@@ -44,8 +46,8 @@ u64 Task_doExit(u64 arg) {
     while (1);
 }
 
-void Init_task()
-{
+void Init_task() {
+    Task_pidCounter = 0;
 	// fake the task struction of the current task
     Init_taskStruct.thread->rsp0 = Init_taskStruct.thread->rsp = 0xffff800000007E00;
     Init_taskStruct.thread->fs = Init_taskStruct.thread->gs = Segment_kernelData;

@@ -39,6 +39,7 @@ switchSeg:
     .quad entry64
 
 entry64:
+    cli
     movq $0x10, %rax
     movq %rax, %ds
     movq %rax, %es

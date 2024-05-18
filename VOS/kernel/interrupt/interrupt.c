@@ -100,7 +100,6 @@ u64 Intr_keyboard(u64 rsp, u64 num) {
 }
 
 u64 Intr_timer(u64 rsp, u64 num) {
-	printk(RED, BLACK, "timer interrupt\n");
 	if (Task_current->state != Task_State_Uninterruptible && Task_countDown()) {
 		Task_current->counter = 1;
 		Task_current->thread->rsp = rsp;
@@ -136,8 +135,6 @@ void Init_interrupt() {
     for (int i = 32; i < 56; i++) Gate_setIntr(i, 2, intrList[i - 32]);
 #ifdef APIC
     Init_APIC();
-    // enable keyboard interrupt
-	APIC_enableIntr(0x12);
 #else
     Init_8259A();
 #endif
