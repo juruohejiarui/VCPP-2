@@ -17,7 +17,7 @@ enum class TokenType {
 
     TypeHint,
     // keywords
-    If, Else, While, For, Continue, Break, Return, 
+    If, Else, While, For, Switch, Case, Default, Continue, Break, Return, 
     VarDef, FuncDef, VarFuncDef, ClsDef, NspDef,
     Private, Protected, Public, Using, 
     

@@ -68,7 +68,7 @@ UnionData UnionData::convertTo(DataTypeModifier tgType) {
         }
         switch (tgType) {
             case DataTypeModifier::f32: 
-                tmp.float32_v() = (float32)tmp.int64_v(); tmp.int64_v() &= (1ull << 32 - 1);
+                tmp.float32_v() = (float32)tmp.int64_v(); tmp.int64_v() &= ((1ull << 32) - 1);
                 break;
             case DataTypeModifier::f64: tmp.float64_v() = (float64)tmp.int64_v(); break;
         }
@@ -374,5 +374,5 @@ std::string toCodeString(const std::string &str) {
 }
 
 std::string getRealString(const std::string &str) {
-    
+    return std::string();
 }

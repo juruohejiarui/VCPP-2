@@ -111,7 +111,6 @@ ConstValueNode *calcConstExpr(ExpressionNode *expr) {
             delete expr;
             return cpy;
         }
-            
     }
     return nullptr;
 }

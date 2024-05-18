@@ -6,7 +6,7 @@ extern const uint32 IdentifierWeight;
 
 enum class SyntaxNodeType {
     Expression, Identifier, ConstValue, Operator, GenericArea,
-    Block, If, While, For, Continue, Break, Return,
+    Block, If, While, Switch, Case, For, Continue, Break, Return,
     VarDef, FuncDef, VarFuncDef, ClsDef, NspDef,
     Using,
     SourceRoot, SymbolRoot,
@@ -173,6 +173,28 @@ public:
     void setContent(SyntaxNode *node);
 };
 
+class CaseNode : public SyntaxNode {
+public:
+    CaseNode();
+    CaseNode(const Token &token);
+    bool isDefaultCase() const;
+    void setDefaultCase(bool isDefault);
+    ExpressionNode *getCondNode() const;
+private:
+    bool isDefault;
+};
+
+class SwitchNode : public BlockNode {
+public:
+    SwitchNode();
+    SwitchNode(const Token &token);
+    size_t getCaseCount() const;
+    CaseNode *getCase(size_t index) const;
+    void addCaseIndex(size_t index);
+private:
+    std::vector<size_t> caseIndex;
+};
+
 class ControlNode : public SyntaxNode {
 public:
     ControlNode(SyntaxNodeType type);
@@ -298,7 +320,7 @@ public:
 
 typedef std::vector<RootNode *> RootList;
 
-SyntaxNode *buildNode(const TokenList &tkList, size_t l, size_t &r);
+SyntaxNode *buildNode(const TokenList &tkList, size_t l, size_t &r, bool isInSwitch = false);
 RootNode *buildRootNode(SyntaxNodeType type, const TokenList &tkList);
 
 void debugPrintTree(SyntaxNode *node, int dep = 0);

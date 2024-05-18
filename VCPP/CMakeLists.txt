@@ -28,7 +28,11 @@ find_package(Threads)
 target_link_libraries(VCPP ${CMAKE_THREAD_LIBS_INIT})
 
 
-set(CMAKE_CXX_COMPILER "g++")
+if (APPLE)
+    set(CMAKE_CXX_COMPILER "g++-11")
+else()
+    set(CMAKE_CXX_COMPILER "g++")
+endif()
 
  
 set(CMAKE_BUILD_TYPE "Debug")

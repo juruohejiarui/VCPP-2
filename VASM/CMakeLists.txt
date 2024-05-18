@@ -14,10 +14,13 @@ target_link_libraries(VASM ${CMAKE_THREAD_LIBS_INIT})
 
 
 # ��ʽָ��������
-set(CMAKE_CXX_COMPILER "g++")
-
+if (APPLE)
+    set(CMAKE_CXX_COMPILER "g++-11")
+else()
+    set(CMAKE_CXX_COMPILER "g++")
+endif()
  
 # ����������Ϣ
-set(CMAKE_BUILD_TYPE "Release")
+set(CMAKE_BUILD_TYPE "Debug")
 set(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -g2 -ggdb -std=c++14")
-set(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -DNDEBUG -g -O3 -std=c++14")
+set(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -DNDEBUG -O0 -std=c++14")

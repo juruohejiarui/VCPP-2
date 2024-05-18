@@ -31,6 +31,7 @@ typedef enum tmpRegister {
     AX = 0, CX, DX, BX, SP, BP, SI, DI, R8w, R9w, R10w, R11w, R12w, R13w, R14w, R15w,
     // x64 8bit registers
     AL = 0, CL, DL, BL, SPL, BPL, SIL, DIL, R8b, R9b, R10b, R11b, R12b, R13b, R14b, R15b,
+    // x64 simd registers
     XMM0 = 0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6, XMM7, XMM8, XMM9, XMM10, XMM11, XMM12, XMM13, XMM14, XMM15,
 } Register;
 

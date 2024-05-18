@@ -48,7 +48,7 @@ uint32 loadRuntimeBlock(const char *path) {
 
     // read string list
     readData(fPtr, &rblk->strCount, uint64);
-    rblk->strList = mallocArray(char *, rblk->strCount);
+    rblk->strList = mallocArray(Object *, rblk->strCount);
     for (int i = 0; i < rblk->strCount; i++) {
         char *str = readString(fPtr);
         size_t strl = strlen(str);
@@ -153,7 +153,7 @@ void debugInfo() {
 void mainLoop() {
     static uint64 tmpData[16], argData[16];
     while (clStackTop != clStack) {
-        if (checkGC()) genGC();
+        if (checkGC()) genGC(0);
         uint32 vcode = *(uint32 *) &curRBlock->vcode[clStackTop->offset], tcmd = vcode & ((1 << 16) - 1);
         // printf("offset = %#018llx vcode = %x, tmd = %d\n", clStackTop->offset, vcode, tcmd);
         clStackTop->offset += sizeof(uint32);

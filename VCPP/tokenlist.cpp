@@ -14,7 +14,7 @@ const std::string tokenTypeString[] = {
 
     "TypeHint",
     // keywords
-    "If", "Else", "While", "For", "Continue", "Break", "Return", 
+    "If", "Else", "While", "For", "Switch", "Case", "Default", "Continue", "Break", "Return", 
     "VarDef", "FuncDef", "VarFuncDef", "ClsDef", "NspDef",
     "Private", "Protected", "Public", "Using", 
 
@@ -25,9 +25,9 @@ const std::string tokenTypeString[] = {
 };
 
 const std::string keywordString[] = {
-    "if", "else", "while", "for", "continue", "break", "return", "var", "func", "varfunc", "class", "namespace", "private", "protected", "public", "using",
+    "if", "else", "while", "for", "switch", "case", "default", "continue", "break", "return", "var", "func", "varfunc", "class", "namespace", "private", "protected", "public", "using",
 };
-const size_t tokenTypeNumber = 68, keywordTokenTypeNumber = 16;
+const size_t tokenTypeNumber = 71, keywordTokenTypeNumber = 19;
 
 
 TokenType getKeyworkType(const std::string str) {

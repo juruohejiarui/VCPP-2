@@ -6,13 +6,13 @@ const uint32 IdentifierWeight = 1000000;
 
 const std::string syntaxNodeTypeString[] = {
     "Expression", "Identifier", "ConstValue", "Operator", "GenericArea",
-    "Block", "If", "While", "For", "Continue", "Break", "Return",
+    "Block", "If", "While", "Switch","Case", "For", "Continue", "Break", "Return",
     "VarDef", "FuncDef", "VarFuncDef", "ClsDef", "NspDef",
     "Using",
     "SourceRoot", "SymbolRoot",
     "Error", "Empty", "Unknown", 
 };
-const int32 syntaxNodeTypeNumber = 22;
+const int32 syntaxNodeTypeNumber = 23;
 
 #pragma region SyntaxNode
 SyntaxNode::SyntaxNode(SyntaxNodeType type) { parent = nullptr, this->type = type, localVarCount = 0; }
@@ -184,6 +184,40 @@ SyntaxNode *LoopNode::getContent() const { return get(3); }
 void LoopNode::setContent(SyntaxNode *node) { get(3) = node; }
 #pragma endregion
 
+#pragma region CaseNode and SwitchNode
+CaseNode::CaseNode() : SyntaxNode(SyntaxNodeType::Case) {
+    children.resize(1, nullptr);
+    isDefault = false;
+}
+
+CaseNode::CaseNode(const Token &token) : SyntaxNode(SyntaxNodeType::Case, token) {
+    children.resize(1, nullptr);
+    isDefault = false;
+}
+
+bool CaseNode::isDefaultCase() const { return isDefault; }
+void CaseNode::setDefaultCase(bool isDefault) { this->isDefault = isDefault; }
+ExpressionNode *CaseNode::getCondNode() const { return isDefault ? nullptr : (ExpressionNode *)get(0); }
+
+SwitchNode::SwitchNode() {
+    type = SyntaxNodeType::Switch;
+}
+
+SwitchNode::SwitchNode(const Token &token) {
+    type = SyntaxNodeType::Switch;
+    setToken(token);
+}
+
+size_t SwitchNode::getCaseCount() const {
+    return caseIndex.size();
+}
+
+CaseNode *SwitchNode::getCase(size_t index) const {
+    return (CaseNode *)children[caseIndex[index]];
+}
+void SwitchNode::addCaseIndex(size_t index) { caseIndex.push_back(index); }
+#pragma endregion
+
 #pragma region ControlNode
 ControlNode::ControlNode(SyntaxNodeType type) : SyntaxNode(type) {
     if (type == SyntaxNodeType::Return) children.resize(1, nullptr);
@@ -338,6 +372,8 @@ void RootNode::addChild(SyntaxNode *node) {
 
 #pragma endregion
 
+#pragma region build expression
+
 ExpressionNode *buildExpression(const TokenList &tkList, size_t l, size_t r);
 
 IdentifierNode *buildIdentifier(const TokenList &tkList, size_t l, size_t &r) {
@@ -453,7 +489,9 @@ ExpressionNode *buildExpression(const TokenList &tkList, size_t l, size_t r) {
     node->addChild(getRoot());
     return node;
 }
+#pragma endregion
 
+#pragma region build block
 BlockNode *buildBlock(const TokenList &tkList, size_t l, size_t &r) {
     BlockNode *node = new BlockNode(tkList[l]);
     r = tkList[l].data.uint64_v();
@@ -484,7 +522,9 @@ BlockNode *buildBlock(const TokenList &tkList, size_t l, size_t &r) {
     node->setLocalVarCount(std::max(node->getLocalVarCount(), tmpVarCnt));
     return node;
 }
+#pragma endregion
 
+#pragma region build if, while, for, case, switch
 IfNode *buildIf(const TokenList &tkList, size_t l, size_t &r) {
     IfNode *node = new IfNode();
     r = l;
@@ -563,6 +603,74 @@ LoopNode *buildFor(const TokenList &tkList, size_t l, size_t &r) {
     return node;
 }
 
+CaseNode *buildCase(const TokenList &tkList, size_t l, size_t &r) {
+    CaseNode *node = new CaseNode(tkList[l]);
+    r = l + 1;
+    if (tkList[r].type == TokenType::Default) {
+        node->setDefaultCase(true);
+    } else {
+        if (tkList[r].type != TokenType::SBrkL) {
+            printError(tkList[r].lineId, "Invalid content in \"case\".");
+            delete node;
+            return nullptr;
+        }
+        size_t pos = tkList[r].data.uint64_v();
+        ExpressionNode *condNode = buildExpression(tkList, r + 1, pos - 1);
+        if (condNode == nullptr) { delete node; return nullptr; }
+        node->addChild(condNode);
+        r = pos;
+    }
+    return node;
+}
+
+SwitchNode *buildSwitch(const TokenList &tkList, size_t l, size_t &r) {
+    SwitchNode *node = new SwitchNode(tkList[l]);
+    r = l + 1;
+    if (tkList[r].type != TokenType::SBrkL) {
+        printError(tkList[r].lineId, "Invalid content in \"switch\".");
+        delete node;
+        return nullptr;
+    }
+    // get condition expression
+    size_t pos = tkList[r].data.uint64_v();
+    ExpressionNode *condNode = buildExpression(tkList, r + 1, pos - 1);
+    if (condNode == nullptr) { delete node; return nullptr; }
+    node->addChild(condNode);
+    r = pos + 1;
+    if (tkList[r].type != TokenType::LBrkL) {
+        printError(tkList[r].lineId, "Invalid content in \"switch\".");
+        delete node;
+        return nullptr;
+    }
+    // get childrens
+    uint32 varDefCnt = 0;
+    for (pos = r + 1; pos < tkList[r].data.uint64_v(); pos++) {
+        SyntaxNode *child = buildNode(tkList, pos, pos, true);
+        if (child == nullptr) { delete node; return nullptr; }
+        node->addChild(child);
+        // update the local variable count
+        switch (child->getType()) {
+            case SyntaxNodeType::Case:
+                node->addCaseIndex(node->getChildrenCount() - 1);
+                break;
+            case SyntaxNodeType::VarDef :
+                varDefCnt += child->getLocalVarCount();
+                node->setLocalVarCount(std::max(node->getLocalVarCount(), varDefCnt));
+                break;
+            case SyntaxNodeType::Block:
+            case SyntaxNodeType::If:
+            case SyntaxNodeType::While:
+            case SyntaxNodeType::For:
+                node->setLocalVarCount(std::max(node->getLocalVarCount(), varDefCnt + child->getLocalVarCount()));
+                break;
+        }
+    }
+    node->setLocalVarCount(std::max(node->getLocalVarCount(), varDefCnt));
+    return node;
+}
+#pragma endregion
+
+#pragma region build control
 ControlNode *buildControl(const TokenList &tkList, size_t l, size_t &r) {
     SyntaxNodeType type;
     if (tkList[l].type == TokenType::Break) type = SyntaxNodeType::Break;
@@ -576,7 +684,9 @@ ControlNode *buildControl(const TokenList &tkList, size_t l, size_t &r) {
     }
     return node;
 }
+#pragma endregion
 
+#pragma region build definition
 VarDefNode *buildVarDef(const TokenList &tkList, size_t l, size_t &r) {
     VarDefNode *node = new VarDefNode();
     if (l && isVisibility(tkList[l - 1].type)) node->setVisibility(getVisibility(tkList[l - 1].type));
@@ -783,7 +893,9 @@ NspDefNode *buildNspDef(const TokenList &tkList, size_t l, size_t &r) {
     }
     return node;
 }
+#pragma endregion
 
+#pragma region build using
 UsingNode *buildUsing(const TokenList &tkList, size_t l, size_t &r) {
     UsingNode *node = new UsingNode(tkList[l]);
     std::string path = tkList[l + 1].dataStr;
@@ -801,8 +913,9 @@ UsingNode *buildUsing(const TokenList &tkList, size_t l, size_t &r) {
     node->setPath(path);
     return node;
 }
+#pragma endregion
 
-SyntaxNode *buildNode(const TokenList &tkList, size_t l, size_t &r) {
+SyntaxNode *buildNode(const TokenList &tkList, size_t l, size_t &r, bool isInSwitch) {
     SyntaxNode *node = nullptr;
     r = l;
     switch (tkList[l].type) {
@@ -823,6 +936,13 @@ SyntaxNode *buildNode(const TokenList &tkList, size_t l, size_t &r) {
             break;
         case TokenType::While:
             node = buildWhile(tkList, l, r);
+            break;
+        case TokenType::Switch:
+            node = buildSwitch(tkList, l, r);
+            break;
+        case TokenType::Case:
+            if (isInSwitch) node = buildCase(tkList, l, r);
+            else printError(tkList[l].lineId, "Invalid syntax of \"case\".");
             break;
         case TokenType::Break:
         case TokenType::Continue:
