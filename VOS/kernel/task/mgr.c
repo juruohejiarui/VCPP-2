@@ -2,13 +2,14 @@
 #include "../includes/log.h"
 
 extern void Task_kernelThreadEntry();
+extern void restoreAll();
 
 int Task_pidCounter;
 
 void Task_checkPtRegInStack(u64 rsp) {
     printk(WHITE, BLACK, "rsp: %#018lx, cr3 = %#018lx, rflags = %#018lx\n", rsp, getCR3(), IO_getRflags());
     for (int i = 0; i < sizeof(PtReg) / sizeof(u64); i++)
-        printk(WHITE, BLACK, "rsp + %#04x: %#018lx%c", i * 8, *(u64 *)(rsp + i * 8), (i + 1) % 8 == 0 ? '\n' : ' ');
+        printk(WHITE, BLACK, "rsp+%#04x: %#018lx%c", i * 8, *(u64 *)(rsp + i * 8), (i + 1) % 8 == 0 ? '\n' : ' ');
 }
 
 #define Task_initTask(task) \
@@ -90,8 +91,6 @@ void Task_switchTo_inner(TaskStruct *prev, TaskStruct *next) {
     __asm__ volatile ( "movq %%gs, %0 \n\t" : "=a"(prev->thread->gs));
     __asm__ volatile ( "movq %0, %%fs \n\t" : : "a"(next->thread->fs));
     __asm__ volatile ( "movq %0, %%gs \n\t" : : "a"(next->thread->gs));
-    // printk(BLUE, BLACK, "prev: %#018lx, prev->thread->rsp: %#018lx\t", prev, prev->thread->rsp);
-    // printk(BLUE, BLACK, "next: %#018lx, next->thread->rsp: %#018lx\n", next, next->thread->rsp);
 }
 
 TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntry)(u64), u64 arg, u64 flags) {
@@ -115,19 +114,22 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntr
         PageTable_map(pgdPhyAddr, vAddr, vAddr == 0xFFFFFFFFFFFFF000 ? lstPage->phyAddr : 0);
 	
     TaskStruct *task = (TaskStruct *)DMAS_phys2Virt(tskStructPage->phyAddr);
-    memset(task, 0, sizeof(TaskStruct) + sizeof(ThreadStruct) + sizeof(TaskMemStruct));
+    memset(task, 0, sizeof(TaskStruct) + sizeof(ThreadStruct) + sizeof(TaskMemStruct) + sizeof(TSS));
+	
+	// set the pointers of sub-structs
     ThreadStruct *thread = (ThreadStruct *)(task + 1);
+	task->thread = thread;
+	task->mem = (TaskMemStruct *)(thread + 1);
+	task->tss = (TSS *)(task->mem + 1);
+	printk(WHITE, BLACK, "task=%#018lx, mem=%#018lx, thread=%#018lx, tss=%#018lx\n", task, task->mem, task->thread, task->tss);
+
     task->flags = flags;
-    task->mem = (TaskMemStruct *)(thread + 1);
-    task->thread = thread;
     task->counter = 1;
     task->pid = Task_pidCounter++;
     task->mem->pgd = DMAS_phys2Virt(pgdPhyAddr);
     task->mem->pgdPhyAddr = pgdPhyAddr;
 	task->state = Task_State_Uninterruptible;
 
-	task->tss = (TSS *)(task->mem + 1);
-	printk(WHITE, BLACK, "task=%#018lx, mem=%#018lx, thread=%#018lx, tss=%#018lx\n", task, task->mem, task->thread, task->tss);
 	memset(task->tss, 0, sizeof(TSS));
 	task->tss->ist1	= Task_intrStackEnd;
 	task->tss->ist2 = Task_intrStackEnd - (Task_intrStackSize >> 1);

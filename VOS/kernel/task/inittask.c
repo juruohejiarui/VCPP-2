@@ -11,13 +11,14 @@ extern void Intr_retFromIntr();
 u64 init(u64 (*usrEntry)(u64), u64 arg) {
     if (Task_current->pid == 0) {
         List_del(&Init_taskStruct.listEle);
-        APIC_enableIntr(0x12);
-        APIC_enableIntr(0x14);
+        Intr_register(0x22, NULL, Intr_timer, 0, NULL, "timer");
         IO_sti();
     }
+	u64 rsp = 0;
+	__asm__ volatile ( "movq %%rsp, %0" : "=m"(rsp) : : "memory" );
 	Task_current->state = Task_State_Running;
-    printk(RED, BLACK, "init is running, arg = %#018lx\n", arg);
-    Task_switchToUsr(usrEntry, arg);
+	printk(RED, BLACK, "init is running, arg = %#018lx, rsp = %#018lx\n", arg, rsp);
+	Task_switchToUsr(usrEntry, arg);
     return 1;
 }
 

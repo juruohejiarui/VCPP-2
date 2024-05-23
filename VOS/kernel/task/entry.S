@@ -1,8 +1,6 @@
 #include "../includes/linkage.h"
 
 ENTRY(Task_kernelThreadEntry)
-	movq %rsp, %rdi
-	call Task_checkPtRegInStack
     jmp restoreAll
 
 ENTRY(Syscall_entry)

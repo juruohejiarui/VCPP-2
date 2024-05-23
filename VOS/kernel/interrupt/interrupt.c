@@ -3,8 +3,9 @@
 #include "../includes/linkage.h"
 #include "../includes/log.h"
 #include "../includes/task.h"
+#include "interrupt.h"
 
-void restoreAll();
+extern void restoreAll();
 
 #define saveAll \
     "pushq %rax     \n\t" \
@@ -46,8 +47,7 @@ __asm__ ( \
     "leaq "SYMBOL_NAME_STR(irq)#num"Interrupt_end(%rip), %rax	\n\t" \
     "pushq %rax 		\n\t" \
     "movq $"#num", %rsi \n\t" \
-    "leaq irqHandlerList(%rip), %rax 	\n\t" \
-	"movq -0x100(%rax, %rsi, 8), %rax 		\n\t" \
+    "leaq Intr_irqDistribute(%rip), %rax 	\n\t" \
 	"jmp *%rax			\n\t" \
 	SYMBOL_NAME_STR(irq)#num"Interrupt_end: \n\t" \
 	"movq %rax, %rdi 	\n\t" \
@@ -93,16 +93,17 @@ void (*intrList[24])(void) = {
     irq0x34Interrupt, irq0x35Interrupt, irq0x36Interrupt, irq0x37Interrupt
 };
 
-u64 Intr_keyboard(u64 rsp, u64 num) {
+IntrHandlerDeclare(Intr_keyboard) {
 	u8 x = IO_in8(0x60);
 	printk(RED, BLACK, "\tkey: %#08x", x);
+	printk(BLACK, WHITE, "irqId: %d, res: %#018lx\n", num, 0);
 	return NULL;
 }
 
-u64 Intr_timer(u64 rsp, u64 num) {
+IntrHandlerDeclare(Intr_timer) {
 	if (Task_current->state != Task_State_Uninterruptible && Task_countDown()) {
 		Task_current->counter = 1;
-		Task_current->thread->rsp = rsp;
+		Task_current->thread->rsp = (u64)regs;
 		__asm__ volatile (
 			"pushfq		\n\t"
 			"popq %0	\n\t"
@@ -111,31 +112,65 @@ u64 Intr_timer(u64 rsp, u64 num) {
 			: "memory"
 		);
 		Task_current->thread->rip = (u64)restoreAll;
-		// printk(GREEN, BLACK, "next cr3 = %#018lx\n", container(Task_current->listEle.next, TaskStruct, listEle)->mem->pgdPhyAddr);
 		return (u64)Task_switch;
 	}
 	return NULL;
 }
 
-u64 Intr_noHandler(u64 rsp, u64 num) {
+IntrHandlerDeclare(Intr_noHandler) {
 	printk(RED, BLACK, "No handler for interrupt %d\n", num);
 	return NULL;
 }
 
-u64 (*irqHandlerList[24])(u64, u64) = {
-	Intr_noHandler,	Intr_keyboard, 	Intr_timer, 	Intr_noHandler,
-	Intr_noHandler,	Intr_noHandler,	Intr_noHandler,	Intr_noHandler,
-	Intr_noHandler,	Intr_noHandler,	Intr_noHandler,	Intr_noHandler,
-	Intr_noHandler,	Intr_noHandler,	Intr_noHandler,	Intr_noHandler,
-	Intr_noHandler,	Intr_noHandler,	Intr_noHandler,	Intr_noHandler,
-	Intr_noHandler,	Intr_noHandler,	Intr_noHandler,	Intr_noHandler,
-};
+IntrDescriptor Intr_descriptor[Intr_Num];
+
+int Intr_register(u64 irqId, void *arg, IntrHandler handler, u64 param, IntrController *controller, char *irqName) {
+	IntrDescriptor *desc = &Intr_descriptor[irqId - 0x20];
+	desc->controller = controller;
+	desc->irqName = irqName;
+	desc->param = param;
+	desc->handler = handler;
+
+	if (desc->controller != NULL) {
+		desc->controller->install(irqId, arg);
+		desc->controller->enable(irqId);
+	}
+
+	#ifdef APIC
+	APIC_enableIntr(irqId);
+	#endif
+	return 0;
+}
+
+void Intr_unregister(u64 irqId) {
+	IntrDescriptor *desc = &Intr_descriptor[irqId - 0x20];
+	desc->controller->disable(irqId);
+	desc->controller->uninstall(irqId);
+
+	desc->controller = NULL;
+	desc->irqName = NULL;
+	desc->param = 0;
+	desc->handler = NULL;
+}
+
+u64 Intr_irqDistribute(u64 rsp, u64 irqId) {
+	IntrDescriptor *desc = &Intr_descriptor[irqId - 0x20];
+	u64 res = NULL;
+	if (desc->handler != NULL)
+		res = desc->handler(irqId, (PtReg *)rsp);
+	else res = Intr_noHandler(irqId, (PtReg *)rsp);
+	if (desc->controller != NULL && desc->controller->ack != NULL) desc->controller->ack(irqId);
+	return res;
+}
 
 void Init_interrupt() {
-    for (int i = 32; i < 56; i++) Gate_setIntr(i, 2, intrList[i - 32]);
+	for (int i = 32; i < 56; i++) Gate_setIntr(i, 2, intrList[i - 32]);
 #ifdef APIC
     Init_APIC();
 #else
     Init_8259A();
 #endif
+	memset(Intr_descriptor, 0, sizeof(Intr_descriptor));
+	Intr_register(0x21, NULL, Intr_keyboard, 0, NULL, "keyboard");
+	IO_sti();
 }

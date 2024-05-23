@@ -60,6 +60,8 @@
 		); \
 	} while (0)
 
+void Task_checkPtRegInStack(u64 rsp);
+
 extern TSS Init_TSS[Hardware_CPUNumber];
 extern TaskStruct Init_taskStruct;
 

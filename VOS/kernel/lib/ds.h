@@ -29,7 +29,12 @@ void Bit_rev(u64 *addr, u64 index);
 #define memberOffset(type, member) ((u64)(&(((type *)0)->member)))
 #define container(memberAddr, type, memberIden) ((type *)(((u64)(memberAddr))-((u64)&(((type *)0)->memberIden))))
 
-typedef struct {
-    
-} PtraceRegs;
+typedef struct tmpPtReg {
+    u64 r15, r14, r13, r12, r11, r10, r9, r8;
+    u64 rbx, rcx, rdx, rsi, rdi, rbp;
+    u64 ds, es;
+    u64 rax;
+    u64 func, errCode;
+    u64 rip, cs, rflags, rsp, ss;
+} PtReg;
 #endif

@@ -65,20 +65,13 @@ void PGTable_free(u64 phyAddr) {
 /// @param pAddr
 void PageTable_map(u64 cr3, u64 vAddr, u64 pAddr) {
     u64 *entry = (u64 *)DMAS_phys2Virt(cr3) + ((vAddr >> 39) & 0x1ff);
-	if (pAddr > 0) printk(YELLOW, BLACK, "cr3: %#018lx ", cr3);
     if (*entry == 0) *entry = PageTable_alloc() | 0x7;
-	if (pAddr > 0) printk(WHITE, BLACK, "->%#018lx ", *entry);
     entry = (u64 *)DMAS_phys2Virt(*entry & ~0xfff) + ((vAddr >> 30) & 0x1ff);
     if (*entry == 0) *entry = PageTable_alloc() | 0x7;
-	if (pAddr > 0) printk(WHITE, BLACK, "->%#018lx ", *entry);
     entry = (u64 *)DMAS_phys2Virt(*entry & ~0xfff) + ((vAddr >> 21) & 0x1ff);
     if (*entry == 0) *entry = PageTable_alloc() | 0x7;
-	if (pAddr > 0) printk(WHITE, BLACK, "->%#018lx ", *entry);
     entry = (u64 *)DMAS_phys2Virt(*entry & ~0xfff) + ((vAddr >> 12) & 0x1ff);
     *entry = pAddr | 0x6 | (pAddr > 0);
-	if (pAddr > 0) printk(WHITE, BLACK, "->%#018lx ", *entry);
-	if (pAddr != 0) printk(BLUE, BLACK, "Map %#018lx -> %#018lx", pAddr, vAddr);
-	if (pAddr > 0) printk(WHITE, BLACK, "...\n");
 	flushTLB();
 }
 

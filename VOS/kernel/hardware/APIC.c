@@ -199,7 +199,7 @@ void APIC_disableIntr(u8 intrId) {
 }
 
 void APIC_enableIntr(u8 intrId) {
-    APIC_writeRTE(intrId, handlerId(intrId)), enable[intrId] = 1;
+    APIC_writeRTE(((intrId - 0x20) << 1) + 0x10, intrId), enable[intrId] = 1;
 }
 
 void APIC_initIO() {
