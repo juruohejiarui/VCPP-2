@@ -26,8 +26,8 @@ typedef struct {
     void *(*destructor)(void *virtAddr, u64 arg);
 } SlabCache;
 
-void Slab_init();
-void Slab_debugLog();
+void MM_Slab_init();
+void MM_Slab_debugLog();
 
 /// @brief allocate a memory block for kernel process from the slab system
 /// @param size the size of the memory block

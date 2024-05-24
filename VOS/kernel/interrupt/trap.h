@@ -1,5 +1,5 @@
 #ifndef __INTERRUPT_TRAP_H__
 #define __INTERRUPT_TRAP_H__
 
-void Init_systemVector();
+void Intr_Trap_setSysVec();
 #endif

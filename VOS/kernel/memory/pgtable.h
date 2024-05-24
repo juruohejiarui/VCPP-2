@@ -41,19 +41,19 @@
 	} while (0)
 
 typedef struct { u64 entry[512]; } PageTable;
-void PageTable_init();
+void MM_PageTable_init();
 // allocate a page table and return the physical address of the page table
-u64 PageTable_alloc();
+u64 MM_PageTable_alloc();
 
 // build the corresponding page table of V_ADDR and
 // if P_ADDR != 0: map it to P_ADDR 
 // if P_ADDR == 0: remains the entry of PLD no presents.
-void PageTable_map(u64 cr3, u64 vAddr, u64 pAddr);
+void MM_PageTable_map(u64 cr3, u64 vAddr, u64 pAddr);
 
-void PageTable_unmap(u64 cr3, u64 vAddr);
+void MM_PageTable_unmap(u64 cr3, u64 vAddr);
 
-u64 PageTable_getPldEntry(u64 cr3, u64 vAddr);
+u64 MM_PageTable_getPldEntry(u64 cr3, u64 vAddr);
 
-u64 PageTable_fork();
+u64 MM_PageTable_fork();
 
 #endif

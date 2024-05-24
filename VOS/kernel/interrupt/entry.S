@@ -28,7 +28,7 @@ offsetSs		= 0xb8
 
 
 
-ENTRY(Gate_loadTR)
+ENTRY(Intr_Gate_loadTR)
     movw %di, %ax
     shlw $3, %ax
     ltr %ax

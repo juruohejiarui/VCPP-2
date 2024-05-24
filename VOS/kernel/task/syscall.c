@@ -15,7 +15,7 @@ u64 Syscall_noSystemCall(u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5) {
 }
 
 u64 Syscall_enableIntr(u64 intrId, u64 arg2, u64 arg3, u64 arg4, u64 arg5) {
-    APIC_enableIntr(intrId);
+    HW_APIC_enableIntr(intrId);
     return 0;
 }
 
@@ -41,7 +41,7 @@ Syscall Syscall_list[Syscall_num] = {
 u64 Syscall_handler(u64 index, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5) {
     // switch stack and segment registers
     Task_current->tss->rsp0 = Task_current->thread->rsp0;
-    Gate_setTSS(
+    Intr_Gate_setTSS(
         Task_current->tss->rsp0, Task_current->tss->rsp1, Task_current->tss->rsp2, Task_current->tss->ist1, Task_current->tss->ist2,
 		Task_current->tss->ist3, Task_current->tss->ist4, Task_current->tss->ist5, Task_current->tss->ist6, Task_current->tss->ist7);
 	IO_sti();
@@ -50,7 +50,7 @@ u64 Syscall_handler(u64 index, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5)
     return res;
 }
 
-u64 Syscall_usrAPI(u64 index, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5) {
+u64 Task_Syscall_usrAPI(u64 index, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5) {
     // not necessary to switch the stack
     // directly use "syscall"
     u64 res;
@@ -94,7 +94,7 @@ void Task_switchToUsr(u64 (*entry)(u64), u64 arg) {
     memcpy(&regs, (void *)(Task_current->thread->rsp0), sizeof(PtReg));
 	printk(YELLOW, BLACK, "finished copying\n");
     Task_current->tss->rsp0 = Task_current->thread->rsp0;
-    Gate_setTSS(
+    Intr_Gate_setTSS(
         Task_current->tss->rsp0, Task_current->tss->rsp1, Task_current->tss->rsp2, Task_current->tss->ist1, Task_current->tss->ist2,
 		Task_current->tss->ist3, Task_current->tss->ist4, Task_current->tss->ist5, Task_current->tss->ist6, Task_current->tss->ist7);
     printk(ORANGE, BLACK, "finish TSS\n");
@@ -107,7 +107,7 @@ void Task_switchToUsr(u64 (*entry)(u64), u64 arg) {
     );
 }
 
-void Init_syscall() {
+void Task_Syscall_init() {
     // set IA32_EFER.SCE
     IO_writeMSR(0xC0000080, IO_readMSR(0xC0000080) | 1);
 	printk(GREEN, BLACK, "write 0xC0000080 -> %lx\t", IO_readMSR(0xC0000080));

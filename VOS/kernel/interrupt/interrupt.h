@@ -32,6 +32,6 @@ IntrHandlerDeclare(Intr_timer);
 int Intr_register(u64 irqId, void *arg, IntrHandler handler, u64 param, IntrController *controller, char *irqName);
 void Intr_unregister(u64 irqId);
 
-void Init_interrupt();
+void Intr_init();
 
 #endif

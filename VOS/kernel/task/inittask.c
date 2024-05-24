@@ -24,7 +24,7 @@ u64 init(u64 (*usrEntry)(u64), u64 arg) {
 
 u64 usrInit(u64 arg) {
 	printk(WHITE, BLACK, "user level function, arg: %ld\n", arg);
-    u64 res = Syscall_usrAPI(arg, BLACK, WHITE, (u64)"Up Down Up Down baba", 20, 5);
+    u64 res = Task_Syscall_usrAPI(arg, BLACK, WHITE, (u64)"Up Down Up Down baba", 20, 5);
     printk(WHITE, BLACK, "syscall, res: %ld\n", res);
     int t = 10000000 * (arg + 3), initCounter = 100000000;
     int tmp = arg;
@@ -32,10 +32,10 @@ u64 usrInit(u64 arg) {
     if (arg == 1) initCounter = t = 1;
     while (1) {
         if (arg == 1) 
-			Syscall_usrAPI(0, 0x14, 2, 3, 4, 5);
+			Task_Syscall_usrAPI(0, 0x14, 2, 3, 4, 5);
         if (--t == 0) {
 			printk(WHITE, BLACK, "%d ", Task_current->pid);
-			arg == 1 ? Syscall_usrAPI(3, 0, 0, 0, 0, 0) : 0;
+			arg == 1 ? Task_Syscall_usrAPI(3, 0, 0, 0, 0, 0) : 0;
 			t = initCounter;
 		}
     }

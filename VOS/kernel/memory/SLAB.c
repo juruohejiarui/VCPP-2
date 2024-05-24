@@ -4,7 +4,7 @@
 #include "pgtable.h"
 #include "../includes/log.h"
 
-#define alloc2MPage() Buddy_alloc(9, Page_Flag_Kernel)
+#define alloc2MPage() MM_Buddy_alloc(9, Page_Flag_Kernel)
 
 SlabCache Slab_kmallocCache[16] = {
     {32,        0, 0, NULL, NULL, NULL},
@@ -25,21 +25,21 @@ SlabCache Slab_kmallocCache[16] = {
     {1048576,   0, 0, NULL, NULL, NULL} // 1MB
 };
 
-void Slab_init() {
-    printk(RED, BLACK, "Slab_init()\n");
+void MM_Slab_init() {
+    printk(RED, BLACK, "MM_Slab_init()\n");
     // calculate the total size of Slab and colMap
     u64 totSize = 16 * sizeof(Slab);
     for (int i = 0; i < 16; i++)
         totSize += upAlignTo(Page_2MSize / Slab_kmallocCache[i].size, 64) / 64 * sizeof(u64);
     totSize = Page_4KUpAlign(totSize);
-    printk(GREEN, BLACK, "Slab_init: require %d Bytes for initialization\n", totSize);
+    printk(GREEN, BLACK, "MM_Slab_init: require %d Bytes for initialization\n", totSize);
     // up align to power of 2
     u64 log2Size = 0;
     while ((1ul << log2Size) < (totSize >> Page_4KShift)) log2Size++;
-    printk(GREEN, BLACK, "Slab_init: require %d Pages for initialization\n", 1ul << log2Size);
-    Page *page = Buddy_alloc(log2Size, Page_Flag_Kernel);
+    printk(GREEN, BLACK, "MM_Slab_init: require %d Pages for initialization\n", 1ul << log2Size);
+    Page *page = MM_Buddy_alloc(log2Size, Page_Flag_Kernel);
     if (page == NULL) {
-        printk(RED, BLACK, "Slab_init: Buddy_alloc failed\n");
+        printk(RED, BLACK, "MM_Slab_init: MM_Buddy_alloc failed\n");
         return ;
     }
     u64 virtAddr = (u64)DMAS_phys2Virt(page->phyAddr);
@@ -51,8 +51,8 @@ void Slab_init() {
         // initial the information for the first slab of this cache
         Slab_kmallocCache[i].slabs->page = alloc2MPage();
         if (Slab_kmallocCache[i].slabs->page == NULL) {
-            printk(RED, BLACK, "Slab_init: Buddy_alloc failed\n");
-            Buddy_free(page);
+            printk(RED, BLACK, "MM_Slab_init: MM_Buddy_alloc failed\n");
+            MM_Buddy_free(page);
             return ;
         }
         Slab_kmallocCache[i].slabs->usingCnt = 0, Slab_kmallocCache[i].slabs->freeCnt = Page_2MSize / Slab_kmallocCache[i].size;
@@ -68,7 +68,7 @@ void Slab_init() {
     }
 }
 
-void Slab_debugLog() {
+void MM_Slab_debugLog() {
     for (int i = 0; i < 16; i++) {
         printk(ORANGE, BLACK, "Slab_cache[%d]: size = %d, usingCnt = %d, freeCnt = %d\n", 
             i, Slab_kmallocCache[i].size, Slab_kmallocCache[i].usingCnt, Slab_kmallocCache[i].freeCnt);
@@ -85,7 +85,7 @@ void Slab_pushNewSlab(int id) {
     Page *page2M = alloc2MPage();
     Slab *slab;
     if (page2M == NULL) {
-        printk(RED, BLACK, "Slab_pushNewSlab: Buddy_alloc failed\n");
+        printk(RED, BLACK, "Slab_pushNewSlab: MM_Buddy_alloc failed\n");
         return ;
     }
     u64 structSize = 0; void *virtAddr;
@@ -164,10 +164,10 @@ void Slab_destroySlab(int id, Slab *slab) {
     List_del(&slab->listEle);
     Slab_kmallocCache[id].freeCnt -= slab->freeCnt;
     if (0 <= id && id < 5) {
-        Buddy_free(slab->page);
+        MM_Buddy_free(slab->page);
     } else {
         kfree(slab->colMap);
-        Buddy_free(slab->page);
+        MM_Buddy_free(slab->page);
         kfree(slab);
     }
 }

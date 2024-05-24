@@ -91,10 +91,10 @@ struct GlobalMemManageStruct {
 
 extern struct GlobalMemManageStruct memManageStruct;
 
-void Init_memManage();
+void MM_init();
 
-void BsMemMange_setPageAttr(Page *page, u64 attr);
-u64 BsMemManage_getPageAttr(Page *page);
-Page *BsMemManage_alloc(u64 num, u64 attr);
+void MM_Bs_setPageAttr(Page *page, u64 attr);
+u64 MM_Bs_getPageAttr(Page *page);
+Page *MM_Bs_alloc(u64 num, u64 attr);
 
 #endif

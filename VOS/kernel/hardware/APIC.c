@@ -12,19 +12,19 @@ struct APIC_IOAddrMap {
     u32 *virtEOIAddr;
 } APIC_ioMap;
 
-u64 APIC_getReg_IA32_APIC_BASE() { return IO_readMSR(0x1b); }
+u64 Hardware_APIC_getReg_IA32_APIC_BASE() { return IO_readMSR(0x1b); }
 
-void APIC_setReg_IA32_APIC_BASE(u64 value) { IO_writeMSR(0x1b, value); }
+void HW_APIC_setReg_IA32_APIC_BASE(u64 value) { IO_writeMSR(0x1b, value); }
 void APIC_setReg_IA32_APIC_BASE_address(u64 phyAddr) { 
-    APIC_setReg_IA32_APIC_BASE(phyAddr | APIC_getReg_IA32_APIC_BASE() & ((1ul << 12) - 1)); 
+    HW_APIC_setReg_IA32_APIC_BASE(phyAddr | Hardware_APIC_getReg_IA32_APIC_BASE() & ((1ul << 12) - 1)); 
 }
 void APIC_initLocal() {
     printk(RED, BLACK, "APIC_initLocal()\n");
-    apicRegPage = (Page *)Buddy_alloc(0, Page_Flag_Kernel);
+    apicRegPage = (Page *)MM_Buddy_alloc(0, Page_Flag_Kernel);
     memset(DMAS_phys2Virt(apicRegPage->phyAddr), 0, Page_4KSize);
     APIC_setReg_IA32_APIC_BASE_address(apicRegPage->phyAddr);
     u32 eax, ebx, ecx, edx;
-    CPU_getID(1, 0, &eax, &ebx, &ecx, &edx);
+    HW_CPU_getID(1, 0, &eax, &ebx, &ecx, &edx);
     printk(WHITE, BLACK, "CPUID\t01, eax: %#010x, ebx: %#010x, ecx: %#010x, edx: %#010x\n", eax, ebx, ecx, edx);
 
     // check the support of APIC & xAPIC
@@ -137,7 +137,7 @@ void APIC_initLocal() {
 }
 
 void APIC_mapIOAddr() {
-	PageTable_map(getCR3(), 0xfec00000 + kernelAddrStart, 0xfec00000);
+	MM_PageTable_map(getCR3(), 0xfec00000 + kernelAddrStart, 0xfec00000);
     APIC_ioMap.phyAddr = 0xfec00000;
     
     printk(WHITE, BLACK, "APIC IO Address: %#08x\n", APIC_ioMap.phyAddr);
@@ -162,7 +162,7 @@ u64 APIC_readRTE(u8 index) {
     return ret;
 }
 
-void APIC_writeRTE(u8 index, u64 val) {
+void HW_APIC_writeRTE(u8 index, u64 val) {
     *APIC_ioMap.virtIndexAddr = index;
     IO_mfence();
     *APIC_ioMap.virtDataAddr = val & 0xffffffff;
@@ -180,26 +180,26 @@ int enable[0x40] = {0};
 
 #define handlerId(intrId) ((((intrId) - 0x10) >> 1) + 0x20)
 
-void APIC_disableAll() {
-    for (int i = 0x10; i < 0x40; i += 2) enable[i] = 0, APIC_writeRTE(i, 0x10000 + i);
+void HW_APIC_disableAll() {
+    for (int i = 0x10; i < 0x40; i += 2) enable[i] = 0, HW_APIC_writeRTE(i, 0x10000 + i);
 }
-void APIC_enableAll() {
-    for (int i = 0x10; i < 0x40; i += 2) enable[i] = 1, APIC_writeRTE(i, handlerId(i));
-}
-
-void APIC_suspend() {
-    for (int i = 0x10; i < 0x40; i += 2) if (enable[i]) APIC_writeRTE(i, 0x10000 + i);
-}
-void APIC_resume() {
-    for (int i = 0x10; i < 0x40; i += 2) if (enable[i]) APIC_writeRTE(i, handlerId(i));
+void HW_APIC_enableAll() {
+    for (int i = 0x10; i < 0x40; i += 2) enable[i] = 1, HW_APIC_writeRTE(i, handlerId(i));
 }
 
-void APIC_disableIntr(u8 intrId) {
-    APIC_writeRTE(intrId, 0x10000 + intrId), enable[intrId] = 0;
+void HW_APIC_suspend() {
+    for (int i = 0x10; i < 0x40; i += 2) if (enable[i]) HW_APIC_writeRTE(i, 0x10000 + i);
+}
+void HW_APIC_resume() {
+    for (int i = 0x10; i < 0x40; i += 2) if (enable[i]) HW_APIC_writeRTE(i, handlerId(i));
 }
 
-void APIC_enableIntr(u8 intrId) {
-    APIC_writeRTE(((intrId - 0x20) << 1) + 0x10, intrId), enable[intrId] = 1;
+void HW_APIC_disableIntr(u8 intrId) {
+    HW_APIC_writeRTE(intrId, 0x10000 + intrId), enable[intrId] = 0;
+}
+
+void HW_APIC_enableIntr(u8 intrId) {
+    HW_APIC_writeRTE(((intrId - 0x20) << 1) + 0x10, intrId), enable[intrId] = 1;
 }
 
 void APIC_initIO() {
@@ -213,13 +213,13 @@ void APIC_initIO() {
     *APIC_ioMap.virtIndexAddr = 0x01;
     IO_mfence();
     printk(WHITE, BLACK, "IOAPIC VER REG: %#010x VER: %#010x\n", *APIC_ioMap.virtDataAddr, ((*APIC_ioMap.virtDataAddr >> 16) & 0xff) + 1);
-    APIC_disableAll();
+    HW_APIC_disableAll();
     printk(GREEN, BLACK, "IOAPIC Redirection Table Entries initialized\n");
 }
 
 int APIC_flag = 0;
 
-void Init_APIC() {
+void HW_APIC_init() {
     APIC_mapIOAddr();
     
     IO_out8(0x21, 0xff);
@@ -237,4 +237,4 @@ void Init_APIC() {
     APIC_flag = 1;
 }
 
-int APIC_finishedInit() { return APIC_flag; }
+int HW_APIC_finishedInit() { return APIC_flag; }

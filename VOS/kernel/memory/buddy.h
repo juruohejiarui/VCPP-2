@@ -2,16 +2,16 @@
 #define __MEMORY_BUDDY_H__
 #include "desc.h"
 
-int Page_getOrder(Page *page);
-void Page_setOrder(Page *page, int order);
+int MM_Buddy_getOrder(Page *page);
+void MM_Buddy_setOrder(Page *page, int order);
 
-void Buddy_init();
-Page *Buddy_alloc(u64 log2Size, u64 attr);
-void Buddy_free(Page *page);
-void Buddy_debugLog(int range);
+void MM_Buddy_init();
+Page *MM_Buddy_alloc(u64 log2Size, u64 attr);
+void MM_Buddy_free(Page *page);
+void MM_Buddy_debugLog(int range);
 
 // divide a page frame which is allocated and returns the head page of the right buddy.
-Page *Buddy_dividePageFrame(Page *headPage);
+Page *MM_Buddy_divPageFrame(Page *headPage);
 
 
 #endif

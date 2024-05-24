@@ -26,8 +26,22 @@ struct EFI_E820MemoryDescriptorInfo
 	EFI_E820MemoryDescriptor entry[0];
 };
 
+typedef struct {
+	u32 Data1;
+	u16 Data2;
+	u16 Data3;
+	u8 Data4[8];
+} EFI_GUID;
+
+struct EFI_CONFIGURATION_TABLE {
+	EFI_GUID VendorGuid;
+	void *VendorTable;
+};
+
 struct KernelBootParameterInfo
 {
+	u64 ConfigurationTableCount;
+	struct EFI_CONFIGURATION_TABLE *ConfigurationTable;
 	struct EFI_GraphicsOutputInfo graphicsInfo;
 	struct EFI_E820MemoryDescriptorInfo E820Info;
 };

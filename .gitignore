@@ -4,5 +4,6 @@
 /TestEnv/*.vdef
 /TestEnv/*.vtd
 /VOS/kernel-temp
+/VOS/edk2
 VOS/a.log
 a.log

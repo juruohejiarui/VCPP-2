@@ -5,6 +5,7 @@
 #include "../hardware/8259A.h"
 #include "../hardware/APIC.h"
 
-
+#include "../hardware/timer/cmos.h"
+#include "../hardware/timer/hpet.h"
 
 #endif

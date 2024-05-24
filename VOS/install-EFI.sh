@@ -16,8 +16,8 @@ else
     echo -e "${RED_COLOR}=== copying files ===${RESET}"
 	python3 waitForGoalDisk.py ${GOAL_DISK}
     sudo mount ${GOAL_DISK} /mnt/
-    sudo cp ./BootLoader.efi /mnt/EFI/BOOT/boot.efi
-	sudo cp ./BootLoader.efi /mnt/EFI/BOOT/BOOTX64.efi
+	sudo cp ./BootLoader2.efi /mnt/EFI/BOOT/BOOTX64.efi
+	sudo cp ./BootLoader2.efi /mnt/EFI/BOOT/boot.efi
     sudo cp ./kernel/kernel.bin /mnt/
     sudo sync
     sudo umount /mnt/

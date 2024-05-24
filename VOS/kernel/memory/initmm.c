@@ -10,7 +10,7 @@
 struct GlobalMemManageStruct memManageStruct = {{0}, 0};
 
 // initialize the zones, pages and bitmaps
-static void initArray() {
+static void _initArray() {
     printk(RED, BLACK, "initArray()\n");
     int kernelZoneId = -1;
     u64 totPage = 0;
@@ -92,7 +92,7 @@ static void initArray() {
     return ;
 }
 
-void Init_memManage() {
+void MM_init() {
     EFI_E820MemoryDescriptor *p = (EFI_E820MemoryDescriptor *)bootParamInfo->E820Info.entry;
     u64 totMem = 0;
     printk(WHITE, BLACK, "Display Physics Address MAP,Type(1:RAM,2:ROM or Reserved,3:ACPI Reclaim Memory,4:ACPI NVS Memory,Others:Undefine)\n");
@@ -127,19 +127,19 @@ void Init_memManage() {
     flushTLB();
 
     DMAS_init();
-    initArray();
-    Buddy_init();
-    PageTable_init();
+    _initArray();
+    MM_Buddy_init();
+    MM_PageTable_init();
 
     printk(WHITE, BLACK, "totMemSize = %#018lx Byte = %ld MB\n", memManageStruct.totMemSize, memManageStruct.totMemSize >> 20);
 
-    Slab_init();
+    MM_Slab_init();
 }
 
-inline void BsMemMange_setPageAttr(Page *page, u64 attr) { page->attr = attr; }
-inline u64 BsMemManage_getPageAttr(Page *page) { return page->attr; }
+inline void MM_Bs_setPageAttr(Page *page, u64 attr) { page->attr = attr; }
+inline u64 MM_Bs_getPageAttr(Page *page) { return page->attr; }
 
-Page *BsMemManage_alloc(u64 num, u64 attr) {
+Page *MM_Bs_alloc(u64 num, u64 attr) {
     for (int i = 1; i < memManageStruct.zonesLength; i++) {
         Zone *zone = memManageStruct.zones + i;
         if (zone->freeCnt < num) continue;
@@ -149,7 +149,7 @@ Page *BsMemManage_alloc(u64 num, u64 attr) {
         u64 bitPos = stPage - memManageStruct.pages;
         // set the attribute of the pages
         for (int j = 0; j < num; j++) 
-            BsMemMange_setPageAttr(stPage + j, attr);
+            MM_Bs_setPageAttr(stPage + j, attr);
         return stPage;
     }
     return NULL;

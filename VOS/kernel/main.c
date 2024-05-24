@@ -27,19 +27,20 @@ void startKernel() {
 
     printk(RED, BLACK, "availAddrSt = %#018lx\n", availVirtAddrSt);
 
-    Gate_loadTR(10);
-    Gate_setTSS(
+    Intr_Gate_loadTR(10);
+    Intr_Gate_setTSS(
             0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00,
             0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00);
 
-    Init_systemVector();
-    Init_memManage();
+	printk(BLACK, WHITE, "There are %d entries in configuration table\n", bootParamInfo->ConfigurationTableCount);
+    Intr_Trap_setSysVec();
+    MM_init();
 
-    Init_interrupt();
+    Intr_init();
 
-    Init_CPU();
+    HW_CPU_init();
 
-    Init_syscall();
+    Task_Syscall_init();
     Init_task();
     
     while (1) ;

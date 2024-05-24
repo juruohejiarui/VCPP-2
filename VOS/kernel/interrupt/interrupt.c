@@ -47,7 +47,7 @@ __asm__ ( \
     "leaq "SYMBOL_NAME_STR(irq)#num"Interrupt_end(%rip), %rax	\n\t" \
     "pushq %rax 		\n\t" \
     "movq $"#num", %rsi \n\t" \
-    "leaq Intr_irqDistribute(%rip), %rax 	\n\t" \
+    "leaq Intr_irqdispatch(%rip), %rax 	\n\t" \
 	"jmp *%rax			\n\t" \
 	SYMBOL_NAME_STR(irq)#num"Interrupt_end: \n\t" \
 	"movq %rax, %rdi 	\n\t" \
@@ -137,7 +137,7 @@ int Intr_register(u64 irqId, void *arg, IntrHandler handler, u64 param, IntrCont
 	}
 
 	#ifdef APIC
-	APIC_enableIntr(irqId);
+	HW_APIC_enableIntr(irqId);
 	#endif
 	return 0;
 }
@@ -153,7 +153,7 @@ void Intr_unregister(u64 irqId) {
 	desc->handler = NULL;
 }
 
-u64 Intr_irqDistribute(u64 rsp, u64 irqId) {
+u64 Intr_irqdispatch(u64 rsp, u64 irqId) {
 	IntrDescriptor *desc = &Intr_descriptor[irqId - 0x20];
 	u64 res = NULL;
 	if (desc->handler != NULL)
@@ -163,10 +163,10 @@ u64 Intr_irqDistribute(u64 rsp, u64 irqId) {
 	return res;
 }
 
-void Init_interrupt() {
-	for (int i = 32; i < 56; i++) Gate_setIntr(i, 2, intrList[i - 32]);
+void Intr_init() {
+	for (int i = 32; i < 56; i++) Intr_Gate_setIntr(i, 2, intrList[i - 32]);
 #ifdef APIC
-    Init_APIC();
+    HW_APIC_init();
 #else
     Init_8259A();
 #endif

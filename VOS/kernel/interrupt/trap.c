@@ -197,7 +197,7 @@ u64 doPageFault(u64 rsp, u64 errorCode) {
 	__asm__ volatile("movq %%cr2, %0":"=r"(cr2)::"memory");
 	p = (u64 *)(rsp + 0x98);
 	printk(RED,BLACK,"do_page_fault(14),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx,CR2:%#018lx\n",errorCode , rsp , *p , cr2);
-	u64 pldEntry = PageTable_getPldEntry(getCR3(), cr2);
+	u64 pldEntry = MM_PageTable_getPldEntry(getCR3(), cr2);
 	// blank pldEntry means the page is not mapped
 	
 	if (pldEntry == 0) {
@@ -223,8 +223,8 @@ u64 doPageFault(u64 rsp, u64 errorCode) {
 		while(1);
 	}
 	// map this virtual address without physics page
-	Page *page = Buddy_alloc(0, Page_Flag_Active);
-	PageTable_map(getCR3(), cr2 & ~0xfff, page->phyAddr);
+	Page *page = MM_Buddy_alloc(0, Page_Flag_Active);
+	MM_PageTable_map(getCR3(), cr2 & ~0xfff, page->phyAddr);
 	// printk(WHITE, BLACK, "rflag = %#018lx\n", IO_getRflags());
 	return 0;
 }
@@ -264,26 +264,26 @@ void doVirtualizationError(u64 rsp, u64 errorCode) {
 	while(1);
 }
 
-void Init_systemVector() {
-    Gate_setTrap(0, 1, divideError);
-	Gate_setTrap(1, 1, debug);
-	Gate_setIntr(2, 1, nmi);
-	Gate_setSystem(3, 1, int3);
-	Gate_setSystem(4, 1, overflow);
-	Gate_setSystem(5, 1, bounds);
-	Gate_setTrap(6, 1, undefinedOpcode);
-	Gate_setTrap(7, 1, devNotAvailable);
-	Gate_setTrap(8, 1, doubleFault);
-	Gate_setTrap(9, 1, coprocessorSegmentOverrun);
-	Gate_setTrap(10, 1, invalidTSS);
-	Gate_setTrap(11, 1, segmentNotPresent);
-	Gate_setTrap(12, 1, stackSegmentFault);
-	Gate_setTrap(13, 1, generalProtection);
-	Gate_setTrap(14, 1, pageFault);
+void Intr_Trap_setSysVec() {
+    Intr_Gate_setTrap(0, 1, divideError);
+	Intr_Gate_setTrap(1, 1, debug);
+	Intr_Gate_setIntr(2, 1, nmi);
+	Intr_Gate_setSystem(3, 1, int3);
+	Intr_Gate_setSystem(4, 1, overflow);
+	Intr_Gate_setSystem(5, 1, bounds);
+	Intr_Gate_setTrap(6, 1, undefinedOpcode);
+	Intr_Gate_setTrap(7, 1, devNotAvailable);
+	Intr_Gate_setTrap(8, 1, doubleFault);
+	Intr_Gate_setTrap(9, 1, coprocessorSegmentOverrun);
+	Intr_Gate_setTrap(10, 1, invalidTSS);
+	Intr_Gate_setTrap(11, 1, segmentNotPresent);
+	Intr_Gate_setTrap(12, 1, stackSegmentFault);
+	Intr_Gate_setTrap(13, 1, generalProtection);
+	Intr_Gate_setTrap(14, 1, pageFault);
 	// 15 reserved
-	Gate_setTrap(16, 1, x87FPUError);
-	Gate_setTrap(17, 1, alignmentCheck);
-	Gate_setTrap(18, 1, machineCheck);
-	Gate_setTrap(19, 1, simdError);
-	Gate_setTrap(20, 1, virtualizationError);
+	Intr_Gate_setTrap(16, 1, x87FPUError);
+	Intr_Gate_setTrap(17, 1, alignmentCheck);
+	Intr_Gate_setTrap(18, 1, machineCheck);
+	Intr_Gate_setTrap(19, 1, simdError);
+	Intr_Gate_setTrap(20, 1, virtualizationError);
 }
