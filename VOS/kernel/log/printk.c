@@ -170,15 +170,15 @@ int sprintf(char *buf, const char *fmt, va_list args) {
 void scroll(void) {
     int x, y;
     unsigned int *addr = position.FBAddr, 
-                *addr2 = position.FBAddr + position.YCharSize * bootParamInfo->graphicsInfo.PixelsPerScanLine;
+                *addr2 = position.FBAddr + position.YCharSize * HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine;
     for (int i = 0; i < position.YPosition - 1; i++) {
         for (int j = 0; j < position.YCharSize; j++)
             memcpy(
-                    addr2 + j * bootParamInfo->graphicsInfo.PixelsPerScanLine, 
-                    addr + j * bootParamInfo->graphicsInfo.PixelsPerScanLine,
+                    addr2 + j * HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine, 
+                    addr + j * HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine,
                     max(lineLength[i + 1], lineLength[i]) * position.XCharSize * sizeof(u32));
-        addr += bootParamInfo->graphicsInfo.PixelsPerScanLine * position.YCharSize;
-        addr2 += bootParamInfo->graphicsInfo.PixelsPerScanLine * position.YCharSize;
+        addr += HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine * position.YCharSize;
+        addr2 += HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine * position.YCharSize;
         lineLength[i] = lineLength[i + 1];
     }
     memset(addr, 0, position.XResolution * position.YCharSize * sizeof(u32));
@@ -191,7 +191,7 @@ void drawchar(unsigned int fcol, unsigned int bcol, int px, int py, char ch) {
     unsigned int *addr;
     unsigned char *fontp = font_ascii[ch];
         for (y = 0; y < position.YCharSize; y++, fontp++) {
-            addr = position.FBAddr + bootParamInfo->graphicsInfo.PixelsPerScanLine * (py + y) + px;
+            addr = position.FBAddr + HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine * (py + y) + px;
             testVal = 0x80;
             for (x = 0; x < position.XCharSize; x++, addr++, testVal >>= 1) {
                 if (*fontp & testVal) *addr = fcol;
@@ -237,7 +237,7 @@ void printStr(unsigned int fcol, unsigned int bcol, const char *str, int len) {
 void clearScreen() {
 	u64 prevState = (IO_getRflags() >> 9) & 1;
 	if (prevState) IO_cli();
-	memset(position.FBAddr, 0, (position.YPosition + 1) * position.YCharSize * bootParamInfo->graphicsInfo.PixelsPerScanLine * sizeof(u32));
+	memset(position.FBAddr, 0, (position.YPosition + 1) * position.YCharSize * HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine * sizeof(u32));
 	memset(lineLength, 0, 4096 * sizeof(u32));
 	position.XPosition = 0, position.YPosition = 0;
 	 if (prevState) IO_sti();

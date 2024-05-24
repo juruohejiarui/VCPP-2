@@ -43,7 +43,7 @@ extern char _end;
 #define kernelAddrStart 0xffff800000000000ul
 #define kernelAddrEd    0xfffffffffffffffful
 
-#define availVirtAddrSt ((u64 *)Page_4KUpAlign(0xffff800003000000ul + bootParamInfo->graphicsInfo.FrameBufferSize))
+#define availVirtAddrSt ((u64 *)Page_4KUpAlign(0xffff800003000000ul + HW_UEFI_bootParamInfo->graphicsInfo.FrameBufferSize))
 
 #define Segment_kernelData 0x10
 #define Segment_kernelCode 0x18

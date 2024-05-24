@@ -10,8 +10,8 @@ void drawPoint(int x, int y, unsigned int color) {
 }
 
 void startKernel() {
-    position.XResolution = bootParamInfo->graphicsInfo.HorizontalResolution & 0xffff;
-	position.YResolution = bootParamInfo->graphicsInfo.VerticalResolution & 0xffff;
+    position.XResolution = HW_UEFI_bootParamInfo->graphicsInfo.HorizontalResolution & 0xffff;
+	position.YResolution = HW_UEFI_bootParamInfo->graphicsInfo.VerticalResolution & 0xffff;
     position.XCharSize = 8;
     position.YCharSize = 16;
 
@@ -21,9 +21,9 @@ void startKernel() {
     printk(RED, BLACK, "hello world\n");
 
     printk(RED, BLACK, "FrameBufferBase: %#018lx, FrameBufferSize: %#018lx, HorizontalResolution: %#08lx, VerticalResolution: %#08x, PixelsPerScanLine: %#08x\n",
-        bootParamInfo->graphicsInfo.FrameBufferBase, bootParamInfo->graphicsInfo.FrameBufferSize,
-        bootParamInfo->graphicsInfo.HorizontalResolution, bootParamInfo->graphicsInfo.VerticalResolution,
-        bootParamInfo->graphicsInfo.PixelsPerScanLine);
+        HW_UEFI_bootParamInfo->graphicsInfo.FrameBufferBase, 		HW_UEFI_bootParamInfo->graphicsInfo.FrameBufferSize,
+        HW_UEFI_bootParamInfo->graphicsInfo.HorizontalResolution, 	HW_UEFI_bootParamInfo->graphicsInfo.VerticalResolution,
+        HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine);
 
     printk(RED, BLACK, "availAddrSt = %#018lx\n", availVirtAddrSt);
 
@@ -32,16 +32,16 @@ void startKernel() {
             0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00,
             0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00);
 
-	printk(BLACK, WHITE, "There are %d entries in configuration table\n", bootParamInfo->ConfigurationTableCount);
+	printk(BLACK, WHITE, "There are %d entries in configuration table\n", HW_UEFI_bootParamInfo->ConfigurationTableCount);
     Intr_Trap_setSysVec();
     MM_init();
 
     Intr_init();
 
     HW_CPU_init();
-
-    Task_Syscall_init();
-    Init_task();
+	HW_Timer_HPET_init();
+    // Task_Syscall_init();
+    // Init_task();
     
     while (1) ;
 }

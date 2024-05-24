@@ -3,6 +3,39 @@
 
 #include "../includes/lib.h"
 
+// ACPI2.0 GUID
+#define HW_UEFI_GUID_ACPI2_data1 0x8868e871
+#define HW_UEFI_GUID_ACPI2_data2 0xe4f1
+#define HW_UEFI_GUID_ACPI2_data3 0x11d3
+#define HW_UEFI_GUID_ACPI2_data4 {0xbc, 0x22, 0x0, 0x80, 0xc7, 0x3c, 0x88, 0x81}
+
+// ACPI2.0 RSDP
+typedef struct {
+	u8 signature[8];
+	u8 chkSum;
+	u8 OEMID[6];
+	u8 revision;
+	u32 RsdtAddress;
+	u32 length;
+	u64 xsdtAddr;
+	u8 extendedChkSum;
+	u8 reserved[3];
+} __attribute__ ((packed)) RSDPDescriptor;
+
+// ACPI2.0 XSDT
+typedef struct {
+	u8 signature[4];
+	u32 length;
+	u8 revision;
+	u8 chkSum;
+	u8 OEMID[6];
+	u8 OEMTableID[8];
+	u32 OEMRevision;
+	u32 creatorID;
+	u32 creatorRevision;
+	u64 entry[0];
+} __attribute__ ((packed)) XSDTDescriptor;
+
 struct EFI_GraphicsOutputInfo
 {
 	u32 HorizontalResolution;
@@ -46,5 +79,5 @@ struct KernelBootParameterInfo
 	struct EFI_E820MemoryDescriptorInfo E820Info;
 };
 
-extern struct KernelBootParameterInfo *bootParamInfo;
+extern struct KernelBootParameterInfo *HW_UEFI_bootParamInfo;
 #endif
