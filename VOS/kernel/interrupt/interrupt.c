@@ -4,6 +4,7 @@
 #include "../includes/log.h"
 #include "../includes/task.h"
 #include "interrupt.h"
+#include "softirq.h"
 
 extern void restoreAll();
 
@@ -93,30 +94,6 @@ void (*intrList[24])(void) = {
     irq0x34Interrupt, irq0x35Interrupt, irq0x36Interrupt, irq0x37Interrupt
 };
 
-IntrHandlerDeclare(Intr_keyboard) {
-	u8 x = IO_in8(0x60);
-	printk(RED, BLACK, "\tkey: %#08x", x);
-	printk(BLACK, WHITE, "irqId: %d, res: %#018lx\n", num, 0);
-	return NULL;
-}
-
-IntrHandlerDeclare(Intr_timer) {
-	if (Task_current->state != Task_State_Uninterruptible && Task_countDown()) {
-		Task_current->counter = 1;
-		Task_current->thread->rsp = (u64)regs;
-		__asm__ volatile (
-			"pushfq		\n\t"
-			"popq %0	\n\t"
-			: "=m"(Task_current->thread->rflags)
-			:
-			: "memory"
-		);
-		Task_current->thread->rip = (u64)restoreAll;
-		return (u64)Task_switch;
-	}
-	return NULL;
-}
-
 IntrHandlerDeclare(Intr_noHandler) {
 	printk(RED, BLACK, "No handler for interrupt %d\n", num);
 	return NULL;
@@ -135,10 +112,6 @@ int Intr_register(u64 irqId, void *arg, IntrHandler handler, u64 param, IntrCont
 		desc->controller->install(irqId, arg);
 		desc->controller->enable(irqId);
 	}
-
-	#ifdef APIC
-	HW_APIC_enableIntr(irqId);
-	#endif
 	return 0;
 }
 
@@ -171,6 +144,7 @@ void Intr_init() {
     Init_8259A();
 #endif
 	memset(Intr_descriptor, 0, sizeof(Intr_descriptor));
-	Intr_register(0x21, NULL, Intr_keyboard, 0, NULL, "keyboard");
+
+	Intr_SoftIrq_init();
 	IO_sti();
 }

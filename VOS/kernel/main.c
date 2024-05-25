@@ -39,7 +39,12 @@ void startKernel() {
     Intr_init();
 
     HW_CPU_init();
-	HW_Timer_HPET_init();
+	HW_Timer_init();
+
+    CMOSDateTime dateTime;
+    HW_Timer_CMOS_getDateTime(&dateTime);
+    printk(RED, BLACK, "Current time: %x-%x-%x %x:%x:%x\n", dateTime.year, dateTime.month, dateTime.day, dateTime.hour, dateTime.minute, dateTime.second);
+    
     // Task_Syscall_init();
     // Init_task();
     

@@ -11,7 +11,6 @@ extern void Intr_retFromIntr();
 u64 init(u64 (*usrEntry)(u64), u64 arg) {
     if (Task_current->pid == 0) {
         List_del(&Init_taskStruct.listEle);
-        Intr_register(0x22, NULL, Intr_timer, 0, NULL, "timer");
         IO_sti();
     }
 	u64 rsp = 0;

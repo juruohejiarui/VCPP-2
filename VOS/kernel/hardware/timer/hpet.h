@@ -11,30 +11,31 @@ typedef struct {
 	u64 Address;
 } __attribute__ ((packed)) AddressStructure;
 typedef struct {
-	u8 signature[4];
-	u32 length;
-	u8 revision;
-	u8 checksum;
-	u8 OEMID[6];
-	u64 OEMTableID;
-	u32 OEMRevision;
-	u32 creatorID;
-	u32 creatorRevision;
+	u8 signature[4];  	// 0-3
+	u32 length;			// 4-7
+	u8 revision;		// 8
+	u8 checksum;		// 9
+	u8 OEMID[6];		// 10-15
+	u64 OEMTableID;		// 16-23
+	u32 OEMRevision;	// 24-27
+	u32 creatorID;		// 28-31
+	u32 creatorRevision;// 32-35
 
-	u8 hardwareRevID;
-	u8 comparatorCount : 5;
-	u8 counterSize : 1;
-	u8 reserved : 1;
-	u8 legacyReplacement : 1;
-	u16 pciVendorID;
-	AddressStructure address;
-	u32 hpetNumber;
-	u16 minimumTick;
-	u8 pageProtection;
+	u8 hardwareRevID;			// 36
+	u8 comparatorCount : 5;		// 37-41
+	u8 counterSize : 1;			// 42
+	u8 reserved : 1;			// 43
+	u8 legacyReplacement : 1; 	// 44
+	u16 pciVendorID;			// 45-46
+	AddressStructure address; 	// 47-63
+	u32 hpetNumber;				// 64-67
+	u16 minimumTick;			// 68-69
+	u8 pageProtection;			// 70
 } __attribute__ ((packed)) HPETDescriptor;
 
 #define HW_Timer_HPET_Signature "HPET"
 
 void HW_Timer_HPET_init();
+u64 HW_Timer_HPET_jiffies();
 
 #endif

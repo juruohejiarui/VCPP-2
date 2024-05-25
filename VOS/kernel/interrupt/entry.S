@@ -62,9 +62,14 @@ ENTRY(restoreAll)
 
 retFromException:
 ENTRY(Intr_retFromIntr)
-    test %rax, %rax
-    jz restoreAll
-    jmp *%rax
+    movq $-1, %rcx
+    testq Intr_SoftIrq_state(%rip), %rcx
+    jnz _softirqHandler
+    jmp restoreAll
+
+_softirqHandler:
+    callq Intr_SoftIrq_dispatch
+    jmp restoreAll
 
 ENTRY(divideError)
     cli 

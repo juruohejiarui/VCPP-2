@@ -3,5 +3,6 @@
 #include "../interrupt/gate.h"
 #include "../interrupt/trap.h"
 #include "../interrupt/interrupt.h"
+#include "../interrupt/softirq.h"
 
 #endif

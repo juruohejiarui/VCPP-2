@@ -2,13 +2,13 @@
 #define __INTERRUPT_INTERRUPT_H__
 
 typedef struct {
-	void (*enable)(u64 irqId);
-	void (*disable)(u64 irqId);
+	void (*enable)(u8 irqId);
+	void (*disable)(u8 irqId);
 
-	u64 (*install)(u64 irqId, void *arg);
-	void (*uninstall)(u64 irqId);
+	void (*install)(u8 irqId, void *arg);
+	void (*uninstall)(u8 irqId);
 
-	void (*ack)(u64 irqId);
+	void (*ack)(u8 irqId);
 } IntrController;
 
 typedef u64 (*IntrHandler)(u64 arg, PtReg *regs);

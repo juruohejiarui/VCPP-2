@@ -178,30 +178,39 @@ void HW_APIC_writeRTE(u8 index, u64 val) {
 
 int enable[0x40] = {0};
 
-#define handlerId(intrId) ((((intrId) - 0x10) >> 1) + 0x20)
-
-void HW_APIC_disableAll() {
-    for (int i = 0x10; i < 0x40; i += 2) enable[i] = 0, HW_APIC_writeRTE(i, 0x10000 + i);
-}
-void HW_APIC_enableAll() {
-    for (int i = 0x10; i < 0x40; i += 2) enable[i] = 1, HW_APIC_writeRTE(i, handlerId(i));
-}
+#define handlerId(intrId) (((intrId - 0x20) << 1) + 0x10)
 
 void HW_APIC_suspend() {
-    for (int i = 0x10; i < 0x40; i += 2) if (enable[i]) HW_APIC_writeRTE(i, 0x10000 + i);
+    for (int i = 0x10; i < 0x40; i += 2) if (enable[i]) HW_APIC_disableIntr(i);
 }
 void HW_APIC_resume() {
-    for (int i = 0x10; i < 0x40; i += 2) if (enable[i]) HW_APIC_writeRTE(i, handlerId(i));
+    for (int i = 0x10; i < 0x40; i += 2) if (enable[i]) HW_APIC_enableIntr(i);
 }
 
 void HW_APIC_disableIntr(u8 intrId) {
-    HW_APIC_writeRTE(intrId, 0x10000 + intrId), enable[intrId] = 0;
+    u64 val = APIC_readRTE(handlerId(intrId));
+    val |= 0x10000ul;
+    HW_APIC_writeRTE(handlerId(intrId), val);
+    enable[handlerId(intrId)] = 0;
 }
 
 void HW_APIC_enableIntr(u8 intrId) {
-    HW_APIC_writeRTE(((intrId - 0x20) << 1) + 0x10, intrId), enable[intrId] = 1;
+    u64 val = APIC_readRTE(handlerId(intrId));
+    val &= ~0x10000ul;
+    HW_APIC_writeRTE(handlerId(intrId), val);
+    enable[handlerId(intrId)] = 1;
 }
 
+void HW_APIC_install(u8 intrId, void *arg) {
+    APICRteDescriptor *desc = (APICRteDescriptor *)arg;
+    HW_APIC_writeRTE(handlerId(intrId), *(u64 *)desc);
+    enable[handlerId(intrId)] = 1;
+}
+
+void HW_APIC_uninstall(u8 intrId) {
+    HW_APIC_writeRTE(handlerId(intrId), 0x10000ul);
+    enable[handlerId(intrId)] = 0;
+}
 void APIC_initIO() {
     *APIC_ioMap.virtIndexAddr = 0x00;
     IO_mfence();
@@ -213,7 +222,6 @@ void APIC_initIO() {
     *APIC_ioMap.virtIndexAddr = 0x01;
     IO_mfence();
     printk(WHITE, BLACK, "IOAPIC VER REG: %#010x VER: %#010x\n", *APIC_ioMap.virtDataAddr, ((*APIC_ioMap.virtDataAddr >> 16) & 0xff) + 1);
-    HW_APIC_disableAll();
     printk(GREEN, BLACK, "IOAPIC Redirection Table Entries initialized\n");
 }
 
