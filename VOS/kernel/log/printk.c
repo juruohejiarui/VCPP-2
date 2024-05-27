@@ -5,7 +5,7 @@
 #include "../includes/task.h"
 #include "font.h"
 
-u32 lineLength[4096] = { [0 ... 4095] = 0 };
+static u32 lineLength[4096] = { [0 ... 4095] = 0 };
 
 #define isDigit(ch) ((ch) >= '0' && (ch) <= '9')
 
@@ -15,7 +15,7 @@ static const unsigned int flag_fill_zero = 0x01,
                             flag_sign = 0x08, 
                             flag_special = 0x10;
 
-int skipAtoI(const char **fmt) {
+static int _skipAtoI(const char **fmt) {
     int i = 0, sign = 1;
     if (**fmt == '-') sign = -1, (*fmt)++;
     while (isDigit(**fmt)) {
@@ -30,7 +30,7 @@ int skipAtoI(const char **fmt) {
     __res; \
 })
 
-char *number(char *str, i64 num, int base, int size, int precision, int type) {
+static char *_number(char *str, i64 num, int base, int size, int precision, int type) {
     char c, sign, tmp[66];
     const char *digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     int i;
@@ -93,7 +93,7 @@ int sprintf(char *buf, const char *fmt, va_list args) {
             endScanFlags:
             fld_w = -1, qlf = 0;
             if (isDigit(*fmt))
-                fld_w = skipAtoI(&fmt);
+                fld_w = _skipAtoI(&fmt);
             else if (*fmt == '*') {
                 fld_w = va_arg(args, int);
                 fmt++;
@@ -104,7 +104,7 @@ int sprintf(char *buf, const char *fmt, va_list args) {
             if (*fmt == '.') {
                 fmt++;
                 if (isDigit(*fmt))
-                    prec = skipAtoI(&fmt);
+                    prec = _skipAtoI(&fmt);
                 else if (*fmt == '*') {
                     prec = va_arg(args, int);
                     fmt++;
@@ -137,24 +137,24 @@ int sprintf(char *buf, const char *fmt, va_list args) {
                     while (len < fld_w--) *(str++) = ' ';
                     break;
                 case 'o':
-                    str = number(str, qlf == 'L' ? va_arg(args, unsigned long) : va_arg(args, unsigned int), 8, fld_w, prec, flags);
+                    str = _number(str, qlf == 'L' ? va_arg(args, unsigned long) : va_arg(args, unsigned int), 8, fld_w, prec, flags);
                     break;
                 case 'p':
                     if (fld_w == -1) {
                         fld_w = 2 * sizeof(void *);
                         flags |= flag_fill_zero;
                     }
-                    str = number(str, (unsigned long)va_arg(args, void *), 16, fld_w, prec, flags);
+                    str = _number(str, (unsigned long)va_arg(args, void *), 16, fld_w, prec, flags);
                     break;
                 case 'x':
                 case 'X':
-                    str = number(str, qlf == 'L' ? va_arg(args, unsigned long) : va_arg(args, unsigned int), 16, fld_w, prec, flags);
+                    str = _number(str, qlf == 'L' ? va_arg(args, unsigned long) : va_arg(args, unsigned int), 16, fld_w, prec, flags);
                     break;
                 case 'd':
                 case 'i':
                     flags |= flag_sign;
                 case 'u':
-                    str = number(str, qlf == 'L' ? va_arg(args, unsigned long) : va_arg(args, unsigned int), 10, fld_w, prec, flags);
+                    str = _number(str, qlf == 'L' ? va_arg(args, unsigned long) : va_arg(args, unsigned int), 10, fld_w, prec, flags);
                     break;
                 default:
                     *(str++) = '%';
@@ -167,7 +167,7 @@ int sprintf(char *buf, const char *fmt, va_list args) {
     return str - buf;
 }
 
-void scroll(void) {
+static void _scroll(void) {
     int x, y;
     unsigned int *addr = position.FBAddr, 
                 *addr2 = position.FBAddr + position.YCharSize * HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine;
@@ -185,7 +185,7 @@ void scroll(void) {
     lineLength[position.YPosition - 1] = 0;
 }
 
-void drawchar(unsigned int fcol, unsigned int bcol, int px, int py, char ch) {
+static void _drawchar(unsigned int fcol, unsigned int bcol, int px, int py, char ch) {
     int x, y;
     int testVal;
     unsigned int *addr;
@@ -205,7 +205,7 @@ inline void putchar(unsigned int fcol, unsigned int bcol, char ch) {
     if (ch == '\n') {
         position.YPosition++, position.XPosition = 0;
         if (position.YPosition >= position.YResolution / position.YCharSize) {
-            scroll();
+            _scroll();
             position.YPosition--;
         }
     } else if (ch == '\r') {
@@ -220,7 +220,7 @@ inline void putchar(unsigned int fcol, unsigned int bcol, char ch) {
     } else {
         if (position.XPosition == position.XResolution / position.XCharSize)
             putchar(fcol, bcol, '\n');
-        drawchar(fcol, bcol, position.XCharSize * position.XPosition, position.YCharSize * position.YPosition, ch);
+        _drawchar(fcol, bcol, position.XCharSize * position.XPosition, position.YCharSize * position.YPosition, ch);
         position.XPosition++;
         lineLength[position.YPosition] = position.XPosition;
     }
