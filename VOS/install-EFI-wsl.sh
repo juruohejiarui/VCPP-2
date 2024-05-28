@@ -1,4 +1,4 @@
-BUSID='2-24'
+BUSID='2-5'
 usbipd.exe attach -w Ubuntu-22.04 --busid ${BUSID}
 if [ $? -ne 0 ];then
 	echo -e "${RED_COLOR}==usbipd attach failed!==${RESET}"

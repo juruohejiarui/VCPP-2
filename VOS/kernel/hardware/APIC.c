@@ -95,25 +95,27 @@ void APIC_initLocal() {
         printk(WHITE, BLACK, "Integrated APIC\n");
 
     // mask all LVT entries
-    __asm__ volatile (
-        "movq $0x82f, %%rcx           \n\t" // CMCI
-        "wrmsr                        \n\t"
-        "movq $0x832, %%rcx           \n\t" // Timer
-        "wrmsr                        \n\t"
-        "movq $0x833, %%rcx           \n\t" // Thermal Monitor
-        "wrmsr                        \n\t"
-        "movq $0x834, %%rcx           \n\t" // Performance Counter
-        "wrmsr                        \n\t"
-        "movq $0x835, %%rcx           \n\t" // LINT0
-        "wrmsr                        \n\t"
-        "movq $0x836, %%rcx           \n\t" // LINT1
-        "wrmsr                        \n\t"
-        "movq $0x837, %%rcx           \n\t" // LINT2
-        "wrmsr                        \n\t"
-        :
-        : "a"(0x10000), "d"(0)
-        : "memory"
-    );
+    // __asm__ volatile (
+    //     "movq $0x82f, %%rcx           \n\t" // CMCI
+    //     "wrmsr                        \n\t"
+    //     "movq $0x832, %%rcx           \n\t" // Timer
+    //     "wrmsr                        \n\t"
+    //     "movq $0x833, %%rcx           \n\t" // Thermal Monitor
+    //     "wrmsr                        \n\t"
+    //     "movq $0x834, %%rcx           \n\t" // Performance Counter
+    //     "wrmsr                        \n\t"
+    //     "movq $0x835, %%rcx           \n\t" // LINT0
+    //     "wrmsr                        \n\t"
+    //     "movq $0x836, %%rcx           \n\t" // LINT1
+    //     "wrmsr                        \n\t"
+    //     "movq $0x837, %%rcx           \n\t" // LINT2
+    //     "wrmsr                        \n\t"
+    //     :
+    //     : "a"(0x10000), "d"(0)
+    //     : "memory"
+    // );
+    *(u64 *)DMAS_phys2Virt(0xfee002f0) = 0x100000;
+    for (u64 i = 0x320; i <= 0x370; i += 0x10) *(u64 *)DMAS_phys2Virt(0xfee00000 + i) = 0x100000;
     
     // get TPR
     __asm__ volatile (
@@ -137,11 +139,10 @@ void APIC_initLocal() {
 }
 
 void APIC_mapIOAddr() {
-	MM_PageTable_map(getCR3(), 0xfec00000 + kernelAddrStart, 0xfec00000);
     APIC_ioMap.phyAddr = 0xfec00000;
     
     printk(WHITE, BLACK, "APIC IO Address: %#08x\n", APIC_ioMap.phyAddr);
-    APIC_ioMap.virtIndexAddr = (u8 *)(APIC_ioMap.phyAddr + kernelAddrStart);
+    APIC_ioMap.virtIndexAddr = (u8 *)DMAS_phys2Virt(APIC_ioMap.phyAddr);
     APIC_ioMap.virtDataAddr = (u32 *)(APIC_ioMap.virtIndexAddr + 0x10);
     APIC_ioMap.virtEOIAddr = (u32 *)(APIC_ioMap.virtIndexAddr + 0x40);
 }
