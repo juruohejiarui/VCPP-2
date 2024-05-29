@@ -6,11 +6,11 @@
 
 static u32 _minTick = 0;
 
-IntrController HW_Timer_HPET_intrController;
-IntrHandler HW_Timer_HPET_intrHandler;
-APICRteDescriptor HW_Timer_HPET_intrDesc;
+static IntrController _intrCotroller;
+static IntrHandler _intrHandler;
+static APICRteDescriptor _intrDesc;
 
-HPETDescriptor *_hpetDesc;
+static HPETDescriptor *_hpetDesc;
 static u64 _jiffies = 0;
 
 
@@ -84,28 +84,28 @@ void HW_Timer_HPET_init() {
 	}
 	
 	// initialize controller
-	HW_Timer_HPET_intrController.install = HW_APIC_install;
-	HW_Timer_HPET_intrController.uninstall = HW_APIC_uninstall;
+	_intrCotroller.install = HW_APIC_install;
+	_intrCotroller.uninstall = HW_APIC_uninstall;
 
-	HW_Timer_HPET_intrController.enable = HW_APIC_enableIntr;
-	HW_Timer_HPET_intrController.disable = HW_APIC_disableIntr;
-	HW_Timer_HPET_intrController.ack = NULL;
+	_intrCotroller.enable = HW_APIC_enableIntr;
+	_intrCotroller.disable = HW_APIC_disableIntr;
+	_intrCotroller.ack = NULL;
 
 	// initialize handler
-	HW_Timer_HPET_intrHandler = HW_Timer_HPET_handler;
+	_intrHandler = HW_Timer_HPET_handler;
 
 	// initialize descriptor
-	memset(&HW_Timer_HPET_intrDesc, 0, sizeof(APICRteDescriptor));
-	HW_Timer_HPET_intrDesc.vector = 0x22;
-	HW_Timer_HPET_intrDesc.deliveryMode = HW_APIC_DeliveryMode_Fixed;
-	HW_Timer_HPET_intrDesc.destMode = HW_APIC_DestMode_Physical;
-	HW_Timer_HPET_intrDesc.deliveryStatus = HW_APIC_DeliveryStatus_Idle;
-	HW_Timer_HPET_intrDesc.pinPolarity = HW_APIC_PinPolarity_High;
-	HW_Timer_HPET_intrDesc.remoteIRR = HW_APIC_RemoteIRR_Reset;
-	HW_Timer_HPET_intrDesc.triggerMode = HW_APIC_TriggerMode_Edge;
-	HW_Timer_HPET_intrDesc.mask = HW_APIC_Mask_Masked;
+	memset(&_intrDesc, 0, sizeof(APICRteDescriptor));
+	_intrDesc.vector = 0x22;
+	_intrDesc.deliveryMode = HW_APIC_DeliveryMode_Fixed;
+	_intrDesc.destMode = HW_APIC_DestMode_Physical;
+	_intrDesc.deliveryStatus = HW_APIC_DeliveryStatus_Idle;
+	_intrDesc.pinPolarity = HW_APIC_PinPolarity_High;
+	_intrDesc.remoteIRR = HW_APIC_RemoteIRR_Reset;
+	_intrDesc.triggerMode = HW_APIC_TriggerMode_Edge;
+	_intrDesc.mask = HW_APIC_Mask_Masked;
 	
-	Intr_register(0x22, &HW_Timer_HPET_intrDesc, HW_Timer_HPET_handler, 0, &HW_Timer_HPET_intrController, "HPET");
+	Intr_register(0x22, &_intrDesc, HW_Timer_HPET_handler, 0, &_intrCotroller, "HPET");
 	// set the general configuration register
 	*(u64 *)(DMAS_phys2Virt(_hpetDesc->address.Address) + 0x10) = 0x3;
 	IO_mfence();

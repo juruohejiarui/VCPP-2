@@ -11,6 +11,7 @@
 #define Thread_Flag_Kernel  (1 << 2)  
 
 #define Task_Flag_Kernel    (1 << 2)
+#define Task_Flag_NeedSchedule (1 << 1)
 
 #define Task_State_Uninterruptible  (1 << 0)
 #define Task_State_Running          (1 << 1)
@@ -56,7 +57,7 @@ typedef struct tmpTaskStruct {
     TaskMemStruct *mem;
 	TSS *tss;
     u64 flags;
-    i64 pid, counter, signal, priority;
+    i64 pid, vRunTime, signal, priority;
 } __attribute__((packed)) TaskStruct; 
 
 union TaskUnion {
