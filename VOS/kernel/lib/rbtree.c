@@ -21,7 +21,6 @@ static inline void _setCol(RBNode *node, int col) {
 static RBNode *_newNode(i64 val, RBNode *parent) {
 	printk(WHITE, BLACK, "rbtree/_newNode: ");
 	RBNode *node = (RBNode *)kmalloc(sizeof(RBNode), 0);
-	printk(GREEN, BLACK, "node: %#018lx\n", node);
 	memset(node, 0, sizeof(RBNode));
 	List_init(&node->head);
 	node->val = val;
@@ -149,7 +148,6 @@ void RBTree_insert(RBTree *tree, u64 val, List *listEle) {
 			cur = cur->left;
 		}
 	}
-	if (_col(cur) != 2) return ;
 	_setRed(cur);
 	_fixAfterIns(tree, cur);
 }
@@ -269,10 +267,10 @@ void RBTree_delNode(RBTree *tree, RBNode *node) {
 void _debug(RBNode *node, u64 dep) {
 	if (node == NULL) return ;
 	for (int i = 0; i < dep; i++) printk(RED, BLACK, "\t");
-	printk(WHITE, BLACK, "%ld [", node->val);
+	printk(WHITE, BLACK, "%ld col: %d [", node->val, _col(node));
 	for (List *ele = node->head.next; ele != &node->head; ele = ele->next)
 		printk(WHITE, BLACK, " %#018lx", ele);
-	printk(WHITE, BLACK, "\n");
+	printk(WHITE, BLACK, "]\n");
 	_debug(node->left, dep + 1);
 	_debug(node->right, dep + 1);
 }
