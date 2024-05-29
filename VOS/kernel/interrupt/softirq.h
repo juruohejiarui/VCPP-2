@@ -2,6 +2,10 @@
 #define __INTERRUPT_SOFTIRQ_H__
 #include "../includes/lib.h"
 
+#include "./softirq/timer.h"
+
+#define Intr_SoftIrq_State_Timer (1 << 0)
+
 typedef void (*SoftIrqHandler)(void *data);
 
 typedef struct {

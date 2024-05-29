@@ -9,7 +9,7 @@
 typedef struct _tmpNode {
 	struct _tmpNode *left, *right;
 	u64 unionParentCol;
-	i64 val;
+	u64 val;
 	List head;
 } __attribute__ ((aligned(sizeof(long)))) RBNode;
 
@@ -18,12 +18,16 @@ typedef struct {
 } RBTree;
 
 void RBTree_init(RBTree *tree);
-RBTree *RBTree_get(RBTree *tree, i64 val);
+RBNode *RBTree_get(RBTree *tree, u64 val);
 // get the node with minimum value of subtree T(ST), (starts from the root if ST==NULL)
-RBTree *RBTree_getMin(RBTree *tree);
+RBNode *RBTree_getMin(RBTree *tree);
 // get the node with maximum value of subtree T(ST), (starts from the root if ST==NULL)
-RBTree *RBTree_getMax(RBTree *tree);
-void RBTree_insert(RBTree *tree, i64 val, List *listEle);
-void RBTree_del(RBTree *tree, i64 val);
+RBNode *RBTree_getMax(RBTree *tree);
+void RBTree_insert(RBTree *tree, u64 val, List *listEle);
+// del the first listEle of the node with VAL
+void RBTree_del(RBTree *tree, u64 val);
+void RBTree_delNode(RBTree *tree, RBNode *node);
+
+void RBTree_debug(RBTree *tree);
 
 #endif

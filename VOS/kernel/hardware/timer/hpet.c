@@ -13,7 +13,6 @@ APICRteDescriptor HW_Timer_HPET_intrDesc;
 HPETDescriptor *_hpetDesc;
 static u64 _jiffies = 0;
 
-static RBTree _rqTree;
 
 static inline void _setTimerConfig(u32 id, u64 config) {
 	*(u64 *)(DMAS_phys2Virt(_hpetDesc->address.Address) + 0x100 + 0x20 * id) = config;
@@ -28,13 +27,12 @@ IntrHandlerDeclare(HW_Timer_HPET_handler) {
 	// print the counter
 	printk(RED, BLACK, "HPET\t");
 	_jiffies++;
-	
+	Intr_SoftIrq_Timer_updateState();
 }
 
 void HW_Timer_HPET_init() {
 	// initializ the data structure
 	_jiffies = 0;
-	RBTree_init(&_rqTree);
 	// find RSDP in configuration table
 	i64 rsdpId = -1;
 	u8 tmp_data4[8] = HW_UEFI_GUID_ACPI2_data4;
