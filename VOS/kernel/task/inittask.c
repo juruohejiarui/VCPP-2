@@ -23,8 +23,8 @@ u64 init(u64 (*usrEntry)(u64), u64 arg) {
 
 u64 usrInit(u64 arg) {
 	printk(WHITE, BLACK, "user level function, arg: %ld\n", arg);
-    u64 res = Task_Syscall_usrAPI(arg, BLACK, WHITE, (u64)"Up Down Up Down baba", 20, 5);
-    printk(WHITE, BLACK, "syscall, res: %ld\n", res);
+    // u64 res = Task_Syscall_usrAPI(arg, BLACK, WHITE, (u64)"Up Down Up Down baba", 20, 5);
+    // printk(WHITE, BLACK, "syscall, res: %ld\n", res);
     int t = 10000000 * (arg + 3), initCounter = 100000000;
     int tmp = arg;
     while (tmp > 0) initCounter <<= 1, tmp--;

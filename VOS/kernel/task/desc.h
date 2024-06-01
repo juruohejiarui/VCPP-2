@@ -12,9 +12,9 @@
 
 #define Task_Flag_Kernel    (1 << 2)
 
-#define Task_State_Uninterruptible  1
-#define Task_State_Running          2
-#define Task_State_NeedSchedule     3
+#define Task_State_Uninterruptible  (1 << 0)
+#define Task_State_Running          (1 << 1)
+#define Task_State_NeedSchedule     (1 << 2)
 
 #define Task_userStackEnd       0x00007ffffffffff0ul
 #define Task_kernelStackEnd     0xfffffffffffffff0ul

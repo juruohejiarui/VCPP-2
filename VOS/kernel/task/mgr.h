@@ -67,7 +67,9 @@ extern TaskStruct Init_taskStruct;
 
 extern int Task_pidCounter;
 
-void Task_switch(TaskStruct *to);
+void Task_switch();
+
+TaskStruct *Task_getNext();
 
 void Task_initMgr();
 

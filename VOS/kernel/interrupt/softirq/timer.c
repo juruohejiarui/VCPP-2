@@ -2,6 +2,7 @@
 #include "../../includes/log.h"
 #include "../../includes/hardware.h"
 #include "../../includes/memory.h"
+#include "../../includes/task.h"
 
 static RBTree _rqTree;
 
@@ -25,12 +26,15 @@ void _doTimer(void *data) {
 	// printk(BLACK, WHITE, "Timer (%ld)\t", HW_Timer_HPET_jiffies());
 	RBNode *minNode = RBTree_getMin(&_rqTree);
 	while (minNode != NULL && minNode->val <= HW_Timer_HPET_jiffies()) {
-		for (List *ele = minNode->head.next; ele != &minNode->head; ele = ele->next) {
+		List *ele = minNode->head.next, *end = ele;
+		for (; end->next != &minNode->head; end = end->next) ;
+		RBTree_delNode(&_rqTree, minNode);
+		minNode = RBTree_getMin(&_rqTree);
+		for (; ; ele = ele->next) {
 			TimerIrq *irq = container(ele, TimerIrq, listEle);
 			irq->func(irq->data);
+			if (ele == end) break;
 		}
-		RBTree_delNode(&_rqTree, minNode);
-		minNode = RBTree_getMax(&_rqTree);
 	}
 }
 

@@ -43,6 +43,8 @@ void startKernel() {
     CMOSDateTime dateTime;
     HW_Timer_CMOS_getDateTime(&dateTime);
     printk(RED, BLACK, "Current time: %x-%x-%x %x:%x:%x\n", dateTime.year, dateTime.month, dateTime.day, dateTime.hour, dateTime.minute, dateTime.second);
+
+    printk(WHITE, BLACK, "%#018lx, %#018lx\n", memberOffset(TaskStruct, state), 0);
     
     Task_Syscall_init();
     Task_init();

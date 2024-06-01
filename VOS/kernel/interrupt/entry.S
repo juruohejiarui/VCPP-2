@@ -65,15 +65,15 @@ ENTRY(Intr_retFromIntr)
     movq $-1, %rcx
     testq Intr_SoftIrq_state(%rip), %rcx
     jnz _softirqHandler
-    // if (Task_current->state == Task_State_NeedSchedule)
-    movq $0x100000, %rax
-    movq 0x10(%rax), %rax
-    cmpq $3, %rax
-    jz _reschedule
     jmp restoreAll
 
 _softirqHandler:
     callq Intr_SoftIrq_dispatch
+    // if (Task_current->state == Task_State_NeedSchedule)
+    movq $0x100000, %rax
+    movq 0x10(%rax), %rax
+    testq $0x4, %rax
+    jnz _reschedule
     jmp restoreAll
 
 _reschedule:

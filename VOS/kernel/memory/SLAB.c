@@ -187,6 +187,7 @@ void kfree(void *addr) {
     }
     if (!flag) {
         printk(RED, BLACK, "kfree: invalid address %#018lx\n", addr);
+        while (1) ;
         return ;
     }
     u64 offset = ((u64)addr - (u64)slab->virtAddr) / Slab_kmallocCache[id].size;
@@ -195,5 +196,5 @@ void kfree(void *addr) {
     Slab_kmallocCache[id].freeCnt++, Slab_kmallocCache[id].usingCnt--;
     if (slab->usingCnt == 0 && Slab_kmallocCache[id].freeCnt >= slab->colCnt * 3 / 2 && Slab_kmallocCache[id].slabs != slab)
         Slab_destroySlab(id, slab);
-    printk(BLACK, WHITE, "kfree %#18lx\n", addr);
+    // printk(BLACK, WHITE, "kfree %#18lx\n", addr);
 }

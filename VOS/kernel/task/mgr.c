@@ -61,7 +61,6 @@ TaskStruct Init_taskStruct = Task_initTask(NULL);
 TaskStruct *Init_tasks[Hardware_CPUNumber] = { &Init_taskStruct, 0 };
 
 void Task_switchTo_inner(TaskStruct *prev, TaskStruct *next) {
-    printk(WHITE, BLACK, "%#018lx -> %#018lx\n", prev, next);
     next->tss->rsp0 = next->thread->rsp0;
     Intr_Gate_setTSS(
             next->tss->rsp0, next->tss->rsp1, next->tss->rsp2, next->tss->ist1, next->tss->ist2,
@@ -81,6 +80,12 @@ struct CFS_rq {
 
 TimerIrq _timerIrq;
 
+TaskStruct *Task_getNext() {
+    // printk(WHITE, BLACK, "next = %#018lx, rip: %#018lx\n", _CFSstruct.next[0], _CFSstruct.next[0]->thread->rip);
+    if (_CFSstruct.next[0] == Task_current) while (1) ;
+    return _CFSstruct.next[0];
+}
+
 void Task_initMgr() {
     Intr_SoftIrq_Timer_initIrq(&_timerIrq, 1, Task_updateCurState, NULL);
     Intr_SoftIrq_Timer_addIrq(&_timerIrq);
@@ -88,7 +93,7 @@ void Task_initMgr() {
 }
 
 void Task_updateCurState() {
-    // printk(YELLOW, BLACK, "[Task_updateCurState]");
+    IO_cli();
     Task_current->vRunTime += _weight[Task_current->priority];
     RBNode *leftMost = RBTree_getMin(&_CFSstruct.tree);
     if (!List_isEmpty(&leftMost->head)) {
@@ -96,8 +101,9 @@ void Task_updateCurState() {
         RBTree_del(&_CFSstruct.tree, leftMost->val);
         Task_current->state = Task_State_NeedSchedule;
         _CFSstruct.next[0] = next;
-        RBTree_insert(&_CFSstruct.tree, Task_current->vRunTime, &Task_current->listEle);
-        RBTree_debug(&_CFSstruct.tree);
+        TaskStruct *dmas_ptr = (TaskStruct *)DMAS_phys2Virt(MM_PageTable_getPldEntry(getCR3(), (u64)Task_current) & ~0xfff);
+        RBTree_insert(&_CFSstruct.tree, Task_current->vRunTime, &dmas_ptr->listEle);
+        Intr_SoftIrq_Timer_initIrq(&_timerIrq, 1, Task_updateCurState, NULL);
         Intr_SoftIrq_Timer_addIrq(&_timerIrq);
     }
 }

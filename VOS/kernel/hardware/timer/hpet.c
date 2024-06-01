@@ -13,7 +13,6 @@ static APICRteDescriptor _intrDesc;
 static HPETDescriptor *_hpetDesc;
 static u64 _jiffies = 0;
 
-
 static inline void _setTimerConfig(u32 id, u64 config) {
 	*(u64 *)(DMAS_phys2Virt(_hpetDesc->address.Address) + 0x100 + 0x20 * id) = config;
 	IO_mfence();
@@ -82,6 +81,15 @@ void HW_Timer_HPET_init() {
 	} else {
 		printk(RED, BLACK, "HPET found at %#018lx, addres: %#018lx\n", _hpetDesc, _hpetDesc->address.Address);
 	}
+
+	IO_out32(0xcf8, 0x8000f8f0);
+	u32 x = IO_in32(0xcfc) & 0xffffc000;
+	if (x > 0xfec00000 && x < 0xfee00000) {
+		printk(RED, WHITE, "x = %#010x\n", x);
+		u32 *p = (u32 *)DMAS_phys2Virt(x + 0x3404ul);
+		*p = 0x80;
+		IO_mfence();
+	} else printk(RED, WHITE, "No need to set enable register (x = %#010x)\n", x);
 	
 	// initialize controller
 	_intrCotroller.install = HW_APIC_install;
@@ -104,15 +112,17 @@ void HW_Timer_HPET_init() {
 	_intrDesc.remoteIRR = HW_APIC_RemoteIRR_Reset;
 	_intrDesc.triggerMode = HW_APIC_TriggerMode_Edge;
 	_intrDesc.mask = HW_APIC_Mask_Masked;
-	
-	Intr_register(0x22, &_intrDesc, HW_Timer_HPET_handler, 0, &_intrCotroller, "HPET");
+
 	// set the general configuration register
+	printk(WHITE, BLACK, "Capability register: %#018lx\n", *(u64 *)(DMAS_phys2Virt(_hpetDesc->address.Address) + 0x00));
 	*(u64 *)(DMAS_phys2Virt(_hpetDesc->address.Address) + 0x10) = 0x3;
 	IO_mfence();
 	_setTimerConfig(0, 0x4c);
-	_setTimerComparator(0, 14318179 * 100);
+	_setTimerComparator(0, (int)1e6);
 	*(u64 *)(DMAS_phys2Virt(_hpetDesc->address.Address) + 0xf0) = 0x0;
 	IO_mfence();
+
+	Intr_register(0x22, &_intrDesc, HW_Timer_HPET_handler, 0, &_intrCotroller, "HPET");
 }
 
 u64 HW_Timer_HPET_jiffies() { return _jiffies; }
