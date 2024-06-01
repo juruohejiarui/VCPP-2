@@ -10,7 +10,7 @@ extern void Intr_retFromIntr();
 
 u64 init(u64 (*usrEntry)(u64), u64 arg) {
     if (Task_current->pid == 0) {
-        List_del(&Init_taskStruct.listEle);
+        printk(WHITE, BLACK, "task 0 is running...\n");
         IO_sti();
     }
 	u64 rsp = 0;
@@ -46,7 +46,8 @@ u64 Task_doExit(u64 arg) {
     while (1);
 }
 
-void Init_task() {
+void Task_init() {
+    Task_initMgr();
     Task_pidCounter = 0;
 	// fake the task struction of the current task
     Init_taskStruct.thread->rsp0 = Init_taskStruct.thread->rsp = 0xffff800000007E00;
@@ -57,5 +58,5 @@ void Init_task() {
     for (int i = 0; i < 3; i++)
         initTask[i] = Task_createTask(init, usrInit, i, Task_Flag_Kernel);
     List_del(&Init_taskStruct.listEle);
-    Task_switchTo(&Init_taskStruct, initTask[0]);
+    Task_switch_init(&Init_taskStruct, initTask[0]);
 }

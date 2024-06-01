@@ -113,7 +113,8 @@
         "memory.h": "c",
         "slab.h": "c",
         "rbtree.h": "c",
-        "softirq.h": "c"
+        "softirq.h": "c",
+        "log.h": "c"
     },
     "C_Cpp.default.compilerPath": "/usr/bin/g++",
     "cmake.configureOnOpen": true,

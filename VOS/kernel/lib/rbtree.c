@@ -19,7 +19,7 @@ static inline void _setCol(RBNode *node, int col) {
 }
 
 static RBNode *_newNode(i64 val, RBNode *parent) {
-	printk(WHITE, BLACK, "rbtree/_newNode: ");
+	// printk(WHITE, BLACK, "rbtree/_newNode: ");
 	RBNode *node = (RBNode *)kmalloc(sizeof(RBNode), 0);
 	memset(node, 0, sizeof(RBNode));
 	List_init(&node->head);
@@ -52,6 +52,11 @@ static RBNode *_getMin(RBNode *node) {
 
 RBNode *RBTree_getMin(RBTree *tree) {
 	return tree == NULL || tree->root == NULL ? NULL : _getMin(tree->root);
+}
+
+List *RBTree_getMinListEle(RBTree *tree) {
+    RBNode *node = RBTree_getMin(tree);
+	return List_isEmpty(&node->head) ? NULL : node->head.next;
 }
 
 static RBNode *_getMax(RBNode *node) {
@@ -129,6 +134,7 @@ static void _fixAfterIns(RBTree *tree, RBNode *node) {
 }
 
 void RBTree_insert(RBTree *tree, u64 val, List *listEle) {
+	List_init(listEle);
 	if (tree->root == NULL) {
 		tree->root = _newNode(val, NULL);
 		_setBlack((RBNode *)tree->root);
@@ -245,6 +251,7 @@ void RBTree_delNode(RBTree *tree, RBNode *node) {
 		node->left = old->left;
 		_setParent(old->left, node);
 		
+		if (old == tree->root) tree->root = NULL;
 		kfree(old);
 
 		goto color;
@@ -258,6 +265,7 @@ void RBTree_delNode(RBTree *tree, RBNode *node) {
 		else parent->right = child;
 	} else tree->root = child;
 
+	if (node == tree->root) tree->root = NULL;
 	kfree(node);
 	
 	color:

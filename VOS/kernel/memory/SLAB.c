@@ -130,7 +130,7 @@ void Slab_pushNewSlab(int id) {
 /// @param arg 
 /// @return 
 void *kmalloc(u64 size, u64 arg) {
-    printk(BLACK, WHITE, "kmalloc %08d\t", size);
+    // printk(BLACK, WHITE, "kmalloc %08d\t", size);
     int id = 0;
     if (size > 1048576) return NULL;
     while (Slab_kmallocCache[id].size < size) id++;
@@ -153,8 +153,7 @@ void *kmalloc(u64 size, u64 arg) {
         Bit_set1(slab->colMap + (j >> 6), j & 63);
         slab->usingCnt++, slab->freeCnt--;
         Slab_kmallocCache[id].usingCnt++, Slab_kmallocCache[id].freeCnt--;
-        return printk(BLACK, WHITE, "addr : %#018lx\n", (void *)((u64)slab->virtAddr + j * Slab_kmallocCache[id].size)),
-            (void *)((u64)slab->virtAddr + j * Slab_kmallocCache[id].size);
+        return (void *)((u64)slab->virtAddr + j * Slab_kmallocCache[id].size);
     }
     printk(RED, BLACK, "kmalloc: invalid state\n");
     return NULL;
@@ -196,4 +195,5 @@ void kfree(void *addr) {
     Slab_kmallocCache[id].freeCnt++, Slab_kmallocCache[id].usingCnt--;
     if (slab->usingCnt == 0 && Slab_kmallocCache[id].freeCnt >= slab->colCnt * 3 / 2 && Slab_kmallocCache[id].slabs != slab)
         Slab_destroySlab(id, slab);
+    printk(BLACK, WHITE, "kfree %#18lx\n", addr);
 }

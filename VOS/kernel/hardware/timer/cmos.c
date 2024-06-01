@@ -12,7 +12,6 @@ void HW_Timer_CMOS_init() {
 })
 
 void HW_Timer_CMOS_getDateTime(CMOSDateTime *dateTime) {
-	IO_cli();
 	do {
 		dateTime->year = CMOS_read(0x09) + CMOS_read(0x32) * 0x100;
 		dateTime->month = CMOS_read(0x08);
@@ -22,5 +21,4 @@ void HW_Timer_CMOS_getDateTime(CMOSDateTime *dateTime) {
 		dateTime->second = CMOS_read(0x00);
 	} while (dateTime->second != CMOS_read(0x00));
 	IO_out8(0x70, 0x00);
-	IO_sti();
 }

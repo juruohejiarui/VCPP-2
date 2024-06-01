@@ -10,7 +10,11 @@ typedef struct {
 	void *data;
 } TimerIrq;
 
+void Intr_SoftIrq_Timer_initIrq(TimerIrq *irq, u64 expireJiffies, void (*func)(void *data), void *data);
+
 void Intr_SoftIrq_Timer_init();
+
+void Intr_SoftIrq_Timer_addIrq(TimerIrq *irq);
 
 void Intr_SoftIrq_Timer_updateState();
 

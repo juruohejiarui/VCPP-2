@@ -19,9 +19,10 @@ typedef struct {
 
 void RBTree_init(RBTree *tree);
 RBNode *RBTree_get(RBTree *tree, u64 val);
-// get the node with minimum value of subtree T(ST), (starts from the root if ST==NULL)
+// get the node with the minimum value
 RBNode *RBTree_getMin(RBTree *tree);
-// get the node with maximum value of subtree T(ST), (starts from the root if ST==NULL)
+List *RBTree_getMinListEle(RBTree *tree);
+// get the node with maximum value
 RBNode *RBTree_getMax(RBTree *tree);
 void RBTree_insert(RBTree *tree, u64 val, List *listEle);
 // del the first listEle of the node with VAL

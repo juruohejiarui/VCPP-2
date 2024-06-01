@@ -146,5 +146,4 @@ void Intr_init() {
 	memset(Intr_descriptor, 0, sizeof(Intr_descriptor));
 
 	Intr_SoftIrq_init();
-	IO_sti();
 }

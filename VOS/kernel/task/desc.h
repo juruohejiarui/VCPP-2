@@ -11,12 +11,12 @@
 #define Thread_Flag_Kernel  (1 << 2)  
 
 #define Task_Flag_Kernel    (1 << 2)
-#define Task_Flag_NeedSchedule (1 << 1)
 
-#define Task_State_Uninterruptible  (1 << 0)
-#define Task_State_Running          (1 << 1)
+#define Task_State_Uninterruptible  1
+#define Task_State_Running          2
+#define Task_State_NeedSchedule     3
 
-#define Task_userStackEnd       0x0000800000000000ul
+#define Task_userStackEnd       0x00007ffffffffff0ul
 #define Task_kernelStackEnd     0xfffffffffffffff0ul
 #define Task_intrStackEnd	   	0xffffffffff800000ul
 #define Task_userStackSize      0x0000000001000000ul // 32M
@@ -65,6 +65,6 @@ union TaskUnion {
     u64 stk[Init_taskStackSize / sizeof(u64)];
 } __attribute__((aligned (8)));
 
-void Init_task();
+void Task_init();
 
 #endif

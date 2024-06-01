@@ -119,7 +119,7 @@ Page *MM_Buddy_alloc(u64 log2Size, u64 attr) {
             revBit(rPage);
         }
         headPage->attr |= attr;
-        // printk(GREEN, BLACK, "MM_Buddy_alloc(%d) = %p [%#018lx, %#018lx]\n", log2Size, headPage, headPage->phyAddr, headPage->phyAddr + (1 << (log2Size + Page_4KShift)) - 1);
+        printk(GREEN, BLACK, "MM_Buddy_alloc(%d) = %p [%#018lx, %#018lx]\n", log2Size, headPage, headPage->phyAddr, headPage->phyAddr + (1 << (log2Size + Page_4KShift)) - 1);
         return headPage;
     }
     return NULL;

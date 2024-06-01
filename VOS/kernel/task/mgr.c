@@ -19,7 +19,7 @@ void Task_checkPtRegInStack(u64 rsp) {
     .mem        = &Init_mm, \
     .thread     = &Init_thread, \
     .pid        = 0, \
-    .counter    = 1, \
+    .vRunTime   = 1, \
     .signal     = 0, \
     .priority   = 0 \
 }
@@ -60,29 +60,8 @@ TaskMemStruct Init_mm = {0};
 TaskStruct Init_taskStruct = Task_initTask(NULL);
 TaskStruct *Init_tasks[Hardware_CPUNumber] = { &Init_taskStruct, 0 };
 
-__asm__ (
-	".global Task_switch		\n\t"
-	"Task_switch:				\n\t"
-	"movq $0x100000, %rdi		\n\t"
-	"movq (%rdi), %rsi			\n\t"
-	"pushq %rsi					\n\t"
-	"pushq %rdi					\n\t"
-	"call Task_switchTo_inner	\n\t"
-	"popq %rdi					\n\t"
-	"popq %rsi					\n\t"
-	"movq 0x20(%rsi), %r8		\n\t"
-	"movq 0x8(%r8), %rax		\n\t"
-	"movq %rax, %cr3			\n\t"
-	"mfence						\n\t"
-	"movq 0x18(%rdi), %rax		\n\t"
-	"movq 0x18(%rax), %rsp		\n\t"
-    "pushq 0x50(%rax)           \n\t"
-    "popfq                      \n\t"
-	"movq 0x0(%rax), %rax		\n\t"
-	"jmp *%rax					\n\t"
-);
-
 void Task_switchTo_inner(TaskStruct *prev, TaskStruct *next) {
+    printk(WHITE, BLACK, "%#018lx -> %#018lx\n", prev, next);
     next->tss->rsp0 = next->thread->rsp0;
     Intr_Gate_setTSS(
             next->tss->rsp0, next->tss->rsp1, next->tss->rsp2, next->tss->ist1, next->tss->ist2,
@@ -91,6 +70,36 @@ void Task_switchTo_inner(TaskStruct *prev, TaskStruct *next) {
     __asm__ volatile ( "movq %%gs, %0 \n\t" : "=a"(prev->thread->gs));
     __asm__ volatile ( "movq %0, %%fs \n\t" : : "a"(next->thread->fs));
     __asm__ volatile ( "movq %0, %%gs \n\t" : : "a"(next->thread->gs));
+}
+
+i64 _weight[50] = { 1, 2, 3, 4, 5, [5 ... 49] = -1 };
+
+struct CFS_rq {
+    TaskStruct *next[50];
+    RBTree tree;
+} _CFSstruct;
+
+TimerIrq _timerIrq;
+
+void Task_initMgr() {
+    Intr_SoftIrq_Timer_initIrq(&_timerIrq, 1, Task_updateCurState, NULL);
+    Intr_SoftIrq_Timer_addIrq(&_timerIrq);
+    RBTree_init(&_CFSstruct.tree);
+}
+
+void Task_updateCurState() {
+    // printk(YELLOW, BLACK, "[Task_updateCurState]");
+    Task_current->vRunTime += _weight[Task_current->priority];
+    RBNode *leftMost = RBTree_getMin(&_CFSstruct.tree);
+    if (!List_isEmpty(&leftMost->head)) {
+        TaskStruct *next = container(leftMost->head.next, TaskStruct, listEle);
+        RBTree_del(&_CFSstruct.tree, leftMost->val);
+        Task_current->state = Task_State_NeedSchedule;
+        _CFSstruct.next[0] = next;
+        RBTree_insert(&_CFSstruct.tree, Task_current->vRunTime, &Task_current->listEle);
+        RBTree_debug(&_CFSstruct.tree);
+        Intr_SoftIrq_Timer_addIrq(&_timerIrq);
+    }
 }
 
 TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntry)(u64), u64 arg, u64 flags) {
@@ -106,7 +115,7 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntr
 	for (u64 vAddr = Task_intrStackEnd - Task_intrStackSize; vAddr < Task_intrStackEnd; vAddr += Page_4KSize)
 		MM_PageTable_map(pgdPhyAddr, vAddr, lstPage->phyAddr + vAddr - (Task_intrStackEnd - Task_intrStackSize));
     // map the user stack without present flag
-    for (u64 vAddr = Task_userStackEnd - Task_userStackSize; vAddr < Task_userStackEnd; vAddr += Page_4KSize)
+    for (u64 vAddr = Task_userStackEnd - Task_userStackSize + 0x10; vAddr < Task_userStackEnd; vAddr += Page_4KSize)
         MM_PageTable_map(pgdPhyAddr, vAddr, 0);
     // map the kernel stack with one present page
 	lstPage = MM_Buddy_alloc(0, Page_Flag_Active);
@@ -156,8 +165,7 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntr
 	regs.rsp = Task_kernelStackEnd;
     memcpy(&regs, (u64 *)DMAS_phys2Virt(lstPage->phyAddr + Page_4KSize - 16 - sizeof(PtReg)), sizeof(PtReg));
 
-    List_init(&task->listEle);
-    List_insBehind(&task->listEle, &Init_taskStruct.listEle);
+    if (task->pid > 0) RBTree_insert(&_CFSstruct.tree, 0, &task->listEle);
     return task;
 }
 

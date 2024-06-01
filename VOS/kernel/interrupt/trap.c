@@ -199,11 +199,10 @@ u64 doPageFault(u64 rsp, u64 errorCode) {
 	printk(RED,BLACK,"do_page_fault(14),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx,CR2:%#018lx\n",errorCode , rsp , *p , cr2);
 	u64 pldEntry = MM_PageTable_getPldEntry(getCR3(), cr2);
 	// blank pldEntry means the page is not mapped
-	
+	printk(WHITE, BLACK, "registers: \n");
+	for (int i = 0; i < sizeof(PtReg) / sizeof(u64); i++)
+		printk(WHITE, BLACK, "%6s = %#018lx%c", _regName[i], *(u64 *)(rsp + i * 8), (i + 1) % 4 == 0 ? '\n' : ' ');
 	if (pldEntry == 0) {
-		for (int i = 0; i < sizeof(PtReg) / sizeof(u64); i++)
-			printk(WHITE, BLACK, "%#04lx(%%rsp) = %#018lx%c", i * 8, *(u64 *)(rsp + i * 8), (i + 1) % 4 == 0 ? '\n' : ' ');
-		printk(WHITE, BLACK, "\n");
 		if (errorCode & 0x01)
 			printk(RED,BLACK,"The page fault was caused by a non-present page.\n");
 		if (errorCode & 0x02)

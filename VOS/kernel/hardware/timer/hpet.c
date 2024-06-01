@@ -25,7 +25,7 @@ static inline void _setTimerComparator(u32 id, u64 comparator) {
 
 IntrHandlerDeclare(HW_Timer_HPET_handler) {
 	// print the counter
-	printk(RED, BLACK, "HPET\t");
+	// printk(RED, WHITE, "HPET\t");
 	_jiffies++;
 	Intr_SoftIrq_Timer_updateState();
 }
@@ -110,7 +110,7 @@ void HW_Timer_HPET_init() {
 	*(u64 *)(DMAS_phys2Virt(_hpetDesc->address.Address) + 0x10) = 0x3;
 	IO_mfence();
 	_setTimerConfig(0, 0x4c);
-	_setTimerComparator(0, 14318179);
+	_setTimerComparator(0, 14318179 * 100);
 	*(u64 *)(DMAS_phys2Virt(_hpetDesc->address.Address) + 0xf0) = 0x0;
 	IO_mfence();
 }

@@ -4,7 +4,7 @@
 #include "../includes/interrupt.h"
 #include "../includes/hardware.h"
 
-// #define Task_switchTo(prev, next) \
+// #define Task_switch_init(prev, next) \
 //     do { \
 //         __asm__ volatile ( \
 //             "movq %%rbp, %2         \n\t" \
@@ -22,12 +22,12 @@
 //             "popq %%rax             \n\t" \
 //             "popq %%rbp             \n\t" \
 //             : "=m"((prev)->thread->rsp), "=m"((prev)->thread->rip), "=m"((prev)->thread->rbp) \
-//             : "m"((next)->thread->rsp), "m"((next)->thread->rip), "m"((next)->thread->rbp), "D"(prev), "S"(next),  \
+//             : "m"((next)->thread->rsp), "m"((next)->thread->rip), "m"((next)->thread->rbp), "D"(prev), "S"(next)  \
 //             : "memory" \
 //         ); \
 //     } while (0)
 
-#define Task_switchTo(prev, next) \
+#define Task_switch_init(prev, next) \
 	do { \
 		__asm__ volatile ( \
 			/* save state of the prev task */ \
@@ -67,13 +67,19 @@ extern TaskStruct Init_taskStruct;
 
 extern int Task_pidCounter;
 
-void Task_switch();
+void Task_switch(TaskStruct *to);
+
+void Task_initMgr();
+
+void Task_updateCurState();
 
 TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntry)(u64), u64 arg, u64 flags);
 
 #define Task_countDown() ((--Task_current->counter) == 0)
 
 int Task_getRing();
+
+
 
 // the current task
 #define Task_current ((TaskStruct *)(Task_userBrkStart))
