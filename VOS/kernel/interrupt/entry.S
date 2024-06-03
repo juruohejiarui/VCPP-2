@@ -70,14 +70,15 @@ ENTRY(Intr_retFromIntr)
 _softirqHandler:
     callq Intr_SoftIrq_dispatch
     // if (Task_current->state == Task_State_NeedSchedule)
-    movq $0x100000, %rax
+    movq $0xffffffffff800000, %rax
     movq 0x10(%rax), %rax
     testq $0x4, %rax
     jnz _reschedule
+    // restore the stack
     jmp restoreAll
 
 _reschedule:
-    call Task_switch
+    call Task_schedule
     jmp restoreAll
 
 ENTRY(divideError)

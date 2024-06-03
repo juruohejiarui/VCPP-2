@@ -37,4 +37,15 @@ typedef struct tmpPtReg {
     u64 func, errCode;
     u64 rip, cs, rflags, rsp, ss;
 } PtReg;
+
+typedef struct tmpTSS {
+    u32 reserved0;
+    u64 rsp0, rsp1, rsp2;
+    u64 reserved1;
+    u64 ist1, ist2, ist3, ist4, ist5, ist6, ist7;
+    u64 reserved2;
+    u16 reserved3;
+    u16 iomapBaseAddr;
+} __attribute__((packed)) TSS;
+
 #endif

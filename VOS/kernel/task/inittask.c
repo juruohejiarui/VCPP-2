@@ -9,22 +9,24 @@
 extern void Intr_retFromIntr();
 
 u64 init(u64 (*usrEntry)(u64), u64 arg) {
+	u64 rsp = 0;
+	__asm__ volatile ( "movq %%rsp, %0" : "=m"(rsp) : : "memory" );
+    Intr_SoftIrq_Timer_initIrq(&Task_current->timerIrq, 1, Task_updateCurState, NULL);
+    Intr_SoftIrq_Timer_addIrq(&Task_current->timerIrq);
+	Task_current->state = Task_State_Running;
+	printk(RED, BLACK, "init is running, arg = %#018lx, rsp = %#018lx\n", arg, rsp);
     if (Task_current->pid == 0) {
         printk(WHITE, BLACK, "task 0 is running...\n");
         IO_sti();
     }
-	u64 rsp = 0;
-	__asm__ volatile ( "movq %%rsp, %0" : "=m"(rsp) : : "memory" );
-	Task_current->state = Task_State_Running;
-	printk(RED, BLACK, "init is running, arg = %#018lx, rsp = %#018lx\n", arg, rsp);
 	Task_switchToUsr(usrEntry, arg);
     return 1;
 }
 
 u64 usrInit(u64 arg) {
 	printk(WHITE, BLACK, "user level function, arg: %ld\n", arg);
-    // u64 res = Task_Syscall_usrAPI(arg, BLACK, WHITE, (u64)"Up Down Up Down baba", 20, 5);
-    // printk(WHITE, BLACK, "syscall, res: %ld\n", res);
+    u64 res = Task_Syscall_usrAPI(arg, BLACK, WHITE, (u64)"Up Down Up Down baba", 20, 5);
+    printk(WHITE, BLACK, "syscall, res: %ld\n", res);
     int t = 10000000 * (arg + 3), initCounter = 100000000;
     int tmp = arg;
     while (tmp > 0) initCounter <<= 1, tmp--;
@@ -33,7 +35,7 @@ u64 usrInit(u64 arg) {
         if (arg == 1) 
 			Task_Syscall_usrAPI(0, 0x14, 2, 3, 4, 5);
         if (--t == 0) {
-			printk(WHITE, BLACK, "%d ", Task_current->pid);
+			printk(WHITE, BLACK, "%d ", arg);
 			arg == 1 ? Task_Syscall_usrAPI(3, 0, 0, 0, 0, 0) : 0;
 			t = initCounter;
 		}

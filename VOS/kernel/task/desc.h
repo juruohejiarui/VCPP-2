@@ -3,6 +3,7 @@
 
 #include "../includes/lib.h"
 #include "../includes/memory.h"
+#include "../includes/interrupt.h"
 
 #define Init_taskStackSize 32768
 
@@ -25,6 +26,11 @@
 #define Task_userBrkStart       0x0000000000100000ul
 #define Task_kernelBrkStart     0xffff800000000000ul
 
+#define Task_Priority_Normal    0
+#define Task_Priority_IO        1
+#define Task_Priority_Sleeping  3
+#define Task_Priority_Trapped   4
+
 
 typedef struct tmpTaskMemStruct {
     PageTable *pgd;
@@ -40,16 +46,6 @@ typedef struct tmpThreadStruct {
     u64 rflags;
 } ThreadStruct;
 
-typedef struct tmpTSS {
-    u32 reserved0;
-    u64 rsp0, rsp1, rsp2;
-    u64 reserved1;
-    u64 ist1, ist2, ist3, ist4, ist5, ist6, ist7;
-    u64 reserved2;
-    u16 reserved3;
-    u16 iomapBaseAddr;
-} __attribute__((packed)) TSS;
-
 typedef struct tmpTaskStruct {
     List listEle;
     volatile i64 state;
@@ -57,7 +53,10 @@ typedef struct tmpTaskStruct {
     TaskMemStruct *mem;
 	TSS *tss;
     u64 flags;
+    RBTree softIrqTree;
     i64 pid, vRunTime, signal, priority;
+
+    TimerIrq timerIrq;
 } __attribute__((packed)) TaskStruct; 
 
 union TaskUnion {

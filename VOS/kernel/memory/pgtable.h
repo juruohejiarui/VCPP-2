@@ -9,6 +9,10 @@
 #define PageTable_MapSize_2M (1 << 1)
 #define PageTable_MapSize_1G (1 << 2)
 
+#define MM_PageTable_Flag_Presented 	(1 << 0)
+#define MM_PageTable_Flag_Writable 		(1 << 1)
+#define MM_PageTable_Flag_UserPage		(1 << 2)
+
 #define getCR3() \
 	({ \
 		u64 cr3; \
@@ -48,7 +52,7 @@ u64 MM_PageTable_alloc();
 // build the corresponding page table of V_ADDR and
 // if P_ADDR != 0: map it to P_ADDR 
 // if P_ADDR == 0: remains the entry of PLD no presents.
-void MM_PageTable_map(u64 cr3, u64 vAddr, u64 pAddr);
+void MM_PageTable_map(u64 cr3, u64 vAddr, u64 pAddr, u64 flag);
 
 void MM_PageTable_unmap(u64 cr3, u64 vAddr);
 

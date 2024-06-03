@@ -107,7 +107,6 @@ int Intr_register(u64 irqId, void *arg, IntrHandler handler, u64 param, IntrCont
 	desc->irqName = irqName;
 	desc->param = param;
 	desc->handler = handler;
-
 	if (desc->controller != NULL) {
 		desc->controller->install(irqId, arg);
 		desc->controller->enable(irqId);
@@ -137,7 +136,7 @@ u64 Intr_irqdispatch(u64 rsp, u64 irqId) {
 }
 
 void Intr_init() {
-	for (int i = 32; i < 56; i++) Intr_Gate_setIntr(i, 2, intrList[i - 32]);
+	for (int i = 32; i < 56; i++) Intr_Gate_setIntr(i, 0, intrList[i - 32]);
 #ifdef APIC
     HW_APIC_init();
 #else

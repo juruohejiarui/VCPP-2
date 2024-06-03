@@ -67,9 +67,7 @@ extern TaskStruct Init_taskStruct;
 
 extern int Task_pidCounter;
 
-void Task_switch();
-
-TaskStruct *Task_getNext();
+void Task_switch(TaskStruct *next);
 
 void Task_initMgr();
 
@@ -84,6 +82,6 @@ int Task_getRing();
 
 
 // the current task
-#define Task_current ((TaskStruct *)(Task_userBrkStart))
+#define Task_current ((TaskStruct *)(Task_kernelStackEnd - Task_kernelStackSize))
 
 #endif

@@ -35,7 +35,7 @@ Syscall Syscall_list[Syscall_num] = {
     [0] = Syscall_abort,
     [1] = Syscall_printStr,
 	[2] = Syscall_divZero,
-	[3] = Syscall_clearScreen,
+	[3] = Syscall_noSystemCall,
     [4 ... Syscall_num - 1] = Syscall_noSystemCall };
 
 u64 Syscall_handler(u64 index, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5) {

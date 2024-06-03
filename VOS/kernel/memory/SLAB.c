@@ -130,6 +130,7 @@ void Slab_pushNewSlab(int id) {
 /// @param arg 
 /// @return 
 void *kmalloc(u64 size, u64 arg) {
+    IO_Func_maskIntrPreffix
     // printk(BLACK, WHITE, "kmalloc %08d\t", size);
     int id = 0;
     if (size > 1048576) return NULL;
@@ -156,6 +157,7 @@ void *kmalloc(u64 size, u64 arg) {
         return (void *)((u64)slab->virtAddr + j * Slab_kmallocCache[id].size);
     }
     printk(RED, BLACK, "kmalloc: invalid state\n");
+    IO_Func_maskIntrSuffix
     return NULL;
 }
 
@@ -172,6 +174,7 @@ void Slab_destroySlab(int id, Slab *slab) {
 }
 
 void kfree(void *addr) {
+    IO_Func_maskIntrPreffix
     int id = 0, flag = 0;
     Slab *slab = NULL;
     for (id = 0; id < 16; id++) {
@@ -196,5 +199,5 @@ void kfree(void *addr) {
     Slab_kmallocCache[id].freeCnt++, Slab_kmallocCache[id].usingCnt--;
     if (slab->usingCnt == 0 && Slab_kmallocCache[id].freeCnt >= slab->colCnt * 3 / 2 && Slab_kmallocCache[id].slabs != slab)
         Slab_destroySlab(id, slab);
-    // printk(BLACK, WHITE, "kfree %#18lx\n", addr);
+    IO_Func_maskIntrSuffix
 }

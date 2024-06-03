@@ -11,6 +11,7 @@ static Page *cachePool[PGTable_maxCacheSize];
 static int cachePoolSize = 0, cacheSize;
 
 u64 MM_PageTable_alloc() {
+    IO_Func_maskIntrPreffix
     // find a page for page table
     Page *page = cachePool[cachePoolSize - 1];
     if (MM_Buddy_getOrder(page) == 0) cachePool[--cachePoolSize] = NULL;
@@ -29,6 +30,7 @@ u64 MM_PageTable_alloc() {
         cacheSize += 0x1000;
     }
     memset(DMAS_phys2Virt(page->phyAddr), 0, 512 * sizeof(u64));
+    IO_Func_maskIntrSuffix
     return page->phyAddr;
 }
 
@@ -63,7 +65,7 @@ void PGTable_free(u64 phyAddr) {
 /// @brief Map a memory block [pAddr, pAddr + 4K - 1]
 /// @param vAddr
 /// @param pAddr
-void MM_PageTable_map(u64 cr3, u64 vAddr, u64 pAddr) {
+void MM_PageTable_map(u64 cr3, u64 vAddr, u64 pAddr, u64 flag) {
     u64 *entry = (u64 *)DMAS_phys2Virt(cr3) + ((vAddr >> 39) & 0x1ff);
     if (*entry == 0) *entry = MM_PageTable_alloc() | 0x7;
     entry = (u64 *)DMAS_phys2Virt(*entry & ~0xfff) + ((vAddr >> 30) & 0x1ff);
@@ -71,7 +73,7 @@ void MM_PageTable_map(u64 cr3, u64 vAddr, u64 pAddr) {
     entry = (u64 *)DMAS_phys2Virt(*entry & ~0xfff) + ((vAddr >> 21) & 0x1ff);
     if (*entry == 0) *entry = MM_PageTable_alloc() | 0x7;
     entry = (u64 *)DMAS_phys2Virt(*entry & ~0xfff) + ((vAddr >> 12) & 0x1ff);
-    *entry = pAddr | 0x6 | (pAddr > 0);
+    *entry = pAddr | flag;
 	flushTLB();
 }
 

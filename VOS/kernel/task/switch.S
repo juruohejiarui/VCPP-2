@@ -12,14 +12,11 @@ ThreadStruct_rsp3	= 0x10
 ThreadStruct_rsp	= 0x18
 
 TaskMemStruct_pgdPhyAddr = 0x08
-/* Task_switch() */
+/* Task_switch(TaskStruct *next) */
 ENTRY(Task_switch)
 	pushq %rbp
 	pushq %rax
-	// get the next task from _CFSstruct
-	callq Task_getNext
-	movq %rax, %rdi
-	movq $0x100000, %rcx
+	movq $0xffffffffff800000, %rcx
 	movq TaskStruct_thread(%rcx), %rbx
 	// save rip, rsp, and cr3
 	movq %rsp, ThreadStruct_rsp(%rbx)
@@ -40,7 +37,9 @@ ENTRY(Task_switch)
 	movq TaskMemStruct_pgdPhyAddr(%rbx), %rax
 	movq %rax, %cr3
 	mfence
-	movq $0x100000, %rcx
+	movq $0xffffffffff800000, %rcx
+	movq $0x2, %rax
+	movq %rax, TaskStruct_state(%rcx)
 	movq TaskStruct_thread(%rcx), %rbx
 	movq ThreadStruct_rsp(%rbx), %rsp
 	movq ThreadStruct_rip(%rbx), %rax

@@ -103,6 +103,7 @@ void MM_Buddy_init() {
 }
 
 Page *MM_Buddy_alloc(u64 log2Size, u64 attr) {
+    IO_Func_maskIntrPreffix
     if (log2Size > Buddy_maxOrder) return NULL;
     for (int ord = log2Size; ord <= Buddy_maxOrder; ord++) {
         Page *headPage = _popFreePageFrame(ord);
@@ -122,10 +123,12 @@ Page *MM_Buddy_alloc(u64 log2Size, u64 attr) {
         printk(GREEN, BLACK, "MM_Buddy_alloc(%d) = %p [%#018lx, %#018lx]\n", log2Size, headPage, headPage->phyAddr, headPage->phyAddr + (1 << (log2Size + Page_4KShift)) - 1);
         return headPage;
     }
+    IO_Func_maskIntrSuffix
     return NULL;
 }
 
 void MM_Buddy_free(Page *pages) {
+    IO_Func_maskIntrPreffix
     printk(RED, BLACK, "MM_Buddy_free(%p)\n", pages);
     if (pages == NULL || (pages->attr & Page_Flag_BuddyHeadPage) == 0) return;
     List_del(&pages->listEle);
@@ -147,6 +150,7 @@ void MM_Buddy_free(Page *pages) {
         pages = lChild;
     }
     _insNewFreePageFrame(MM_Buddy_getOrder(pages), pages);
+    IO_Func_maskIntrSuffix
 }
 
 void MM_Buddy_debugLog(int range) {

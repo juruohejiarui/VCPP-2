@@ -62,6 +62,10 @@ TaskStruct *Init_tasks[Hardware_CPUNumber] = { &Init_taskStruct, 0 };
 
 void Task_switchTo_inner(TaskStruct *prev, TaskStruct *next) {
     next->tss->rsp0 = next->thread->rsp0;
+    if (next->thread->rip > 0xffff800000000000 + 0x3000000 || next->thread->rip < 0xffff800000000000) {
+        printk(RED, BLACK, "From %#018lx, to %#018lx, invalid rip: %#018lx\n", prev, next, next->thread->rip);
+        while (1) ;
+    }
     Intr_Gate_setTSS(
             next->tss->rsp0, next->tss->rsp1, next->tss->rsp2, next->tss->ist1, next->tss->ist2,
 			next->tss->ist3, next->tss->ist4, next->tss->ist5, next->tss->ist6, next->tss->ist7);
@@ -78,34 +82,28 @@ struct CFS_rq {
     RBTree tree;
 } _CFSstruct;
 
-TimerIrq _timerIrq;
-
-TaskStruct *Task_getNext() {
-    // printk(WHITE, BLACK, "next = %#018lx, rip: %#018lx\n", _CFSstruct.next[0], _CFSstruct.next[0]->thread->rip);
-    if (_CFSstruct.next[0] == Task_current) while (1) ;
-    return _CFSstruct.next[0];
-}
-
 void Task_initMgr() {
-    Intr_SoftIrq_Timer_initIrq(&_timerIrq, 1, Task_updateCurState, NULL);
-    Intr_SoftIrq_Timer_addIrq(&_timerIrq);
     RBTree_init(&_CFSstruct.tree);
 }
 
 void Task_updateCurState() {
-    IO_cli();
+    IO_Func_maskIntrPreffix
+    // update the vRunTime and then check if needs schedule
     Task_current->vRunTime += _weight[Task_current->priority];
+    Task_current->state = Task_State_NeedSchedule;
+    IO_Func_maskIntrSuffix
+}
+
+void Task_schedule() {
+    IO_cli();
     RBNode *leftMost = RBTree_getMin(&_CFSstruct.tree);
-    if (!List_isEmpty(&leftMost->head)) {
-        TaskStruct *next = container(leftMost->head.next, TaskStruct, listEle);
-        RBTree_del(&_CFSstruct.tree, leftMost->val);
-        Task_current->state = Task_State_NeedSchedule;
-        _CFSstruct.next[0] = next;
-        TaskStruct *dmas_ptr = (TaskStruct *)DMAS_phys2Virt(MM_PageTable_getPldEntry(getCR3(), (u64)Task_current) & ~0xfff);
-        RBTree_insert(&_CFSstruct.tree, Task_current->vRunTime, &dmas_ptr->listEle);
-        Intr_SoftIrq_Timer_initIrq(&_timerIrq, 1, Task_updateCurState, NULL);
-        Intr_SoftIrq_Timer_addIrq(&_timerIrq);
-    }
+    TaskStruct *next = container(leftMost->head.next, TaskStruct, listEle);
+    RBTree_del(&_CFSstruct.tree, leftMost->val);
+    TaskStruct *dmas_ptr = (TaskStruct *)DMAS_phys2Virt(MM_PageTable_getPldEntry(getCR3(), (u64)Task_current) & ~0xfff);
+    RBTree_insert(&_CFSstruct.tree, Task_current->vRunTime, &dmas_ptr->listEle);
+    Intr_SoftIrq_Timer_initIrq(&Task_current->timerIrq, 1, Task_updateCurState, NULL);
+    Intr_SoftIrq_Timer_addIrq(&Task_current->timerIrq);
+    Task_switch(next);
 }
 
 TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntry)(u64), u64 arg, u64 flags) {
@@ -114,21 +112,26 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntr
 
     // copy the kernel part (except stack) of pgd
     memcpy((u64 *)DMAS_phys2Virt(getCR3()) + 256, (u64 *)DMAS_phys2Virt(pgdPhyAddr) + 256, 255 * sizeof(u64));
-    MM_PageTable_map(pgdPhyAddr, Task_userBrkStart, tskStructPage->phyAddr);
+    // set the Task_current
+    MM_PageTable_map(pgdPhyAddr, Task_kernelStackEnd - Task_kernelStackSize, tskStructPage->phyAddr, MM_PageTable_Flag_Presented | MM_PageTable_Flag_Writable);
 
 	Page *lstPage = MM_Buddy_alloc(5, Page_Flag_Active);
 	// map the interrupt stack with full present pages
 	for (u64 vAddr = Task_intrStackEnd - Task_intrStackSize; vAddr < Task_intrStackEnd; vAddr += Page_4KSize)
-		MM_PageTable_map(pgdPhyAddr, vAddr, lstPage->phyAddr + vAddr - (Task_intrStackEnd - Task_intrStackSize));
+		MM_PageTable_map(pgdPhyAddr, 
+                vAddr, lstPage->phyAddr + vAddr - (Task_intrStackEnd - Task_intrStackSize), 
+                MM_PageTable_Flag_Presented | MM_PageTable_Flag_Writable | MM_PageTable_Flag_UserPage);
     // map the user stack without present flag
     for (u64 vAddr = Task_userStackEnd - Task_userStackSize + 0x10; vAddr < Task_userStackEnd; vAddr += Page_4KSize)
-        MM_PageTable_map(pgdPhyAddr, vAddr, 0);
+        MM_PageTable_map(pgdPhyAddr, vAddr, 0, MM_PageTable_Flag_UserPage | MM_PageTable_Flag_Writable);
     // map the kernel stack with one present page
 	lstPage = MM_Buddy_alloc(0, Page_Flag_Active);
-    for (u64 vAddr = 0xFFFFFFFFFF800000; vAddr != 0; vAddr += Page_4KSize)
-        MM_PageTable_map(pgdPhyAddr, vAddr, vAddr == 0xFFFFFFFFFFFFF000 ? lstPage->phyAddr : 0);
+    for (u64 vAddr = 0xFFFFFFFFFF800000 + Page_4KSize; vAddr != 0; vAddr += Page_4KSize)
+        MM_PageTable_map(pgdPhyAddr,
+                vAddr, vAddr == Task_kernelStackEnd - 0xff0ul ? lstPage->phyAddr : 0, 
+                MM_PageTable_Flag_Writable | (vAddr == Task_kernelStackEnd - 0xff0ul ? MM_PageTable_Flag_Presented : 0));
 	
-    TaskStruct *task = (TaskStruct *)DMAS_phys2Virt(tskStructPage->phyAddr);
+    TaskStruct *task = (TaskStruct *)DMAS_phys2Virt(tskStructPage->phyAddr); 
     memset(task, 0, sizeof(TaskStruct) + sizeof(ThreadStruct) + sizeof(TaskMemStruct) + sizeof(TSS));
 	
 	// set the pointers of sub-structs
@@ -146,7 +149,9 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntr
 	task->state = Task_State_Uninterruptible;
 
 	memset(task->tss, 0, sizeof(TSS));
+    // execption stack pointer
 	task->tss->ist1	= Task_intrStackEnd;
+    // interrupt stack pointer
 	task->tss->ist2 = Task_intrStackEnd - (Task_intrStackSize >> 1);
 	task->tss->ist3 = task->tss->ist4 = task->tss->ist5 = task->tss->ist6 = task->tss->ist7 = Task_intrStackEnd;
 	task->tss->rsp0 = task->tss->rsp1 = task->tss->rsp2 = Task_kernelStackEnd;
@@ -172,6 +177,8 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntr
     memcpy(&regs, (u64 *)DMAS_phys2Virt(lstPage->phyAddr + Page_4KSize - 16 - sizeof(PtReg)), sizeof(PtReg));
 
     if (task->pid > 0) RBTree_insert(&_CFSstruct.tree, 0, &task->listEle);
+
+    RBTree_init(&task->softIrqTree);
     return task;
 }
 

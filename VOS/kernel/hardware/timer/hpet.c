@@ -3,6 +3,7 @@
 #include "../../includes/log.h"
 #include "../../includes/memory.h"
 #include "../../includes/interrupt.h"
+#include "../../includes/task.h"
 
 static u32 _minTick = 0;
 
@@ -118,7 +119,7 @@ void HW_Timer_HPET_init() {
 	*(u64 *)(DMAS_phys2Virt(_hpetDesc->address.Address) + 0x10) = 0x3;
 	IO_mfence();
 	_setTimerConfig(0, 0x4c);
-	_setTimerComparator(0, (int)1e6);
+	_setTimerComparator(0, (int)1e5);
 	*(u64 *)(DMAS_phys2Virt(_hpetDesc->address.Address) + 0xf0) = 0x0;
 	IO_mfence();
 

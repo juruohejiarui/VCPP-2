@@ -61,3 +61,9 @@ void Intr_Gate_setTSS(
     *(u64 *)(tss64Table + 19) = ist6;
     *(u64 *)(tss64Table + 21) = ist7;
 }
+
+void Intr_Gate_setTSSstruct(TSS *tssStruct) {
+    Intr_Gate_setTSS(
+        tssStruct->rsp0, tssStruct->rsp1, tssStruct->rsp2, tssStruct->ist1, tssStruct->ist2,
+        tssStruct->ist3, tssStruct->ist4, tssStruct->ist5, tssStruct->ist6, tssStruct->ist7);
+}
