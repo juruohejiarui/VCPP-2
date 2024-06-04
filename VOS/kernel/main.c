@@ -38,6 +38,7 @@ void startKernel() {
 
     Intr_init();
     HW_CPU_init();
+    HW_Keyboard_init();
 	HW_Timer_init();
 
     CMOSDateTime dateTime;

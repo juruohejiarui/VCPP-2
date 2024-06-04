@@ -85,6 +85,8 @@ void HW_APIC_enableIntr(u8 intrId);
 void HW_APIC_install(u8 intrId, void *arg);
 void HW_APIC_uninstall(u8 intrId);
 
+void HW_APIC_edgeAck(u8 irqId);
+
 void HW_APIC_init();
 
 int HW_APIC_finishedInit();

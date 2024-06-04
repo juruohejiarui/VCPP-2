@@ -14,7 +14,6 @@ void DMAS_init() {
     for (int i = 0; i < pudEntryCnt; i++) {
         *(ptStart + i) = (u64)Page_4KUpAlign(DMAS_physAddrStart + i * Page_1GSize) | 0x87;
         if (i % 512 == 0) printk(ORANGE, BLACK, "Table Base Address : %#018lx\n", ptStart + i);
-        printk(WHITE, BLACK, "ptStart[%d] = %#018lx\n", i, *(ptStart + i));
     }
     memManageStruct.edOfStruct = Page_4KUpAlign((u64)ptStart + ptSize);
     // set the PGD entry of DMAS

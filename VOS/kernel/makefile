@@ -8,11 +8,11 @@ CFLAGS = -mcmodel=large -fno-builtin -fno-stack-protector -m64 -std=gnu89 -std=c
 
 include ./.depend
 
-all: system_tmp $(ALLOBJS)
+all: $(ALLOBJS)
 	ld -b elf64-x86-64 -z muldefs -o system $(ALLOBJS) -T Kernel.lds 
 	objcopy -I elf64-x86-64 -S -R ".eh_frame" -R ".comment" -O binary system kernel.bin
-system_tmp: $(ALLOBJS)
-	ld -b elf64-x86-64 -z muldefs -o system_tmp $(ALLOBJS) -T Kernel.lds 
+# system_tmp: $(ALLOBJS)
+#	ld -b elf64-x86-64 -z muldefs -o system_tmp $(ALLOBJS) -T Kernel.lds 
 
 clear:
-	rm -R ./*.s ./*/*.s $(ALLOBJS) system_tmp system kernel.bin
+	rm -R ./*.s ./*/*.s $(ALLOBJS) system kernel.bin

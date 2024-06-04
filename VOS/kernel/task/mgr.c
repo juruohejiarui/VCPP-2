@@ -126,7 +126,7 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntr
         MM_PageTable_map(pgdPhyAddr, vAddr, 0, MM_PageTable_Flag_UserPage | MM_PageTable_Flag_Writable);
     // map the kernel stack with one present page
 	lstPage = MM_Buddy_alloc(0, Page_Flag_Active);
-    for (u64 vAddr = 0xFFFFFFFFFF800000 + Page_4KSize; vAddr != 0; vAddr += Page_4KSize)
+    for (u64 vAddr = Task_kernelStackEnd - Task_kernelStackSize + Page_4KSize; vAddr != 0; vAddr += Page_4KSize)
         MM_PageTable_map(pgdPhyAddr,
                 vAddr, vAddr == Task_kernelStackEnd - 0xff0ul ? lstPage->phyAddr : 0, 
                 MM_PageTable_Flag_Writable | (vAddr == Task_kernelStackEnd - 0xff0ul ? MM_PageTable_Flag_Presented : 0));

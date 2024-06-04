@@ -46,7 +46,7 @@ void doDivideError(u64 rsp, u64 errorCode) {
 	printk(RED,BLACK,"do_divide_error(0),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",errorCode , rsp , *p);
 	Task_current->priority = Task_Priority_Trapped;
 	IO_sti();
-	while(1);
+	while(1) IO_hlt();
 }
 
 void doDebug(u64 rsp, u64 errorCode) {
@@ -179,7 +179,8 @@ void doStackSegmentFault(u64 rsp, u64 errorCode) {
 void doGeneralProtection(u64 rsp, u64 errorCode) {
 	u64 *p = NULL;
 	p = (u64 *)(rsp + 0x98);
-	printk(RED,BLACK,"do_general_protection(13),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",errorCode , rsp , *p);
+	printk(RED,BLACK,"do_general_protection(13),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\t",errorCode , rsp , *p);
+	printk(WHITE, BLACK, "pid = %ld\n", Task_current->pid);
 	if (errorCode & 0x01)
 		printk(RED,BLACK,"The exception occurred during the delivery of an event external to the program, such as an interrupt or an exception.\n");
 	if (errorCode & 0x02)
@@ -193,7 +194,7 @@ void doGeneralProtection(u64 rsp, u64 errorCode) {
 	}
 	printk(RED,BLACK,"Segment Selector Index:%#018lx\n",errorCode & 0xfff8);
 	_printRegs(rsp);
-	while(1);
+	while(1) IO_hlt();
 }
 
 u64 doPageFault(u64 rsp, u64 errorCode) {
@@ -229,7 +230,7 @@ u64 doPageFault(u64 rsp, u64 errorCode) {
 			printk(RED,BLACK,"The page fault was caused by reading a reserved bit.\n");
 		if (errorCode & 0x80)
 			printk(RED,BLACK,"The page fault was caused by an instruction fetch.\n");
-		while(1);
+		while(1) IO_hlt();
 	}
 	return 0;
 }

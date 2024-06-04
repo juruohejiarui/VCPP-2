@@ -212,6 +212,18 @@ void HW_APIC_uninstall(u8 intrId) {
     HW_APIC_writeRTE(handlerId(intrId), 0x10000ul);
     enable[handlerId(intrId)] = 0;
 }
+
+void HW_APIC_edgeAck(u8 irqId) {
+    __asm__ volatile (
+        "movq $0x00, %%rdx  	\n\t" \
+        "movq $0x00, %%rax  	\n\t" \
+        "movq $0x80b, %%rcx 	\n\t" \
+        "wrmsr              \n\t" \
+        :
+        :
+        : "memory"
+    );
+}
 void APIC_initIO() {
     *APIC_ioMap.virtIndexAddr = 0x00;
     IO_mfence();

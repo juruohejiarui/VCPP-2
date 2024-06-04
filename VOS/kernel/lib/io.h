@@ -27,6 +27,9 @@ u64 IO_readMSR(u64 msrAddr);
 #define IO_sti() __asm__ volatile ("sti \n\t" : : : "memory")
 #define IO_cli() __asm__ volatile ("cli \n\t" : : : "memory")
 
+#define IO_hlt() __asm__ volatile ("hlt \n\t" : : : "memory")
+#define IO_nop() __asm__ volatile ("nop \n\t" : : : "memory")
+
 #define IO_Func_maskIntrPreffix \
 	int __prevFlag = (IO_getRflags() >> 9) & 1; \
 	if (__prevFlag) IO_cli();

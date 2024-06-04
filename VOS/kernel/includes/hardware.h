@@ -5,5 +5,6 @@
 #include "../hardware/8259A.h"
 #include "../hardware/APIC.h"
 #include "../hardware/timer.h"
+#include "../hardware/keyboard.h"
 
 #endif

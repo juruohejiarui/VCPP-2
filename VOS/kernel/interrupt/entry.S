@@ -115,6 +115,7 @@ errorCode:
     movq $0x10, %rdi
     movq %rdi, %ds
     movq %rdi, %es
+    movq %rdi, %ss
     movq %rsp, %rdi
 
     call *%rdx
@@ -156,6 +157,7 @@ ENTRY(nmi)
     movq $0x10, %rdi
     movq %rdi, %ds
     movq %rdi, %es
+    movq %rdi, %ss
     movq $0, %rsi
     movq %rsp, %rdi
 

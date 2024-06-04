@@ -98,7 +98,7 @@ void HW_Timer_HPET_init() {
 
 	_intrCotroller.enable = HW_APIC_enableIntr;
 	_intrCotroller.disable = HW_APIC_disableIntr;
-	_intrCotroller.ack = NULL;
+	_intrCotroller.ack = HW_APIC_edgeAck;
 
 	// initialize handler
 	_intrHandler = HW_Timer_HPET_handler;
