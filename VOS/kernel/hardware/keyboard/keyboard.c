@@ -1,8 +1,9 @@
-#include "keyboard.h"
-#include "../includes/memory.h"
-#include "../includes/interrupt.h"
-#include "../includes/log.h"
-#include "APIC.h"
+#include "../keyboard.h"
+#include "../../includes/memory.h"
+#include "../../includes/interrupt.h"
+#include "../../includes/log.h"
+#include "../APIC.h"
+#include "scancode.h"
 
 #define _IrqId 0x21
 
@@ -50,6 +51,7 @@ IntrHandlerDeclare(HW_Keyboard_handler) {
 }
 
 u8 _getKeyCode() {
+	while (_buffer->size == 0) IO_hlt();
 	u8 res = *_buffer->head;
 	_buffer->head++;
 	_buffer->size--;
@@ -57,16 +59,42 @@ u8 _getKeyCode() {
 		_buffer->head = _buffer->data;
 }
 
+
+
 KeyboardEvent *HW_Keyboard_getEvent() {
     if (_buffer->size == 0) return NULL;
 	KeyboardEvent *e = (KeyboardEvent *)kmalloc(sizeof(KeyboardEvent), 0);
 	u8 fir = _getKeyCode();
-	
+	if (fir == 0xE0) {
+		u8 sec = _getKeyCode();
+		e->isCtrlKey = 1;
+		if (sec & 0x80) e->isKeyUp = 1;
+		switch (sec & 0x7f) {
+			case 0x5b: e->keyCode = HW_Keyboard_SuperL; break;
+			case 0x5c: e->keyCode = HW_Keyboard_SuperR; break;
+			case 0x1d: e->keyCode = HW_Keyboard_CtrlR; 	break;
+			case 0x38: e->keyCode = HW_Keyboard_AltR;	break;
+			case 0x48: e->keyCode = HW_Keyboard_Up;		break;
+			case 0x50: e->keyCode = HW_Keyboard_Down;	break;
+			case 0x4b: e->keyCode = HW_Keyboard_Left;	break;
+			case 0x4d: e->keyCode = HW_Keyboard_Right; 	break;
+			case 0x63: e->keyCode = HW_Keyboard_Fn;		break;
+			default:
+				printk(RED, BLACK, "Keyboard: Invalid keycode : 0xE0, %#04x\n", sec);
+				break;
+		}
+	} else {
+		e->isCtrlKey = 0;
+		if (fir & 0x80) e->isKeyUp = 1;
+		switch (fir & 0x7f) {
+		}
+	}
 }
 
 void HW_Keyboard_init()
 {
     _buffer = (struct KeyboardBuffer *)kmalloc(sizeof(struct KeyboardBuffer), 0);
+	printk(WHITE, BLACK, "Keyboard: create buffer %#018lx\n", _buffer);
 	_buffer->head = _buffer->tail = _buffer->data;
 	_buffer->size = 0;
 	memset(_buffer->data, 0, HW_Keyboard_BufferSize);

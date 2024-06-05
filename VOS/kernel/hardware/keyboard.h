@@ -14,7 +14,7 @@ typedef struct {
 
 #define HW_Keyboard_Esc         0x00
 #define HW_Keyboard_CtrlL       0x01
-#define HW_Keyboard_ctrlR       0x21
+#define HW_Keyboard_CtrlR       0x21
 #define HW_Keyboard_AltL        0x02
 #define HW_Keyboard_AltR        0x22
 #define HW_Keyboard_SuperL      0x03
@@ -28,6 +28,7 @@ typedef struct {
 #define HW_Keyboard_Down        0x09
 #define HW_Keyboard_Left        0x0a
 #define HW_Keyboard_Right       0x0b
+#define HW_Keyboard_Fn          0x0c
 #define HW_Keyboard_F1          0x11
 #define HW_Keyboard_F2          0x12
 #define HW_Keyboard_F3          0x13
@@ -37,7 +38,9 @@ typedef struct {
 #define HW_Keyboard_F7          0x17
 #define HW_Keyboard_F8          0x18
 #define HW_Keyboard_F9          0x19
-#define HW_Keyboard_F10         0x20
+#define HW_Keyboard_F10         0x1a
+#define HW_Keyboard_F11         0x1b
+#define HW_Keyboard_F12         0x1c
 
 // a function for finding the character in ascii by a normal key code and the state of 'shift'
 char HW_Keyboard_getChar(u8 keyCode, u8 isShiftDown);

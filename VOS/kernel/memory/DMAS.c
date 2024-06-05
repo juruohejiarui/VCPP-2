@@ -5,7 +5,8 @@
 void DMAS_init() {
     printk(WHITE, BLACK, "DMAS_init\n");
     // calculate the page table size of DMAS
-    u64 pudEntryCnt = max(4, Page_1GUpAlign(memManageStruct.totMemSize) >> Page_1GShift),
+    u64 phyAddrEnd = memManageStruct.e820[memManageStruct.e820Length].addr + memManageStruct.e820[memManageStruct.e820Length].size;
+    u64 pudEntryCnt = max(4, Page_1GUpAlign(phyAddrEnd) >> Page_1GShift),
         pudCnt = (pudEntryCnt + 511) / 512;
     u64 ptSize = pudCnt * Page_4KSize;
     printk(WHITE, BLACK, "pudEntryCnt = %ld, pudCnt = %ld, ptSize = %ld\n", pudEntryCnt, pudCnt, ptSize);

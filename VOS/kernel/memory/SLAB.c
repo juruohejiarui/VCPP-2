@@ -154,6 +154,8 @@ void *kmalloc(u64 size, u64 arg) {
         Bit_set1(slab->colMap + (j >> 6), j & 63);
         slab->usingCnt++, slab->freeCnt--;
         Slab_kmallocCache[id].usingCnt++, Slab_kmallocCache[id].freeCnt--;
+        IO_Func_maskIntrSuffix
+        // printk(GREEN, BLACK, "kmalloc(%#018lx, %#018lx)->%#018lx\n", size, arg, (u64)slab->virtAddr + j * Slab_kmallocCache[id].size);
         return (void *)((u64)slab->virtAddr + j * Slab_kmallocCache[id].size);
     }
     printk(RED, BLACK, "kmalloc: invalid state\n");

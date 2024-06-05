@@ -78,9 +78,6 @@ task/entry.o : task/entry.S includes/linkage.h
 hardware/cpu.o : hardware/cpu.c hardware/cpu.h includes/lib.h includes/config.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h lib/rbtree.h includes/log.h includes/linkage.h 
 	$(CC) $(CFLAGS) -c hardware/cpu.c -o hardware/cpu.o 
 
-hardware/keyboard.o : hardware/keyboard.c hardware/keyboard.h includes/lib.h includes/config.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h lib/rbtree.h includes/memory.h memory/desc.h memory/DMAS.h memory/pgtable.h memory/buddy.h memory/SLAB.h includes/interrupt.h interrupt/gate.h interrupt/trap.h interrupt/interrupt.h interrupt/softirq.h interrupt/softirq/timer.h includes/log.h includes/linkage.h hardware/APIC.h 
-	$(CC) $(CFLAGS) -c hardware/keyboard.c -o hardware/keyboard.o 
-
 hardware/APIC.o : hardware/APIC.c hardware/APIC.h includes/lib.h includes/config.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h lib/rbtree.h hardware/cpu.h includes/log.h includes/linkage.h includes/memory.h memory/desc.h memory/DMAS.h memory/pgtable.h memory/buddy.h memory/SLAB.h 
 	$(CC) $(CFLAGS) -c hardware/APIC.c -o hardware/APIC.o 
 
@@ -99,4 +96,10 @@ hardware/timer/hpet.o : hardware/timer/hpet.c hardware/timer/hpet.h includes/lib
 hardware/UEFI.o : hardware/UEFI.c hardware/UEFI.h includes/lib.h includes/config.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h lib/rbtree.h 
 	$(CC) $(CFLAGS) -c hardware/UEFI.c -o hardware/UEFI.o 
 
-ALLOBJS = head.o main.o log/printk.o interrupt/interrupt.o interrupt/trap.o interrupt/softirq/timer.o interrupt/softirq/softirq.o interrupt/entry.o interrupt/gate.o memory/croper.o memory/pgtable.o memory/buddy.o memory/initmm.o memory/DMAS.o memory/SLAB.o lib/ds.o lib/memop.o lib/io.o lib/rbtree.o task/mgr.o task/syscall.o task/switch.o task/inittask.o task/entry.o hardware/cpu.o hardware/keyboard.o hardware/APIC.o hardware/8259A.o hardware/timer/cmos.o hardware/timer/timer.o hardware/timer/hpet.o hardware/UEFI.o 
+hardware/keyboard/keyboard.o : hardware/keyboard/keyboard.c hardware/keyboard.h includes/lib.h includes/config.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h lib/rbtree.h includes/memory.h memory/desc.h memory/DMAS.h memory/pgtable.h memory/buddy.h memory/SLAB.h includes/interrupt.h interrupt/gate.h interrupt/trap.h interrupt/interrupt.h interrupt/softirq.h interrupt/softirq/timer.h includes/log.h includes/linkage.h hardware/APIC.h hardware/keyboard/scancode.h 
+	$(CC) $(CFLAGS) -c hardware/keyboard/keyboard.c -o hardware/keyboard/keyboard.o 
+
+hardware/keyboard/scancode.o : hardware/keyboard/scancode.c hardware/keyboard/scancode.h includes/lib.h includes/config.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h lib/rbtree.h 
+	$(CC) $(CFLAGS) -c hardware/keyboard/scancode.c -o hardware/keyboard/scancode.o 
+
+ALLOBJS = head.o main.o log/printk.o interrupt/interrupt.o interrupt/trap.o interrupt/softirq/timer.o interrupt/softirq/softirq.o interrupt/entry.o interrupt/gate.o memory/croper.o memory/pgtable.o memory/buddy.o memory/initmm.o memory/DMAS.o memory/SLAB.o lib/ds.o lib/memop.o lib/io.o lib/rbtree.o task/mgr.o task/syscall.o task/switch.o task/inittask.o task/entry.o hardware/cpu.o hardware/APIC.o hardware/8259A.o hardware/timer/cmos.o hardware/timer/timer.o hardware/timer/hpet.o hardware/UEFI.o hardware/keyboard/keyboard.o hardware/keyboard/scancode.o 

@@ -31,6 +31,7 @@ extern void restoreAll();
     "pushq %r14     \n\t" \
     "pushq %r15     \n\t" \
     "movq $0x10, %rdx\n\t" \
+    "movq %rdx, %ss \n\t" \
     "movq %rdx, %ds \n\t" \
     "movq %rdx, %es \n\t" \
 
