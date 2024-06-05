@@ -112,7 +112,7 @@ void Task_Syscall_init() {
     IO_writeMSR(0xC0000080, IO_readMSR(0xC0000080) | 1);
 	printk(GREEN, BLACK, "write 0xC0000080 -> %lx\t", IO_readMSR(0xC0000080));
     // set IA32_STAR
-    IO_writeMSR(0xC0000081, ((u64)0x28 << 48) | ((u64)0x8 << 32));
+    IO_writeMSR(0xC0000081, ((u64)(0x28 | 3) << 48) | ((u64)0x8 << 32));
 	printk(GREEN, BLACK, "write 0xC0000081 -> %lx\t", IO_readMSR(0xC0000081));
     // set IA32_LSTAR
     IO_writeMSR(0xC0000082, (u64)Syscall_entry);

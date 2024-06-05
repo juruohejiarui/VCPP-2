@@ -205,14 +205,14 @@ u64 doPageFault(u64 rsp, u64 errorCode) {
 	printk(RED,BLACK,"do_page_fault(14),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx,CR2:%#018lx\t",errorCode , rsp , *p , cr2);
 	printk(WHITE, BLACK, "pid = %ld\n", Task_current->pid);
 	u64 pldEntry = MM_PageTable_getPldEntry(getCR3(), cr2);
-	// blank pldEntry means the page is not mapped
-	_printRegs(rsp);
 	// only has attributes
 	if ((pldEntry & ~0xffful) == 0) {
 		// map this virtual address without physics page
 		Page *page = MM_Buddy_alloc(0, Page_Flag_Active);
 		MM_PageTable_map(getCR3(), cr2 & ~0xfff, page->phyAddr, pldEntry | MM_PageTable_Flag_Presented);
 	} else {
+		// blank pldEntry means the page is not mapped
+		_printRegs(rsp);
 		printk(RED, BLACK, "Invalid entry : %#018lx\n", pldEntry);
 		if (errorCode & 0x01)
 			printk(RED,BLACK,"The page fault was caused by a non-present page.\n");

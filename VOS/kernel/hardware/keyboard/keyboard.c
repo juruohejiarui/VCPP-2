@@ -57,6 +57,7 @@ u8 _getKeyCode() {
 	_buffer->size--;
 	if (_buffer->head == _buffer->data + HW_Keyboard_BufferSize)
 		_buffer->head = _buffer->data;
+	return res;
 }
 
 
@@ -65,9 +66,10 @@ KeyboardEvent *HW_Keyboard_getEvent() {
     if (_buffer->size == 0) return NULL;
 	KeyboardEvent *e = (KeyboardEvent *)kmalloc(sizeof(KeyboardEvent), 0);
 	u8 fir = _getKeyCode();
+	e->isCtrlKey = 1;
+	e->isKeyUp = 0;
 	if (fir == 0xE0) {
 		u8 sec = _getKeyCode();
-		e->isCtrlKey = 1;
 		if (sec & 0x80) e->isKeyUp = 1;
 		switch (sec & 0x7f) {
 			case 0x5b: e->keyCode = HW_Keyboard_SuperL; break;
@@ -84,11 +86,33 @@ KeyboardEvent *HW_Keyboard_getEvent() {
 				break;
 		}
 	} else {
-		e->isCtrlKey = 0;
 		if (fir & 0x80) e->isKeyUp = 1;
 		switch (fir & 0x7f) {
+			case 0x01: e->keyCode = HW_Keyboard_Esc;		break;
+			case 0x1d: e->keyCode = HW_Keyboard_CtrlL;		break;
+			case 0x2a: e->keyCode = HW_Keyboard_ShiftL;		break;
+			case 0x36: e->keyCode = HW_Keyboard_ShiftR;		break;
+			case 0x38: e->keyCode = HW_Keyboard_AltL;		break;
+			case 0x3a: e->keyCode = HW_Keyboard_CapsLock;	break;
+			case 0x3b: e->keyCode = HW_Keyboard_F1;			break;
+			case 0x3c: e->keyCode = HW_Keyboard_F2;			break;
+			case 0x3d: e->keyCode = HW_Keyboard_F3;			break;
+			case 0x3e: e->keyCode = HW_Keyboard_F4;			break;
+			case 0x3f: e->keyCode = HW_Keyboard_F5;			break;
+			case 0x40: e->keyCode = HW_Keyboard_F6;			break;
+			case 0x41: e->keyCode = HW_Keyboard_F7;			break;
+			case 0x42: e->keyCode = HW_Keyboard_F8;			break;
+			case 0x43: e->keyCode = HW_Keyboard_F9;			break;
+			case 0x44: e->keyCode = HW_Keyboard_F10;		break;
+			case 0x57: e->keyCode = HW_Keyboard_F11;		break;
+			case 0x58: e->keyCode = HW_Keyboard_F12;		break;
+			default :
+				e->isCtrlKey = 0;
+				e->keyCode = HW_Keyboard_normapMap[(fir & 0x7f) * HW_Keyboard_ScanCodeCol];
+				break;
 		}
 	}
+	return e;
 }
 
 void HW_Keyboard_init()

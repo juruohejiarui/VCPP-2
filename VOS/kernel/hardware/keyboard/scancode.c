@@ -1,6 +1,6 @@
 #include "scancode.h"
 
-extern u8 HW_Keyboard_normapMap[HW_Keyboard_ScanCodeCol * HW_Keyboard_ScanCodeNum] = {
+u8 HW_Keyboard_normapMap[HW_Keyboard_ScanCodeCol * HW_Keyboard_ScanCodeNum] = {
     /*scan-code	unShift		Shift		*/
 /*--------------------------------------------------------------*/
 /*0x00*/	0,		0,

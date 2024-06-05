@@ -6,8 +6,8 @@
 #define HW_Keyboard_BufferSize  0x100
 
 typedef struct {
-    u8 isKeyUp : 1;
-    u8 isCtrlKey : 1;
+    u8 isKeyUp;
+    u8 isCtrlKey;
     // isCtrlKey=1: a ctrl key code; =0: a normal code, represented by ascii
     u8 keyCode;
 } KeyboardEvent;

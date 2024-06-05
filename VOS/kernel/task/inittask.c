@@ -18,8 +18,18 @@ u64 init(u64 (*usrEntry)(u64), u64 arg) {
     if (Task_current->pid == 0) {
         printk(WHITE, BLACK, "task 0 is running...\n");
         IO_sti();
-    }
-	Task_switchToUsr(usrEntry, arg);
+        for (KeyboardEvent *kpEvent; ; ) {
+            kpEvent = HW_Keyboard_getEvent();
+            if (kpEvent == NULL) continue;
+            if (kpEvent->isCtrlKey) {
+                if (!kpEvent->isKeyUp) printk(BLACK, YELLOW, "{%d}", kpEvent->keyCode);
+                else printk(BLACK, RED, "{%d}", kpEvent->keyCode);
+            } else {
+                if (!kpEvent->isKeyUp) printk(BLACK, WHITE, "[%c]", kpEvent->keyCode);
+            }
+            kfree(kpEvent);
+        }
+    } else Task_switchToUsr(usrEntry, arg);
     return 1;
 }
 

@@ -95,9 +95,9 @@ static void _initArray() {
 void MM_init() {
     EFI_E820MemoryDescriptor *p = (EFI_E820MemoryDescriptor *)HW_UEFI_bootParamInfo->E820Info.entry;
     u64 totMem = 0;
-    printk(WHITE, BLACK, "Display Physics Address MAP,Type(1:RAM,2:ROM or Reserved,3:ACPI Reclaim Memory,4:ACPI NVS Memory,Others:Undefine)\n");
+    // printk(WHITE, BLACK, "Display Physics Address MAP,Type(1:RAM,2:ROM or Reserved,3:ACPI Reclaim Memory,4:ACPI NVS Memory,Others:Undefine)\n");
     for (int i = 0; i < HW_UEFI_bootParamInfo->E820Info.entryCount; i++) {
-        printk(GREEN, BLACK, "Address:%#018lx\tLength:%#018lx\tType:%#010x\n", p->address, p->length, p->type);
+        // printk(GREEN, BLACK, "Address:%#018lx\tLength:%#018lx\tType:%#010x\n", p->address, p->length, p->type);
         totMem += p->length;
         memManageStruct.e820[i].addr = p->address;
         memManageStruct.e820[i].size = p->length;
