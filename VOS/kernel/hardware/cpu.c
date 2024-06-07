@@ -10,6 +10,7 @@ void HW_CPU_getID(u32 mop, u32 sop, u32 *eax, u32 *ebx, u32 *ecx, u32 *edx) {
 }
 
 void HW_CPU_init() {
+    printk(RED, BLACK, "HW_CPU_init()\n");
     int i, j;
     u32 cpuFacName[4] = {0, 0, 0, 0};
     char facName[17] = {0};

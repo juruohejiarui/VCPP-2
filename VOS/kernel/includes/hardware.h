@@ -7,4 +7,6 @@
 #include "../hardware/timer.h"
 #include "../hardware/keyboard.h"
 
+void HW_init();
+
 #endif

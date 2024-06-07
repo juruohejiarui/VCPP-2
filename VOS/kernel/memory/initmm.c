@@ -11,7 +11,7 @@ struct GlobalMemManageStruct memManageStruct = {{0}, 0};
 
 // initialize the zones, pages and bitmaps
 static void _initArray() {
-    printk(RED, BLACK, "initArray()\n");
+    printk(RED, BLACK, "->initArray()\n");
     int kernelZoneId = -1;
     u64 totPage = 0;
     memManageStruct.zonesLength = 0;
@@ -25,7 +25,6 @@ static void _initArray() {
         memManageStruct.zonesLength++;
     }
     totPage = (memManageStruct.e820[memManageStruct.e820Length].addr + memManageStruct.e820[memManageStruct.e820Length].size) >> Page_4KShift;
-    printk(WHITE, BLACK, "kernelZoneId = %d, totPage = %d\n", kernelZoneId, totPage);
     // search for a place for building zones
     u64 reqSize = upAlignTo(sizeof(Zone) * memManageStruct.zonesLength, sizeof(u64));
     for (int i = 0; i <= memManageStruct.e820Length; i++) {
@@ -75,7 +74,6 @@ static void _initArray() {
     printk(RED, BLACK, "Fail to build a page array\n");
     return ;
     SuccBuildPages:
-    printk(RED, BLACK, "Setting the properties of the zones\n");
     // set the property "blgZone" of the pages
     for (int i = 0; i < memManageStruct.zonesLength; i++) {
         Zone *zone = memManageStruct.zones + i;
@@ -86,13 +84,12 @@ static void _initArray() {
         for (u64 j = 0; j < zone->usingCnt; j++)
             zone->pages[j].attr = Page_Flag_Kernel | Page_Flag_KernelInit;
         for (int i = 0; i < zone->pagesLength; i++) zone->pages[i].blgZone = zone;
-        printk(WHITE, BLACK, "zone[%d]: pagesLength = %ld, usingCnt = %ld, freeCnt = %ld\n", 
-            i, zone->pagesLength, zone->usingCnt, zone->freeCnt);
     }
     return ;
 }
 
 void MM_init() {
+    printk(RED, BLACK, "MM_init()\n");
     EFI_E820MemoryDescriptor *p = (EFI_E820MemoryDescriptor *)HW_UEFI_bootParamInfo->E820Info.entry;
     u64 totMem = 0;
     // printk(WHITE, BLACK, "Display Physics Address MAP,Type(1:RAM,2:ROM or Reserved,3:ACPI Reclaim Memory,4:ACPI NVS Memory,Others:Undefine)\n");
@@ -106,7 +103,6 @@ void MM_init() {
         p++;
         if (p->type > 4 || p->length == 0 || p->type < 1) break;
     }
-    printk(WHITE, BLACK, "Total Memory Size : %#018lx\n", totMem);
     memManageStruct.totMemSize = totMem;
 
     // get the total 4K pages
@@ -119,10 +115,9 @@ void MM_init() {
         if (ed <= st) continue;
         totMem += (ed - st) >> Page_4KShift;
     }
-    printk(WHITE, BLACK, "Total 4K pages: %#018lx = %ld\n", totMem, totMem);
+    printk(WHITE, BLACK, "Total 4K pages: %#018lx = %ld\t", totMem, totMem);
 
     memManageStruct.edOfStruct = Page_4KUpAlign((u64)&_end);
-    printk(WHITE, BLACK, "edAddrOfStruct = %#018lx\n", memManageStruct.edOfStruct);
     
     flushTLB();
 

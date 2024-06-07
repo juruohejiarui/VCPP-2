@@ -11,6 +11,9 @@ int memcmp(void *fir, void *sec, u64 size);
 
 i64 strlen(u8 *str);
 
+int strcmp(char *a, char *b);
+int strncmp(char *a, char *b, i64 size);
+
 
 
 #endif

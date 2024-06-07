@@ -59,6 +59,7 @@ u64 Task_doExit(u64 arg) {
 }
 
 void Task_init() {
+    printk(RED, BLACK, "Task_init()\n");
     Task_initMgr();
     Task_pidCounter = 0;
 	// fake the task struction of the current task

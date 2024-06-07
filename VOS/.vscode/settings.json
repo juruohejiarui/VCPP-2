@@ -9,6 +9,8 @@
         "memory.h": "c",
         "interrupt.h": "c",
         "log.h": "c",
-        "hardware.h": "c"
+        "hardware.h": "c",
+        "timer.h": "c",
+        "uefi.h": "c"
     }
 }

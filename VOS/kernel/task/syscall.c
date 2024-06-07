@@ -74,7 +74,8 @@ void Task_switchToUsr(u64 (*entry)(u64), u64 arg) {
 	IO_cli();
     PtReg regs;
     memset(&regs, 0, sizeof(PtReg));
-    printk(RED, BLACK, "Task_switchToUsr: entry = %#018lx, arg = %#018lx\n", entry, arg);
+    printk(RED, BLACK, "Task_switchToUsr: entry = %#018lx, arg = %#018lx\t", entry, arg);
+    printk(WHITE, BLACK, "pid = %ld\n", Task_current->pid);
     regs.rsp = Task_userStackEnd;
     regs.rdi = arg;
     regs.rcx = (u64)entry;
@@ -92,12 +93,10 @@ void Task_switchToUsr(u64 (*entry)(u64), u64 arg) {
     );
     Task_current->thread->rsp = Task_current->thread->rsp3 = regs.rsp;
     memcpy(&regs, (void *)(Task_current->thread->rsp0), sizeof(PtReg));
-	printk(YELLOW, BLACK, "finished copying\n");
     Task_current->tss->rsp0 = Task_current->thread->rsp0;
     Intr_Gate_setTSS(
         Task_current->tss->rsp0, Task_current->tss->rsp1, Task_current->tss->rsp2, Task_current->tss->ist1, Task_current->tss->ist2,
 		Task_current->tss->ist3, Task_current->tss->ist4, Task_current->tss->ist5, Task_current->tss->ist6, Task_current->tss->ist7);
-    printk(ORANGE, BLACK, "finish TSS\n");
     __asm__ volatile (
         "movq %0, %%rsp     \n\t"
         "jmp Syscall_exit	\n\t"

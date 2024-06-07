@@ -4,6 +4,7 @@
 #include "includes/interrupt.h"
 #include "includes/memory.h"
 #include "includes/task.h"
+#include "includes/hardware.h"
 
 void drawPoint(int x, int y, unsigned int color) {
     position.FBAddr[x + y * position.XResolution] = color;
@@ -37,9 +38,7 @@ void startKernel() {
     MM_init();
 
     Intr_init();
-    HW_CPU_init();
-    HW_Keyboard_init();
-	HW_Timer_init();
+    HW_init();
 
     CMOSDateTime dateTime;
     HW_Timer_CMOS_getDateTime(&dateTime);

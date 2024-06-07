@@ -108,7 +108,7 @@ void Task_schedule() {
 
 TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntry)(u64), u64 arg, u64 flags) {
     u64 pgdPhyAddr = MM_PageTable_alloc(); Page *tskStructPage = MM_Buddy_alloc(0, Page_Flag_Active);
-    printk(WHITE, BLACK, "pgdPhyAddr: %#018lx, tskStructPage: %#018lx\n", pgdPhyAddr, tskStructPage->phyAddr);
+    printk(YELLOW, BLACK, "pgdPhyAddr: %#018lx, tskStructPage: %#018lx\t", pgdPhyAddr, tskStructPage->phyAddr);
 
     // copy the kernel part (except stack) of pgd
     memcpy((u64 *)DMAS_phys2Virt(getCR3()) + 256, (u64 *)DMAS_phys2Virt(pgdPhyAddr) + 256, 255 * sizeof(u64));
@@ -139,7 +139,7 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntr
 	task->thread = thread;
 	task->mem = (TaskMemStruct *)(thread + 1);
 	task->tss = (TSS *)(task->mem + 1);
-	printk(WHITE, BLACK, "task=%#018lx, mem=%#018lx, thread=%#018lx, tss=%#018lx\n", task, task->mem, task->thread, task->tss);
+	printk(WHITE, BLACK, "task=%#018lx\n", task);
 
     task->flags = flags;
     task->vRunTime = 1;

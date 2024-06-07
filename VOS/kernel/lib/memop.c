@@ -79,3 +79,55 @@ i64 strlen(u8 *str) {
     );
     return res;
 }
+
+
+int strcmp(char *a, char *b) {
+    register int _res;
+    __asm__ volatile (
+        "cld        		\n\t"
+        "1: 				\n\t"
+		"lodsb				\n\t"
+		"scasb				\n\t"
+		"jne 2f				\n\t"
+		"testb %%al, %%al	\n\t"
+		"jne 1b				\n\t"
+		"xorl %%eax, %%eax	\n\t"
+		"jmp 3f				\n\t"
+		"2:					\n\t"
+		"movl $1, %%eax		\n\t"
+		"jl 3f				\n\t"
+		"negl %%eax			\n\t"
+		"3:					\n\t"
+		: "=a"(_res)
+		: "D"(a), "S"(b)
+		:
+    );
+    return _res;
+}
+
+int strncmp(char *a, char *b, i64 size) {
+	register int _res;
+	__asm__ volatile (
+		"cld 				\n\t"
+		"1: 				\n\t"
+		"decq %3			\n\t"
+		"js 2f				\n\t"
+		"lodsb				\n\t"
+		"scasb				\n\t"
+		"jne 3f				\n\t"
+		"testb %%al, %%al	\n\t"
+		"jne 1b				\n\t"
+		"2:					\n\t"
+		"xorl %%eax, %%eax	\n\t"
+		"jmp 4f				\n\t"
+		"3:					\n\t"
+		"movl $1, %%eax		\n\t"
+		"jl 4f				\n\t"
+		"negl %%eax			\n\t"
+		"4:					\n\t"
+		: "=a"(_res)
+		: "D"(a), "S"(b), "c"(size)
+		:
+	);
+    return _res;
+}

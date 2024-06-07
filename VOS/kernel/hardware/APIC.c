@@ -48,7 +48,6 @@ void APIC_initLocal() {
         : 
         : "memory"
     );
-    printk(WHITE, BLACK, "eax: %#010x, edx: %#010x\n", x, y);
     if (0xC00 & x) printk(WHITE, BLACK, "xAPIC & x2APIC enabled\n");
 
     // enable SVR[8] & SVR[12]
@@ -64,7 +63,6 @@ void APIC_initLocal() {
         : 
         : "memory"
     );
-    printk(WHITE, BLACK, "eax: %#010x, edx: %#010x\n", x, y);
     if (0x100 & x) printk(WHITE, BLACK, "SVR[8] enabled\n");
     if (0x1000 &x) printk(WHITE, BLACK, "SVR[12] enabled\n");
 
@@ -94,26 +92,6 @@ void APIC_initLocal() {
     else if (((x & 0xff) >= 0x10) && ((x & 0xff) < 0x20))
         printk(WHITE, BLACK, "Integrated APIC\n");
 
-    // mask all LVT entries
-    // __asm__ volatile (
-    //     "movq $0x82f, %%rcx           \n\t" // CMCI
-    //     "wrmsr                        \n\t"
-    //     "movq $0x832, %%rcx           \n\t" // Timer
-    //     "wrmsr                        \n\t"
-    //     "movq $0x833, %%rcx           \n\t" // Thermal Monitor
-    //     "wrmsr                        \n\t"
-    //     "movq $0x834, %%rcx           \n\t" // Performance Counter
-    //     "wrmsr                        \n\t"
-    //     "movq $0x835, %%rcx           \n\t" // LINT0
-    //     "wrmsr                        \n\t"
-    //     "movq $0x836, %%rcx           \n\t" // LINT1
-    //     "wrmsr                        \n\t"
-    //     "movq $0x837, %%rcx           \n\t" // LINT2
-    //     "wrmsr                        \n\t"
-    //     :
-    //     : "a"(0x10000), "d"(0)
-    //     : "memory"
-    // );
     *(u64 *)DMAS_phys2Virt(0xfee002f0) = 0x100000;
     for (u64 i = 0x320; i <= 0x370; i += 0x10) *(u64 *)DMAS_phys2Virt(0xfee00000 + i) = 0x100000;
     
@@ -125,7 +103,7 @@ void APIC_initLocal() {
         :
         : "memory"
     );
-    printk(WHITE, BLACK, "TPR: %#010x\n", x & 0xff);
+    printk(WHITE, BLACK, "TPR: %#010x\t", x & 0xff);
 
     // get PPR
     __asm__ volatile (
@@ -241,6 +219,7 @@ void APIC_initIO() {
 int APIC_flag = 0;
 
 void HW_APIC_init() {
+    printk(RED, BLACK, "HW_APIC_init()\n");
     APIC_mapIOAddr();
     
     IO_out8(0x21, 0xff);
