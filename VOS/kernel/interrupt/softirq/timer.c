@@ -20,6 +20,12 @@ void Intr_SoftIrq_Timer_updateState() {
 	if (minNode != NULL && minNode->val <= HW_Timer_HPET_jiffies()) Intr_SoftIrq_setState(Intr_SoftIrq_State_Timer);
 }
 
+// the most simple one
+void Intr_SoftIrq_Timer_mdelay(u64 msec) {
+	u64 stJiffies = HW_Timer_HPET_jiffies();
+	while (HW_Timer_HPET_jiffies() - stJiffies < msec) IO_hlt();
+}
+
 void _doTimer(void *data) {
 	// printk(BLACK, WHITE, "Timer (%ld)\t", HW_Timer_HPET_jiffies());
 	RBNode *minNode = RBTree_getMin(&Task_current->softIrqTree);

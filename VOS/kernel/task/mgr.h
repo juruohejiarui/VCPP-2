@@ -79,7 +79,9 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntr
 
 int Task_getRing();
 
+int Task_sleep();
 
+void Task_stopSleep();
 
 // the current task
 #define Task_current ((TaskStruct *)(Task_kernelStackEnd - Task_kernelStackSize))

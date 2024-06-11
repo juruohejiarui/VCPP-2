@@ -47,7 +47,15 @@ typedef struct {
             u32 legacyBase;
         } __attribute__ ((packed)) type2;
     } __attribute__ ((packed)) type;
-} __attribute__ ((packed)) PCIeDevice;
+} __attribute__ ((packed)) PCIeConfig;
+
+// power status and control registers
+typedef struct {
+    u16 powerStatus;
+    u16 powerCtrl;
+} __attribute__ ((packed)) PCIePowerRegs;
+
+#include "./PCIe/mgr.h"
 
 typedef struct {
     u64 address;
@@ -64,6 +72,7 @@ typedef struct {
 
 extern char *PCIeClassDesc[256][256];
 
+List *HW_PCIe_getMgrList();
 void HW_PCIe_init();
 
 #endif

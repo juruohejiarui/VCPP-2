@@ -235,6 +235,8 @@ void HW_APIC_init() {
     IO_out32(0xcf8, 0x8000f8f0);
     IO_mfence();
     APIC_flag = 1;
+
+    IO_sti();
 }
 
 int HW_APIC_finishedInit() { return APIC_flag; }

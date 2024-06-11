@@ -14,6 +14,8 @@ static APICRteDescriptor _intrDesc;
 static HPETDescriptor *_hpetDesc;
 static u64 _jiffies = 0;
 
+extern int Global_state;
+
 static inline void _setTimerConfig(u32 id, u64 config) {
 	u64 readonlyPart = *(u64 *)(DMAS_phys2Virt(_hpetDesc->address.Address) + 0x100 + 0x20 * id) & 0x8030;
 	printk(WHITE, BLACK, "HPET: Timer %d: ", id);
@@ -30,9 +32,8 @@ static inline void _setTimerComparator(u32 id, u32 comparator) {
 
 IntrHandlerDeclare(HW_Timer_HPET_handler) {
 	// print the counter
-	// printk(RED, WHITE, "HPET\t");
 	_jiffies++;
-	Intr_SoftIrq_Timer_updateState();
+	if (Global_state) Intr_SoftIrq_Timer_updateState();
 }
 
 void HW_Timer_HPET_init() {
@@ -45,14 +46,14 @@ void HW_Timer_HPET_init() {
 	_hpetDesc = NULL;
 	for (i32 i = 0; i < xsdt->header.length; i++) {
 		HPETDescriptor *desc = (HPETDescriptor *)DMAS_phys2Virt(xsdt->entry[i]);
-		if (desc->signature[0] == 'H' && desc->signature[1] == 'P' && desc->signature[2] == 'E' && desc->signature[3] == 'T') {
+		if (!strncmp(desc->signature, "HPET", 4)) {
 			_hpetDesc = desc;
 			break;
 		}
 	}
 	if (_hpetDesc == NULL) {
 		printk(RED, BLACK, "HPET not found\n");
-		return;
+		while (1) IO_hlt();
 	} else {
 		printk(WHITE, BLACK, "HPET found at %#018lx, addres: %#018lx\n", _hpetDesc, _hpetDesc->address.Address);
 	}
@@ -98,9 +99,12 @@ void HW_Timer_HPET_init() {
 		printk(WHITE, BLACK, "HPET: Legacy replacement: No\t");
 		while (1) IO_hlt(); 
 	}
+	// get min tick
+	_minTick = (cReg >> 32) & ((1ul << 32) - 1);
 	printk(WHITE, BLACK, "\n");
 	_setTimerConfig(0, 0x40000004c);
-	_setTimerComparator(0, (int)1e5);
+	// set it to 1 ms
+	_setTimerComparator(0, (u32)(1.0 / _minTick * 1e12 + 1));
 	*(u64 *)(DMAS_phys2Virt(_hpetDesc->address.Address) + 0xf0) = 0x0;
 	IO_mfence();
 	*(u64 *)(DMAS_phys2Virt(_hpetDesc->address.Address) + 0x20) = 0;

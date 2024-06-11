@@ -8,16 +8,18 @@
 
 extern void Intr_retFromIntr();
 
+extern int Global_state;
+
 u64 init(u64 (*usrEntry)(u64), u64 arg) {
 	u64 rsp = 0;
 	__asm__ volatile ( "movq %%rsp, %0" : "=m"(rsp) : : "memory" );
-    Intr_SoftIrq_Timer_initIrq(&Task_current->timerIrq, 1, Task_updateCurState, NULL);
-    Intr_SoftIrq_Timer_addIrq(&Task_current->timerIrq);
+    Intr_SoftIrq_Timer_initIrq(&Task_current->scheduleTimer, 1, Task_updateCurState, NULL);
+    Intr_SoftIrq_Timer_addIrq(&Task_current->scheduleTimer);
 	Task_current->state = Task_State_Running;
 	printk(RED, BLACK, "init is running, arg = %#018lx, rsp = %#018lx\n", arg, rsp);
     if (Task_current->pid == 0) {
         printk(WHITE, BLACK, "task 0 is running...\n");
-        IO_sti();
+        Global_state = 1;
         for (KeyboardEvent *kpEvent; ; ) {
             kpEvent = HW_Keyboard_getEvent();
             if (kpEvent == NULL) continue;

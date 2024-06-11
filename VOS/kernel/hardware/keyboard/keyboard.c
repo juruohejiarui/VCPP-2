@@ -115,10 +115,8 @@ KeyboardEvent *HW_Keyboard_getEvent() {
 	return e;
 }
 
-void HW_Keyboard_init()
-{
+void HW_Keyboard_init() {
     _buffer = (struct KeyboardBuffer *)kmalloc(sizeof(struct KeyboardBuffer), 0);
-	printk(WHITE, BLACK, "Keyboard: create buffer %#018lx\n", _buffer);
 	_buffer->head = _buffer->tail = _buffer->data;
 	_buffer->size = 0;
 	memset(_buffer->data, 0, HW_Keyboard_BufferSize);

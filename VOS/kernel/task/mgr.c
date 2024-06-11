@@ -101,8 +101,8 @@ void Task_schedule() {
     RBTree_del(&_CFSstruct.tree, leftMost->val);
     TaskStruct *dmas_ptr = (TaskStruct *)DMAS_phys2Virt(MM_PageTable_getPldEntry(getCR3(), (u64)Task_current) & ~0xfff);
     RBTree_insert(&_CFSstruct.tree, Task_current->vRunTime, &dmas_ptr->listEle);
-    Intr_SoftIrq_Timer_initIrq(&Task_current->timerIrq, 1, Task_updateCurState, NULL);
-    Intr_SoftIrq_Timer_addIrq(&Task_current->timerIrq);
+    Intr_SoftIrq_Timer_initIrq(&Task_current->scheduleTimer, 1, Task_updateCurState, NULL);
+    Intr_SoftIrq_Timer_addIrq(&Task_current->scheduleTimer);
     Task_switch(next);
 }
 
@@ -187,3 +187,5 @@ int Task_getRing() {
     __asm__ volatile ("movq %%cs, %0" : "=a"(cs));
     return cs & 3;
 }
+
+void Task_stopSleep() { Task_current->state = Task_State_Sleeping; }

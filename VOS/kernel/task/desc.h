@@ -16,6 +16,7 @@
 #define Task_State_Uninterruptible  (1 << 0)
 #define Task_State_Running          (1 << 1)
 #define Task_State_NeedSchedule     (1 << 2)
+#define Task_State_Sleeping         (1 << 3)
 
 #define Task_userStackEnd       0x00007ffffffffff0ul
 #define Task_kernelStackEnd     0xfffffffffffffff0ul
@@ -56,7 +57,7 @@ typedef struct tmpTaskStruct {
     RBTree softIrqTree;
     i64 pid, vRunTime, signal, priority;
 
-    TimerIrq timerIrq;
+    TimerIrq scheduleTimer, delayTimer;
 } __attribute__((packed)) TaskStruct; 
 
 union TaskUnion {

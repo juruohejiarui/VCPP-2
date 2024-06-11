@@ -18,4 +18,6 @@ void Intr_SoftIrq_Timer_addIrq(TimerIrq *irq);
 
 void Intr_SoftIrq_Timer_updateState();
 
+void Intr_SoftIrq_Timer_mdelay(u64 msec);
+
 #endif
