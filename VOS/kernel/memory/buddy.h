@@ -7,6 +7,8 @@ void MM_Buddy_setOrder(Page *page, int order);
 
 void MM_Buddy_init();
 Page *MM_Buddy_alloc(u64 log2Size, u64 attr);
+// allocate a page frame below 4G
+Page *MM_Buddy_alloc4G(u64 log2Size, u64 attr);
 void MM_Buddy_free(Page *page);
 void MM_Buddy_debugLog(int range);
 

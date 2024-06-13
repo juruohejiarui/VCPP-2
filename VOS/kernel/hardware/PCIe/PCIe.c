@@ -80,7 +80,7 @@ void HW_PCIe_init() {
         printk(WHITE, BLACK,
                 "PCIe device %d: address: %#018lx, segment: %#04x, start bus: %#02x, end bus: %#02x\n", 
                 i, _desc->structs[i].address, _desc->structs[i].segment, _desc->structs[i].stBus, _desc->structs[i].edBus);
-        for (u8 bus = _desc->structs[i].stBus; bus <= _desc->structs[i].edBus; bus++)
+        for (u16 bus = (u16)_desc->structs[i].stBus; bus <= (u16)_desc->structs[i].edBus; bus++)
             _chkBus(_desc->structs[i].address, bus);
         
     }

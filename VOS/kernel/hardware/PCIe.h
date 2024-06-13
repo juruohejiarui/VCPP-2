@@ -2,6 +2,7 @@
 #define __HAREWARE_PCIE_H__
 #include "../includes/lib.h"
 #include "UEFI.h"
+#include "device.h"
 
 typedef struct {
     u16 vendorID, devID;

@@ -102,6 +102,19 @@ void MM_Buddy_init() {
     }
 }
 
+static inline void _divPageFrame(Page *page, int fr, int to) {
+	for (int i = fr; i > to; i--) {
+		Page *rPage = page + (1 << (i - 1));
+		rPage->buddyId = rChildPos(page->buddyId);
+		page->buddyId = lChildPos(page->buddyId);
+		MM_Buddy_setOrder(rPage, i - 1);
+		MM_Buddy_setOrder(page, i - 1);
+		rPage->attr |= Page_Flag_BuddyHeadPage;
+		_insNewFreePageFrame(i - 1, rPage);
+		revBit(rPage);
+	}
+}
+
 Page *MM_Buddy_alloc(u64 log2Size, u64 attr) {
     IO_Func_maskIntrPreffix
     if (log2Size > Buddy_maxOrder) return NULL;
@@ -109,22 +122,42 @@ Page *MM_Buddy_alloc(u64 log2Size, u64 attr) {
         Page *headPage = _popFreePageFrame(ord);
         if (headPage == NULL) continue;
         // divide this page frame
-        for (int i = ord; i > log2Size; i--) {
-            Page *rPage = headPage + (1 << (i - 1));
-            rPage->buddyId = rChildPos(headPage->buddyId);
-            headPage->buddyId = lChildPos(headPage->buddyId);
-            MM_Buddy_setOrder(rPage, i - 1);
-            MM_Buddy_setOrder(headPage, i - 1);
-            rPage->attr |= Page_Flag_BuddyHeadPage;
-            _insNewFreePageFrame(i - 1, rPage);
-            revBit(rPage);
-        }
+        _divPageFrame(headPage, ord, log2Size);
         headPage->attr |= attr;
+		IO_Func_maskIntrSuffix
         // printk(GREEN, BLACK, "MM_Buddy_alloc(%d)->%p [%#018lx,%#018lx]\n", log2Size, headPage, headPage->phyAddr, headPage->phyAddr + (1 << (log2Size + Page_4KShift)) - 1);
         return headPage;
     }
     IO_Func_maskIntrSuffix
     return NULL;
+}
+
+Page *MM_Buddy_alloc4G(u64 log2Size, u64 attr) {
+	IO_Func_maskIntrPreffix
+	if (log2Size > Buddy_maxOrder) return NULL;
+	for (int ord = log2Size; ord <= Buddy_maxOrder; ord++) {
+		Page *page = mmStruct.freeList[ord];
+		if (page == NULL) continue;
+		// find the page below 4G
+		do {
+			if (page->phyAddr < (1ul << 32)) break;
+			page = container(page->listEle.next, Page, listEle);
+		} while (page != mmStruct.freeList[ord]);
+		if (page->phyAddr >= (1ul << 32)) continue;
+		// remove this page from free list
+		if (page == mmStruct.freeList[ord]) {
+			if (List_isEmpty(&page->listEle)) mmStruct.freeList[ord] = NULL;
+			else mmStruct.freeList[ord] = container(page->listEle.next, Page, listEle);
+		}
+		List_del(&page->listEle);
+		// divide this page frame
+		_divPageFrame(page, ord, log2Size);
+		page->attr |= attr;
+		IO_Func_maskIntrSuffix
+		return page;
+	}
+	IO_Func_maskIntrSuffix
+	return NULL;
 }
 
 void MM_Buddy_free(Page *pages) {
