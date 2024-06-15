@@ -77,6 +77,51 @@ typedef struct {
 } __attribute__ ((packed)) USB_XHCI_DoorbellRegs;
 
 typedef struct {
+	u8 id;
+	u8 nxtOff;
+	u8 idSpecific[0];
+} __attribute__ ((packed)) USB_XHCI_ExtCapEntry;
+
+typedef struct {
+	USB_XHCI_ExtCapEntry extCap;
+	// bit0 : BIOS Owned Semaphore
+	// bit8 : System Software Owned Semaphore
+	// other bits are reserved and preserved
+	u16 data1;
+	// used by BIOS
+	u32 legacyCap;
+} __attribute__ ((packed)) USB_XHCI_ExtCap_Legacy;
+
+typedef struct {
+	USB_XHCI_ExtCapEntry extCap;
+	u8 minorRev, majorRev;
+	u8 name[4];
+	// the compatible port offset
+	u8 portOff;
+	// the compatible port count
+	u8 portCnt;
+	u8 protocolDefined, speedIdCnt;
+	u8 slotType : 4;
+	u32 reserved : 28;
+} __attribute__ ((packed)) USB_XHCI_ExtCap_Protocol;
+
+#define HW_USB_XHCI_Port_Flag_Paired	0x1
+#define HW_USB_XHCI_Port_Flag_USB3		0x2
+#define HW_USB_XHCI_Port_Flag_Master	0x4
+
+#define HW_USB_XHCI_Port_isPaired(port)		((port)->flags & HW_USB_XHCI_Port_Flag_Paired)
+#define HW_USB_XHCI_Port_isUSB3(port)		((port)->flags & HW_USB_XHCI_Port_Flag_USB3)
+#define HW_USB_XHCI_Port_isMaster(port)		((port)->flags & HW_USB_XHCI_Port_Flag_Master)
+
+#define HW_USB_XHCI_Port_getPair(port)		((USB_XHCI_Port *)((u64)(port) + 1))
+
+typedef struct USB_XHCI_Port {
+	USB_XHCI_PortRegs *regs;
+	u64 flags, offset;
+	struct USB_XHCI_Port *pair;
+} USB_XHCI_Port;
+
+typedef struct {
 	Device dev;
 	PCIeConfig *config;
 	PCIePowerRegs *pwRegs;
@@ -84,26 +129,25 @@ typedef struct {
 	USB_XHCI_OpRegs *opRegs;
 	USB_XHCI_RuntimeRegs *rtRegs;
 	USB_XHCI_DoorbellRegs *dbRegs;
+	USB_XHCI_ExtCapEntry *extCapHeader;
 	List listEle, pageList;
+	USB_XHCI_Port *ports;
 } USB_XHCIController;
 
-typedef struct {
-	u8 id;
-	u8 nxtOff;
-	u8 idSpecific[0];
-} __attribute__ ((packed)) USB_XHCI_ExtCapEntry;
-
 #define USB_XHCI_ExtCap_Id_Legacy 	0x01
-#define USB_XHCI_ExpCap_Id_Protocol 0x02
-#define USB_XHCI_ExpCap_Id_Power 	0x03
-#define USB_XHCI_ExpCap_Id_IOVirt	0x04
-#define USB_XHCI_ExpCap_Id_Message 	0x05
-#define USB_XHCI_ExpCap_Id_LocalMem 0x06
-#define USB_XHCI_ExpCap_Id_Debug	0x0a
-#define USB_XHCI_ExpCap_Id_MsgIntr	0x11
+#define USB_XHCI_ExtCap_Id_Protocol 0x02
+#define USB_XHCI_ExtCap_Id_Power 	0x03
+#define USB_XHCI_ExtCap_Id_IOVirt	0x04
+#define USB_XHCI_ExtCap_Id_Message 	0x05
+#define USB_XHCI_ExtCap_Id_LocalMem 0x06
+#define USB_XHCI_ExtCap_Id_Debug	0x0a
+#define USB_XHCI_ExtCap_Id_MsgIntr	0x11
 
 extern List HW_USB_XHCI_mgrList;
 
-void HW_USB_XHCI_Init(PCIeConfig *xhci);
+/// @brief initialize the xhci controller
+/// @param xhci the xhci structure in PCIe
+/// @return 1: initialzation success, 0: initialization failed
+int HW_USB_XHCI_Init(PCIeConfig *xhci);
 
 #endif

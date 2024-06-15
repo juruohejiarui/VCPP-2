@@ -4,6 +4,8 @@
 #include "../includes/task.h"
 #include "gate.h"
 
+extern int Global_state;
+
 char *_regName[] = {
 	"r15", "r14", "r13", "r12", "r11", "r10", "r9", "r8",
 	"rbx", "rcx", "rdx", "rsi", "rdi", "rbp",
@@ -180,7 +182,7 @@ void doGeneralProtection(u64 rsp, u64 errorCode) {
 	u64 *p = NULL;
 	p = (u64 *)(rsp + 0x98);
 	printk(RED,BLACK,"do_general_protection(13),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\t",errorCode , rsp , *p);
-	printk(WHITE, BLACK, "pid = %ld\n", Task_current->pid);
+	if (Global_state) printk(WHITE, BLACK, "pid = %ld\n", Task_current->pid);
 	if (errorCode & 0x01)
 		printk(RED,BLACK,"The exception occurred during the delivery of an event external to the program, such as an interrupt or an exception.\n");
 	if (errorCode & 0x02)
@@ -203,7 +205,7 @@ u64 doPageFault(u64 rsp, u64 errorCode) {
 	__asm__ volatile("movq %%cr2, %0":"=r"(cr2)::"memory");
 	p = (u64 *)(rsp + 0x98);
 	printk(RED,BLACK,"do_page_fault(14),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx,CR2:%#018lx\t",errorCode , rsp , *p , cr2);
-	printk(WHITE, BLACK, "pid = %ld\n", Task_current->pid);
+	if (Global_state) printk(WHITE, BLACK, "pid = %ld\n", Task_current->pid);
 	u64 pldEntry = MM_PageTable_getPldEntry(getCR3(), cr2);
 	// only has attributes
 	if ((pldEntry & ~0xffful) == 0) {

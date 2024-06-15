@@ -34,13 +34,13 @@ u64 MM_PageTable_alloc() {
     return page->phyAddr;
 }
 
-void PageTable_map2M(u64 cr3, u64 vAddr, u64 pAddr) {
+void MM_PageTable_map2M(u64 cr3, u64 vAddr, u64 pAddr, u64 flag) {
     u64 *pgdEntry = (u64 *)DMAS_phys2Virt(cr3) + ((vAddr >> 39) & 0x1ff);
     if (*pgdEntry == 0) *pgdEntry = MM_PageTable_alloc() | 0x7;
-    u64 *pudEntry = (u64 *)DMAS_phys2Virt(*pgdEntry & ~0xfff) + ((vAddr >> 30) & 0x1ff);
+    u64 *pudEntry = (u64 *)DMAS_phys2Virt(*pgdEntry & ~0xffful) + ((vAddr >> 30) & 0x1ff);
     if (*pudEntry == 0) *pudEntry = MM_PageTable_alloc() | 0x7;
-    u64 *pmdEntry = (u64 *)DMAS_phys2Virt(*pudEntry & ~0xfff) + ((vAddr >> 21) & 0x1ff);
-    if (*pmdEntry == 0) *pmdEntry = pAddr | 0x86 | (pAddr > 0);
+    u64 *pmdEntry = (u64 *)DMAS_phys2Virt(*pudEntry & ~0xffful) + ((vAddr >> 21) & 0x1ff);
+    if (*pmdEntry == 0) *pmdEntry = pAddr | 0x80 | flag | (pAddr > 0);
     flushTLB();
 }
 
@@ -68,11 +68,11 @@ void PGTable_free(u64 phyAddr) {
 void MM_PageTable_map(u64 cr3, u64 vAddr, u64 pAddr, u64 flag) {
     u64 *entry = (u64 *)DMAS_phys2Virt(cr3) + ((vAddr >> 39) & 0x1ff);
     if (*entry == 0) *entry = MM_PageTable_alloc() | 0x7;
-    entry = (u64 *)DMAS_phys2Virt(*entry & ~0xfff) + ((vAddr >> 30) & 0x1ff);
+    entry = (u64 *)DMAS_phys2Virt(*entry & ~0xffful) + ((vAddr >> 30) & 0x1ff);
     if (*entry == 0) *entry = MM_PageTable_alloc() | 0x7;
-    entry = (u64 *)DMAS_phys2Virt(*entry & ~0xfff) + ((vAddr >> 21) & 0x1ff);
+    entry = (u64 *)DMAS_phys2Virt(*entry & ~0xffful) + ((vAddr >> 21) & 0x1ff);
     if (*entry == 0) *entry = MM_PageTable_alloc() | 0x7;
-    entry = (u64 *)DMAS_phys2Virt(*entry & ~0xfff) + ((vAddr >> 12) & 0x1ff);
+    entry = (u64 *)DMAS_phys2Virt(*entry & ~0xffful) + ((vAddr >> 12) & 0x1ff);
     *entry = pAddr | flag;
 	flushTLB();
 }
@@ -80,11 +80,13 @@ void MM_PageTable_map(u64 cr3, u64 vAddr, u64 pAddr, u64 flag) {
 u64 MM_PageTable_getPldEntry(u64 cr3, u64 vAddr) {
     u64 *entry = (u64 *)DMAS_phys2Virt(cr3) + ((vAddr >> 39) & 0x1ff);
     if (*entry == 0) return 0;
-    entry = (u64 *)DMAS_phys2Virt(*entry & ~0xfff) + ((vAddr >> 30) & 0x1ff);
+    entry = (u64 *)DMAS_phys2Virt(*entry & ~0xffful) + ((vAddr >> 30) & 0x1ff);
     if (*entry == 0) return 0;
-    entry = (u64 *)DMAS_phys2Virt(*entry & ~0xfff) + ((vAddr >> 21) & 0x1ff);
+	if (*entry & 0x80) return *entry;
+    entry = (u64 *)DMAS_phys2Virt(*entry & ~0xffful) + ((vAddr >> 21) & 0x1ff);
     if (*entry == 0) return 0;
-    entry = (u64 *)DMAS_phys2Virt(*entry & ~0xfff) + ((vAddr >> 12) & 0x1ff);
+	if (*entry & 0x80) return *entry;
+    entry = (u64 *)DMAS_phys2Virt(*entry & ~0xffful) + ((vAddr >> 12) & 0x1ff);
     return *entry;
 }
 
