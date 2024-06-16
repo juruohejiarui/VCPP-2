@@ -27,10 +27,12 @@ void _chkFunc(u64 addrBase, u8 bus, u8 dev, u8 func) {
     if (devPtr->classCode == 0x06 && devPtr->subclass == 0x4) {
         return ;
     }
+	#ifdef DEBUG_PCIE
     printk(YELLOW, BLACK, "%02x-%02x-%02x: Class:%02x%02x progIF:%02x vendor:%04x dev:%04x header:%02x ", 
             bus, dev, func, devPtr->classCode, devPtr->subclass, devPtr->progIF, devPtr->vendorID, devPtr->devID, devPtr->headerType);
     printk(WHITE, BLACK, "%s\n",
             (PCIeClassDesc[devPtr->classCode][devPtr->subclass] == NULL ? "Unknown" : PCIeClassDesc[devPtr->classCode][devPtr->subclass]));
+	#endif
     
     PCIeManager *mgrStruct = (PCIeManager *)kmalloc(sizeof(PCIeManager), 0);
     memset(mgrStruct, 0, sizeof(PCIeManager));
@@ -77,9 +79,11 @@ void HW_PCIe_init() {
     }
     _devCnt = (_desc->header.length - sizeof(PCIeDescriptor)) / sizeof(PCIeStruct);
     for (int i = 0; i < _devCnt; i++) {
+		#ifdef DEBUG_PCIE
         printk(WHITE, BLACK,
                 "PCIe device %d: address: %#018lx, segment: %#04x, start bus: %#02x, end bus: %#02x\n", 
                 i, _desc->structs[i].address, _desc->structs[i].segment, _desc->structs[i].stBus, _desc->structs[i].edBus);
+		#endif
         for (u16 bus = (u16)_desc->structs[i].stBus; bus <= (u16)_desc->structs[i].edBus; bus++)
             _chkBus(_desc->structs[i].address, bus);
         

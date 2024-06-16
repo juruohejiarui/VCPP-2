@@ -25,7 +25,7 @@ u64 MM_PageTable_alloc() {
         cachePool[cachePoolSize++] = MM_Buddy_alloc(12, Page_Flag_Active | Page_Flag_Kernel);
         if (cachePool[cachePoolSize - 1] == NULL) {
             printk(RED, BLACK, "MM_PageTable_alloc(): fail to allocate a page for page table\n");
-            return 0;
+            return NULL;
         }
         cacheSize += 0x1000;
     }

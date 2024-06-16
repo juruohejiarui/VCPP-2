@@ -183,6 +183,7 @@ void doGeneralProtection(u64 rsp, u64 errorCode) {
 	p = (u64 *)(rsp + 0x98);
 	printk(RED,BLACK,"do_general_protection(13),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\t",errorCode , rsp , *p);
 	if (Global_state) printk(WHITE, BLACK, "pid = %ld\n", Task_current->pid);
+	else printk(WHITE, BLACK, "\n");
 	if (errorCode & 0x01)
 		printk(RED,BLACK,"The exception occurred during the delivery of an event external to the program, such as an interrupt or an exception.\n");
 	if (errorCode & 0x02)
@@ -206,6 +207,7 @@ u64 doPageFault(u64 rsp, u64 errorCode) {
 	p = (u64 *)(rsp + 0x98);
 	printk(RED,BLACK,"do_page_fault(14),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx,CR2:%#018lx\t",errorCode , rsp , *p , cr2);
 	if (Global_state) printk(WHITE, BLACK, "pid = %ld\n", Task_current->pid);
+	else printk(WHITE, BLACK, "\n");
 	u64 pldEntry = MM_PageTable_getPldEntry(getCR3(), cr2);
 	// only has attributes
 	if ((pldEntry & ~0xffful) == 0) {

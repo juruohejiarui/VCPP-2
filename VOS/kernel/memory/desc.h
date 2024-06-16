@@ -4,6 +4,13 @@
 
 #include "../includes/lib.h"
 
+#ifdef DEBUG
+// #define DEBUG_MM
+#ifdef DEBUG_MM
+#define DEBUG_MM_ALLOC
+#endif
+#endif
+
 extern char _text;
 extern char _etext;
 extern char _rodata;

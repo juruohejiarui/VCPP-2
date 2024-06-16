@@ -3,7 +3,7 @@
 #include "../../includes/memory.h"
 #include "../../includes/log.h"
 
-#define maxSlots(ctrl) ((ctrl->capRegs->hcsParams1) & 0xf)
+#define maxSlots(ctrl) ((ctrl->capRegs->hcsParams1) & 0xff)
 #define maxIntrs(ctrl) ((ctrl->capRegs->hcsParams1 >> 8) & 0x7ff)
 #define maxPorts(ctrl) ((ctrl->capRegs->hcsParams1 >> 24) & 0xff)
 #define extCapPtr(ctrl) ((ctrl->capRegs->hccparam1 >> 16) & 0xffff)
@@ -27,6 +27,18 @@ static inline Page *_allocPage(USB_XHCIController *ctrl, u64 log2Size) {
 	}
 	// add this page to page list
 	List_insBefore(&page->listEle, &ctrl->pageList);
+}
+
+// allocate memory for the controller，use DMAS_virt2Phys to get the physical address
+static void *_alloc(USB_XHCIController *ctrl, u64 size) {
+	if (size > Page_4KSize) return NULL;
+	void *addr = NULL;
+	if (size > MM_Slab_maxSize) {
+		Page *page = _allocPage(ctrl, 0);
+		if (page == NULL) return NULL;
+		addr = DMAS_phys2Virt(page->phyAddr);
+	} else addr = kmalloc(size, 0);
+	return addr;
 }
 
 List HW_USB_XHCI_mgrList;
@@ -59,6 +71,25 @@ static inline int _rdStsBit(USB_XHCIController *ctrl, u32 bit) {
 extern USB_XHCI_ExtCapEntry *_getNextExtCap(USB_XHCI_ExtCapEntry *extCap) {
 	if (extCap->nxtOff == 0) return NULL;
 	return (USB_XHCI_ExtCapEntry *)((u64)extCap + extCap->nxtOff * 4);
+}
+
+static int _stopController(USB_XHCIController *ctrl) {
+	// set the run/stop bit to 0 -> stop the controller
+	_clrCmdBit(ctrl, 0);
+	// wait 30ms for the controller to stop
+	u64 remain = 30;
+	do {
+		// wait 5ms
+		Intr_SoftIrq_Timer_mdelay(5);
+		// check the bit HCHalted of controller status
+		if (_rdStsBit(ctrl, HW_USB_XHCI_OpReg_Status_HCHalted)) break;
+	} while (remain -= 5);
+	if (!_rdStsBit(ctrl, HW_USB_XHCI_OpReg_Status_HCHalted)) {
+		printk(RED, BLACK, "XHCI: stop controller failed\n");
+		ctrl->dev.free((Device *)ctrl), kfree(ctrl);
+		return 0;
+	}
+	return 1;
 }
 
 static int _initPorts(USB_XHCIController *ctrl) {
@@ -96,24 +127,23 @@ static int _initPorts(USB_XHCIController *ctrl) {
 	return 1;
 }
 
+static int _initMem(USB_XHCIController *ctrl) {
+	// allocate the device context base address array
+	void *addr = _alloc(ctrl, 2048);
+	if (addr == NULL) { ctrl->dev.free((Device *)ctrl); kfree(ctrl); return 0; }
+	ctrl->opRegs->devCtxBaseAddr = DMAS_virt2Phys(addr);
+	ctrl->devCtx = addr;
+	memset(ctrl->devCtx, 0, sizeof(void *) * 2048);
+	printk(WHITE, BLACK, "XHCI: devCtxBaseAddr:%#018lx\n", ctrl->opRegs->devCtxBaseAddr);
+	// allocate the Device Context Data Structure
+	for (int i = 1; i < maxSlots(ctrl); i++) {
+		addr = _alloc(ctrl, ((ctrl->capRegs->hccparam1 & 0x4) ? 64 * 32 : sizeof(USB_XHCI_DeviceSlotContext) + 31 * sizeof(USB_XHCI_EndpointContext)));
+		if (addr == NULL) { ctrl->dev.free((Device *)ctrl); kfree(ctrl); return 0; }
+		ctrl->devCtx[i] = addr;
+	}
+}
+
 static int _resetController(USB_XHCIController *ctrl) {
-	// set the run/stop bit to 0 -> stop the controller
-	_clrCmdBit(ctrl, 0);
-	 // wait 30ms for the controller to stop
-	 {
-		u64 remain = 30;
-		do {
-			// wait 5ms
-			Intr_SoftIrq_Timer_mdelay(5);
-			// check the bit HCHalted of controller status
-			if (_rdStsBit(ctrl, HW_USB_XHCI_OpReg_Status_HCHalted)) break;
-		} while (remain -= 5);
-		if (!_rdStsBit(ctrl, HW_USB_XHCI_OpReg_Status_HCHalted)) {
-			printk(RED, BLACK, "XHCI: stop controller failed\n");
-			ctrl->dev.free((Device *)ctrl), kfree(ctrl);
-			return 0;
-		}
-	 }
 	 _setCmdBit(ctrl, HW_USB_XHCI_OpReg_Cmd_HCReset);
 	 {
 		u64 remain = 30;
@@ -136,11 +166,6 @@ static int _resetController(USB_XHCIController *ctrl) {
 		return 0;
 	}
 	return 1;
-}
-
-// allocate memory for the controller
-static int _alloc(USB_XHCIController *ctrl) {
-	
 }
 
 static int _resetPorts(USB_XHCIController *ctrl) {
@@ -172,33 +197,19 @@ int HW_USB_XHCI_Init(PCIeConfig *xhci) {
 	ctrl->dbRegs = (USB_XHCI_DoorbellRegs *)((u64)ctrl->capRegs + ctrl->capRegs->dboff);
 	// get extented capability registers
 	ctrl->extCapHeader = (USB_XHCI_ExtCapEntry *)((u64)ctrl->capRegs + extCapPtr(ctrl) * 4);
-	printk(YELLOW, BLACK, "capReg:%#018lx opRegs:%#018lx rtRegs:%#018lx dbRegs:%#018lx extCap:%#018lx\n", ctrl->capRegs, ctrl->opRegs, ctrl->rtRegs, ctrl->dbRegs, ctrl->extCapHeader);
-	// allocate the page for scratch buffer
-	if (maxScratchBufs(ctrl) > 0) {
-		i64 log2Size = 0, tmp = maxScratchBufs(ctrl);
-		while (tmp >>= 1) log2Size++;
-		_allocPage(ctrl, max(0, log2Size - 12));
-	}
+	printk(YELLOW, BLACK, "capReg:%#018lx opRegs:%#018lx rtRegs:%#018lx dbRegs:%#018lx extCap:%#018lx Slot:%d Intr:%d port:%d\n",
+			ctrl->capRegs, ctrl->opRegs, ctrl->rtRegs, ctrl->dbRegs, ctrl->extCapHeader,
+			maxSlots(ctrl), maxIntrs(ctrl), maxPorts(ctrl));
 
-	for (USB_XHCI_ExtCapEntry *entry = ctrl->extCapHeader; entry != NULL; entry = _getNextExtCap(entry)) {
-		switch (entry->id) {
-			case USB_XHCI_ExtCap_Id_Legacy: {
-				USB_XHCI_ExtCap_Legacy *legacy = container(entry, USB_XHCI_ExtCap_Legacy, extCap);
-				printk(WHITE, BLACK, "Legacy: data1:%#06x legacyCap:%#010x\n", legacy->data1, legacy->legacyCap);
-				break;
-			}
-			case USB_XHCI_ExtCap_Id_Protocol: {
-				USB_XHCI_ExtCap_Protocol *protocol = container(entry, USB_XHCI_ExtCap_Protocol, extCap);
-				printk(WHITE, BLACK, "Protocol: minorRev:%d majorRev:%d name:%c%c%c%c portOff:%d portCnt:%d protocolDefined:%d speedIdCnt:%d slotType:%d\n",
-					protocol->minorRev, protocol->majorRev, protocol->name[0], protocol->name[1], protocol->name[2], protocol->name[3],
-					protocol->portOff, protocol->portCnt, protocol->protocolDefined, protocol->speedIdCnt, protocol->slotType);
-				break;
-			}
-		}
-	}
+	int state = _stopController(ctrl);
+	if (!state) { ctrl->dev.free((Device *)ctrl); kfree(ctrl); return 0; }
 
 	// pair up the USB3 and USB2
-	int state = _initPorts(ctrl);
+	state = _initPorts(ctrl);
+	if (!state) { ctrl->dev.free((Device *)ctrl); kfree(ctrl); return 0; }
+
+	// allocate memory for the controller
+	state = _initMem(ctrl);
 	if (!state) { ctrl->dev.free((Device *)ctrl); kfree(ctrl); return 0; }
 
 	// reset the controller

@@ -32,11 +32,17 @@ void MM_Slab_init() {
     for (int i = 0; i < 16; i++)
         totSize += upAlignTo(Page_2MSize / Slab_kmallocCache[i].size, 64) / 64 * sizeof(u64);
     totSize = Page_4KUpAlign(totSize);
+	#ifdef DEBUG_MM
     printk(GREEN, BLACK, "MM_Slab_init: require %d Bytes for initialization\n", totSize);
+	#endif
     // up align to power of 2
     u64 log2Size = 0;
     while ((1ul << log2Size) < (totSize >> Page_4KShift)) log2Size++;
+
+	#ifdef DEBUG_MM
     printk(GREEN, BLACK, "MM_Slab_init: require %d Pages for initialization\n", 1ul << log2Size);
+	#endif
+
     Page *page = MM_Buddy_alloc(log2Size, Page_Flag_Kernel);
     if (page == NULL) {
         printk(RED, BLACK, "MM_Slab_init: MM_Buddy_alloc failed\n");
@@ -133,7 +139,7 @@ void *kmalloc(u64 size, u64 arg) {
     IO_Func_maskIntrPreffix
     // printk(BLACK, WHITE, "kmalloc %08d\t", size);
     int id = 0;
-    if (size > 1048576) return NULL;
+    if (size > MM_Slab_maxSize) return NULL;
     while (Slab_kmallocCache[id].size < size) id++;
     Slab *slab = NULL;
     // find a slab with free memory block
@@ -155,7 +161,9 @@ void *kmalloc(u64 size, u64 arg) {
         slab->usingCnt++, slab->freeCnt--;
         Slab_kmallocCache[id].usingCnt++, Slab_kmallocCache[id].freeCnt--;
         IO_Func_maskIntrSuffix
-        // printk(GREEN, BLACK, "kmalloc(%#018lx, %#018lx)->%#018lx\n", size, arg, (u64)slab->virtAddr + j * Slab_kmallocCache[id].size);
+		#ifdef DEBUG_MM_ALLOC
+        printk(GREEN, BLACK, "kmalloc(%#018lx, %#018lx)->%#018lx\n", size, arg, (u64)slab->virtAddr + j * Slab_kmallocCache[id].size);
+		#endif
         return (void *)((u64)slab->virtAddr + j * Slab_kmallocCache[id].size);
     }
     printk(RED, BLACK, "kmalloc: invalid state\n");

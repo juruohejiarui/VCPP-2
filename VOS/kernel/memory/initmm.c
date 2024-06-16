@@ -11,7 +11,9 @@ struct GlobalMemManageStruct memManageStruct = {{0}, 0};
 
 // initialize the zones, pages and bitmaps
 static void _initArray() {
+	#ifdef DEBUG_MM
     printk(RED, BLACK, "->initArray()\n");
+	#endif
     int kernelZoneId = -1;
     u64 totPage = 0;
     memManageStruct.zonesLength = 0;
@@ -35,7 +37,9 @@ static void _initArray() {
         if (availdSt + reqSize >= ed) continue;
         // build the system in this zone
         memset(DMAS_phys2Virt(availdSt), 0, reqSize);
+		#ifdef DEBUG_MM
         printk(ORANGE, BLACK, "Set the zone array on %#018lx\n", DMAS_phys2Virt(availdSt));
+		#endif
         memManageStruct.zones = DMAS_phys2Virt(availdSt);
         for (int j = 0, id = 0; j <= memManageStruct.e820Length; j++) {
             E820 *e820 = memManageStruct.e820 + j;
@@ -48,8 +52,10 @@ static void _initArray() {
             if (zone->phyAddrSt <= (u64)availVirtAddrSt - Init_virtAddrStart && zone->phyAddrEd > (u64)availVirtAddrSt - Init_virtAddrStart)
                 zone->attribute = Page_4KUpAlign((u64)availVirtAddrSt - Init_virtAddrStart);
             if (j == i) zone->attribute += reqSize;
+			#ifdef DEBUG_MM
             printk(WHITE, BLACK, "zone[%d]: phyAddr: [%#018lx, %#018lx], attribute = %#018lx\n", 
                 id, zone->phyAddrSt, zone->phyAddrEd, zone->attribute);
+			#endif
             id++;
         }
         goto SuccBuildZones;
@@ -58,13 +64,17 @@ static void _initArray() {
     return ;
     SuccBuildZones:
     reqSize = upAlignTo(sizeof(Page) * totPage, sizeof(u64));
+	#ifdef DEBUG_MM
     printk(RED, BLACK, "%ld->%d\n", sizeof(Page) * totPage, reqSize);
+	#endif
     memManageStruct.pagesLength = totPage;
     for (int i = 1; i < memManageStruct.zonesLength; i++) {
         Zone *zone = memManageStruct.zones + i;
         if (zone->attribute + reqSize >= zone->phyAddrEd) continue;
         memset(DMAS_phys2Virt(zone->attribute), 0, reqSize);
+		#ifdef DEBUG_ALLOC
         printk(ORANGE, BLACK, "Set the page array on %#018lx, size = %#018lx\n", DMAS_phys2Virt(zone->attribute), reqSize);
+		#endif
         memManageStruct.pages = DMAS_phys2Virt(zone->attribute);
         zone->attribute = upAlignTo(zone->attribute + reqSize, sizeof(u64));
         for (u64 j = 0; j < totPage; j++)
@@ -115,7 +125,9 @@ void MM_init() {
         if (ed <= st) continue;
         totMem += (ed - st) >> Page_4KShift;
     }
+	#ifdef DEBUG_MM
     printk(WHITE, BLACK, "Total 4K pages: %#018lx = %ld\t", totMem, totMem);
+	#endif
 
     memManageStruct.edOfStruct = Page_4KUpAlign((u64)&_end);
     
@@ -126,7 +138,9 @@ void MM_init() {
     MM_Buddy_init();
     MM_PageTable_init();
 
+	#ifdef DEBUG_MM
     printk(WHITE, BLACK, "totMemSize = %#018lx Byte = %ld MB\n", memManageStruct.totMemSize, memManageStruct.totMemSize >> 20);
+	#endif
 
     MM_Slab_init();
 }

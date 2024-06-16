@@ -58,7 +58,9 @@ void MM_Buddy_init() {
     u64 bitsSize = upAlignTo(Page_4KUpAlign(memManageStruct.totMemSize) >> Page_4KShift, 64) / 8;
     if (Page_4KSize > bitsSize) {
         u64 numOfOnePage = (u64)Page_4KSize / bitsSize;
+		#ifdef DEBUG_MM
         printk(GREEN, BLACK, "One page for %d bitmap\n", numOfOnePage);
+		#endif
         for (u64 i = 0; i <= Buddy_maxOrder; i += numOfOnePage) {
             Page *page = MM_Bs_alloc(1, Page_Flag_Active | Page_Flag_Kernel | Page_Flag_KernelInit);
             if (page == NULL) {
@@ -70,7 +72,9 @@ void MM_Buddy_init() {
         }
     } else {
         u64 regPage = Page_4KUpAlign(bitsSize) / Page_4KSize;
+		#ifdef DEBUG_MM
         printk(GREEN, BLACK, "%d pages for one bitmap\n", regPage);
+		#endif
         for (int i = 0; i <= Buddy_maxOrder; i++) {
             Page *page = MM_Bs_alloc(regPage, Page_Flag_Active | Page_Flag_Kernel | Page_Flag_KernelInit);
             if (page == NULL) {
@@ -125,7 +129,9 @@ Page *MM_Buddy_alloc(u64 log2Size, u64 attr) {
         _divPageFrame(headPage, ord, log2Size);
         headPage->attr |= attr;
 		IO_Func_maskIntrSuffix
-        // printk(GREEN, BLACK, "MM_Buddy_alloc(%d)->%p [%#018lx,%#018lx]\n", log2Size, headPage, headPage->phyAddr, headPage->phyAddr + (1 << (log2Size + Page_4KShift)) - 1);
+		#ifdef DEBUG_MM_ALLOC
+        printk(GREEN, BLACK, "MM_Buddy_alloc(%d)->%p [%#018lx,%#018lx]\n", log2Size, headPage, headPage->phyAddr, headPage->phyAddr + (1 << (log2Size + Page_4KShift)) - 1);
+		#endif
         return headPage;
     }
     IO_Func_maskIntrSuffix
@@ -162,7 +168,9 @@ Page *MM_Buddy_alloc4G(u64 log2Size, u64 attr) {
 
 void MM_Buddy_free(Page *pages) {
     IO_Func_maskIntrPreffix
+	#ifdef DEBUG_MM_ALLOC
     printk(RED, BLACK, "MM_Buddy_free(%p)\n", pages);
+	#endif
     if (pages == NULL || (pages->attr & Page_Flag_BuddyHeadPage) == 0) return;
     List_del(&pages->listEle);
     pages->attr = Page_Flag_BuddyHeadPage;
