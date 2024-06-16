@@ -64,6 +64,10 @@ extern USB_XHCI_ExtCapEntry *_getNextExtCap(USB_XHCI_ExtCapEntry *extCap) {
 static int _initPorts(USB_XHCIController *ctrl) {
 	// allocate memory for each port
 	ctrl->ports = (USB_XHCI_Port *)kmalloc(sizeof(USB_XHCI_Port) * maxPorts(ctrl), 0);
+	if (ctrl->ports == 0) {
+		printk(RED, BLACK, "XHCI: allocate memory for ports failed\n");
+		return 0;
+	}
 	for (int i = 0; i < maxPorts(ctrl); i++) {
 		ctrl->ports[i].regs = (USB_XHCI_PortRegs *)(ctrl->opRegs->portRegs + i);
 		ctrl->ports[i].flags = 0;
@@ -89,6 +93,7 @@ static int _initPorts(USB_XHCIController *ctrl) {
 			ctrl->ports[j].pair = &ctrl->ports[i];
 		}
 	}
+	return 1;
 }
 
 static int _resetController(USB_XHCIController *ctrl) {
@@ -121,7 +126,6 @@ static int _resetController(USB_XHCIController *ctrl) {
 		} while (remain -= 5);
 		if (_rdStsBit(ctrl, HW_USB_XHCI_OpReg_Status_CtrlNotReady) || _rdCmdBit(ctrl, HW_USB_XHCI_OpReg_Cmd_HCReset)) {
 			printk(RED, BLACK, "XHCI: reset controller failed\n");
-			ctrl->dev.free((Device *)ctrl), kfree(ctrl);
 			return 0;
 		}
 	}
@@ -129,9 +133,17 @@ static int _resetController(USB_XHCIController *ctrl) {
 	// check the default value
 	if (ctrl->opRegs->usbCmd || ctrl->opRegs->devNotifCtrl || ctrl->opRegs->cmdRingCtrl || ctrl->opRegs->devCtxBaseAddr || ctrl->opRegs->config) {
 		printk(RED, BLACK, "XHCI: default value check failed\n");
-		ctrl->dev.free((Device *)ctrl), kfree(ctrl);
 		return 0;
 	}
+	return 1;
+}
+
+// allocate memory for the controller
+static int _alloc(USB_XHCIController *ctrl) {
+	
+}
+
+static int _resetPorts(USB_XHCIController *ctrl) {
 	return 1;
 }
 
@@ -194,6 +206,8 @@ int HW_USB_XHCI_Init(PCIeConfig *xhci) {
 	if (!state) { ctrl->dev.free((Device *)ctrl); kfree(ctrl); return 0; }
 
 	// setup the context data structure for the controller
-	
+	state = _resetPorts(ctrl);
+	if (!state) { ctrl->dev.free((Device *)ctrl); kfree(ctrl); return 0; }
+
 	return 1;
 }
