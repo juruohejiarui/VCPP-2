@@ -42,7 +42,7 @@ IntrController _controller = {
 
 IntrHandlerDeclare(HW_Keyboard_handler) {
 	u8 x = IO_in8(_Port_Data);
-	printk(WHITE, BLACK, "(K:%02x)", x);
+	// printk(WHITE, BLACK, "(K:%02x)", x);
 	if (_buffer->tail == _buffer->data + HW_Keyboard_BufferSize)
 		_buffer->tail = _buffer->data;
 	*_buffer->tail = x;

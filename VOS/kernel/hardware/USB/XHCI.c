@@ -19,37 +19,41 @@ static inline u64 maxScratchBufs(USB_XHCIController *ctrl) {
 }
 #define ac64(ctrl) (ctrl->capRegs->hcsParams3 & 0x1)
 
-static inline Page *_allocPage(USB_XHCIController *ctrl, u64 log2Size) {
-	Page *page = ac64(ctrl) ? MM_Buddy_alloc4G(log2Size, Page_Flag_Kernel) : MM_Buddy_alloc(log2Size, Page_Flag_Kernel);
-	if (page == NULL) {
-		printk(RED, BLACK, "XHCI: allocate page failed log2Size:%ld\n", log2Size);
-		return NULL;
-	}
-	// add this page to page list
-	List_insBefore(&page->listEle, &ctrl->pageList);
-}
-
 // allocate memory for the controller，use DMAS_virt2Phys to get the physical address
 static void *_alloc(USB_XHCIController *ctrl, u64 size) {
-	if (size > Page_4KSize) return NULL;
-	void *addr = NULL;
-	if (size > MM_Slab_maxSize) {
-		Page *page = _allocPage(ctrl, 0);
-		if (page == NULL) return NULL;
+	if (size > Page_4KSize) goto _alloc_Fail;
+	void *addr; Page *page;
+	if (size <= Page_4KSize / 2) {
+		addr = kmalloc(size, 0);
+		if (addr == NULL) goto _alloc_Fail;
+	} else {
+		page = MM_Buddy_alloc(0, Page_Flag_Kernel | Page_Flag_Active);
+		if (page == NULL) goto _alloc_Fail;
 		addr = DMAS_phys2Virt(page->phyAddr);
-	} else addr = kmalloc(size, 0);
+	}
+	USB_XHCI_MemUsage *usage = (USB_XHCI_MemUsage *)kmalloc(sizeof(USB_XHCI_MemUsage), 0);
+	List_init(&usage->listEle);
+	List_insBefore(&usage->listEle, &ctrl->memList);
+	if (size <= Page_4KSize / 2) usage->addr = (u64)addr;
+	else usage->addr = ((u64)page) | 1;
 	return addr;
+	_alloc_Fail:
+	printk(RED, BLACK, "XHCI: alloc memory fail");
+	printk(YELLOW, BLACK, "(ctrl:%#018lx,size%#018lx)", ctrl, size);
+	return NULL;
 }
 
 List HW_USB_XHCI_mgrList;
 
 static void _free(USB_XHCIController *ctrl) {
 	// free all pages
-	Page *page;
-	while (!List_isEmpty(&ctrl->pageList)) {
-		page = container(ctrl->pageList.next, Page, listEle);
-		List_del(&page->listEle);
-		MM_Buddy_free(page);
+	USB_XHCI_MemUsage *usage;
+	while (!List_isEmpty(&ctrl->memList)) {
+		usage = container(ctrl->memList.next, USB_XHCI_MemUsage, listEle);
+		List_del(&usage->listEle);
+		if (usage->addr & 1) MM_Buddy_free((Page *)(usage->addr ^ 1));
+		else kfree((void *)usage->addr);
+		kfree(usage);
 	}
 }
 
@@ -68,9 +72,29 @@ static inline int _rdStsBit(USB_XHCIController *ctrl, u32 bit) {
 	return (ctrl->opRegs->usbStatus >> bit) & 1;
 }
 
-extern USB_XHCI_ExtCapEntry *_getNextExtCap(USB_XHCI_ExtCapEntry *extCap) {
+USB_XHCI_ExtCapEntry *_getNextExtCap(USB_XHCI_ExtCapEntry *extCap) {
 	if (extCap->nxtOff == 0) return NULL;
 	return (USB_XHCI_ExtCapEntry *)((u64)extCap + extCap->nxtOff * 4);
+}
+
+static int _getOwnership(USB_XHCIController *ctrl) {
+	USB_XHCI_ExtCap_Legacy *legacy = NULL;
+	for (USB_XHCI_ExtCapEntry *entry = ctrl->extCapHeader; entry != NULL; entry = _getNextExtCap(entry)) {
+		if (entry->id != USB_XHCI_ExtCap_Id_Legacy) continue;
+		legacy = (USB_XHCI_ExtCap_Legacy *)entry;
+		break;
+	}
+	if (legacy == NULL) {
+		printk(WHITE, BLACK, "XHCI: %#018lx:no legacy support.");
+		return 1;
+	}
+	// bit 8 is the os owned bit
+	legacy->data1 |= (1 << 8);
+	for (int i = 0; i <= 10; i++) {
+		Intr_SoftIrq_Timer_mdelay(2);
+	}
+	printk(GREEN, BLACK, "XHCI: %#018lx:failed to get ownership.\n");
+	return 0;
 }
 
 static int _stopController(USB_XHCIController *ctrl) {
@@ -109,7 +133,8 @@ static int _initPorts(USB_XHCIController *ctrl) {
 		if (entry->id != USB_XHCI_ExtCap_Id_Protocol) continue;
 		USB_XHCI_ExtCap_Protocol *protocol = container(entry, USB_XHCI_ExtCap_Protocol, extCap);
 		for (int i = 0; i < protocol->portCnt; i++)
-			ctrl->ports[protocol->portOff + i - 1].flags |= (protocol->majorRev == 3 ? HW_USB_XHCI_Port_Flag_USB3 : 0) | HW_USB_XHCI_Port_Flag_Master,
+			ctrl->ports[protocol->portOff + i - 1].flags |= 
+					(protocol->majorRev == 3 ? HW_USB_XHCI_Port_Flag_USB3 : 0) | HW_USB_XHCI_Port_Flag_Master,
 			ctrl->ports[protocol->portOff + i - 1].offset = i;
 	}
 	// set the flag isPaired
@@ -117,6 +142,7 @@ static int _initPorts(USB_XHCIController *ctrl) {
 		for (int j = i + 1; j < maxPorts(ctrl); j++) {
 			if (ctrl->ports[i].offset != ctrl->ports[j].offset) continue;
 			ctrl->ports[i].flags |= HW_USB_XHCI_Port_Flag_Paired;
+			// clear the Master flag of the slave port
 			if (HW_USB_XHCI_Port_isUSB3(&ctrl->ports[i])) ctrl->ports[j].flags ^= HW_USB_XHCI_Port_Flag_Master;
 			else ctrl->ports[i].flags ^= HW_USB_XHCI_Port_Flag_Master;
 			ctrl->ports[j].flags |= HW_USB_XHCI_Port_Flag_Paired;
@@ -137,10 +163,12 @@ static int _initMem(USB_XHCIController *ctrl) {
 	printk(WHITE, BLACK, "XHCI: devCtxBaseAddr:%#018lx\n", ctrl->opRegs->devCtxBaseAddr);
 	// allocate the Device Context Data Structure
 	for (int i = 1; i < maxSlots(ctrl); i++) {
-		addr = _alloc(ctrl, ((ctrl->capRegs->hccparam1 & 0x4) ? 64 * 32 : sizeof(USB_XHCI_DeviceSlotContext) + 31 * sizeof(USB_XHCI_EndpointContext)));
+		addr = _alloc(ctrl, 
+				((ctrl->capRegs->hccparam1 & 0x4) ? 64 * 32 : sizeof(USB_XHCI_DeviceSlotContext) + 31 * sizeof(USB_XHCI_EndpointContext)));
 		if (addr == NULL) { ctrl->dev.free((Device *)ctrl); kfree(ctrl); return 0; }
 		ctrl->devCtx[i] = addr;
 	}
+	
 }
 
 static int _resetController(USB_XHCIController *ctrl) {
@@ -161,7 +189,8 @@ static int _resetController(USB_XHCIController *ctrl) {
 	}
 	
 	// check the default value
-	if (ctrl->opRegs->usbCmd || ctrl->opRegs->devNotifCtrl || ctrl->opRegs->cmdRingCtrl || ctrl->opRegs->devCtxBaseAddr || ctrl->opRegs->config) {
+	if (ctrl->opRegs->usbCmd || ctrl->opRegs->devNotifCtrl
+			 || ctrl->opRegs->cmdRingCtrl || ctrl->opRegs->devCtxBaseAddr || ctrl->opRegs->config) {
 		printk(RED, BLACK, "XHCI: default value check failed\n");
 		return 0;
 	}
@@ -169,13 +198,13 @@ static int _resetController(USB_XHCIController *ctrl) {
 }
 
 static int _resetPorts(USB_XHCIController *ctrl) {
+
 	return 1;
 }
 
 int HW_USB_XHCI_Init(PCIeConfig *xhci) {
     USB_XHCIController *ctrl = (USB_XHCIController *)kmalloc(sizeof(USB_XHCIController), 0);
-	List_init(&ctrl->listEle), List_init(&ctrl->pageList);
-	List_insBefore(&ctrl->listEle, &HW_USB_XHCI_mgrList);
+	List_init(&ctrl->listEle), List_init(&ctrl->memList);
 
 	// set the device struct
 	ctrl->dev.install = NULL;
@@ -201,7 +230,10 @@ int HW_USB_XHCI_Init(PCIeConfig *xhci) {
 			ctrl->capRegs, ctrl->opRegs, ctrl->rtRegs, ctrl->dbRegs, ctrl->extCapHeader,
 			maxSlots(ctrl), maxIntrs(ctrl), maxPorts(ctrl));
 
-	int state = _stopController(ctrl);
+	int state = _getOwnership(ctrl);
+	if (!state) { ctrl->dev.free((Device *)ctrl); kfree(ctrl); return 0; }
+
+	state = _stopController(ctrl);
 	if (!state) { ctrl->dev.free((Device *)ctrl); kfree(ctrl); return 0; }
 
 	// pair up the USB3 and USB2
@@ -220,5 +252,6 @@ int HW_USB_XHCI_Init(PCIeConfig *xhci) {
 	state = _resetPorts(ctrl);
 	if (!state) { ctrl->dev.free((Device *)ctrl); kfree(ctrl); return 0; }
 
+	List_insBefore(&ctrl->listEle, &HW_USB_XHCI_mgrList);
 	return 1;
 }

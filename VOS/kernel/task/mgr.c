@@ -106,32 +106,12 @@ void Task_schedule() {
     Task_switch(next);
 }
 
-TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntry)(u64), u64 arg, u64 flags) {
+TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntry)(u64), u64 arg) {
     u64 pgdPhyAddr = MM_PageTable_alloc(); Page *tskStructPage = MM_Buddy_alloc(0, Page_Flag_Active);
     printk(YELLOW, BLACK, "pgdPhyAddr: %#018lx, tskStructPage: %#018lx\t", pgdPhyAddr, tskStructPage->phyAddr);
 
-    // copy the kernel part (except stack) of pgd
-    memcpy((u64 *)DMAS_phys2Virt(getCR3()) + 256, (u64 *)DMAS_phys2Virt(pgdPhyAddr) + 256, 255 * sizeof(u64));
-    // set the Task_current
-    MM_PageTable_map(pgdPhyAddr, Task_kernelStackEnd - Task_kernelStackSize, tskStructPage->phyAddr, MM_PageTable_Flag_Presented | MM_PageTable_Flag_Writable);
-
-	Page *lstPage = MM_Buddy_alloc(5, Page_Flag_Active);
-	// map the interrupt stack with full present pages
-	for (u64 vAddr = Task_intrStackEnd - Task_intrStackSize; vAddr < Task_intrStackEnd; vAddr += Page_4KSize)
-		MM_PageTable_map(pgdPhyAddr, 
-                vAddr, lstPage->phyAddr + vAddr - (Task_intrStackEnd - Task_intrStackSize), 
-                MM_PageTable_Flag_Presented | MM_PageTable_Flag_Writable | MM_PageTable_Flag_UserPage);
-    // map the user stack without present flag
-    for (u64 vAddr = Task_userStackEnd - Task_userStackSize + 0x10; vAddr < Task_userStackEnd; vAddr += Page_4KSize)
-        MM_PageTable_map(pgdPhyAddr, vAddr, 0, MM_PageTable_Flag_UserPage | MM_PageTable_Flag_Writable);
-    // map the kernel stack with one present page
-	lstPage = MM_Buddy_alloc(0, Page_Flag_Active);
-    for (u64 vAddr = Task_kernelStackEnd - Task_kernelStackSize + Page_4KSize; vAddr != 0; vAddr += Page_4KSize)
-        MM_PageTable_map(pgdPhyAddr,
-                vAddr, vAddr == Task_kernelStackEnd - 0xff0ul ? lstPage->phyAddr : 0, 
-                MM_PageTable_Flag_Writable | (vAddr == Task_kernelStackEnd - 0xff0ul ? MM_PageTable_Flag_Presented : 0));
-	
-    TaskStruct *task = (TaskStruct *)DMAS_phys2Virt(tskStructPage->phyAddr); 
+	// contruct basic structures
+	TaskStruct *task = (TaskStruct *)DMAS_phys2Virt(tskStructPage->phyAddr); 
     memset(task, 0, sizeof(TaskStruct) + sizeof(ThreadStruct) + sizeof(TaskMemStruct) + sizeof(TSS));
 	
 	// set the pointers of sub-structs
@@ -141,7 +121,7 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntr
 	task->tss = (TSS *)(task->mem + 1);
 	printk(WHITE, BLACK, "task=%#018lx\n", task);
 
-    task->flags = flags;
+    task->flags = 
     task->vRunTime = 1;
     task->pid = Task_pidCounter++;
     task->mem->pgd = DMAS_phys2Virt(pgdPhyAddr);
@@ -174,7 +154,33 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntr
 	regs.ss = Segment_kernelData;
 	regs.rip = (u64)kernelEntry;
 	regs.rsp = Task_kernelStackEnd;
-    memcpy(&regs, (u64 *)DMAS_phys2Virt(lstPage->phyAddr + Page_4KSize - 16 - sizeof(PtReg)), sizeof(PtReg));
+
+	// construct page table and stack
+	{
+		// copy the kernel part (except stack) of pgd
+		memcpy((u64 *)DMAS_phys2Virt(getCR3()) + 256, (u64 *)DMAS_phys2Virt(pgdPhyAddr) + 256, 255 * sizeof(u64));
+		// set the Task_current
+		MM_PageTable_map(pgdPhyAddr, Task_kernelStackEnd - Task_kernelStackSize, tskStructPage->phyAddr, MM_PageTable_Flag_Presented | MM_PageTable_Flag_Writable);
+
+		Page *lstPage = MM_Buddy_alloc(5, Page_Flag_Active);
+		// map the interrupt stack with full present pages
+		for (u64 vAddr = Task_intrStackEnd - Task_intrStackSize; vAddr < Task_intrStackEnd; vAddr += Page_4KSize)
+			MM_PageTable_map(pgdPhyAddr, 
+					vAddr, lstPage->phyAddr + vAddr - (Task_intrStackEnd - Task_intrStackSize), 
+					MM_PageTable_Flag_Presented | MM_PageTable_Flag_Writable | MM_PageTable_Flag_UserPage);
+		// map the user stack without present flag
+		for (u64 vAddr = Task_userStackEnd - Task_userStackSize + 0x10; vAddr < Task_userStackEnd; vAddr += Page_4KSize)
+			MM_PageTable_map(pgdPhyAddr, vAddr, 0, MM_PageTable_Flag_UserPage | MM_PageTable_Flag_Writable);
+		// map the kernel stack with one present page
+		lstPage = MM_Buddy_alloc(0, Page_Flag_Active);
+		for (u64 vAddr = Task_kernelStackEnd - Task_kernelStackSize + Page_4KSize; vAddr != 0; vAddr += Page_4KSize)
+			MM_PageTable_map(pgdPhyAddr,
+					vAddr, vAddr == Task_kernelStackEnd - 0xff0ul ? lstPage->phyAddr : 0, 
+					MM_PageTable_Flag_Writable | (vAddr == Task_kernelStackEnd - 0xff0ul ? MM_PageTable_Flag_Presented : 0));
+
+		// copy the data into the stack
+		memcpy(&regs, (u64 *)DMAS_phys2Virt(lstPage->phyAddr + Page_4KSize - 16 - sizeof(PtReg)), sizeof(PtReg));
+	}
 
     if (task->pid > 0) RBTree_insert(&_CFSstruct.tree, 0, &task->listEle);
 

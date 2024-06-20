@@ -107,6 +107,7 @@ void Task_switchToUsr(u64 (*entry)(u64), u64 arg) {
 }
 
 void Task_Syscall_init() {
+	printk(RED, BLACK, "Task_Syscall_init()\n");
     // set IA32_EFER.SCE
     IO_writeMSR(0xC0000080, IO_readMSR(0xC0000080) | 1);
 	printk(GREEN, BLACK, "write 0xC0000080 -> %lx\t", IO_readMSR(0xC0000080));

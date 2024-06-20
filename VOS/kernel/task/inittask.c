@@ -16,7 +16,6 @@ u64 init(u64 (*usrEntry)(u64), u64 arg) {
     Intr_SoftIrq_Timer_initIrq(&Task_current->scheduleTimer, 1, Task_updateCurState, NULL);
     Intr_SoftIrq_Timer_addIrq(&Task_current->scheduleTimer);
 	Task_current->state = Task_State_Running;
-	printk(RED, BLACK, "init is running, arg = %#018lx, rsp = %#018lx\n", arg, rsp);
     if (Task_current->pid == 0) {
         printk(WHITE, BLACK, "task 0 is running...\n");
         Global_state = 1;
@@ -58,7 +57,7 @@ void Task_init() {
     
     TaskStruct *initTask[3] = { NULL };
     for (int i = 0; i < 3; i++)
-        initTask[i] = Task_createTask(init, usrInit, i, Task_Flag_Kernel);
+        initTask[i] = Task_createTask(init, usrInit, Task_createTask_Arg_Inner | Task_createTask_Arg_Kernel | Task_createTask_Arg_System);
     List_del(&Init_taskStruct.listEle);
     Task_switch_init(&Init_taskStruct, initTask[0]);
 }
