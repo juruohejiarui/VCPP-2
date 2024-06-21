@@ -1,6 +1,6 @@
 RED_COLOR='\E[1;31m'
 RESET='\E[0m'
-GOAL_DISK="/dev/sdb1"
+GOAL_DISK="/dev/sdd1"
 
 echo -e "${RED_COLOR}=== gen kernel.bin ===${RESET}"
 cd kernel

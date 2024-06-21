@@ -91,18 +91,33 @@ void MM_Buddy_init() {
     for (int i = 1; i < memManageStruct.zonesLength; i++) {
         Zone *zone = memManageStruct.zones + i;
         if (zone->usingCnt == zone->pagesLength) continue;
-        u64 pgPos = zone->usingCnt;
-        for (int ord = Buddy_maxOrder; ord >= 0; ord--)
-            while (pgPos + (1 << ord) <= zone->pagesLength) {
-                Page *headPage = zone->pages + pgPos;
-                headPage->attr |= Page_Flag_BuddyHeadPage;
-                MM_Buddy_setOrder(headPage, ord);
-                List_init(&headPage->listEle);
-                headPage->buddyId = 1;
-                _insNewFreePageFrame(ord, headPage);
-                pgPos += (1 << ord);
-                memManageStruct.totMemSize += (1 << (ord + Page_4KShift));
-            }
+        u64 pgPos = zone->usingCnt, res = zone->pagesLength - pgPos;
+		// set up a structure to ensure that for any page frames with size 2^k, the base addr aligns to 2^k
+		// u64 pgPos = zone->usingCnt;
+        // for (int ord = Buddy_maxOrder; ord >= 0; ord--)
+        //     while (pgPos + (1 << ord) <= zone->pagesLength) {
+        //         Page *headPage = zone->pages + pgPos;
+        //         headPage->attr |= Page_Flag_BuddyHeadPage;
+        //         MM_Buddy_setOrder(headPage, ord);
+        //         List_init(&headPage->listEle);
+        //         headPage->buddyId = 1;
+        //         _insNewFreePageFrame(ord, headPage);
+        //         pgPos += (1 << ord);
+        //         memManageStruct.totMemSize += (1 << (ord + Page_4KShift));
+        //     }
+		while (pgPos < zone->pagesLength) {
+			Page *headPage = zone->pages + pgPos;
+			u64 ord = min(log2(lowbit(headPage->phyAddr)) - 12, Buddy_maxOrder);
+			while (pgPos + (1 << ord) >= zone->pagesLength) ord--;
+			if (ord < Buddy_maxOrder) printk(WHITE, BLACK, "%#018lx->%d lowbit=%#018lx, log2=%d\t", headPage->phyAddr, ord, lowbit(headPage->phyAddr), log2(lowbit(headPage->phyAddr)));
+			headPage->attr |= Page_Flag_BuddyHeadPage;
+			MM_Buddy_setOrder(headPage, ord);
+			List_init(&headPage->listEle);
+			headPage->buddyId = 1;
+			_insNewFreePageFrame(ord, headPage);
+			pgPos += (1ul << ord);
+			memManageStruct.totMemSize += (1 << (ord + Page_4KShift));
+		}
     }
 }
 

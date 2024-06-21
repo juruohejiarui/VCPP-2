@@ -30,11 +30,12 @@ u64 init(u64 (*usrEntry)(u64), u64 arg) {
             }
             kfree(kpEvent);
         }
-    } else Task_switchToUsr(usrEntry, arg);
+    } else Task_switchToUsr(usrEntry, Task_current->pid << 32 | arg);
     return 1;
 }
 
 u64 usrInit(u64 arg) {
+	arg >>= 32;
     printk(WHITE, BLACK, "User level task is running, arg = %ld\n", arg);
     u64 res = Task_Syscall_usrAPI(arg, BLACK, WHITE, (u64)"Up Down Up Down baba", 20, 5);
     printk(WHITE, BLACK, "syscall, res: %ld\n", res);

@@ -21,15 +21,18 @@ static inline u64 maxScratchBufs(USB_XHCIController *ctrl) {
 
 // allocate memory for the controller，use DMAS_virt2Phys to get the physical address
 static void *_alloc(USB_XHCIController *ctrl, u64 size) {
-	if (size > Page_4KSize) goto _alloc_Fail;
 	void *addr; Page *page;
-	if (size <= Page_4KSize / 2) {
-		addr = kmalloc(size, 0);
-		if (addr == NULL) goto _alloc_Fail;
-	} else {
-		page = MM_Buddy_alloc(0, Page_Flag_Kernel | Page_Flag_Active);
+	if (size > Page_4KSize / 2) {
+		int log2Size = 0;
+		for (u64 tmp = size; tmp > 1; tmp >>= 1) log2Size++;
+		// ceil the log2Size
+		if (size & (size - 1)) log2Size++;
+		page = MM_Buddy_alloc(log2Size, Page_Flag_Kernel | Page_Flag_Active);
 		if (page == NULL) goto _alloc_Fail;
 		addr = DMAS_phys2Virt(page->phyAddr);
+	} else {
+		addr = kmalloc(size, 0);
+		if (addr == NULL) goto _alloc_Fail;
 	}
 	USB_XHCI_MemUsage *usage = (USB_XHCI_MemUsage *)kmalloc(sizeof(USB_XHCI_MemUsage), 0);
 	List_init(&usage->listEle);
@@ -77,6 +80,9 @@ USB_XHCI_ExtCapEntry *_getNextExtCap(USB_XHCI_ExtCapEntry *extCap) {
 	return (USB_XHCI_ExtCapEntry *)((u64)extCap + extCap->nxtOff * 4);
 }
 
+/// @brief search the legacy support capability and set the os owned bit
+/// @param ctrl the controller
+/// @return if success return 1, else return 0
 static int _getOwnership(USB_XHCIController *ctrl) {
 	USB_XHCI_ExtCap_Legacy *legacy = NULL;
 	for (USB_XHCI_ExtCapEntry *entry = ctrl->extCapHeader; entry != NULL; entry = _getNextExtCap(entry)) {
@@ -85,15 +91,20 @@ static int _getOwnership(USB_XHCIController *ctrl) {
 		break;
 	}
 	if (legacy == NULL) {
-		printk(WHITE, BLACK, "XHCI: %#018lx:no legacy support.");
+		printk(WHITE, BLACK, "XHCI: %#018lx:no legacy support.\n");
 		return 1;
 	}
+	u16 prevVal = legacy->data1;
 	// bit 8 is the os owned bit
 	legacy->data1 |= (1 << 8);
 	for (int i = 0; i <= 10; i++) {
+		if ((legacy->data1 & ((1 << 8) | (1 << 0))) == (1 << 8)) {
+			printk(WHITE, BLACK, "XHCI: %#018lx:success to get ownership. (prevVal:%x)\n", ctrl, prevVal);
+			return 1;
+		} 
 		Intr_SoftIrq_Timer_mdelay(2);
 	}
-	printk(GREEN, BLACK, "XHCI: %#018lx:failed to get ownership.\n");
+	printk(GREEN, BLACK, "XHCI: %#018lx:failed to get ownership.\n", ctrl);
 	return 0;
 }
 
@@ -160,7 +171,7 @@ static int _initMem(USB_XHCIController *ctrl) {
 	ctrl->opRegs->devCtxBaseAddr = DMAS_virt2Phys(addr);
 	ctrl->devCtx = addr;
 	memset(ctrl->devCtx, 0, sizeof(void *) * 2048);
-	printk(WHITE, BLACK, "XHCI: devCtxBaseAddr:%#018lx\n", ctrl->opRegs->devCtxBaseAddr);
+	printk(WHITE, BLACK, "XHCI: %#018lx:devCtxBaseAddr:%#018lx\n", ctrl, ctrl->opRegs->devCtxBaseAddr);
 	// allocate the Device Context Data Structure
 	for (int i = 1; i < maxSlots(ctrl); i++) {
 		addr = _alloc(ctrl, 
@@ -168,7 +179,12 @@ static int _initMem(USB_XHCIController *ctrl) {
 		if (addr == NULL) { ctrl->dev.free((Device *)ctrl); kfree(ctrl); return 0; }
 		ctrl->devCtx[i] = addr;
 	}
-	
+	// allocate command ring of 256 trb
+	USB_XHCI_GenerTRB *cmdRing = _alloc(ctrl, Page_4KSize);
+	memset(cmdRing, 0, Page_4KSize);
+	ctrl->opRegs->cmdRingCtrl = DMAS_virt2Phys(cmdRing) | 1;
+	printk(WHITE, BLACK, "XHCI: %#018lx:cmdRingCtrl:%#018lx\n", ctrl, ctrl->opRegs->cmdRingCtrl);
+
 }
 
 static int _resetController(USB_XHCIController *ctrl) {
@@ -254,4 +270,8 @@ int HW_USB_XHCI_Init(PCIeConfig *xhci) {
 
 	List_insBefore(&ctrl->listEle, &HW_USB_XHCI_mgrList);
 	return 1;
+}
+
+void HW_USB_XHCI_thread(USB_XHCIController *ctrl) {
+
 }
