@@ -78,6 +78,7 @@ USB_XHCI_ExtCapEntry *_getNextExtCap(USB_XHCI_ExtCapEntry *extCap) {
 }
 
 static USB_XHCI_GenerTRB *_getEventTRB(USB_XHCIController *ctrl, int intrId) {
+	printk(WHITE, BLACK, "XHCI: %#018lx:intr[%d].eveDeqPtr=%#018lx\n", ctrl, intrId, ctrl->rtRegs->intrRegs[intrId].eveDeqPtr);
 	return DMAS_phys2Virt(ctrl->rtRegs->intrRegs[intrId].eveDeqPtr & (~0x3ful));
 } 
 
@@ -128,6 +129,32 @@ static int _stopController(USB_XHCIController *ctrl) {
 	return 1;
 }
 
+static int _resetController(USB_XHCIController *ctrl) {
+	 _setCmdBit(ctrl, HW_USB_XHCI_OpReg_Cmd_HCReset);
+	 {
+		u64 remain = 30;
+		do {
+			// wait 5ms
+			Intr_SoftIrq_Timer_mdelay(5);
+			// check the bit HCHalted of controller status
+			if (!_rdStsBit(ctrl, HW_USB_XHCI_OpReg_Status_CtrlNotReady) && !_rdCmdBit(ctrl, HW_USB_XHCI_OpReg_Cmd_HCReset))
+				break;
+		} while (remain -= 5);
+		if (_rdStsBit(ctrl, HW_USB_XHCI_OpReg_Status_CtrlNotReady) || _rdCmdBit(ctrl, HW_USB_XHCI_OpReg_Cmd_HCReset)) {
+			printk(RED, BLACK, "XHCI: %#018lx: reset controller failed\n", ctrl);
+			return 0;
+		}
+	}
+	
+	// check the default value
+	if (ctrl->opRegs->usbCmd || ctrl->opRegs->devNotifCtrl
+			 || ctrl->opRegs->cmdRingCtrl || ctrl->opRegs->devCtxBaseAddr || ctrl->opRegs->config) {
+		printk(RED, BLACK, "XHCI: %#018lx: reset failed: default value check failed\n", ctrl);
+		return 0;
+	}
+	return 1;
+}
+
 static int _initPorts(USB_XHCIController *ctrl) {
 	// allocate memory for each port
 	ctrl->ports = (USB_XHCI_Port *)kmalloc(sizeof(USB_XHCI_Port) * maxPorts(ctrl), 0);
@@ -171,7 +198,6 @@ static int _initMem(USB_XHCIController *ctrl) {
 	if (addr == NULL) { ctrl->dev.free((Device *)ctrl); kfree(ctrl); return 0; }
 	ctrl->opRegs->devCtxBaseAddr = DMAS_virt2Phys(addr);
 	ctrl->devCtx = addr;
-	memset(ctrl->devCtx, 0, sizeof(void *) * 2048);
 	printk(WHITE, BLACK, "XHCI: %#018lx:devCtxBaseAddr:%#018lx\n", ctrl, ctrl->opRegs->devCtxBaseAddr);
 	// allocate the Device Context Data Structure
 	for (int i = 1; i < maxSlots(ctrl); i++) {
@@ -186,7 +212,7 @@ static int _initMem(USB_XHCIController *ctrl) {
 		memset(cmdRing, 0, Page_4KSize * 16);
 		ctrl->cmdRing = cmdRing;
 		ctrl->opRegs->cmdRingCtrl = DMAS_virt2Phys(cmdRing) | 1;
-		printk(WHITE, BLACK, "XHCI: %#018lx:cmdRingCtrl:%#018lx\n", ctrl, ctrl->opRegs->cmdRingCtrl);
+		printk(WHITE, BLACK, "XHCI: %#018lx:cmdRingCtrl:(%#018lx,%#018lx)\n", ctrl, ctrl->opRegs->cmdRingCtrl, cmdRing);
 	}
 	// allocate event ring for each interrupter
 	ctrl->eveRingSegTbls = _alloc(ctrl, sizeof(USB_XHCI_EveRingSegTblEntry *) * maxIntrs(ctrl));
@@ -202,44 +228,24 @@ static int _initMem(USB_XHCIController *ctrl) {
 			ctrl->eveRingSegTbls[i][tblId].addr = (u64)DMAS_virt2Phys(eveRing);
 			ctrl->eveRingSegTbls[i][tblId].size = Page_4KSize * 16 / sizeof(USB_XHCI_GenerTRB);
 		}
-		ctrl->rtRegs->intrRegs[i].mgrRegs = 0x3 | DMAS_virt2Phys(segTbl);
+		ctrl->rtRegs->intrRegs[i].eveSegTblSize = (ctrl->rtRegs->intrRegs->eveSegTblSize & ~0xfffful) | HW_USB_XHCI_EveRingSegTblSize;
+		ctrl->rtRegs->intrRegs[i].eveSegTblAddr = DMAS_virt2Phys(segTbl);
+		ctrl->rtRegs->intrRegs[i].mgrRegs = 0x3 | (ctrl->rtRegs->intrRegs[i].mgrRegs & (~0x3));
+		ctrl->rtRegs->intrRegs[i].eveDeqPtr = segTbl[0].addr | (1 << 3);
 	}
-}
-
-static int _resetController(USB_XHCIController *ctrl) {
-	 _setCmdBit(ctrl, HW_USB_XHCI_OpReg_Cmd_HCReset);
-	 {
-		u64 remain = 30;
-		do {
-			// wait 5ms
-			Intr_SoftIrq_Timer_mdelay(5);
-			// check the bit HCHalted of controller status
-			if (!_rdStsBit(ctrl, HW_USB_XHCI_OpReg_Status_CtrlNotReady) && !_rdCmdBit(ctrl, HW_USB_XHCI_OpReg_Cmd_HCReset))
-				break;
-		} while (remain -= 5);
-		if (_rdStsBit(ctrl, HW_USB_XHCI_OpReg_Status_CtrlNotReady) || _rdCmdBit(ctrl, HW_USB_XHCI_OpReg_Cmd_HCReset)) {
-			printk(RED, BLACK, "XHCI: reset controller failed\n");
-			return 0;
-		}
-	}
-	
-	// check the default value
-	if (ctrl->opRegs->usbCmd || ctrl->opRegs->devNotifCtrl
-			 || ctrl->opRegs->cmdRingCtrl || ctrl->opRegs->devCtxBaseAddr || ctrl->opRegs->config) {
-		printk(RED, BLACK, "XHCI: default value check failed\n");
-		return 0;
-	}
-	return 1;
 }
 
 int _restartController(USB_XHCIController *ctrl) {
-	_setCmdBit(ctrl, 0);
+	ctrl->opRegs->devNotifCtrl = (ctrl->opRegs->devNotifCtrl & ~0xffff) | (1 << 1);
+	ctrl->opRegs->cmdRingCtrl = (ctrl->opRegs->cmdRingCtrl & ~(1ul << 1)) | (1ul << 1);
+	ctrl->opRegs->usbStatus |= (1 << 2) | (1 << 3) | (1 << 4) | (1 << 10);
+	ctrl->opRegs->usbCmd |= (1 << 0) | (1 << 2) | (1 << 3);
 	for (int remain = 30; remain > 0; remain--) {
 		Intr_SoftIrq_Timer_mdelay(2);
 		if (ctrl->opRegs->usbStatus & 1) continue;
 		break;
 	}
-	if (ctrl->opRegs->usbStatus & 1) {
+	if ((ctrl->opRegs->usbStatus & 1) || ((ctrl->opRegs->usbCmd & 1) == 0)) {
 		printk(RED, BLACK, "XHCI: %#018lx: restart failed\n", ctrl);
 		return 0;
 	}
@@ -247,7 +253,7 @@ int _restartController(USB_XHCIController *ctrl) {
 }
 
 int _simpleTest(USB_XHCIController *ctrl) {
-	if (ctrl->opRegs->usbStatus & ((1 << 11) | (1 << 12) | (1 << 0))) {
+	if ((ctrl->opRegs->usbStatus & ((1 << 11) | (1 << 12) | (1 << 0)))) {
 		printk(RED, BLACK, "XHCI: %#018lx: Simple test failed\n", ctrl);
 		return 0;
 	} 
@@ -257,20 +263,25 @@ int _simpleTest(USB_XHCIController *ctrl) {
 	trb->dw3.ctx.trbType = 8;
 	trb->dw3.ctx.cycle = 1;
 	// ring the doorbell
-	ctrl->dbRegs->cmd = (ctrl->dbRegs->cmd & ~0xf) | 1;
-	for (i32 remain = 100; remain > 0; remain--) {
+	IO_mfence();
+	ctrl->dbRegs->cmd = 0;
+	for (i32 remain = 300; remain > 0; remain--) {
 		Intr_SoftIrq_Timer_mdelay(10);
-		if ((ctrl->opRegs->usbStatus | (1 << 3)) && (ctrl->rtRegs->intrRegs[0].mgrRegs & 1))
+		if ((ctrl->opRegs->usbStatus & (1 << 3)) && (ctrl->rtRegs->intrRegs[0].mgrRegs & 1))
 			break;
 	}
-	if (!(ctrl->opRegs->usbStatus | (1 << 3)) && (ctrl->rtRegs->intrRegs[0].mgrRegs & 1)) {
+	if (!((ctrl->opRegs->usbStatus & (1 << 3)) && (ctrl->rtRegs->intrRegs[0].mgrRegs & 1))) {
 		printk(RED, BLACK, "XHCI: %#018lx: Simple test failed\n", ctrl);
 		return 0;
 	}
 	ctrl->opRegs->usbStatus = (1 << 3);
 	ctrl->rtRegs->intrRegs[0].mgrRegs = 0x3;
-	USB_XHCI_GenerTRB *eveTrb = _getEventTRB(ctrl, 0);
-	printk("trbType:%d trb:%#018lx, eveTrb:%#018lx\n", trb, *(u64 *)&eveTrb->dw[0]);
+	USB_XHCI_GenerTRB *eveTrb = DMAS_phys2Virt(ctrl->eveRingSegTbls[0][0].addr);
+	if (eveTrb->dw3.ctx.trbType != 33 || DMAS_phys2Virt((*(u64 *)&eveTrb->dw[0])) != (void *)trb) {
+		printk(RED, BLACK, "XHCI: %#018lx: Simple test failed\n", ctrl);
+		return 0;
+	}
+	printk(GREEN, BLACK, "XHCI: %#018lx: Simple test passed. Has enabled this controller\n", ctrl);
 	return 1;
 }
 
@@ -285,9 +296,9 @@ int HW_USB_XHCI_Init(PCIeConfig *xhci) {
 
 	ctrl->config = xhci;
 	u64 addr = (xhci->type.type0.bar[0] | (((u64)xhci->type.type0.bar[1]) << 32)) & ~0xffful;
-	printk(YELLOW, BLACK, "XHCI:%#018lx\n", xhci);
 	u64 pldEntry = MM_PageTable_getPldEntry(getCR3(), (u64)DMAS_phys2Virt(addr));
-	if ((pldEntry & ~0xffful) == 0) MM_PageTable_map2M(getCR3(), Page_2MDownAlign((u64)DMAS_phys2Virt(addr)), Page_2MDownAlign(addr), MM_PageTable_Flag_Presented | MM_PageTable_Flag_Writable);
+	if ((pldEntry & ~0xffful) == 0) MM_PageTable_map1G(getCR3(), Page_1GDownAlign((u64)DMAS_phys2Virt(addr)), Page_1GDownAlign(addr), MM_PageTable_Flag_Presented | MM_PageTable_Flag_Writable);
+	printk(WHITE, BLACK, "XHCI: %#018lx: Finish memory mapping\n", ctrl);
 	// get the capability registers
 	ctrl->capRegs = (USB_XHCI_CapRegs *)DMAS_phys2Virt(addr);
 	// get the operational registers
@@ -308,16 +319,16 @@ int HW_USB_XHCI_Init(PCIeConfig *xhci) {
 	state = _stopController(ctrl);
 	if (!state) { ctrl->dev.free((Device *)ctrl); kfree(ctrl); return 0; }
 
+	// reset the controller
+	state = _resetController(ctrl);
+	if (!state) { ctrl->dev.free((Device *)ctrl); kfree(ctrl); return 0; }
+
 	// pair up the USB3 and USB2
 	state = _initPorts(ctrl);
 	if (!state) { ctrl->dev.free((Device *)ctrl); kfree(ctrl); return 0; }
 
 	// allocate memory for the controller
 	state = _initMem(ctrl);
-	if (!state) { ctrl->dev.free((Device *)ctrl); kfree(ctrl); return 0; }
-
-	// reset the controller
-	state = _resetController(ctrl);
 	if (!state) { ctrl->dev.free((Device *)ctrl); kfree(ctrl); return 0; }
 
 	state = _restartController(ctrl);

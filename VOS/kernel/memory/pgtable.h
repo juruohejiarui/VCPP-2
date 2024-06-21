@@ -56,6 +56,8 @@ void MM_PageTable_map(u64 cr3, u64 vAddr, u64 pAddr, u64 flag);
 
 void MM_PageTable_map2M(u64 cr3, u64 vAddr, u64 pAddr, u64 flag);
 
+void MM_PageTable_map1G(u64 cr3, u64 vAddr, u64 pAddr, u64 flag);
+
 void MM_PageTable_unmap(u64 cr3, u64 vAddr);
 
 u64 MM_PageTable_getPldEntry(u64 cr3, u64 vAddr);

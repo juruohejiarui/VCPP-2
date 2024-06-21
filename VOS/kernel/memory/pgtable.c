@@ -34,6 +34,13 @@ u64 MM_PageTable_alloc() {
     return page->phyAddr;
 }
 
+void MM_PageTable_map1G(u64 cr3, u64 vAddr, u64 pAddr, u64 flag) {
+    u64 *pgdEntry = (u64 *)DMAS_phys2Virt(cr3) + ((vAddr >> 39) & 0x1ff);
+    if (*pgdEntry == 0) *pgdEntry = MM_PageTable_alloc() | 0x7;
+    u64 *pudEntry = (u64 *)DMAS_phys2Virt(*pgdEntry & ~0xffful) + ((vAddr >> 30) & 0x1ff);
+    *pudEntry = pAddr | 0x80 | flag | (pAddr > 0);
+}
+
 void MM_PageTable_map2M(u64 cr3, u64 vAddr, u64 pAddr, u64 flag) {
     u64 *pgdEntry = (u64 *)DMAS_phys2Virt(cr3) + ((vAddr >> 39) & 0x1ff);
     if (*pgdEntry == 0) *pgdEntry = MM_PageTable_alloc() | 0x7;
