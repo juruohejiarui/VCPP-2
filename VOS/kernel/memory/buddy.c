@@ -92,24 +92,10 @@ void MM_Buddy_init() {
         Zone *zone = memManageStruct.zones + i;
         if (zone->usingCnt == zone->pagesLength) continue;
         u64 pgPos = zone->usingCnt, res = zone->pagesLength - pgPos;
-		// set up a structure to ensure that for any page frames with size 2^k, the base addr aligns to 2^k
-		// u64 pgPos = zone->usingCnt;
-        // for (int ord = Buddy_maxOrder; ord >= 0; ord--)
-        //     while (pgPos + (1 << ord) <= zone->pagesLength) {
-        //         Page *headPage = zone->pages + pgPos;
-        //         headPage->attr |= Page_Flag_BuddyHeadPage;
-        //         MM_Buddy_setOrder(headPage, ord);
-        //         List_init(&headPage->listEle);
-        //         headPage->buddyId = 1;
-        //         _insNewFreePageFrame(ord, headPage);
-        //         pgPos += (1 << ord);
-        //         memManageStruct.totMemSize += (1 << (ord + Page_4KShift));
-        //     }
 		while (pgPos < zone->pagesLength) {
 			Page *headPage = zone->pages + pgPos;
 			u64 ord = min(log2(lowbit(headPage->phyAddr)) - 12, Buddy_maxOrder);
-			while (pgPos + (1 << ord) >= zone->pagesLength) ord--;
-			if (ord < Buddy_maxOrder) printk(WHITE, BLACK, "%#018lx->%d lowbit=%#018lx, log2=%d\t", headPage->phyAddr, ord, lowbit(headPage->phyAddr), log2(lowbit(headPage->phyAddr)));
+			while (pgPos + (1 << ord) > zone->pagesLength) ord--;
 			headPage->attr |= Page_Flag_BuddyHeadPage;
 			MM_Buddy_setOrder(headPage, ord);
 			List_init(&headPage->listEle);
@@ -147,6 +133,10 @@ Page *MM_Buddy_alloc(u64 log2Size, u64 attr) {
 		#ifdef DEBUG_MM_ALLOC
         printk(GREEN, BLACK, "MM_Buddy_alloc(%d)->%p [%#018lx,%#018lx]\n", log2Size, headPage, headPage->phyAddr, headPage->phyAddr + (1 << (log2Size + Page_4KShift)) - 1);
 		#endif
+		if (log2(lowbit(headPage->phyAddr)) - 12 < log2Size) {
+			printk(RED, BLACK, "Buddy Align Error: %d->%d\n", log2(lowbit(headPage->phyAddr)) - 12, log2Size);
+			while (1) IO_hlt();
+		}
         return headPage;
     }
     IO_Func_maskIntrSuffix
