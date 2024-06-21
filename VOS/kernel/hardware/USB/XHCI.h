@@ -489,6 +489,16 @@ typedef struct {
 } __attribute__ ((packed)) USB_XHCI_CompletionTRB;
 #pragma endregion
 
+// event ring segment table entry
+typedef struct {
+	u64 addr;
+	u16 size;
+	u16 reserved;
+	u32 reserved1;
+} __attribute__ ((packed)) USB_XHCI_EveRingSegTblEntry;
+
+#define HW_USB_XHCI_EveRingSegTblSize	1
+
 typedef struct {
 	u64 addr;
 	List listEle;
@@ -506,7 +516,9 @@ typedef struct {
 	List listEle, memList;
 	USB_XHCI_Port *ports;
 
+	USB_XHCI_GenerTRB *cmdRing;
 	USB_XHCI_DeviceContext **devCtx;
+	USB_XHCI_EveRingSegTblEntry **eveRingSegTbls;
 } USB_XHCIController;
 
 #define USB_XHCI_ExtCap_Id_Legacy 	0x01
