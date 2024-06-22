@@ -78,8 +78,14 @@ USB_XHCI_ExtCapEntry *_getNextExtCap(USB_XHCI_ExtCapEntry *extCap) {
 }
 
 static USB_XHCI_GenerTRB *_getEventTRB(USB_XHCIController *ctrl, int intrId) {
-	printk(WHITE, BLACK, "XHCI: %#018lx:intr[%d].eveDeqPtr=%#018lx\n", ctrl, intrId, ctrl->rtRegs->intrRegs[intrId].eveDeqPtr);
-	return DMAS_phys2Virt(ctrl->rtRegs->intrRegs[intrId].eveDeqPtr & (~0x3ful));
+	printk(WHITE, BLACK, "XHCI: %#018lx:intr[%d].eveDeqPtr=%#018lx\t", ctrl, intrId, ctrl->rtRegs->intrRegs[intrId].eveDeqPtr);
+	USB_XHCI_GenerTRB *trb = DMAS_phys2Virt(ctrl->rtRegs->intrRegs[intrId].eveDeqPtr & (~0x8ul));
+	ctrl->rtRegs->intrRegs[intrId].eveDeqPtr |= 0x8;
+	IO_mfence();
+	ctrl->rtRegs->intrRegs[intrId].eveDeqPtr += sizeof(USB_XHCI_GenerTRB);
+	printk(ORANGE, BLACK, "EventTRB: %#018lx(type:%d,ptr:%#018lx,code:%d,cycle:%d)\n", 
+			trb, trb->dw3.ctx.trbType, (*(u64 *)&trb->dw[0]), (trb->dw[2] >> 24), trb->dw3.ctx.cycle);
+	return trb;
 } 
 
 /// @brief search the legacy support capability and set the os owned bit
@@ -157,7 +163,7 @@ static int _resetController(USB_XHCIController *ctrl) {
 
 static int _initPorts(USB_XHCIController *ctrl) {
 	// allocate memory for each port
-	ctrl->ports = (USB_XHCI_Port *)kmalloc(sizeof(USB_XHCI_Port) * maxPorts(ctrl), 0);
+	ctrl->ports = (USB_XHCI_Port *)_alloc(ctrl, sizeof(USB_XHCI_Port) * maxPorts(ctrl));
 	if (ctrl->ports == 0) {
 		printk(RED, BLACK, "XHCI: allocate memory for ports failed\n");
 		return 0;
@@ -211,8 +217,7 @@ static int _initMem(USB_XHCIController *ctrl) {
 		USB_XHCI_GenerTRB *cmdRing = _alloc(ctrl, Page_4KSize * 16);
 		memset(cmdRing, 0, Page_4KSize * 16);
 		ctrl->cmdRing = cmdRing;
-		ctrl->opRegs->cmdRingCtrl = DMAS_virt2Phys(cmdRing) | 1;
-		printk(WHITE, BLACK, "XHCI: %#018lx:cmdRingCtrl:(%#018lx,%#018lx)\n", ctrl, ctrl->opRegs->cmdRingCtrl, cmdRing);
+		printk(WHITE, BLACK, "XHCI: %#018lx:cmdRingCtrl:%#018lx\n", ctrl, cmdRing);
 	}
 	// allocate event ring for each interrupter
 	ctrl->eveRingSegTbls = _alloc(ctrl, sizeof(USB_XHCI_EveRingSegTblEntry *) * maxIntrs(ctrl));
@@ -230,8 +235,7 @@ static int _initMem(USB_XHCIController *ctrl) {
 		}
 		ctrl->rtRegs->intrRegs[i].eveSegTblSize = (ctrl->rtRegs->intrRegs->eveSegTblSize & ~0xfffful) | HW_USB_XHCI_EveRingSegTblSize;
 		ctrl->rtRegs->intrRegs[i].eveSegTblAddr = DMAS_virt2Phys(segTbl);
-		ctrl->rtRegs->intrRegs[i].mgrRegs = 0x3 | (ctrl->rtRegs->intrRegs[i].mgrRegs & (~0x3));
-		ctrl->rtRegs->intrRegs[i].eveDeqPtr = segTbl[0].addr | (1 << 3);
+		ctrl->rtRegs->intrRegs[i].eveDeqPtr = (ctrl->rtRegs->intrRegs[i].eveDeqPtr & 0x3f) | segTbl[0].addr;
 	}
 }
 
@@ -249,18 +253,22 @@ int _restartController(USB_XHCIController *ctrl) {
 		printk(RED, BLACK, "XHCI: %#018lx: restart failed\n", ctrl);
 		return 0;
 	}
+	for (int i = 0; i < 1; i++) {
+		ctrl->rtRegs->intrRegs[i].mgrRegs = 0x3 | (ctrl->rtRegs->intrRegs[i].mgrRegs & (~0x3));
+	}
+	ctrl->opRegs->cmdRingCtrl = DMAS_virt2Phys(ctrl->cmdRing) | 0x3;
 	return 1;
 }
 
 int _simpleTest(USB_XHCIController *ctrl) {
-	if ((ctrl->opRegs->usbStatus & ((1 << 11) | (1 << 12) | (1 << 0)))) {
+	if (ctrl->opRegs->usbStatus & ((1 << 11) | (1 << 12) | (1 << 0))) {
 		printk(RED, BLACK, "XHCI: %#018lx: Simple test failed\n", ctrl);
 		return 0;
-	} 
+	}
 	// write a no operation TRB to the first interrupter and wait for event
 	USB_XHCI_GenerTRB *trb = &ctrl->cmdRing[0];
 	memset(trb, 0, sizeof(USB_XHCI_GenerTRB));
-	trb->dw3.ctx.trbType = 8;
+	trb->dw3.ctx.trbType = 23;
 	trb->dw3.ctx.cycle = 1;
 	// ring the doorbell
 	IO_mfence();
@@ -271,14 +279,17 @@ int _simpleTest(USB_XHCIController *ctrl) {
 			break;
 	}
 	if (!((ctrl->opRegs->usbStatus & (1 << 3)) && (ctrl->rtRegs->intrRegs[0].mgrRegs & 1))) {
-		printk(RED, BLACK, "XHCI: %#018lx: Simple test failed\n", ctrl);
+		printk(RED, BLACK, "XHCI: %#018lx: Simple test failed, no interrupt.\n", ctrl);
 		return 0;
 	}
 	ctrl->opRegs->usbStatus = (1 << 3);
 	ctrl->rtRegs->intrRegs[0].mgrRegs = 0x3;
-	USB_XHCI_GenerTRB *eveTrb = DMAS_phys2Virt(ctrl->eveRingSegTbls[0][0].addr);
-	if (eveTrb->dw3.ctx.trbType != 33 || DMAS_phys2Virt((*(u64 *)&eveTrb->dw[0])) != (void *)trb) {
-		printk(RED, BLACK, "XHCI: %#018lx: Simple test failed\n", ctrl);
+	USB_XHCI_GenerTRB *eveTrb = _getEventTRB(ctrl, 0);
+	while ((eveTrb + 1)->dw3.ctx.cycle == 1) eveTrb = _getEventTRB(ctrl, 0);
+	if (eveTrb->dw3.ctx.trbType != 33 || DMAS_phys2Virt((*(u64 *)&eveTrb->dw[0])) != (void *)trb || ((eveTrb->dw[2] >> 24) != 1)) {
+		printk(RED, BLACK, "XHCI: %#018lx: Simple test failed, event TRB is invalid.\n", ctrl);
+		printk(ORANGE, BLACK, "EventTRB: %#018lx(type:%d,ptr:%#018lx,code:%d,cycle:%d) trb:%#018lx\n", 
+			eveTrb, eveTrb->dw3.ctx.trbType, (*(u64 *)&eveTrb->dw[0]), (eveTrb->dw[2] >> 24), eveTrb->dw3.ctx.cycle, trb);
 		return 0;
 	}
 	printk(GREEN, BLACK, "XHCI: %#018lx: Simple test passed. Has enabled this controller\n", ctrl);
