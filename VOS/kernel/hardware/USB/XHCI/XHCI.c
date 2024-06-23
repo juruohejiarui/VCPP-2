@@ -56,7 +56,7 @@ static USB_XHCI_GenerTRB *_getNextEventTRB(USB_XHCIController *ctrl, int intrId)
 	ctrl->rtRegs->intrRegs[intrId].eveDeqPtr |= 0x8;
 	IO_mfence();
 	printk(WHITE, BLACK, "evePos:%d ", ctrl->eveRingFlag[intrId].pos);
-	if (trb->dw3.ctx.cycle != ctrl->eveRingFlag[intrId].cycleBit) return NULL;
+	if (trb->dw3.ctx.cycle != ctrl->eveRingFlag[intrId].cycleBit) return printk(YELLOW, BLACK, "XHCI: %#018lx: Event Ring [%d] Empty...", ctrl, intrId), NULL;
 	// get next ptr
 	ctrl->eveRingFlag[intrId].pos++;
 	// write the nextPtr
@@ -85,7 +85,7 @@ static USB_XHCI_GenerTRB *_getNextCmdTRB(USB_XHCIController *ctrl) {
 		ctrl->cmdRingFlag.pos = 0;
 		trb = ctrl->cmdRing;
 	}
-	if ((ctrl->cmdsFlag[ctrl->cmdRingFlag.pos] & 1) == 0) return NULL;
+	if ((ctrl->cmdsFlag[ctrl->cmdRingFlag.pos] & 1) == 0) return printk(YELLOW, BLACK, "XHCI: %#018lx: Command Ring Full...\n", ctrl), NULL;
 	ctrl->cmdsFlag[ctrl->cmdRingFlag.pos] ^= 1;
 	ctrl->cmdRingFlag.pos++;
 	printk(WHITE, BLACK, "trb1:%#018lx ", trb);

@@ -3,7 +3,7 @@
 
 #include "ds.h"
 
-#define NULL 0
+#define NULL ((void *)0)
 
 void *memset(void *addr, u8 dt, u64 size);
 void *memcpy(void *src, void *dst, i64 size);

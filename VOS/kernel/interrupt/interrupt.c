@@ -91,7 +91,7 @@ void (*intrList[24])(void) = {
 
 IntrHandlerDeclare(Intr_noHandler) {
 	printk(RED, BLACK, "No handler for interrupt %d\n", arg);
-	return NULL;
+	return 0;
 }
 
 IntrDescriptor Intr_descriptor[Intr_Num];
@@ -122,7 +122,7 @@ void Intr_unregister(u64 irqId) {
 
 u64 Intr_irqdispatch(u64 rsp, u64 irqId) {
 	IntrDescriptor *desc = &Intr_descriptor[irqId - 0x20];
-	u64 res = NULL;
+	u64 res = 0;
 	if (desc->handler != NULL)
 		res = desc->handler(desc->param, (PtReg *)rsp);
 	else res = Intr_noHandler(irqId, (PtReg *)rsp);
