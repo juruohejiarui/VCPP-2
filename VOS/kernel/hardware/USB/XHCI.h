@@ -271,6 +271,13 @@ typedef struct {
 } __attribute__ ((packed)) USB_XHCI_DeviceContext;
 
 #pragma region transfer request block (TRB)
+
+#define HW_USB_TrbType_Link				6
+#define HW_USB_TrbType_NoOp				8
+#define HW_USB_TrbType_NoOpCmd			23
+#define HW_USB_TrbType_CmdCompletionEve	33
+
+
 // general format of transfer request block
 typedef struct {
 	u32 dw[3];
@@ -497,7 +504,16 @@ typedef struct {
 	u32 reserved1;
 } __attribute__ ((packed)) USB_XHCI_EveRingSegTblEntry;
 
+// event ring segment flag
+typedef struct {
+	u16 segId;
+	u16 pos;
+	u8 cycleBit;
+} USB_XHCI_RingFlag;
+
 #define HW_USB_XHCI_EveRingSegTblSize	1
+
+#define HW_USB_XHCI_RingEntryNum	(Page_4KSize * 16 / sizeof(USB_XHCI_GenerTRB))
 
 typedef struct {
 	u64 addr;
@@ -519,6 +535,9 @@ typedef struct {
 	USB_XHCI_GenerTRB *cmdRing;
 	USB_XHCI_DeviceContext **devCtx;
 	USB_XHCI_EveRingSegTblEntry **eveRingSegTbls;
+	USB_XHCI_RingFlag *eveRingFlag;
+	USB_XHCI_RingFlag cmdRingFlag;
+	u64 *cmdsFlag;
 } USB_XHCIController;
 
 #define USB_XHCI_ExtCap_Id_Legacy 	0x01

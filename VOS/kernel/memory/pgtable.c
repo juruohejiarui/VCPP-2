@@ -35,6 +35,7 @@ u64 MM_PageTable_alloc() {
 }
 
 void MM_PageTable_map1G(u64 cr3, u64 vAddr, u64 pAddr, u64 flag) {
+    printk(WHITE, BLACK, "MM_PageTable_map1G(): cr3:%#018lx vAddr:%#018lx pAddr:%#018lx flag:%#018lx\n", cr3, vAddr, pAddr, flag);
     u64 *pgdEntry = (u64 *)DMAS_phys2Virt(cr3) + ((vAddr >> 39) & 0x1ff);
     if (*pgdEntry == 0) *pgdEntry = MM_PageTable_alloc() | 0x7;
     u64 *pudEntry = (u64 *)DMAS_phys2Virt(*pgdEntry & ~0xffful) + ((vAddr >> 30) & 0x1ff);
@@ -96,6 +97,24 @@ u64 MM_PageTable_getPldEntry(u64 cr3, u64 vAddr) {
     entry = (u64 *)DMAS_phys2Virt(*entry & ~0xffful) + ((vAddr >> 12) & 0x1ff);
     return *entry;
 }
+
+u64 MM_PageTable_getPldEntry_debug(u64 cr3, u64 vAddr) {
+    u64 *entry = (u64 *)DMAS_phys2Virt(cr3) + ((vAddr >> 39) & 0x1ff);
+    printk(WHITE, BLACK, "MM_PageTable_getPldEntry_debug: cr3:%#018lx->%#018lx", cr3, *entry);
+    if (*entry == 0) return printk(WHITE, BLACK, "\n"), 0;
+    entry = (u64 *)DMAS_phys2Virt(*entry & ~0xffful) + ((vAddr >> 30) & 0x1ff);
+    printk(WHITE, BLACK, "->%#018lx", *entry);
+    if (*entry == 0) return printk(WHITE, BLACK, "\n"), 0;
+	if (*entry & 0x80) return printk(WHITE, BLACK, "\n"), *entry;
+    entry = (u64 *)DMAS_phys2Virt(*entry & ~0xffful) + ((vAddr >> 21) & 0x1ff);
+    printk(WHITE, BLACK, "->%#018lx", *entry);
+    if (*entry == 0) return printk(WHITE, BLACK, "\n"), 0;
+	if (*entry & 0x80) return printk(WHITE, BLACK, "\n"), *entry;
+    entry = (u64 *)DMAS_phys2Virt(*entry & ~0xffful) + ((vAddr >> 12) & 0x1ff);
+    printk(WHITE, BLACK, "->%#018lx\n", *entry);
+    return *entry;
+}
+
 
 /// @brief fork the current page table, using the allocated physics address in the old page table
 /// @return the physics address of the new page table
