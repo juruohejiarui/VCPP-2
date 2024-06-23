@@ -511,7 +511,7 @@ typedef struct {
 	u8 cycleBit;
 } USB_XHCI_RingFlag;
 
-#define HW_USB_XHCI_EveRingSegTblSize	1
+#define HW_USB_XHCI_EveRingSegTblSize	2
 
 #define HW_USB_XHCI_RingEntryNum	(Page_4KSize * 16 / sizeof(USB_XHCI_GenerTRB))
 

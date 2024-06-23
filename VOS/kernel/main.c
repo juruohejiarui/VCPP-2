@@ -22,6 +22,8 @@ void startKernel() {
     position.XPosition = position.YPosition = 0;
     position.FBAddr = (unsigned int *)0xffff800003000000;
 
+    Log_init();
+
     printk(WHITE, BLACK, "FrameBufferBase: %#018lx, FrameBufferSize: %#018lx, HorizontalResolution: %#08lx, VerticalResolution: %#08x, PixelsPerScanLine: %#08x\n",
         HW_UEFI_bootParamInfo->graphicsInfo.FrameBufferBase, 		HW_UEFI_bootParamInfo->graphicsInfo.FrameBufferSize,
         HW_UEFI_bootParamInfo->graphicsInfo.HorizontalResolution, 	HW_UEFI_bootParamInfo->graphicsInfo.VerticalResolution,
@@ -33,6 +35,8 @@ void startKernel() {
 
     Intr_Trap_setSysVec();
     MM_init();
+
+    Log_enableBuf();
 
     Intr_init();
     HW_init();

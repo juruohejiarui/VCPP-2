@@ -2,10 +2,24 @@
 #include "../includes/log.h"
 #include "../includes/lib.h"
 #include "../includes/hardware.h"
+#include "../includes/memory.h"
 #include "../includes/task.h"
 #include "font.h"
 
 static u32 lineLength[4096] = { [0 ... 4095] = 0 };
+
+static unsigned int *_bufAddr;
+
+void Log_enableBuf() {
+    u64 pixelSize = HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine * HW_UEFI_bootParamInfo->graphicsInfo.VerticalResolution * sizeof(u32);
+    _bufAddr = DMAS_phys2Virt(MM_Buddy_alloc(max(log2Ceil(pixelSize) - 12, 0), Page_Flag_Active | Page_Flag_Kernel)->phyAddr);
+    memcpy(position.FBAddr, _bufAddr, pixelSize);
+    printk(WHITE, BLACK, "buf:%#018lx size:%ld->2^%d 4k pages\n", _bufAddr, pixelSize, max(log2Ceil(pixelSize) - 12, 0));
+}
+
+void Log_init() {
+    _bufAddr = NULL;
+}
 
 #define isDigit(ch) ((ch) >= '0' && (ch) <= '9')
 
@@ -170,32 +184,44 @@ int sprintf(char *buf, const char *fmt, va_list args) {
 static void _scroll(void) {
     int x, y;
     unsigned int *addr = position.FBAddr, 
-                *addr2 = position.FBAddr + position.YCharSize * HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine;
+                *addr2 = position.FBAddr + position.YCharSize * HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine,
+                *bufAddr = _bufAddr,
+                *bufAddr2 = _bufAddr + position.YCharSize * HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine,
+                offPerLine = HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine * position.YCharSize;;
     for (int i = 0; i < position.YPosition - 1; i++) {
-        for (int j = 0; j < position.YCharSize; j++)
-            memcpy(
-                    addr2 + j * HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine, 
-                    addr + j * HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine,
-                    max(lineLength[i + 1], lineLength[i]) * position.XCharSize * sizeof(u32));
-        addr += HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine * position.YCharSize;
-        addr2 += HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine * position.YCharSize;
+        u32 size = max(lineLength[i + 1], lineLength[i]) * position.XCharSize * sizeof(u32);
+        for (int j = 0, off = 0; j < position.YCharSize; j++, off += HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine) {
+            if (_bufAddr == NULL) {
+                memcpy(addr2 + off, addr + off, size);
+            } else {
+                memcpy(bufAddr2 + off, addr + off, size);
+                memcpy(bufAddr2 + off, bufAddr + off, size);
+            }
+        }
+        
+        addr += offPerLine;       addr2 += offPerLine;
+        bufAddr += offPerLine;    bufAddr2 += offPerLine;
         lineLength[i] = lineLength[i + 1];
     }
     memset(addr, 0, position.XResolution * position.YCharSize * sizeof(u32));
+    memset(bufAddr, 0, position.XResolution * position.YCharSize * sizeof(u32));
     lineLength[position.YPosition - 1] = 0;
 }
 
 static void _drawchar(unsigned int fcol, unsigned int bcol, int px, int py, char ch) {
     int x, y;
-    int testVal;
-    unsigned int *addr;
+    int testVal, off;
+    unsigned int *addr, *bufAddr;
     unsigned char *fontp = font_ascii[ch];
         for (y = 0; y < position.YCharSize; y++, fontp++) {
-            addr = position.FBAddr + HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine * (py + y) + px;
+            off = HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine * (py + y) + px;
+            addr = position.FBAddr + off;
+            bufAddr = _bufAddr + off;
             testVal = 0x80;
-            for (x = 0; x < position.XCharSize; x++, addr++, testVal >>= 1) {
-                if (*fontp & testVal) *addr = fcol;
-                else *addr = bcol;
+            for (x = 0; x < position.XCharSize; x++, addr++, bufAddr++, testVal >>= 1) {
+                *addr = ((*fontp & testVal) ? fcol : bcol);
+                if (_bufAddr != NULL)
+                    *bufAddr = ((*fontp & testVal) ? fcol : bcol);
             }
         }
 }
@@ -238,6 +264,7 @@ void clearScreen() {
 	u64 prevState = (IO_getRflags() >> 9) & 1;
 	if (prevState) IO_cli();
 	memset(position.FBAddr, 0, (position.YPosition + 1) * position.YCharSize * HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine * sizeof(u32));
+    memset(_bufAddr, 0, (position.YPosition + 1) * position.YCharSize * HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine * sizeof(u32));
 	memset(lineLength, 0, 4096 * sizeof(u32));
 	position.XPosition = 0, position.YPosition = 0;
 	 if (prevState) IO_sti();

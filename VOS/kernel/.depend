@@ -119,7 +119,7 @@ memory/croper.o : memory/croper.S includes/linkage.h
 memory/SLAB.o : memory/SLAB.c memory/SLAB.h includes/lib.h includes/config.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h lib/rbtree.h memory/desc.h memory/DMAS.h memory/buddy.h memory/pgtable.h includes/log.h includes/linkage.h 
 	$(CC) $(CFLAGS) -c memory/SLAB.c -o memory/SLAB.o 
 
-log/printk.o : log/printk.c includes/log.h includes/linkage.h includes/lib.h includes/config.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h lib/rbtree.h includes/hardware.h hardware/cpu.h hardware/UEFI.h hardware/8259A.h hardware/APIC.h hardware/timer.h hardware/timer/cmos.h hardware/timer/hpet.h hardware/keyboard.h includes/task.h task/desc.h includes/memory.h memory/desc.h memory/DMAS.h memory/pgtable.h memory/buddy.h memory/SLAB.h includes/interrupt.h interrupt/gate.h interrupt/trap.h interrupt/interrupt.h interrupt/softirq.h interrupt/softirq/timer.h task/mgr.h task/syscall.h log/font.h 
+log/printk.o : log/printk.c includes/log.h includes/linkage.h includes/lib.h includes/config.h lib/ds.h lib/memop.h lib/io.h lib/algorithm.h lib/rbtree.h includes/hardware.h hardware/cpu.h hardware/UEFI.h hardware/8259A.h hardware/APIC.h hardware/timer.h hardware/timer/cmos.h hardware/timer/hpet.h hardware/keyboard.h includes/memory.h memory/desc.h memory/DMAS.h memory/pgtable.h memory/buddy.h memory/SLAB.h includes/task.h task/desc.h includes/interrupt.h interrupt/gate.h interrupt/trap.h interrupt/interrupt.h interrupt/softirq.h interrupt/softirq/timer.h task/mgr.h task/syscall.h log/font.h 
 	$(CC) $(CFLAGS) -c log/printk.c -o log/printk.o 
 
 head.o : head.S includes/linkage.h 

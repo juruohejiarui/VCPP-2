@@ -241,11 +241,14 @@ static int _initMem(USB_XHCIController *ctrl) {
 		// allocate 4 segments for one interrupter
 		USB_XHCI_EveRingSegTblEntry *segTbl = _alloc(ctrl, sizeof(USB_XHCI_EveRingSegTblEntry) * HW_USB_XHCI_EveRingSegTblSize);
 		ctrl->eveRingSegTbls[i] = segTbl;
+		printk(YELLOW, BLACK, "intr[%d]: %#018lx\t", i, segTbl);
 		for (int tblId = 0; tblId < HW_USB_XHCI_EveRingSegTblSize; tblId++) {
 			USB_XHCI_GenerTRB *eveRing = _alloc(ctrl, Page_4KSize * 16), *lkRing;
+			printk(WHITE, BLACK, "[%d]:%#018lx\t", tblId, eveRing);
 			ctrl->eveRingSegTbls[i][tblId].addr = (u64)DMAS_virt2Phys(eveRing);
 			ctrl->eveRingSegTbls[i][tblId].size = Page_4KSize * 16 / sizeof(USB_XHCI_GenerTRB);
 		}
+		printk(WHITE, BLACK, "\n");
 		ctrl->rtRegs->intrRegs[i].eveSegTblSize = (ctrl->rtRegs->intrRegs->eveSegTblSize & ~0xfffful) | HW_USB_XHCI_EveRingSegTblSize;
 		ctrl->rtRegs->intrRegs[i].eveSegTblAddr = DMAS_virt2Phys(segTbl);
 		ctrl->rtRegs->intrRegs[i].eveDeqPtr = 0x8 | segTbl[0].addr;

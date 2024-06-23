@@ -28,4 +28,8 @@ void printk(unsigned int fcol, unsigned int bcol, const char *fmt, ...);
 
 u64 Syscall_printStr(u64 fcol, u64 bcol, u64 str, u64 len, u64 _5);
 u64 Syscall_clearScreen(u64 _1, u64 _2, u64 _3, u64 _4, u64 _5);
+
+void Log_enableBuf();
+void Log_init();
+
 #endif
