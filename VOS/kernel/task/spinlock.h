@@ -3,7 +3,7 @@
 
 #include "../includes/lib.h"
 typedef struct {
-	__volatile__ u64 lock;
+	volatile i64 lock;
 } SpinLock;
 
 void Task_SpinLock_init(SpinLock *lock);

@@ -216,14 +216,14 @@ static int _initMem(USB_XHCIController *ctrl) {
 		addr = _alloc(ctrl, 
 				((ctrl->capRegs->hccparam1 & 0x4) ? 64 * 32 : sizeof(USB_XHCI_DeviceSlotContext) + 31 * sizeof(USB_XHCI_EndpointContext)));
 		if (addr == NULL) return 0;
-		ctrl->devCtx[i] = DMAS_virt2Phys(addr);
+		ctrl->devCtx[i] = (USB_XHCI_DeviceContext *)DMAS_virt2Phys(addr);
 	}
 
 	// allocate scratch buffer
 	{
 		int mxS = maxScratchBufs(ctrl); u64 pageSize = (ctrl->opRegs->pageSize & 0xfffful) << 12;
 		if (mxS == 0) goto _allocScratchBuf_end;
-		u64 *array = _alloc(ctrl, min(64, mxS * sizeof(u64)));
+		u64 *array = _alloc(ctrl, max(64, mxS * sizeof(u64)));
 		printk(WHITE, BLACK, "XHCI: %#018lx: maxScratchBufs:%d array: %#018lx\n", ctrl, mxS, array);
 		ctrl->devCtx[0] = (USB_XHCI_DeviceContext *)DMAS_virt2Phys(array);
 		for (int i = 0; i < mxS; i++) {
@@ -261,14 +261,14 @@ static int _initMem(USB_XHCIController *ctrl) {
 		ctrl->eveRingSegTbls[i] = segTbl;
 		printk(YELLOW, BLACK, "intr[%d]: %#018lx\t", i, segTbl);
 		for (int tblId = 0; tblId < HW_USB_XHCI_EveRingSegTblSize; tblId++) {
-			USB_XHCI_GenerTRB *eveRing = _alloc(ctrl, Page_4KSize * 16), *lkRing;
+			USB_XHCI_GenerTRB *eveRing = _alloc(ctrl, Page_4KSize * 16);
 			printk(WHITE, BLACK, "[%d]:%#018lx\t", tblId, eveRing);
 			ctrl->eveRingSegTbls[i][tblId].addr = (u64)DMAS_virt2Phys(eveRing);
-			ctrl->eveRingSegTbls[i][tblId].size = Page_4KSize * 16 / sizeof(USB_XHCI_GenerTRB);
+			ctrl->eveRingSegTbls[i][tblId].size = HW_USB_XHCI_RingEntryNum;
 		}
 		printk(WHITE, BLACK, "\n");
-		ctrl->rtRegs->intrRegs[i].eveSegTblSize = (ctrl->rtRegs->intrRegs->eveSegTblSize & ~0xfffful) | HW_USB_XHCI_EveRingSegTblSize;
-		ctrl->rtRegs->intrRegs[i].eveSegTblAddr = DMAS_virt2Phys(segTbl);
+		ctrl->rtRegs->intrRegs[i].eveSegTblSize = (ctrl->rtRegs->intrRegs->eveSegTblSize & ~0xffff) | HW_USB_XHCI_EveRingSegTblSize;
+		ctrl->rtRegs->intrRegs[i].eveSegTblAddr = DMAS_virt2Phys(segTbl) | (ctrl->rtRegs->intrRegs[i].eveSegTblAddr & 0x3f);
 		ctrl->rtRegs->intrRegs[i].eveDeqPtr = 0x8 | segTbl[0].addr;
 	}
 	ctrl->eveRingFlag = _alloc(ctrl, sizeof(USB_XHCI_RingFlag) * maxIntrs(ctrl));
