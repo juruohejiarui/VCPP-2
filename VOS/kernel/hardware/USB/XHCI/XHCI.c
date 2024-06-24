@@ -8,6 +8,7 @@ List HW_USB_XHCI_mgrList;
 
 // allocate memory for the controller，use DMAS_virt2Phys to get the physical address
 static void *_alloc(USB_XHCIController *ctrl, u64 size) {
+	if (size == 0) return NULL;
 	void *addr; Page *page;
 	if (size > Page_4KSize / 2) {
 		page = MM_Buddy_alloc(log2Ceil(size) - Page_4KShift, Page_Flag_Kernel | Page_Flag_Active);
@@ -60,14 +61,15 @@ static USB_XHCI_GenerTRB *_getNextEventTRB(USB_XHCIController *ctrl, int intrId)
 	// get next ptr
 	ctrl->eveRingFlag[intrId].pos++;
 	// write the nextPtr
-	ctrl->rtRegs->intrRegs[intrId].eveDeqPtr = DMAS_virt2Phys(trb) + sizeof(USB_XHCI_GenerTRB);
+	ctrl->rtRegs->intrRegs[intrId].eveDeqPtr = DMAS_virt2Phys(trb) + sizeof(USB_XHCI_GenerTRB) | (ctrl->eveRingFlag[intrId].segId & 0x7);
 	if (ctrl->eveRingFlag[intrId].pos == HW_USB_XHCI_RingEntryNum) {
 		// switch to next segment
 		ctrl->eveRingFlag[intrId].segId++;
 		ctrl->eveRingFlag[intrId].segId %= HW_USB_XHCI_EveRingSegTblSize;
 		ctrl->eveRingFlag[intrId].pos = 0;
 		if (!ctrl->eveRingFlag[intrId].segId) ctrl->eveRingFlag[intrId].cycleBit ^= 1;
-		ctrl->rtRegs->intrRegs[intrId].eveDeqPtr = ctrl->eveRingSegTbls[intrId][ctrl->eveRingFlag[intrId].segId].addr | (ctrl->eveRingFlag[intrId].segId & 0x7);
+		ctrl->rtRegs->intrRegs[intrId].eveDeqPtr = 
+			ctrl->eveRingSegTbls[intrId][ctrl->eveRingFlag[intrId].segId].addr | (ctrl->eveRingFlag[intrId].segId & 0x7);
 	}
 	IO_mfence();
 	return trb;
@@ -205,17 +207,33 @@ static int _initPorts(USB_XHCIController *ctrl) {
 static int _initMem(USB_XHCIController *ctrl) {
 	// allocate the device context base address array
 	void *addr = _alloc(ctrl, 2048);
-	if (addr == NULL) { ctrl->dev.free((Device *)ctrl); kfree(ctrl); return 0; }
+	if (addr == NULL) return 0;
 	ctrl->opRegs->devCtxBaseAddr = DMAS_virt2Phys(addr);
 	ctrl->devCtx = addr;
-	printk(WHITE, BLACK, "XHCI: %#018lx:devCtxBaseAddr:%#018lx\n", ctrl, ctrl->opRegs->devCtxBaseAddr);
+	printk(WHITE, BLACK, "XHCI: %#018lx: devCtxBaseAddr:%#018lx\n", ctrl, ctrl->opRegs->devCtxBaseAddr);
 	// allocate the Device Context Data Structure
 	for (int i = 1; i < maxSlots(ctrl); i++) {
 		addr = _alloc(ctrl, 
 				((ctrl->capRegs->hccparam1 & 0x4) ? 64 * 32 : sizeof(USB_XHCI_DeviceSlotContext) + 31 * sizeof(USB_XHCI_EndpointContext)));
-		if (addr == NULL) { ctrl->dev.free((Device *)ctrl); kfree(ctrl); return 0; }
+		if (addr == NULL) return 0;
 		ctrl->devCtx[i] = addr;
 	}
+
+	// allocate scratch buffer
+	{
+		int mxS = maxScratchBufs(ctrl); u64 pageSize = (ctrl->opRegs->pageSize & 0xfffful) << 12;
+		if (mxS == 0) goto _allocScratchBuf_end;
+		u64 *array = _alloc(ctrl, min(64, mxS * sizeof(u64)));
+		printk(WHITE, BLACK, "XHCI: %#018lx: maxScratchBufs:%d array: %#018lx\n", ctrl, mxS, array);
+		ctrl->devCtx[0] = (USB_XHCI_DeviceContext *)array;
+		for (int i = 0; i < mxS; i++) {
+			void *buf = _alloc(ctrl, pageSize);
+			array[i] = (u64)buf;
+			printk(WHITE, BLACK, "\tbuf[%d]: %#018lx\n", i, buf);
+		}
+	}
+	_allocScratchBuf_end:
+
 	// allocate command ring of 64 KB
 	{
 		USB_XHCI_GenerTRB *cmdRing = _alloc(ctrl, Page_4KSize * 16), *lkTRB = cmdRing + HW_USB_XHCI_RingEntryNum - 1;
@@ -233,13 +251,13 @@ static int _initMem(USB_XHCIController *ctrl) {
 		lkTRB->dw3.raw |= 3; // Toggle Cycle | Cycle bit
 	}
 	// allocate event ring for each interrupter
-	ctrl->eveRingSegTbls = _alloc(ctrl, sizeof(USB_XHCI_EveRingSegTblEntry *) * maxIntrs(ctrl));
+	ctrl->eveRingSegTbls = _alloc(ctrl, max(64, sizeof(USB_XHCI_EveRingSegTblEntry *) * maxIntrs(ctrl)));
 	for (int i = 0; i < maxIntrs(ctrl); i++) {
 		// stop the interrupter
 		ctrl->rtRegs->intrRegs[i].mgrRegs = 0x1;
 		USB_XHCI_IntrRegs *regs = ctrl->rtRegs->intrRegs + i;
 		// allocate 4 segments for one interrupter
-		USB_XHCI_EveRingSegTblEntry *segTbl = _alloc(ctrl, sizeof(USB_XHCI_EveRingSegTblEntry) * HW_USB_XHCI_EveRingSegTblSize);
+		USB_XHCI_EveRingSegTblEntry *segTbl = _alloc(ctrl, max(64, sizeof(USB_XHCI_EveRingSegTblEntry) * HW_USB_XHCI_EveRingSegTblSize));
 		ctrl->eveRingSegTbls[i] = segTbl;
 		printk(YELLOW, BLACK, "intr[%d]: %#018lx\t", i, segTbl);
 		for (int tblId = 0; tblId < HW_USB_XHCI_EveRingSegTblSize; tblId++) {
@@ -303,17 +321,18 @@ int _simpleTest(USB_XHCIController *ctrl) {
 			return 0;
 		}
 		ctrl->opRegs->usbStatus |= (1 << 3);
-		ctrl->rtRegs->intrRegs[0].mgrRegs = 0x3;
+		ctrl->rtRegs->intrRegs[0].mgrRegs |= 0x3;
 		IO_mfence();
 		USB_XHCI_GenerTRB *eveTrb = _getNextEventTRB(ctrl, 0);
 		printk(WHITE, BLACK, "%#018lx ", eveTrb);
-		if (eveTrb->dw3.ctx.trbType != 33 || DMAS_phys2Virt((*(u64 *)&eveTrb->dw[0])) != (void *)trb || ((eveTrb->dw[2] >> 24) != 1)) {
+		if (eveTrb->dw3.ctx.trbType != 33 || DMAS_phys2Virt(*(u64 *)&eveTrb->dw[0]) != (void *)trb || ((eveTrb->dw[2] >> 24) != 1)) {
 			printk(RED, BLACK, "\nXHCI: %#018lx: Simple test failed, event TRB is invalid.\n", ctrl);
 			printk(ORANGE, BLACK, "EventTRB: %#018lx(type:%d,ptr:%#018lx,code:%d,cycle:%d) trb:%#018lx\n", 
-				eveTrb, eveTrb->dw3.ctx.trbType, (*(u64 *)&eveTrb->dw[0]), (eveTrb->dw[2] >> 24), eveTrb->dw3.ctx.cycle, trb);
+				eveTrb, eveTrb->dw3.ctx.trbType, *(u64 *)&eveTrb->dw[0], (eveTrb->dw[2] >> 24), eveTrb->dw3.ctx.cycle, trb);
 			return 0;
 		}
-		USB_XHCI_GenerTRB *cmdTrb = (USB_XHCI_GenerTRB *)DMAS_phys2Virt((*(u64 *)&eveTrb->dw[0]));
+		USB_XHCI_GenerTRB *cmdTrb = (USB_XHCI_GenerTRB *)DMAS_phys2Virt(*(u64 *)&eveTrb->dw[0]);
+		
 		int cmdId = cmdTrb - ctrl->cmdRing;
 		ctrl->cmdsFlag[cmdId] ^= 1;
 		printk(GREEN, BLACK, " %04d\r", loopId);

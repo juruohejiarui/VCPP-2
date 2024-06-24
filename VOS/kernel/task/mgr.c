@@ -1,4 +1,5 @@
 #include "mgr.h"
+#include "spinlock.h"
 #include "../includes/log.h"
 
 extern void Task_kernelThreadEntry();
@@ -80,10 +81,12 @@ i64 _weight[50] = { 1, 2, 3, 4, 5, [5 ... 49] = -1 };
 struct CFS_rq {
     TaskStruct *next[50];
     RBTree tree;
+	SpinLock locker;
 } _CFSstruct;
 
 void Task_initMgr() {
     RBTree_init(&_CFSstruct.tree);
+	Task_SpinLock_init(&_CFSstruct.locker);
 }
 
 void Task_updateCurState() {
@@ -95,6 +98,7 @@ void Task_updateCurState() {
 }
 
 void Task_schedule() {
+	// Task_SpinLock_lock(&_CFSstruct.locker);
     IO_cli();
     RBNode *leftMost = RBTree_getMin(&_CFSstruct.tree);
     TaskStruct *next = container(leftMost->head.next, TaskStruct, listEle);
@@ -103,6 +107,7 @@ void Task_schedule() {
     RBTree_insert(&_CFSstruct.tree, Task_current->vRunTime, &dmas_ptr->listEle);
     Intr_SoftIrq_Timer_initIrq(&Task_current->scheduleTimer, 1, Task_updateCurState, NULL);
     Intr_SoftIrq_Timer_addIrq(&Task_current->scheduleTimer);
+	// Task_SpinLock_unlock(&_CFSstruct.locker);
     Task_switch(next);
 }
 

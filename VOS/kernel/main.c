@@ -8,9 +8,7 @@
 
 int Global_state;
 
-void drawPoint(int x, int y, unsigned int color) {
-    position.FBAddr[x + y * position.XResolution] = color;
-}
+u8 Init_stack[32768] __attribute__((__section__ (".data.Init_stack") )) = { 0 };
 
 void startKernel() {
     Global_state = 0;

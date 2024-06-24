@@ -4,11 +4,13 @@
 #include "../includes/hardware.h"
 #include "../includes/memory.h"
 #include "../includes/task.h"
+
 #include "font.h"
 
 static u32 lineLength[4096] = { [0 ... 4095] = 0 };
 
 static unsigned int *_bufAddr;
+static SpinLock _locker;
 
 void Log_enableBuf() {
     u64 pixelSize = HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine * HW_UEFI_bootParamInfo->graphicsInfo.VerticalResolution * sizeof(u32);
@@ -19,6 +21,7 @@ void Log_enableBuf() {
 
 void Log_init() {
     _bufAddr = NULL;
+	Task_SpinLock_init(&_locker);
 }
 
 #define isDigit(ch) ((ch) >= '0' && (ch) <= '9')
@@ -186,8 +189,8 @@ static void _scroll(void) {
     unsigned int *addr = position.FBAddr, 
                 *addr2 = position.FBAddr + position.YCharSize * HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine,
                 *bufAddr = _bufAddr,
-                *bufAddr2 = _bufAddr + position.YCharSize * HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine,
-                offPerLine = HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine * position.YCharSize;;
+                *bufAddr2 = _bufAddr + position.YCharSize * HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine;
+    u64 offPerLine = HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine * position.YCharSize;
     for (int i = 0; i < position.YPosition - 1; i++) {
         u32 size = max(lineLength[i + 1], lineLength[i]) * position.XCharSize * sizeof(u32);
         for (int j = 0, off = 0; j < position.YCharSize; j++, off += HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine) {
@@ -210,7 +213,7 @@ static void _scroll(void) {
 
 static void _drawchar(unsigned int fcol, unsigned int bcol, int px, int py, char ch) {
     int x, y;
-    int testVal, off;
+    int testVal; u64 off;
     unsigned int *addr, *bufAddr;
     unsigned char *fontp = font_ascii[ch];
         for (y = 0; y < position.YCharSize; y++, fontp++) {
@@ -248,7 +251,7 @@ inline void putchar(unsigned int fcol, unsigned int bcol, char ch) {
             putchar(fcol, bcol, '\n');
         _drawchar(fcol, bcol, position.XCharSize * position.XPosition, position.YCharSize * position.YPosition, ch);
         position.XPosition++;
-        lineLength[position.YPosition] = position.XPosition;
+        lineLength[position.YPosition] = max(lineLength[position.YPosition], position.XPosition);
     }
 }
 
@@ -271,7 +274,8 @@ void clearScreen() {
 }
 
 void printk(unsigned int fcol, unsigned int bcol, const char *fmt, ...) {
-    char buf[2048] = {0};
+	Task_SpinLock_lock(&_locker);
+    static char buf[2048] = {0};
     int len = 0, i;
     va_list args;
     va_start(args, fmt);
@@ -279,6 +283,7 @@ void printk(unsigned int fcol, unsigned int bcol, const char *fmt, ...) {
     va_end(args);
     if (Task_getRing() == 0) printStr(fcol, bcol, buf, len);
     else Task_Syscall_usrAPI(1, fcol, bcol, (u64)buf, len, 0);
+	Task_SpinLock_unlock(&_locker);
 }
 
 u64 Syscall_clearScreen(u64 _1, u64 _2, u64 _3, u64 _4, u64 _5) {

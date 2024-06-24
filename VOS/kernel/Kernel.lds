@@ -41,7 +41,7 @@ SECTIONS
 		_erodata = .;
 	}
 	. = ALIGN(32768);
-	.data.Init_taskUnion : { *(.data.Init_taskUnion) }
+	.data.Init_stack : { *(.data.Init_stack) }
 	.bss :
 	{
 		_bss = .;
