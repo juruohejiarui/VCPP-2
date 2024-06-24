@@ -216,7 +216,7 @@ static int _initMem(USB_XHCIController *ctrl) {
 		addr = _alloc(ctrl, 
 				((ctrl->capRegs->hccparam1 & 0x4) ? 64 * 32 : sizeof(USB_XHCI_DeviceSlotContext) + 31 * sizeof(USB_XHCI_EndpointContext)));
 		if (addr == NULL) return 0;
-		ctrl->devCtx[i] = addr;
+		ctrl->devCtx[i] = DMAS_virt2Phys(addr);
 	}
 
 	// allocate scratch buffer
@@ -225,10 +225,10 @@ static int _initMem(USB_XHCIController *ctrl) {
 		if (mxS == 0) goto _allocScratchBuf_end;
 		u64 *array = _alloc(ctrl, min(64, mxS * sizeof(u64)));
 		printk(WHITE, BLACK, "XHCI: %#018lx: maxScratchBufs:%d array: %#018lx\n", ctrl, mxS, array);
-		ctrl->devCtx[0] = (USB_XHCI_DeviceContext *)array;
+		ctrl->devCtx[0] = (USB_XHCI_DeviceContext *)DMAS_virt2Phys(array);
 		for (int i = 0; i < mxS; i++) {
 			void *buf = _alloc(ctrl, pageSize);
-			array[i] = (u64)buf;
+			array[i] = (u64)DMAS_virt2Phys(buf);
 			printk(WHITE, BLACK, "\tbuf[%d]: %#018lx\n", i, buf);
 		}
 	}
