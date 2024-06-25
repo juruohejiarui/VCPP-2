@@ -81,6 +81,8 @@ struct KernelBootParameterInfo
 	struct EFI_CONFIGURATION_TABLE *ConfigurationTable;
 	struct EFI_GraphicsOutputInfo graphicsInfo;
 	struct EFI_E820MemoryDescriptorInfo E820Info;
+	u64 memDesc;
+	u64 memDescSize;
 };
 
 extern struct KernelBootParameterInfo *HW_UEFI_bootParamInfo;

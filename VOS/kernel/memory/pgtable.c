@@ -39,7 +39,7 @@ void MM_PageTable_map1G(u64 cr3, u64 vAddr, u64 pAddr, u64 flag) {
     u64 *pgdEntry = (u64 *)DMAS_phys2Virt(cr3) + ((vAddr >> 39) & 0x1ff);
     if (*pgdEntry == 0) *pgdEntry = MM_PageTable_alloc() | 0x7;
     u64 *pudEntry = (u64 *)DMAS_phys2Virt(*pgdEntry & ~0xffful) + ((vAddr >> 30) & 0x1ff);
-    *pudEntry = pAddr | 0x80 | flag | (pAddr > 0);
+    if (*pudEntry == 0) *pudEntry = pAddr | 0x80 | flag | (pAddr > 0);
 }
 
 void MM_PageTable_map2M(u64 cr3, u64 vAddr, u64 pAddr, u64 flag) {
@@ -60,6 +60,20 @@ void MM_PageTable_init() {
     u64 *pgd = (u64 *)DMAS_phys2Virt(cr3);
     pgd[0] = 0;
 	flushTLB();
+
+	// map all the space not in zones
+	for (int i = 1; i < memManageStruct.zonesLength; i++) {
+		printk(YELLOW, BLACK, "Map %#018lx->%#018lx\n", memManageStruct.zones[i - 1].phyAddrEd, memManageStruct.zones[i].phyAddrSt);
+		u64 bound = memManageStruct.zones[i].phyAddrSt;
+		for (u64 addr = memManageStruct.zones[i - 1].phyAddrEd; addr < bound;) {
+			if (!(addr & ((1ul << Page_1GShift) - 1)) && addr + Page_1GSize <= bound)
+				MM_PageTable_map1G(getCR3(), (u64)DMAS_phys2Virt(addr), addr, MM_PageTable_Flag_Writable),
+				addr += Page_1GSize;
+			else
+				MM_PageTable_map2M(getCR3(), (u64)DMAS_phys2Virt(addr), addr, MM_PageTable_Flag_Writable),
+				addr += Page_2MShift;
+		}
+	}
 }
 
 void PGTable_free(u64 phyAddr) {

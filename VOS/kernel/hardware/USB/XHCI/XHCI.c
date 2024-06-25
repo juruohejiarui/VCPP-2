@@ -216,7 +216,6 @@ static int _initMem(USB_XHCIController *ctrl) {
 				((ctrl->capRegs->hccparam1 & 0x4) ? 64 * 32 : sizeof(USB_XHCI_DeviceSlotContext) + 31 * sizeof(USB_XHCI_EndpointContext)));
 		if (addr == NULL) return 0;
 		ctrl->devCtx[i] = (USB_XHCI_DeviceContext *)DMAS_virt2Phys(addr);
-		printk(WHITE, BLACK, "devCtx[%d]: %#018lx\n", i, ctrl->devCtx[i]);
 	}
 
 	// allocate scratch buffer
@@ -312,7 +311,7 @@ int _simpleTest(USB_XHCIController *ctrl) {
 		ctrl->dbRegs->cmd = 0;
 		IO_mfence();
 		for (i32 remain = 300; remain > 0; remain--) {
-			Intr_SoftIrq_Timer_mdelay(1);
+			Intr_SoftIrq_Timer_mdelay(10);
 			if ((ctrl->opRegs->usbStatus & (1 << 3)) && (ctrl->rtRegs->intrRegs[0].mgrRegs & 1))
 				break;
 		}
@@ -353,7 +352,6 @@ int HW_USB_XHCI_Init(PCIeConfig *xhci) {
 
 	ctrl->config = xhci;
 	u64 addr = (xhci->type.type0.bar[0] | (((u64)xhci->type.type0.bar[1]) << 32)) & ~0xffful;
-	MM_PageTable_map1G(getCR3(), Page_1GDownAlign((u64)DMAS_phys2Virt(addr)), Page_1GDownAlign(addr), MM_PageTable_Flag_Presented | MM_PageTable_Flag_Writable);
 	printk(WHITE, BLACK, "XHCI: %#018lx: Finish memory mapping\n", ctrl);
 	// get the capability registers
 	ctrl->capRegs = (USB_XHCI_CapRegs *)DMAS_phys2Virt(addr);
@@ -369,14 +367,15 @@ int HW_USB_XHCI_Init(PCIeConfig *xhci) {
 			ctrl->capRegs, ctrl->opRegs, ctrl->rtRegs, ctrl->dbRegs, ctrl->extCapHeader,
 			maxSlots(ctrl), maxIntrs(ctrl), maxPorts(ctrl));
 
-	int state = _getOwnership(ctrl);
-	if (!state) { ctrl->dev.free((Device *)ctrl); kfree(ctrl); return 0; }
-
+	int state;
 	state = _stopController(ctrl);
 	if (!state) { ctrl->dev.free((Device *)ctrl); kfree(ctrl); return 0; }
 
 	// reset the controller
 	state = _resetController(ctrl);
+	if (!state) { ctrl->dev.free((Device *)ctrl); kfree(ctrl); return 0; }
+
+	state = _getOwnership(ctrl);
 	if (!state) { ctrl->dev.free((Device *)ctrl); kfree(ctrl); return 0; }
 
 	// pair up the USB3 and USB2

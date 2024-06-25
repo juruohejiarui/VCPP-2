@@ -31,10 +31,7 @@ void Intr_SoftIrq_dispatch() {
 	Intr_SoftIrq_state = 0;
 	IO_sti();
 	for (int i = 0; i < 64; i++)
-		if ((state & (1 << i)) && softIrqs[i].handler != NULL) {
-			if ((u64)softIrqs[i].handler > 0xffff800000000000 + 0x3000000 || (u64)softIrqs[i].handler < 0xffff800000000000)
-				printk(WHITE, BLACK, "Invalid handler pointer %#018lx(%d)\n", softIrqs[i].handler, i);
+		if ((state & (1 << i)) && softIrqs[i].handler != NULL)
 			softIrqs[i].handler(softIrqs[i].data);
-		}
 	IO_cli();
 }

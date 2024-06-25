@@ -14,6 +14,7 @@ static void _initArray() {
 	#ifdef DEBUG_MM
     printk(RED, BLACK, "->initArray()\n");
 	#endif
+	printk(WHITE, BLACK, "memMap:%#018lx, size:%ld\n", HW_UEFI_bootParamInfo->memDesc, HW_UEFI_bootParamInfo->memDescSize);
     int kernelZoneId = -1;
     u64 totPage = 0;
     memManageStruct.zonesLength = 0;
@@ -52,6 +53,9 @@ static void _initArray() {
             if (zone->phyAddrSt <= (u64)availVirtAddrSt - Init_virtAddrStart && zone->phyAddrEd > (u64)availVirtAddrSt - Init_virtAddrStart)
                 zone->attribute = Page_4KUpAlign((u64)availVirtAddrSt - Init_virtAddrStart);
             if (j == i) zone->attribute += reqSize;
+
+			if (zone->phyAddrSt <= HW_UEFI_bootParamInfo->memDesc && HW_UEFI_bootParamInfo->memDesc <= zone->phyAddrEd)
+				printk(WHITE, BLACK, "Crash...\n");
 			#ifdef DEBUG_MM
             printk(WHITE, BLACK, "zone[%d]: phyAddr: [%#018lx, %#018lx], attribute = %#018lx\n", 
                 id, zone->phyAddrSt, zone->phyAddrEd, zone->attribute);
