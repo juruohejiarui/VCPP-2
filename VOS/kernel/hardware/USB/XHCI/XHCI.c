@@ -10,7 +10,7 @@ List HW_USB_XHCI_mgrList;
 static void *_alloc(USB_XHCIController *ctrl, u64 size) {
 	if (size == 0) return NULL;
 	void *addr; Page *page;
-	if (size > Page_4KSize / 2) {
+	if (size >= Page_4KSize) {
 		page = MM_Buddy_alloc(log2Ceil(size) - Page_4KShift, Page_Flag_Kernel | Page_Flag_Active);
 		if (page == NULL) goto _alloc_Fail;
 		addr = DMAS_phys2Virt(page->phyAddr);
@@ -21,13 +21,13 @@ static void *_alloc(USB_XHCIController *ctrl, u64 size) {
 	USB_XHCI_MemUsage *usage = (USB_XHCI_MemUsage *)kmalloc(sizeof(USB_XHCI_MemUsage), 0);
 	List_init(&usage->listEle);
 	List_insBefore(&usage->listEle, &ctrl->memList);
-	if (size <= Page_4KSize / 2) usage->addr = (u64)addr;
+	if (size < Page_4KSize / 2) usage->addr = (u64)addr;
 	else usage->addr = ((u64)page) | 1;
 	memset(addr, 0, size);
 	return addr;
 	_alloc_Fail:
 	printk(RED, BLACK, "XHCI: alloc memory fail");
-	printk(YELLOW, BLACK, "(ctrl:%#018lx,size%#018lx)", ctrl, size);
+	printk(YELLOW, BLACK, "(ctrl:%#018lx,size:%#018lx)", ctrl, size);
 	return NULL;
 }
 
@@ -82,7 +82,6 @@ static USB_XHCI_GenerTRB *_getNextCmdTRB(USB_XHCIController *ctrl) {
 	// should loop back
 	if (trb->dw3.ctx.trbType == HW_USB_TrbType_Link) {
 		ctrl->cmdRingFlag.cycleBit ^= 1;
-		trb->dw3.ctx.cycle = ctrl->cmdRingFlag.cycleBit;
 		IO_mfence();
 		ctrl->cmdRingFlag.pos = 0;
 		trb = ctrl->cmdRing;
@@ -217,6 +216,7 @@ static int _initMem(USB_XHCIController *ctrl) {
 				((ctrl->capRegs->hccparam1 & 0x4) ? 64 * 32 : sizeof(USB_XHCI_DeviceSlotContext) + 31 * sizeof(USB_XHCI_EndpointContext)));
 		if (addr == NULL) return 0;
 		ctrl->devCtx[i] = (USB_XHCI_DeviceContext *)DMAS_virt2Phys(addr);
+		printk(WHITE, BLACK, "devCtx[%d]: %#018lx\n", i, ctrl->devCtx[i]);
 	}
 
 	// allocate scratch buffer
@@ -312,7 +312,7 @@ int _simpleTest(USB_XHCIController *ctrl) {
 		ctrl->dbRegs->cmd = 0;
 		IO_mfence();
 		for (i32 remain = 300; remain > 0; remain--) {
-			Intr_SoftIrq_Timer_mdelay(10);
+			Intr_SoftIrq_Timer_mdelay(1);
 			if ((ctrl->opRegs->usbStatus & (1 << 3)) && (ctrl->rtRegs->intrRegs[0].mgrRegs & 1))
 				break;
 		}
@@ -320,7 +320,8 @@ int _simpleTest(USB_XHCIController *ctrl) {
 			printk(RED, BLACK, "\nXHCI: %#018lx: Simple test failed, no interrupt. state:%#010x\n", ctrl, ctrl->opRegs->usbStatus);
 			return 0;
 		}
-		ctrl->opRegs->usbStatus |= (1 << 3);
+		printk(WHITE, BLACK, "usbState:%#010x ", ctrl->opRegs->usbStatus);
+		ctrl->opRegs->usbStatus = (1 << 3);
 		ctrl->rtRegs->intrRegs[0].mgrRegs |= 0x3;
 		IO_mfence();
 		USB_XHCI_GenerTRB *eveTrb = _getNextEventTRB(ctrl, 0);
@@ -328,7 +329,7 @@ int _simpleTest(USB_XHCIController *ctrl) {
 		if (eveTrb->dw3.ctx.trbType != 33 || DMAS_phys2Virt(*(u64 *)&eveTrb->dw[0]) != (void *)trb || ((eveTrb->dw[2] >> 24) != 1)) {
 			printk(RED, BLACK, "\nXHCI: %#018lx: Simple test failed, event TRB is invalid.\n", ctrl);
 			printk(ORANGE, BLACK, "EventTRB: %#018lx(type:%d,ptr:%#018lx,code:%d,cycle:%d) trb:%#018lx\n", 
-				eveTrb, eveTrb->dw3.ctx.trbType, *(u64 *)&eveTrb->dw[0], (eveTrb->dw[2] >> 24), eveTrb->dw3.ctx.cycle, trb);
+				eveTrb, eveTrb->dw3.ctx.trbType, *(u64 *)&eveTrb->dw[0], (eveTrb->dw[2] >> 24), (u32)eveTrb->dw3.ctx.cycle, trb);
 			return 0;
 		}
 		USB_XHCI_GenerTRB *cmdTrb = (USB_XHCI_GenerTRB *)DMAS_phys2Virt(*(u64 *)&eveTrb->dw[0]);

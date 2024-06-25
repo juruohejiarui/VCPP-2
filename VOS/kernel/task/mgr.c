@@ -98,8 +98,8 @@ void Task_updateCurState() {
 }
 
 void Task_schedule() {
-	// Task_SpinLock_lock(&_CFSstruct.locker);
     IO_cli();
+	Task_SpinLock_lock(&_CFSstruct.locker);
     RBNode *leftMost = RBTree_getMin(&_CFSstruct.tree);
     TaskStruct *next = container(leftMost->head.next, TaskStruct, listEle);
     RBTree_del(&_CFSstruct.tree, leftMost->val);
@@ -107,7 +107,7 @@ void Task_schedule() {
     RBTree_insert(&_CFSstruct.tree, Task_current->vRunTime, &dmas_ptr->listEle);
     Intr_SoftIrq_Timer_initIrq(&Task_current->scheduleTimer, 1, Task_updateCurState, NULL);
     Intr_SoftIrq_Timer_addIrq(&Task_current->scheduleTimer);
-	// Task_SpinLock_unlock(&_CFSstruct.locker);
+	Task_SpinLock_unlock(&_CFSstruct.locker);
     Task_switch(next);
 }
 

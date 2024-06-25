@@ -259,7 +259,9 @@ void printStr(unsigned int fcol, unsigned int bcol, const char *str, int len) {
     // close the interrupt if it is open now
 	u64 prevState = (IO_getRflags() >> 9) & 1;
 	if (prevState) IO_cli();
+	Task_SpinLock_lock(&_locker);
     while (len--) putchar(fcol, bcol, *str++);
+	Task_SpinLock_unlock(&_locker);
     if (prevState) IO_sti();
 }
 
@@ -274,7 +276,6 @@ void clearScreen() {
 }
 
 void printk(unsigned int fcol, unsigned int bcol, const char *fmt, ...) {
-	Task_SpinLock_lock(&_locker);
     static char buf[2048] = {0};
     int len = 0, i;
     va_list args;
@@ -283,7 +284,6 @@ void printk(unsigned int fcol, unsigned int bcol, const char *fmt, ...) {
     va_end(args);
     if (Task_getRing() == 0) printStr(fcol, bcol, buf, len);
     else Task_Syscall_usrAPI(1, fcol, bcol, (u64)buf, len, 0);
-	Task_SpinLock_unlock(&_locker);
 }
 
 u64 Syscall_clearScreen(u64 _1, u64 _2, u64 _3, u64 _4, u64 _5) {

@@ -506,8 +506,8 @@ typedef struct {
 
 // event ring segment flag
 typedef struct {
-	u16 segId;
-	u16 pos;
+	u32 segId;
+	u32 pos;
 	u8 cycleBit;
 } USB_XHCI_RingFlag;
 

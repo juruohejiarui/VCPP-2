@@ -26,6 +26,7 @@ void startKernel() {
         HW_UEFI_bootParamInfo->graphicsInfo.FrameBufferBase, 		HW_UEFI_bootParamInfo->graphicsInfo.FrameBufferSize,
         HW_UEFI_bootParamInfo->graphicsInfo.HorizontalResolution, 	HW_UEFI_bootParamInfo->graphicsInfo.VerticalResolution,
         HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine);
+	printk(WHITE, BLACK, "Init_stack: %#018lx\n", Init_stack);
     Intr_Gate_loadTR(10);
     Intr_Gate_setTSS(
             0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00,
