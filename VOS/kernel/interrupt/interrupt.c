@@ -131,7 +131,7 @@ u64 Intr_irqdispatch(u64 rsp, u64 irqId) {
 }
 
 void Intr_init() {
-	for (int i = 32; i < 56; i++) Intr_Gate_setIntr(i, 2, intrList[i - 32]);
+	for (int i = 32; i < 56; i++) Intr_Gate_setIntr(i, 0, intrList[i - 32]);
 	memset(Intr_descriptor, 0, sizeof(Intr_descriptor));
 
 	Intr_SoftIrq_init();

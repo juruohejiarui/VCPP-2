@@ -2,7 +2,7 @@ ASM = as
 CC = gcc-4.7
 
 ASMFLAG = --64
-CFLAGS = -mcmodel=large -fno-builtin -fno-stack-protector -Wno-packed-bitfield-compat -m64 -std=gnu89 -std=c99
+CFLAGS = -mcmodel=large -fno-builtin -fno-stack-protector -Wno-packed-bitfield-compat -mno-red-zone -m64 -std=gnu89 -std=c99
 
 .DEFAULT_GOAL = all
 
