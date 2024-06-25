@@ -104,7 +104,7 @@ static int _getOwnership(USB_XHCIController *ctrl) {
 		break;
 	}
 	if (legacy == NULL) {
-		printk(WHITE, BLACK, "XHCI: %#018lx:no legacy support.\n", ctrl);
+		printk(WHITE, BLACK, "XHCI: %#018lx: no legacy support.\n", ctrl);
 		return 1;
 	}
 	u16 prevVal = legacy->data1;
@@ -112,12 +112,12 @@ static int _getOwnership(USB_XHCIController *ctrl) {
 	legacy->data1 |= (1 << 8);
 	for (int i = 0; i <= 10; i++) {
 		if ((legacy->data1 & ((1 << 8) | (1 << 0))) == (1 << 8)) {
-			printk(WHITE, BLACK, "XHCI: %#018lx:success to get ownership. (prevVal:%x)\n", ctrl, prevVal);
+			printk(WHITE, BLACK, "XHCI: %#018lx: success to get ownership. (prevVal:%x)\n", ctrl, prevVal);
 			return 1;
 		} 
 		Intr_SoftIrq_Timer_mdelay(2);
 	}
-	printk(GREEN, BLACK, "XHCI: %#018lx:failed to get ownership.\n", ctrl);
+	printk(GREEN, BLACK, "XHCI: %#018lx: failed to get ownership.\n", ctrl);
 	return 0;
 }
 
@@ -137,6 +137,7 @@ static int _stopController(USB_XHCIController *ctrl) {
 		ctrl->dev.free((Device *)ctrl), kfree(ctrl);
 		return 0;
 	}
+	printk(WHITE, BLACK, "XHCI: %#018lx: success to stop controller.", ctrl);
 	return 1;
 }
 
@@ -163,6 +164,7 @@ static int _resetController(USB_XHCIController *ctrl) {
 		printk(RED, BLACK, "XHCI: %#018lx: reset failed: default value check failed\n", ctrl);
 		return 0;
 	}
+	printk(WHITE, BLACK, "XHCI: %#018lx: success to reset controller\n", ctrl);
 	return 1;
 }
 
@@ -170,7 +172,7 @@ static int _initPorts(USB_XHCIController *ctrl) {
 	// allocate memory for each port
 	ctrl->ports = (USB_XHCI_Port *)_alloc(ctrl, sizeof(USB_XHCI_Port) * maxPorts(ctrl));
 	if (ctrl->ports == 0) {
-		printk(RED, BLACK, "XHCI: allocate memory for ports failed\n");
+		printk(RED, BLACK, "XHCI: %#018lx: allocate memory for ports failed\n", ctrl);
 		return 0;
 	}
 	for (int i = 0; i < maxPorts(ctrl); i++) {
@@ -188,6 +190,7 @@ static int _initPorts(USB_XHCIController *ctrl) {
 			ctrl->ports[protocol->portOff + i - 1].offset = i;
 	}
 	// set the flag isPaired
+	printk(WHITE, BLACK, "XHCI: %#018lx: socket info: ", ctrl);
 	for (int i = 0; i < maxPorts(ctrl); i++) {
 		for (int j = i + 1; j < maxPorts(ctrl); j++) {
 			if (ctrl->ports[i].offset != ctrl->ports[j].offset) continue;
@@ -198,8 +201,10 @@ static int _initPorts(USB_XHCIController *ctrl) {
 			ctrl->ports[j].flags |= HW_USB_XHCI_Port_Flag_Paired;
 			ctrl->ports[i].pair = &ctrl->ports[j];
 			ctrl->ports[j].pair = &ctrl->ports[i];
+			printk(WHITE, BLACK, "(%d,%d) ", i, j);
 		}
 	}
+	printk(WHITE, BLACK, "\n");
 	return 1;
 }
 
@@ -240,7 +245,7 @@ static int _initMem(USB_XHCIController *ctrl) {
 		ctrl->cmdRingFlag.cycleBit = 1;
 		ctrl->cmdRingFlag.segId = 0;
 		ctrl->cmdRingFlag.pos = 0;
-		printk(WHITE, BLACK, "XHCI: %#018lx:cmdRingCtrl:%#018lx\n", ctrl, cmdRing);
+		printk(WHITE, BLACK, "XHCI: %#018lx: cmdRingCtrl:%#018lx\n", ctrl, cmdRing);
 		ctrl->cmdsFlag = _alloc(ctrl, HW_USB_XHCI_RingEntryNum * sizeof(u64));
 		for (int i = 0; i < HW_USB_XHCI_RingEntryNum; i++) ctrl->cmdsFlag[i] = 1;
 
@@ -352,7 +357,6 @@ int HW_USB_XHCI_Init(PCIeConfig *xhci) {
 
 	ctrl->config = xhci;
 	u64 addr = (xhci->type.type0.bar[0] | (((u64)xhci->type.type0.bar[1]) << 32)) & ~0xffful;
-	MM_PageTable_map1G(getCR3(), (u64)DMAS_phys2Virt(addr), addr, MM_PageTable_Flag_Writable);
 	printk(WHITE, BLACK, "XHCI: %#018lx: Finish memory mapping\n", ctrl);
 	// get the capability registers
 	ctrl->capRegs = (USB_XHCI_CapRegs *)DMAS_phys2Virt(addr);

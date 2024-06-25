@@ -66,10 +66,10 @@ void MM_PageTable_init() {
 	flushTLB();
 
 	// map all the space not in zones
-	for (int i = 1; i < memManageStruct.zonesLength; i++) {
-		printk(YELLOW, BLACK, "Map %#018lx->%#018lx\n", memManageStruct.zones[i - 1].phyAddrEd, memManageStruct.zones[i].phyAddrSt);
-		u64 bound = memManageStruct.zones[i].phyAddrSt;
-		for (u64 addr = memManageStruct.zones[i - 1].phyAddrEd; addr < bound;) {
+	for (int i = 0; i <= memManageStruct.e820Length; i++) {
+		if (memManageStruct.e820[i].type == 1) continue;
+		u64 bound = Page_4KUpAlign(memManageStruct.e820[i].addr + memManageStruct.e820[i].size);
+		for (u64 addr = Page_4KDownAlign(memManageStruct.e820[i].addr); addr < bound;) {
 			if (!(addr & ((1ul << Page_1GShift) - 1)) && addr + Page_1GSize <= bound)
 				MM_PageTable_map1G(getCR3(), (u64)DMAS_phys2Virt(addr), addr, MM_PageTable_Flag_Writable),
 				addr += Page_1GSize;
@@ -96,6 +96,7 @@ void PGTable_free(u64 phyAddr) {
 /// @param vAddr
 /// @param pAddr
 void MM_PageTable_map(u64 cr3, u64 vAddr, u64 pAddr, u64 flag) {
+	vAddr = Page_4KDownAlign(vAddr), pAddr = Page_4KDownAlign(pAddr);
     u64 *entry = (u64 *)DMAS_phys2Virt(cr3) + ((vAddr >> 39) & 0x1ff);
     if (*entry == 0) *entry = MM_PageTable_alloc() | 0x7;
     entry = (u64 *)DMAS_phys2Virt(*entry & ~0xffful) + ((vAddr >> 30) & 0x1ff);
