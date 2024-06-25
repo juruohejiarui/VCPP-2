@@ -35,6 +35,7 @@ u64 MM_PageTable_alloc() {
 }
 
 void MM_PageTable_map1G(u64 cr3, u64 vAddr, u64 pAddr, u64 flag) {
+	vAddr = Page_1GDownAlign(vAddr), pAddr = Page_1GDownAlign(pAddr);
     printk(WHITE, BLACK, "MM_PageTable_map1G(): cr3:%#018lx vAddr:%#018lx pAddr:%#018lx flag:%#018lx\n", cr3, vAddr, pAddr, flag);
     u64 *pgdEntry = (u64 *)DMAS_phys2Virt(cr3) + ((vAddr >> 39) & 0x1ff);
     if (*pgdEntry == 0) *pgdEntry = MM_PageTable_alloc() | 0x7;
@@ -43,10 +44,13 @@ void MM_PageTable_map1G(u64 cr3, u64 vAddr, u64 pAddr, u64 flag) {
 }
 
 void MM_PageTable_map2M(u64 cr3, u64 vAddr, u64 pAddr, u64 flag) {
+	vAddr = Page_2MDownAlign(vAddr), pAddr = Page_2MDownAlign(pAddr);
+	printk(WHITE, BLACK, "MM_PageTable_map2M(): cr3:%#018lx vAddr:%#018lx pAddr:%#018lx flag:%#018lx\n", cr3, vAddr, pAddr, flag);
     u64 *pgdEntry = (u64 *)DMAS_phys2Virt(cr3) + ((vAddr >> 39) & 0x1ff);
     if (*pgdEntry == 0) *pgdEntry = MM_PageTable_alloc() | 0x7;
     u64 *pudEntry = (u64 *)DMAS_phys2Virt(*pgdEntry & ~0xffful) + ((vAddr >> 30) & 0x1ff);
     if (*pudEntry == 0) *pudEntry = MM_PageTable_alloc() | 0x7;
+	else if (*pudEntry & 0x80) return ;
     u64 *pmdEntry = (u64 *)DMAS_phys2Virt(*pudEntry & ~0xffful) + ((vAddr >> 21) & 0x1ff);
     if (*pmdEntry == 0) *pmdEntry = pAddr | 0x80 | flag | (pAddr > 0);
     flushTLB();
@@ -69,9 +73,12 @@ void MM_PageTable_init() {
 			if (!(addr & ((1ul << Page_1GShift) - 1)) && addr + Page_1GSize <= bound)
 				MM_PageTable_map1G(getCR3(), (u64)DMAS_phys2Virt(addr), addr, MM_PageTable_Flag_Writable),
 				addr += Page_1GSize;
-			else
+			else if (!(addr * ((1ul << Page_2MShift) - 1)) && addr + Page_2MSize <= bound)
 				MM_PageTable_map2M(getCR3(), (u64)DMAS_phys2Virt(addr), addr, MM_PageTable_Flag_Writable),
-				addr += Page_2MShift;
+				addr += Page_2MSize;
+			else 
+				MM_PageTable_map(getCR3(), (u64)DMAS_phys2Virt(addr), addr, MM_PageTable_Flag_Writable | MM_PageTable_Flag_Presented),
+				addr += Page_4KSize;
 		}
 	}
 }
@@ -93,8 +100,10 @@ void MM_PageTable_map(u64 cr3, u64 vAddr, u64 pAddr, u64 flag) {
     if (*entry == 0) *entry = MM_PageTable_alloc() | 0x7;
     entry = (u64 *)DMAS_phys2Virt(*entry & ~0xffful) + ((vAddr >> 30) & 0x1ff);
     if (*entry == 0) *entry = MM_PageTable_alloc() | 0x7;
+	if (*entry & 0x80) return ;
     entry = (u64 *)DMAS_phys2Virt(*entry & ~0xffful) + ((vAddr >> 21) & 0x1ff);
     if (*entry == 0) *entry = MM_PageTable_alloc() | 0x7;
+	if (*entry & 0x80) return ;
     entry = (u64 *)DMAS_phys2Virt(*entry & ~0xffful) + ((vAddr >> 12) & 0x1ff);
     *entry = pAddr | flag;
 	flushTLB();

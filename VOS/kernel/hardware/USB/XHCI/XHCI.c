@@ -21,7 +21,7 @@ static void *_alloc(USB_XHCIController *ctrl, u64 size) {
 	USB_XHCI_MemUsage *usage = (USB_XHCI_MemUsage *)kmalloc(sizeof(USB_XHCI_MemUsage), 0);
 	List_init(&usage->listEle);
 	List_insBefore(&usage->listEle, &ctrl->memList);
-	if (size < Page_4KSize / 2) usage->addr = (u64)addr;
+	if (size < Page_4KSize) usage->addr = (u64)addr;
 	else usage->addr = ((u64)page) | 1;
 	memset(addr, 0, size);
 	return addr;
@@ -352,6 +352,7 @@ int HW_USB_XHCI_Init(PCIeConfig *xhci) {
 
 	ctrl->config = xhci;
 	u64 addr = (xhci->type.type0.bar[0] | (((u64)xhci->type.type0.bar[1]) << 32)) & ~0xffful;
+	MM_PageTable_map1G(getCR3(), (u64)DMAS_phys2Virt(addr), addr, MM_PageTable_Flag_Writable);
 	printk(WHITE, BLACK, "XHCI: %#018lx: Finish memory mapping\n", ctrl);
 	// get the capability registers
 	ctrl->capRegs = (USB_XHCI_CapRegs *)DMAS_phys2Virt(addr);

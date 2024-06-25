@@ -14,7 +14,6 @@ static void _initArray() {
 	#ifdef DEBUG_MM
     printk(RED, BLACK, "->initArray()\n");
 	#endif
-	printk(WHITE, BLACK, "memMap:%#018lx, size:%ld\n", HW_UEFI_bootParamInfo->memDesc, HW_UEFI_bootParamInfo->memDescSize);
     int kernelZoneId = -1;
     u64 totPage = 0;
     memManageStruct.zonesLength = 0;

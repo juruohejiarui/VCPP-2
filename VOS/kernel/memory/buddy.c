@@ -92,7 +92,6 @@ void MM_Buddy_init() {
         Zone *zone = memManageStruct.zones + i;
         if (zone->usingCnt == zone->pagesLength) continue;
         u64 pgPos = zone->usingCnt;
-		printk(WHITE, BLACK, "[%#018lx, %#018lx]\n", (zone->pages + pgPos)->phyAddr, (zone->pages + zone->pagesLength)->phyAddr);
 		while (pgPos < zone->pagesLength) {
 			Page *headPage = zone->pages + pgPos;
 			u64 ord = min(log2(lowbit(headPage->phyAddr)) - 12, Buddy_maxOrder);
