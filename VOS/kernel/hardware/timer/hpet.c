@@ -14,7 +14,7 @@ static APICRteDescriptor _intrDesc;
 static HPETDescriptor *_hpetDesc;
 static u64 _jiffies = 0;
 
-extern int Global_state;
+extern volatile int Global_state;
 
 static inline void _setTimerConfig(u32 id, u64 config) {
 	u64 readonlyPart = *(u64 *)(DMAS_phys2Virt(_hpetDesc->address.Address) + 0x100 + 0x20 * id) & 0x8030;

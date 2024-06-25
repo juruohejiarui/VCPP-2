@@ -42,4 +42,6 @@ void Intr_unregister(u64 irqId);
 
 void Intr_init();
 
+void Intr_setIstIndex(int ist);
+
 #endif

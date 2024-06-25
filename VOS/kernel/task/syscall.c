@@ -47,6 +47,7 @@ u64 Syscall_handler(u64 index, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5)
 	IO_sti();
     u64 res = (Syscall_list[index])(arg1, arg2, arg3, arg4, arg5);
     // switch to user level
+	IO_cli();
     return res;
 }
 

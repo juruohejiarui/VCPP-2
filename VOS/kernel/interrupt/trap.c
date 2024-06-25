@@ -4,7 +4,7 @@
 #include "../includes/task.h"
 #include "gate.h"
 
-extern int Global_state;
+extern volatile int Global_state;
 
 char *_regName[] = {
 	"r15", "r14", "r13", "r12", "r11", "r10", "r9", "r8",
@@ -45,8 +45,15 @@ static void _printRegs(u64 rsp) {
 void doDivideError(u64 rsp, u64 errorCode) {
 	u64 *p = NULL;
 	p = (u64 *)(rsp + 0x98);
-	printk(RED,BLACK,"do_divide_error(0),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",errorCode , rsp , *p);
-	Task_current->priority = Task_Priority_Trapped;
+	printk(RED,BLACK,"do_divide_error(0),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\t" ,errorCode, rsp, *p);
+	if (Global_state == 1) {
+		printk(WHITE, BLACK, "pid = %d\n", Task_current->pid);
+		Task_current->priority = Task_Priority_Trapped;
+	} else {
+		printk(WHITE, BLACK, "\n");
+		_printRegs(rsp);
+		while (1) IO_hlt();
+	}
 	IO_sti();
 	while(1) IO_hlt();
 }
@@ -210,7 +217,7 @@ u64 doPageFault(u64 rsp, u64 errorCode) {
 	else printk(WHITE, BLACK, "\n");
 	u64 pldEntry = MM_PageTable_getPldEntry_debug(getCR3(), cr2);
 	// only has attributes
-	if ((pldEntry & ~0xffful) == 0) {
+	if ((pldEntry & ~0xffful) == 0 && (pldEntry & 0xffful)) {
 		// map this virtual address without physics page
 		Page *page = MM_Buddy_alloc(0, Page_Flag_Active);
 		MM_PageTable_map(getCR3(), cr2 & ~0xfff, page->phyAddr, pldEntry | MM_PageTable_Flag_Presented);

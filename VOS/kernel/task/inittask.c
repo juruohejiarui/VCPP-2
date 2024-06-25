@@ -8,9 +8,11 @@
 
 extern void Intr_retFromIntr();
 
-extern int Global_state;
+extern volatile int Global_state;
 
 u64 init(u64 (*usrEntry)(u64), u64 arg) {
+	if (Task_current->pid == 0) Intr_setIstIndex(0);
+	IO_sti();
 	u64 rsp = 0;
 	__asm__ volatile ( "movq %%rsp, %0" : "=m"(rsp) : : "memory" );
     Intr_SoftIrq_Timer_initIrq(&Task_current->scheduleTimer, 1, Task_updateCurState, NULL);

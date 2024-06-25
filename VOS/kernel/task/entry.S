@@ -42,7 +42,6 @@ ENTRY(Syscall_entry)
     jmp Syscall_handler
 
 ENTRY(Syscall_exit)
-    cli
     popq %r15
     popq %r14
     popq %r13
@@ -68,5 +67,4 @@ ENTRY(Syscall_exit)
     movq %rsp, 0x8(%rbx)
     movq 0x10(%rbx), %rsp
     movq %rsp, 0x18(%rbx)
-	sti
     sysretq

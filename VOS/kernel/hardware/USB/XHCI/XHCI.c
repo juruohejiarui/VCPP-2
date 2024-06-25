@@ -104,7 +104,7 @@ static int _getOwnership(USB_XHCIController *ctrl) {
 		break;
 	}
 	if (legacy == NULL) {
-		printk(WHITE, BLACK, "XHCI: %#018lx:no legacy support.\n");
+		printk(WHITE, BLACK, "XHCI: %#018lx:no legacy support.\n", ctrl);
 		return 1;
 	}
 	u16 prevVal = legacy->data1;

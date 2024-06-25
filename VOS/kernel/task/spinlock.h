@@ -8,7 +8,7 @@ typedef struct {
 
 void Task_SpinLock_init(SpinLock *lock);
 
-#define Task_SpinLock_lock(locker) { \
+#define Task_SpinLock_lock(locker) do { \
 	i64 a = 0, c = 1; \
 	__asm__ volatile ( \
 		"pushq %%rax	\n\t" \
@@ -24,14 +24,14 @@ void Task_SpinLock_init(SpinLock *lock);
 		: "r"(c), "r"(a) \
 		: "%rcx", "%rax" \
 	); \
-}
+} while (0)
 
-#define Task_SpinLock_unlock(locker) { \
+#define Task_SpinLock_unlock(locker) do { \
 	__asm__ volatile ( \
 		"movq $0, %0	\n\t" \
 		: "+r"((locker)->lock) \
 		: \
 		: "memory" \
 	); \
-}
+} while (0)
 #endif
