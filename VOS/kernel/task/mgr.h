@@ -73,17 +73,7 @@ void Task_initMgr();
 
 void Task_updateCurState();
 
-// this task is a system task
-#define Task_createTask_Arg_System	(1 << 0)
-// this task should run in kernel ring
-#define Task_createTask_Arg_Kernel	(1 << 1)
-// this task use inner code of kernel
-#define Task_createTask_Arg_Inner	(1 << 2)
-// this task is slave task
-#define Task_createTask_Arg_Slaver	(1 << 3)
-// this 
-
-TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntry)(u64), u64 arg);
+TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntry)(u64), u64 arg, u64 flag);
 
 #define Task_countDown() ((--Task_current->counter) == 0)
 

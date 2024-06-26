@@ -5,5 +5,6 @@
 #include "../lib/memop.h"
 #include "../lib/io.h"
 #include "../lib/algorithm.h"
+#include "../lib/spinlock.h"
 #include "../lib/rbtree.h"
 #endif

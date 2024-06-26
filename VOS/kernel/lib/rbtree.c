@@ -3,7 +3,6 @@
 #include "../includes/memory.h"
 #include "../includes/log.h"
 
-
 #define _parent(node) ((RBNode *)((node)->unionParentCol & ~3))
 #define _col(node) ((node)->unionParentCol & 3)
 #define _isRed(node) (!_col(node))
@@ -26,14 +25,22 @@ static RBNode *_newNode(i64 val, RBNode *parent) {
 	node->val = val;
 	node->unionParentCol = (u64)parent | 0;
 }
-void RBTree_init(RBTree *tree) { tree->root = NULL; }
+void RBTree_init(RBTree *tree) {
+	tree->root = NULL;
+	SpinLock_init(&tree->lock);
+}
 
 RBNode *RBTree_get(RBTree *tree, u64 val) {
-	if (tree == NULL || tree->root == NULL) return NULL;
+	SpinLock_lock(&tree->lock);
+	if (tree == NULL || tree->root == NULL) {
+		SpinLock_unlock(&tree->lock);
+		return NULL;
+	}
 	RBNode *cur = tree->root;
 	while (cur != NULL && cur->val != val)
 		if (cur->val < val) cur = cur->right;
 		else cur = cur->left;
+	SpinLock_unlock(&tree->lock);
 	return cur;
 }
 
@@ -51,12 +58,18 @@ static RBNode *_getMin(RBNode *node) {
 }
 
 RBNode *RBTree_getMin(RBTree *tree) {
-	return tree == NULL || tree->root == NULL ? NULL : _getMin(tree->root);
+	SpinLock_lock(&tree->lock);
+	RBNode *res = tree == NULL || tree->root == NULL ? NULL : _getMin(tree->root);
+	SpinLock_unlock(&tree->lock);
+	return res;
 }
 
 List *RBTree_getMinListEle(RBTree *tree) {
+	SpinLock_lock(&tree->lock);
     RBNode *node = RBTree_getMin(tree);
-	return List_isEmpty(&node->head) ? NULL : node->head.next;
+	List *res = List_isEmpty(&node->head) ? NULL : node->head.next;
+	SpinLock_unlock(&tree->lock);
+	return res;
 }
 
 static RBNode *_getMax(RBNode *node) {
@@ -65,7 +78,10 @@ static RBNode *_getMax(RBNode *node) {
 }
 
 RBNode *RBTree_getMax(RBTree *tree) {
-	return tree == NULL || tree->root == NULL ? NULL : _getMax(tree->root);
+	SpinLock_lock(&tree->lock);
+	RBNode *res = tree == NULL || tree->root == NULL ? NULL : _getMax(tree->root);
+	SpinLock_unlock(&tree->lock);
+	return res;
 }
 
 static void _rotLeft(RBTree *tree, RBNode *node) {
@@ -134,11 +150,13 @@ static void _fixAfterIns(RBTree *tree, RBNode *node) {
 }
 
 void RBTree_insert(RBTree *tree, u64 val, List *listEle) {
+	SpinLock_lock(&tree->lock);
 	List_init(listEle);
 	if (tree->root == NULL) {
 		tree->root = _newNode(val, NULL);
 		_setBlack((RBNode *)tree->root);
 		List_insBehind(listEle, &tree->root->head);
+		SpinLock_unlock(&tree->lock);
 		return ;
 	}
 	RBNode *cur = (RBNode *)tree->root;
@@ -156,6 +174,7 @@ void RBTree_insert(RBTree *tree, u64 val, List *listEle) {
 	}
 	_setRed(cur);
 	_fixAfterIns(tree, cur);
+	SpinLock_unlock(&tree->lock);
 }
 
 void _fixAfterDel(RBTree *tree, RBNode *node, RBNode *parent) {
@@ -214,15 +233,7 @@ void _fixAfterDel(RBTree *tree, RBNode *node, RBNode *parent) {
 	if (node) _setBlack(node);
 }
 
-void RBTree_del(RBTree *tree, u64 val) {
-	RBNode *node = _getNode(tree->root, val);
-	if (node == NULL) return ;
-	List_del(node->head.next);
-	if (!List_isEmpty(&node->head)) return ;
-	RBTree_delNode(tree, node);
-}
-
-void RBTree_delNode(RBTree *tree, RBNode *node) {
+static void _delNode(RBTree *tree, RBNode *node) {
 	RBNode *child, *parent;
 	int col;
 	if (!node->left) child = node->right;
@@ -270,6 +281,25 @@ void RBTree_delNode(RBTree *tree, RBNode *node) {
 	
 	color:
 	if (col == RBTree_Color_Black) _fixAfterDel(tree, child, parent);
+}
+
+void RBTree_del(RBTree *tree, u64 val) {
+	SpinLock_lock(&tree->lock);
+	RBNode *node = _getNode(tree->root, val);
+	if (node == NULL) { SpinLock_unlock(&tree->lock); return ; }
+	List_del(node->head.next);
+	if (!List_isEmpty(&node->head)) {
+		SpinLock_unlock(&tree->lock);
+		return ;
+	}
+	_delNode(tree, node);
+	SpinLock_unlock(&tree->lock);
+}
+
+void RBTree_delNode(RBTree *tree, RBNode *node) {
+	SpinLock_lock(&tree->lock);
+	_delNode(tree, node);
+	SpinLock_unlock(&tree->lock);
 }
 
 void _debug(RBNode *node, u64 dep) {

@@ -10,28 +10,41 @@ extern void Intr_retFromIntr();
 
 extern volatile int Global_state;
 
-u64 init(u64 (*usrEntry)(u64), u64 arg) {
-	IO_sti();
-	u64 rsp = 0;
-	__asm__ volatile ( "movq %%rsp, %0" : "=m"(rsp) : : "memory" );
-    Intr_SoftIrq_Timer_initIrq(&Task_current->scheduleTimer, 1, Task_updateCurState, NULL);
+u64 Task_keyboardEvent(u64 (*usrEntry)(u64), u64 arg) {
+	Intr_SoftIrq_Timer_initIrq(&Task_current->scheduleTimer, 1, Task_updateCurState, NULL);
     Intr_SoftIrq_Timer_addIrq(&Task_current->scheduleTimer);
 	Task_current->state = Task_State_Running;
-    if (Task_current->pid == 0) {
-        printk(WHITE, BLACK, "task 0 is running...\n");
-        Global_state = 1;
-        for (KeyboardEvent *kpEvent; ; ) {
-            kpEvent = HW_Keyboard_getEvent();
-            if (kpEvent == NULL) continue;
-            if (kpEvent->isCtrlKey) {
-                if (!kpEvent->isKeyUp) printk(BLACK, YELLOW, "{%d}", kpEvent->keyCode);
-                else printk(BLACK, RED, "{%d}", kpEvent->keyCode);
-            } else {
-                if (!kpEvent->isKeyUp) printk(BLACK, WHITE, "[%c]", kpEvent->keyCode);
-            }
-            kfree(kpEvent);
-        }
-    } else Task_switchToUsr(usrEntry, Task_current->pid << 32 | arg);
+	printk(WHITE, BLACK, "Keyboard Event monitor is running...\n");
+	for (KeyboardEvent *kpEvent; ; ) {
+		kpEvent = HW_Keyboard_getEvent();
+		if (kpEvent == NULL) continue;
+		if (kpEvent->isCtrlKey) {
+			if (!kpEvent->isKeyUp) printk(BLACK, YELLOW, "{%d}", kpEvent->keyCode);
+			else printk(BLACK, RED, "{%d}", kpEvent->keyCode);
+		} else {
+			if (!kpEvent->isKeyUp) printk(BLACK, WHITE, "[%c]", kpEvent->keyCode);
+		}
+		kfree(kpEvent);
+	}
+	while(1) IO_hlt();
+}
+
+u64 task0(u64 (*usrEntry)(u64), u64 arg) {
+	Intr_SoftIrq_Timer_initIrq(&Task_current->scheduleTimer, 1, Task_updateCurState, NULL);
+    Intr_SoftIrq_Timer_addIrq(&Task_current->scheduleTimer);
+	Task_current->state = Task_State_Running;
+	printk(WHITE, BLACK, "task0 is running...\n");
+	// launch keyboard task
+	Global_state = 1;
+	TaskStruct *kbTask = Task_createTask(Task_keyboardEvent, NULL, 0, Task_Flag_Inner | Task_Flag_Kernel);
+	while (1) IO_hlt();
+}
+
+u64 init(u64 (*usrEntry)(u64), u64 arg) {
+	Intr_SoftIrq_Timer_initIrq(&Task_current->scheduleTimer, 1, Task_updateCurState, NULL);
+    Intr_SoftIrq_Timer_addIrq(&Task_current->scheduleTimer);
+	Task_current->state = Task_State_Running;    
+    Task_switchToUsr(usrEntry, Task_current->pid << 32 | arg);
     return 1;
 }
 
@@ -58,8 +71,9 @@ void Task_init() {
     List_init(&Init_taskStruct.listEle);
     
     TaskStruct *initTask[3] = { NULL };
-    for (int i = 0; i < 3; i++)
-        initTask[i] = Task_createTask(init, usrInit, Task_createTask_Arg_Inner | Task_createTask_Arg_Kernel | Task_createTask_Arg_System);
+	initTask[0] = Task_createTask(task0, NULL, 0, Task_Flag_Inner | Task_Flag_Kernel);
+    for (int i = 1; i < 3; i++)
+        initTask[i] = Task_createTask(init, usrInit, i, Task_Flag_Inner);
     List_del(&Init_taskStruct.listEle);
     Task_switch_init(&Init_taskStruct, initTask[0]);
 }

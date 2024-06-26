@@ -13,7 +13,7 @@ static unsigned int *_bufAddr;
 static SpinLock _locker;
 
 void Log_enableBuf() {
-    u64 pixelSize = HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine * HW_UEFI_bootParamInfo->graphicsInfo.VerticalResolution * sizeof(u32);
+    u64 pixelSize = HW_UEFI_bootParamInfo->graphicsInfo.FrameBufferSize;
     _bufAddr = DMAS_phys2Virt(MM_Buddy_alloc(max(log2Ceil(pixelSize) - 12, 0), Page_Flag_Active | Page_Flag_Kernel)->phyAddr);
     memcpy(position.FBAddr, _bufAddr, pixelSize);
     printk(WHITE, BLACK, "buf:%#018lx size:%ld->2^%d 4k pages\n", _bufAddr, pixelSize, max(log2Ceil(pixelSize) - 12, 0));
@@ -21,7 +21,7 @@ void Log_enableBuf() {
 
 void Log_init() {
     _bufAddr = NULL;
-	Task_SpinLock_init(&_locker);
+	SpinLock_init(&_locker);
 }
 
 #define isDigit(ch) ((ch) >= '0' && (ch) <= '9')
@@ -206,8 +206,8 @@ static void _scroll(void) {
         bufAddr += offPerLine;    bufAddr2 += offPerLine;
         lineLength[i] = lineLength[i + 1];
     }
-    memset(addr, 0, position.XResolution * position.YCharSize * sizeof(u32));
-    memset(bufAddr, 0, position.XResolution * position.YCharSize * sizeof(u32));
+    memset(addr, 0, HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine * position.YCharSize * sizeof(u32));
+    if (_bufAddr != NULL) memset(bufAddr, 0, HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine * position.YCharSize * sizeof(u32));
     lineLength[position.YPosition - 1] = 0;
 }
 
@@ -235,7 +235,7 @@ inline void putchar(unsigned int fcol, unsigned int bcol, char ch) {
         position.YPosition++, position.XPosition = 0;
         if (position.YPosition >= position.YResolution / position.YCharSize) {
             _scroll();
-            position.YPosition--;
+			position.YPosition--;
         }
     } else if (ch == '\r') {
         position.XPosition = 0;
@@ -259,9 +259,9 @@ void printStr(unsigned int fcol, unsigned int bcol, const char *str, int len) {
     // close the interrupt if it is open now
 	u64 prevState = (IO_getRflags() >> 9) & 1;
 	if (prevState) IO_cli();
-	// Task_SpinLock_lock(&_locker);
+	// SpinLock_lock(&_locker);
     while (len--) putchar(fcol, bcol, *str++);
-	// Task_SpinLock_unlock(&_locker);
+	// SpinLock_unlock(&_locker);
     if (prevState) IO_sti();
 }
 
@@ -269,7 +269,8 @@ void clearScreen() {
 	u64 prevState = (IO_getRflags() >> 9) & 1;
 	if (prevState) IO_cli();
 	memset(position.FBAddr, 0, (position.YPosition + 1) * position.YCharSize * HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine * sizeof(u32));
-    memset(_bufAddr, 0, (position.YPosition + 1) * position.YCharSize * HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine * sizeof(u32));
+   	if (_bufAddr != NULL)
+		memset(_bufAddr, 0, (position.YPosition + 1) * position.YCharSize * HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine * sizeof(u32));
 	memset(lineLength, 0, 4096 * sizeof(u32));
 	position.XPosition = 0, position.YPosition = 0;
 	 if (prevState) IO_sti();

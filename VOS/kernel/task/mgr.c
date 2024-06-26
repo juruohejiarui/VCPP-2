@@ -1,5 +1,4 @@
 #include "mgr.h"
-#include "spinlock.h"
 #include "../includes/log.h"
 
 extern void Task_kernelThreadEntry();
@@ -63,10 +62,7 @@ TaskStruct *Init_tasks[Hardware_CPUNumber] = { &Init_taskStruct, 0 };
 
 void Task_switchTo_inner(TaskStruct *prev, TaskStruct *next) {
     next->tss->rsp0 = next->thread->rsp0;
-    if (next->thread->rip > 0xffff800000000000 + 0x3000000 || next->thread->rip < 0xffff800000000000) {
-        printk(RED, BLACK, "From %#018lx, to %#018lx, invalid rip: %#018lx\n", prev, next, next->thread->rip);
-        while (1) ;
-    }
+    // printk(RED, BLACK, "From %#018lx, to %#018lx, rip: %#018lx\n", prev, next, next->thread->rip);
     Intr_Gate_setTSS(
             next->tss->rsp0, next->tss->rsp1, next->tss->rsp2, next->tss->ist1, next->tss->ist2,
 			next->tss->ist3, next->tss->ist4, next->tss->ist5, next->tss->ist6, next->tss->ist7);
@@ -86,32 +82,37 @@ struct CFS_rq {
 
 void Task_initMgr() {
     RBTree_init(&_CFSstruct.tree);
-	Task_SpinLock_init(&_CFSstruct.locker);
+	SpinLock_init(&_CFSstruct.locker);
 }
 
 void Task_updateCurState() {
-    IO_Func_maskIntrPreffix
     // update the vRunTime and then check if needs schedule
     Task_current->vRunTime += _weight[Task_current->priority];
     Task_current->state = Task_State_NeedSchedule;
-    IO_Func_maskIntrSuffix
 }
 
 void Task_schedule() {
     IO_cli();
-	Task_SpinLock_lock(&_CFSstruct.locker);
+	SpinLock_lock(&_CFSstruct.locker);
+
+	// add back the sceduleTimer
+	Intr_SoftIrq_Timer_initIrq(&Task_current->scheduleTimer, 1, Task_updateCurState, NULL);
+    Intr_SoftIrq_Timer_addIrq(&Task_current->scheduleTimer);
+
+	// insert this task into the waiting tree
+    TaskStruct *dmasPtr = (TaskStruct *)DMAS_phys2Virt(MM_PageTable_getPldEntry(getCR3(), (u64)Task_current) & ~0xfff);
+	RBTree_insert(&_CFSstruct.tree, Task_current->vRunTime, &dmasPtr->listEle);
+
+	// get the task with least vRuntime
     RBNode *leftMost = RBTree_getMin(&_CFSstruct.tree);
     TaskStruct *next = container(leftMost->head.next, TaskStruct, listEle);
     RBTree_del(&_CFSstruct.tree, leftMost->val);
-    TaskStruct *dmas_ptr = (TaskStruct *)DMAS_phys2Virt(MM_PageTable_getPldEntry(getCR3(), (u64)Task_current) & ~0xfff);
-    RBTree_insert(&_CFSstruct.tree, Task_current->vRunTime, &dmas_ptr->listEle);
-    Intr_SoftIrq_Timer_initIrq(&Task_current->scheduleTimer, 1, Task_updateCurState, NULL);
-    Intr_SoftIrq_Timer_addIrq(&Task_current->scheduleTimer);
-	Task_SpinLock_unlock(&_CFSstruct.locker);
+
+	SpinLock_unlock(&_CFSstruct.locker);
     Task_switch(next);
 }
 
-TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntry)(u64), u64 arg) {
+TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntry)(u64), u64 arg, u64 flag) {
     u64 pgdPhyAddr = MM_PageTable_alloc(); Page *tskStructPage = MM_Buddy_alloc(0, Page_Flag_Active);
     printk(YELLOW, BLACK, "pgdPhyAddr: %#018lx, tskStructPage: %#018lx\t", pgdPhyAddr, tskStructPage->phyAddr);
 
@@ -124,11 +125,12 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntr
 	task->thread = thread;
 	task->mem = (TaskMemStruct *)(thread + 1);
 	task->tss = (TSS *)(task->mem + 1);
-	printk(WHITE, BLACK, "task=%#018lx\n", task);
+	printk(WHITE, BLACK, "task=%#018lx ", task);
 
-    task->flags = 
+	task->flags = flag;
     task->vRunTime = 1;
     task->pid = Task_pidCounter++;
+	printk(WHITE, BLACK, "pid:%ld ", task->pid);
     task->mem->pgd = DMAS_phys2Virt(pgdPhyAddr);
     task->mem->pgdPhyAddr = pgdPhyAddr;
 	task->state = Task_State_Uninterruptible;
@@ -137,7 +139,7 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntr
     // execption stack pointer
 	task->tss->ist1	= Task_intrStackEnd;
     // interrupt stack pointer
-	task->tss->ist2 = Task_intrStackEnd - (Task_intrStackSize >> 1);
+	task->tss->ist2 = Task_intrStackEnd;
 	task->tss->ist3 = task->tss->ist4 = task->tss->ist5 = task->tss->ist6 = task->tss->ist7 = Task_intrStackEnd;
 	task->tss->rsp0 = task->tss->rsp1 = task->tss->rsp2 = Task_kernelStackEnd;
 
@@ -163,19 +165,29 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntr
 	// construct page table and stack
 	{
 		// copy the kernel part (except stack) of pgd
-		memcpy((u64 *)DMAS_phys2Virt(getCR3()) + 256, (u64 *)DMAS_phys2Virt(pgdPhyAddr) + 256, 255 * sizeof(u64));
+		u64 *srcCR3 = DMAS_phys2Virt((flag & Task_Flag_Slaver) ? Task_current->mem->pgdPhyAddr : 0x101000);
+		memcpy(srcCR3 + 256, (u64 *)DMAS_phys2Virt(pgdPhyAddr) + 256, 255 * sizeof(u64));
 		// set the Task_current
-		MM_PageTable_map(pgdPhyAddr, Task_kernelStackEnd - Task_kernelStackSize, tskStructPage->phyAddr, MM_PageTable_Flag_Presented | MM_PageTable_Flag_Writable);
+		MM_PageTable_map(
+				pgdPhyAddr,
+				Task_kernelStackEnd - Task_kernelStackSize, 
+				tskStructPage->phyAddr,
+				MM_PageTable_Flag_Presented | MM_PageTable_Flag_Writable);
 
 		Page *lstPage = MM_Buddy_alloc(5, Page_Flag_Active);
+
 		// map the interrupt stack with full present pages
 		for (u64 vAddr = Task_intrStackEnd - Task_intrStackSize; vAddr < Task_intrStackEnd; vAddr += Page_4KSize)
 			MM_PageTable_map(pgdPhyAddr, 
 					vAddr, lstPage->phyAddr + vAddr - (Task_intrStackEnd - Task_intrStackSize), 
 					MM_PageTable_Flag_Presented | MM_PageTable_Flag_Writable | MM_PageTable_Flag_UserPage);
+
 		// map the user stack without present flag
-		for (u64 vAddr = Task_userStackEnd - Task_userStackSize + 0x10; vAddr < Task_userStackEnd; vAddr += Page_4KSize)
-			MM_PageTable_map(pgdPhyAddr, vAddr, 0, MM_PageTable_Flag_UserPage | MM_PageTable_Flag_Writable);
+		if (!(flag & Task_Flag_Kernel)) {
+			for (u64 vAddr = Task_userStackEnd - Task_userStackSize + 0x10; vAddr < Task_userStackEnd; vAddr += Page_4KSize)
+				MM_PageTable_map(pgdPhyAddr, vAddr, 0, MM_PageTable_Flag_UserPage | MM_PageTable_Flag_Writable);
+		}
+
 		// map the kernel stack with one present page
 		lstPage = MM_Buddy_alloc(0, Page_Flag_Active);
 		for (u64 vAddr = Task_kernelStackEnd - Task_kernelStackSize + Page_4KSize; vAddr != 0; vAddr += Page_4KSize)
@@ -186,10 +198,16 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntr
 		// copy the data into the stack
 		memcpy(&regs, (u64 *)DMAS_phys2Virt(lstPage->phyAddr + Page_4KSize - 16 - sizeof(PtReg)), sizeof(PtReg));
 	}
-
-    if (task->pid > 0) RBTree_insert(&_CFSstruct.tree, 0, &task->listEle);
-
-    RBTree_init(&task->softIrqTree);
+	RBTree_init(&task->timerTree);
+    if (task->pid > 0) {
+		IO_Func_maskIntrPreffix
+		SpinLock_lock(&_CFSstruct.locker);
+		RBTree_insert(&_CFSstruct.tree, 0, &task->listEle);
+		RBTree_debug(&_CFSstruct.tree);
+		SpinLock_unlock(&_CFSstruct.locker);
+		IO_Func_maskIntrSuffix
+	}
+	printk(WHITE, BLACK, "finish creating...\n");
     return task;
 }
 

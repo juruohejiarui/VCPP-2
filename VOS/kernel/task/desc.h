@@ -5,13 +5,17 @@
 #include "../includes/memory.h"
 #include "../includes/interrupt.h"
 
+extern unsigned long kallsyms_addresses[] __attribute__((weak));
+extern long kallsyms_syms_num __attribute__((weak));
+extern long kallsyms_index[] __attribute__((weak));
+extern char* kallsyms_names __attribute__((weak));
+
 #define Init_taskStackSize 32768
 
-#define Thread_Flag_Main    (1 << 0)
-#define Thread_Flag_Sub     (1 << 1)
-#define Thread_Flag_Kernel  (1 << 2)  
-
-#define Task_Flag_Kernel    (1 << 2)
+#define Task_Flag_Slaver	(1 << 0)
+#define Task_Flag_Kernel	(1 << 1)  
+// this task use inner code of kernel
+#define Task_Flag_Inner		(1 << 2)
 
 #define Task_State_Uninterruptible  (1 << 0)
 #define Task_State_Running          (1 << 1)
@@ -54,7 +58,7 @@ typedef struct tmpTaskStruct {
     TaskMemStruct *mem;
 	TSS *tss;
     u64 flags;
-    RBTree softIrqTree;
+    RBTree timerTree;
     i64 pid, vRunTime, signal, priority;
 
     TimerIrq scheduleTimer, delayTimer;

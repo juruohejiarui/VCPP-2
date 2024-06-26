@@ -3,15 +3,19 @@
 #include "DMAS.h"
 #include "../includes/task.h"
 #include "../includes/log.h"
+#include "../includes/task.h"
 
 #define PGTable_maxCacheSize 0x1100
 #define PGTable_minCacheSize 0x100
+
+static SpinLock _locker;
 
 static Page *cachePool[PGTable_maxCacheSize];
 static int cachePoolSize = 0, cacheSize;
 
 u64 MM_PageTable_alloc() {
     IO_Func_maskIntrPreffix
+	SpinLock_lock(&_locker);
     // find a page for page table
     Page *page = cachePool[cachePoolSize - 1];
     if (MM_Buddy_getOrder(page) == 0) cachePool[--cachePoolSize] = NULL;
@@ -30,6 +34,7 @@ u64 MM_PageTable_alloc() {
         cacheSize += 0x1000;
     }
     memset(DMAS_phys2Virt(page->phyAddr), 0, 512 * sizeof(u64));
+	SpinLock_unlock(&_locker);
     IO_Func_maskIntrSuffix
     return page->phyAddr;
 }
@@ -41,6 +46,7 @@ void MM_PageTable_map1G(u64 cr3, u64 vAddr, u64 pAddr, u64 flag) {
     if (*pgdEntry == 0) *pgdEntry = MM_PageTable_alloc() | 0x7;
     u64 *pudEntry = (u64 *)DMAS_phys2Virt(*pgdEntry & ~0xffful) + ((vAddr >> 30) & 0x1ff);
     if (*pudEntry == 0) *pudEntry = pAddr | 0x80 | flag | (pAddr > 0);
+	flushTLB();
 }
 
 void MM_PageTable_map2M(u64 cr3, u64 vAddr, u64 pAddr, u64 flag) {
@@ -57,6 +63,7 @@ void MM_PageTable_map2M(u64 cr3, u64 vAddr, u64 pAddr, u64 flag) {
 }
 
 void MM_PageTable_init() {
+	SpinLock_init(&_locker);
     cachePool[0] = MM_Buddy_alloc(12, Page_Flag_Active | Page_Flag_Kernel);
     cacheSize = 0x1000, cachePoolSize = 1;
     // unmap the 0-th entry of pgd
@@ -69,6 +76,8 @@ void MM_PageTable_init() {
 	for (int i = 0; i <= memManageStruct.e820Length; i++) {
 		if (memManageStruct.e820[i].type == 1) continue;
 		u64 bound = Page_4KUpAlign(memManageStruct.e820[i].addr + memManageStruct.e820[i].size);
+		printk(WHITE, BLACK, "IO Map: [%#018lx, %#018lx]\n",
+			Page_4KDownAlign(memManageStruct.e820[i].addr), bound);
 		for (u64 addr = Page_4KDownAlign(memManageStruct.e820[i].addr); addr < bound;) {
 			if (!(addr & ((1ul << Page_1GShift) - 1)) && addr + Page_1GSize <= bound)
 				MM_PageTable_map1G(getCR3(), (u64)DMAS_phys2Virt(addr), addr, MM_PageTable_Flag_Writable),
@@ -81,6 +90,14 @@ void MM_PageTable_init() {
 				addr += Page_4KSize;
 		}
 	}
+	u64 *pmdEntry = DMAS_phys2Virt(0x103000);
+	for (u64 addr = 0;
+				addr < HW_UEFI_bootParamInfo->graphicsInfo.FrameBufferSize;
+				addr += Page_2MSize) {
+			*(pmdEntry + addr / Page_2MSize + 24) = (addr + HW_UEFI_bootParamInfo->graphicsInfo.FrameBufferBase) | 0x87;
+			printk(WHITE, BLACK, "Display Map: %#018lx->%#018lx\n", pmdEntry + addr / Page_2MSize + 24, addr + HW_UEFI_bootParamInfo->graphicsInfo.FrameBufferBase);
+		}
+	flushTLB();
 }
 
 void PGTable_free(u64 phyAddr) {
@@ -91,6 +108,8 @@ void PGTable_free(u64 phyAddr) {
         cacheSize++;
     }
 }
+
+extern int Global_state;
 
 /// @brief Map a memory block [pAddr, pAddr + 4K - 1]
 /// @param vAddr

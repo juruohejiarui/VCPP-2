@@ -1,14 +1,14 @@
-#ifndef __TASK_SPINLOCK_H__
-#define __TASK_SPINLOCK_H__
+#ifndef __LIB_SPINLOCK_H__
+#define __LIB_SPINLOCK_H__
 
-#include "../includes/lib.h"
+#include "ds.h"
 typedef struct {
 	volatile i64 lock;
 } SpinLock;
 
-void Task_SpinLock_init(SpinLock *lock);
+void SpinLock_init(SpinLock *lock);
 
-#define Task_SpinLock_lock(locker) do { \
+#define SpinLock_lock(locker) do { \
 	i64 a = 0, c = 1; \
 	__asm__ volatile ( \
 		"pushq %%rax	\n\t" \
@@ -26,7 +26,7 @@ void Task_SpinLock_init(SpinLock *lock);
 	); \
 } while (0)
 
-#define Task_SpinLock_unlock(locker) do { \
+#define SpinLock_unlock(locker) do { \
 	__asm__ volatile ( \
 		"movq $0, %0	\n\t" \
 		: "+r"((locker)->lock) \

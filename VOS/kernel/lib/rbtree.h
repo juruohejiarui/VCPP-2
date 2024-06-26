@@ -2,6 +2,7 @@
 #define __LIB_RB_TREE_H__
 
 #include "ds.h"
+#include "spinlock.h"
 
 #define RBTree_Color_Red 0
 #define RBTree_Color_Black 1
@@ -15,6 +16,7 @@ typedef struct _tmpNode {
 
 typedef struct {
 	RBNode *root;
+	SpinLock lock;
 } RBTree;
 
 void RBTree_init(RBTree *tree);

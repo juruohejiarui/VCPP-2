@@ -6,6 +6,7 @@
 #include "../hardware/APIC.h"
 #include "../hardware/timer.h"
 #include "../hardware/keyboard.h"
+#include "../hardware/USB.h"
 
 void HW_init();
 

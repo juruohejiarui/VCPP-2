@@ -4,7 +4,7 @@
 #include "../PCIe.h"
 
 #ifdef DEBUG
-// #define DEBUG_PCIE
+#define DEBUG_PCIE
 #endif
 
 typedef struct {

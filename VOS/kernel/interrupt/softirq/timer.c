@@ -12,11 +12,13 @@ void Intr_SoftIrq_Timer_initIrq(TimerIrq *irq, u64 expireJiffies, void (*func)(v
 }
 
 void Intr_SoftIrq_Timer_addIrq(TimerIrq *irq) {
-	RBTree_insert(&Task_current->softIrqTree, irq->expireJiffies, &irq->listEle);
+	IO_Func_maskIntrPreffix
+	RBTree_insert(&Task_current->timerTree, irq->expireJiffies, &irq->listEle);
+	IO_Func_maskIntrSuffix
 }
 
 void Intr_SoftIrq_Timer_updateState() {
-	RBNode *minNode = RBTree_getMin(&Task_current->softIrqTree);
+	RBNode *minNode = RBTree_getMin(&Task_current->timerTree);
 	if (minNode != NULL && minNode->val <= HW_Timer_HPET_jiffies()) Intr_SoftIrq_setState(Intr_SoftIrq_State_Timer);
 }
 
@@ -28,13 +30,13 @@ void Intr_SoftIrq_Timer_mdelay(u64 msec) {
 
 void _doTimer(void *data) {
 	// printk(BLACK, WHITE, "Timer (%ld)\t", HW_Timer_HPET_jiffies());
-	RBNode *minNode = RBTree_getMin(&Task_current->softIrqTree);
+	RBNode *minNode = RBTree_getMin(&Task_current->timerTree);
 	int prevFlag = (IO_getRflags() >> 9) & 1;
 	while (minNode != NULL && minNode->val <= HW_Timer_HPET_jiffies()) {
 		List *ele = minNode->head.next, *end = ele;
 		for (; end->next != &minNode->head; end = end->next) ;
-		RBTree_delNode(&Task_current->softIrqTree, minNode);
-		minNode = RBTree_getMin(&Task_current->softIrqTree);
+		RBTree_delNode(&Task_current->timerTree, minNode);
+		minNode = RBTree_getMin(&Task_current->timerTree);
 		for (; ; ele = ele->next) {
 			TimerIrq *irq = container(ele, TimerIrq, listEle);
 			irq->func(irq->data);

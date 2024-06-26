@@ -2,6 +2,7 @@
 #define __HAREWARE_USB_XHCI_H__
 
 #include "../PCIe.h"
+#include "../../includes/memory.h"
 
 // capability registers
 typedef struct {
@@ -555,5 +556,7 @@ extern List HW_USB_XHCI_mgrList;
 /// @param xhci the xhci structure in PCIe
 /// @return 1: initialzation success, 0: initialization failed
 int HW_USB_XHCI_Init(PCIeConfig *xhci);
+
+void HW_USB_XHCI_thread(USB_XHCIController *ctrl);
 
 #endif

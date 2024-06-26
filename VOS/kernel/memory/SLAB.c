@@ -3,8 +3,11 @@
 #include "buddy.h"
 #include "pgtable.h"
 #include "../includes/log.h"
+#include "../includes/task.h"
 
 #define alloc2MPage() MM_Buddy_alloc(9, Page_Flag_Kernel)
+
+static SpinLock _locker;
 
 SlabCache Slab_kmallocCache[16] = {
     {32,        0, 0, NULL, NULL, NULL},
@@ -27,6 +30,7 @@ SlabCache Slab_kmallocCache[16] = {
 
 void MM_Slab_init() {
     printk(RED, BLACK, "MM_Slab_init()\n");
+	SpinLock_init(&_locker);
     // calculate the total size of Slab and colMap
     u64 totSize = 16 * sizeof(Slab);
     for (int i = 0; i < 16; i++)
@@ -111,13 +115,13 @@ void Slab_pushNewSlab(int id) {
         slab->virtAddr = DMAS_phys2Virt(page2M->phyAddr);
         slab->page = page2M;
     } else { // 1KB, 2KB, 4KB, 8KB, 16KB, 32KB, 64KB, 128KB, 256KB, 512KB, 1MB
-        slab = (Slab *)kmalloc(sizeof(Slab), 0);
+        slab = (Slab *)kmalloc(sizeof(Slab), 1);
         slab->usingCnt = 0;
         slab->freeCnt = Page_2MSize / Slab_kmallocCache[id].size;
 
         slab->colCnt = slab->freeCnt;
         slab->colLen = upAlignTo(slab->colCnt, 64) / 64;
-        slab->colMap = (u64 *)kmalloc(slab->colLen * sizeof(u64), 0);
+        slab->colMap = (u64 *)kmalloc(slab->colLen * sizeof(u64), 1);
 
         slab->virtAddr = DMAS_phys2Virt(page2M->phyAddr);
         slab->page = page2M;
@@ -138,8 +142,12 @@ void Slab_pushNewSlab(int id) {
 void *kmalloc(u64 size, u64 arg) {
     IO_Func_maskIntrPreffix
     // printk(BLACK, WHITE, "kmalloc %08d\t", size);
+	if (!arg) SpinLock_lock(&_locker);
     int id = 0;
-    if (size > MM_Slab_maxSize) return NULL;
+    if (size > MM_Slab_maxSize) {
+		if (!arg) SpinLock_unlock(&_locker);
+		return NULL;
+	}
     while (Slab_kmallocCache[id].size < size) id++;
     Slab *slab = NULL;
     // find a slab with free memory block
@@ -160,6 +168,7 @@ void *kmalloc(u64 size, u64 arg) {
         Bit_set1(slab->colMap + (j >> 6), j & 63);
         slab->usingCnt++, slab->freeCnt--;
         Slab_kmallocCache[id].usingCnt++, Slab_kmallocCache[id].freeCnt--;
+		if (!arg) SpinLock_unlock(&_locker);
         IO_Func_maskIntrSuffix
 		#ifdef DEBUG_MM_ALLOC
         printk(GREEN, BLACK, "kmalloc(%#018lx, %#018lx)->%#018lx\n", size, arg, (u64)slab->virtAddr + j * Slab_kmallocCache[id].size);
@@ -167,6 +176,7 @@ void *kmalloc(u64 size, u64 arg) {
         return (void *)((u64)slab->virtAddr + j * Slab_kmallocCache[id].size);
     }
     printk(RED, BLACK, "kmalloc: invalid state\n");
+	if (!arg) SpinLock_unlock(&_locker);
     IO_Func_maskIntrSuffix
     return NULL;
 }

@@ -36,10 +36,55 @@ extern void machineCheck();
 extern void simdError();
 extern void virtualizationError();
 
+static int _lookupKallsyms(u64 address, int level)
+{
+	int index = 0;
+	int level_index = 0;
+	i8 *string = (i8 *)&kallsyms_names;
+	for(index = 0;index < kallsyms_syms_num;index++)
+		if(address >= kallsyms_addresses[index] && address < kallsyms_addresses[index+1])
+			break;
+	if(index < kallsyms_syms_num)
+	{
+		for(level_index = 0;level_index < level;level_index++)
+			printk(RED,BLACK,"  ");
+		printk(RED,BLACK,"+---> ");
+
+		printk(YELLOW,BLACK,"address:%#018lx \t(+) %04d function:%s\n",address,address - kallsyms_addresses[index],&string[kallsyms_index[index]]);
+		return 0;
+	}
+	else
+		return 1;
+}
+
+void _backtrace(PtReg *regs)
+{
+	u64 *rbp = (u64 *)regs->rbp;
+	u64 ret_address = regs->rip;
+	int i = 0;
+
+	printk(RED,BLACK,"====================== Task Struct Information =====================\n");
+	printk(RED,BLACK,"regs->rsp:%#018lx,current->thread->rsp0:%#018lx,current:%#018lx\n",
+		regs->rsp, Task_current->thread->rsp0, Task_current);
+	printk(RED,BLACK,"====================== Kernel Stack Backtrace ======================\n");
+
+	for(i = 0;i < 10;i++)
+	{
+		if (_lookupKallsyms(ret_address, i))
+			break; 
+		if ((u64)rbp < (u64)regs->rsp || (u64)rbp > Task_current->thread->rsp0)
+			break;
+
+		ret_address = *(rbp + 1);
+		rbp = (u64 *)*rbp;
+	}
+}
+
 static void _printRegs(u64 rsp) {
 	printk(WHITE, BLACK, "registers: \n");
 	for (int i = 0; i < sizeof(PtReg) / sizeof(u64); i++)
 		printk(WHITE, BLACK, "%6s = %#018lx%c", _regName[i], *(u64 *)(rsp + i * 8), (i + 1) % 8 == 0 ? '\n' : ' ');
+	_backtrace((PtReg *)rsp);
 }
 
 void doDivideError(u64 rsp, u64 errorCode) {
