@@ -1,12 +1,13 @@
 #include "rbtree.h"
 #include "memop.h"
+#include "../includes/log.h"
 
-#define parent(nd) 	((RBNode *)((nd)->unionParCol & ~3))
+#define parent(nd) 	((RBNode *)((nd)->unionParCol & ~3ul))
 #define color(nd) 	((nd)->unionParCol & 1)
 #define isRed(nd) 	(!color(nd))
 #define isBlack(nd) (color(nd))
-#define setRed(nd)		do { (nd)->unionParCol &= ~1; } while (0)
-#define setBlack(nd)	do { (nd)->unionParCol |= 1; } while (0)
+#define setRed(nd)		do { (nd)->unionParCol &= ~1ull; } while (0)
+#define setBlack(nd)	do { (nd)->unionParCol |= 1ull; } while (0)
 static inline void setParent(RBNode *node, RBNode *par) {
 	node->unionParCol = (node->unionParCol & 3) | (u64)par;
 }
@@ -16,10 +17,10 @@ static inline void setCol(RBNode *node, int col) {
 
 static void _rotLeft(RBTree *tree, RBNode *node) {
 	RBNode *right = node->right, *par = parent(node);
-	if ((node->right = right->left)) setParent(right->left, node);
+	if ((node->right = right->left) != NULL) setParent(right->left, node);
 	right->left = node;
 	setParent(right, par);
-	if (par) {
+	if (par != NULL) {
 		if (node == par->left) par->left = right;
 		else par->right = right;
 	} else tree->root = right;
@@ -28,10 +29,10 @@ static void _rotLeft(RBTree *tree, RBNode *node) {
 
 static void _rotRight(RBTree *tree, RBNode *node) {
 	RBNode *left = node->left, *par = parent(node);
-	if ((node->right = left->right)) setParent(left->right, node);
+	if ((node->right = left->right) != NULL) setParent(left->right, node);
 	left->right = node;
 	setParent(left, par);
-	if (par) {
+	if (par != NULL) {
 		if (node == par->right) par->right = left;
 		else par->left = left;
 	} else tree->root = left;
@@ -40,23 +41,38 @@ static void _rotRight(RBTree *tree, RBNode *node) {
 
 static void _linkNode(RBNode *node, RBNode *par) {
 	node->unionParCol = (u64)par;
-	node->left = node->right = 0;
+	node->left = node->right = NULL;
+}
+
+static void _debug(RBNode *node, int dep) {
+	if (node == NULL) return ;
+	for (int i = 0; i < dep; i++) printk(WHITE, BLACK, "  ");
+	printk(YELLOW, BLACK, "%c %#018lx\n", color(node), node);
+	_debug(node->left, dep + 1);
+	_debug(node->right, dep + 1);
+}
+
+void RBTree_debug(RBTree *tree) {
+	if (tree == NULL) return ;
+	SpinLock_lock(&tree->lock);
+	_debug(tree->root, 0);
+	SpinLock_unlock(&tree->lock);
 }
 
 void RBTree_init(RBTree *tree, RBTreeComparator comparator) {
 	SpinLock_init(&tree->lock);
-	tree->root = 0;
+	tree->root = NULL;
 	tree->comparator = comparator;
 }
 
 static void _fixAfterIns(RBTree *tree, RBNode *node) {
 	RBNode *par, *gPar;
-	while ((par = parent(node)) && isRed(par)) {
+	while ((par = parent(node)) != NULL && isRed(par)) {
 		gPar = parent(par);
 		if (par == gPar->left) {
 			{
 				register RBNode *uncle = gPar->right;
-				if (uncle && isRed(uncle)) {
+				if (uncle != NULL && isRed(uncle)) {
 					setBlack(uncle);
 					setBlack(par);
 					setRed(gPar);
@@ -75,10 +91,10 @@ static void _fixAfterIns(RBTree *tree, RBNode *node) {
 		} else {
 			{
 				register RBNode *uncle = gPar->left;
-				if (uncle && isRed(uncle)) {
+				if (uncle != NULL && isRed(uncle)) {
 					setBlack(uncle);
 					setBlack(par);
-					setBlack(gPar);
+					setRed(gPar);
 					node = gPar;
 					continue;
 				}
@@ -98,21 +114,25 @@ static void _fixAfterIns(RBTree *tree, RBNode *node) {
 
 void RBTree_insNode(RBTree *tree, RBNode *node) {
 	if (tree == NULL || node == NULL) return ;
+	printk(WHITE, BLACK, "RBTree_insNode(): tree:%#018lx node:%#018lx\t", tree, node);
 	SpinLock_lock(&tree->lock);
 	if (tree->root == NULL) {
 		tree->root = node;
 		node->left = node->right = NULL;
-		node->unionParCol = 0;
+		node->unionParCol = 1;
+		SpinLock_unlock(&tree->lock);
 		return ;
 	}
 	RBNode *par = tree->root;
 	while (1) {
 		if (tree->comparator(par, node)) {
+			printk(BLACK, WHITE, "R");
 			if (par->right == NULL) {
 				par->right = node;
 				break;
 			} else par = par->right;
 		} else {
+			printk(BLACK, WHITE, "L");
 			if (par->left == NULL) {
 				par->left = node;
 				break;
@@ -120,12 +140,14 @@ void RBTree_insNode(RBTree *tree, RBNode *node) {
 		}
 	}
 	_linkNode(node, par);
+	printk(YELLOW, BLACK, "par:%#018lx\n", par);
 	// rebalance
 	_fixAfterIns(tree, node);
+	_debug(tree->root, 0);
 	SpinLock_unlock(&tree->lock);
 }
 
-static _fixAfterDel(RBTree *tree, RBNode *node, RBNode *par) {
+static void _fixAfterDel(RBTree *tree, RBNode *node, RBNode *par) {
 	RBNode *other;
 	while ((!node || isBlack(node)) && node != tree->root) {
 		if (par->left == node) {
@@ -142,14 +164,54 @@ static _fixAfterDel(RBTree *tree, RBNode *node, RBNode *par) {
 				node = par;
 				par = parent(node);
 			} else {
-				
+				if (!other->right || isBlack(other->right)) {
+					setBlack(other->left);
+					setRed(other);
+					_rotRight(tree, other);
+					other = par->right;
+				}
+				setCol(other, color(par));
+				setBlack(par);
+				setBlack(other->right);
+				_rotLeft(tree, par);
+				node = tree->root;
+				break;
+			}
+		} else {
+			other = par->left;
+			if (isRed(other)) {
+				setBlack(other);
+				setRed(par);
+				_rotRight(tree, par);
+				other = par->left;
+			}
+			if ((!other->left || isBlack(other->left))
+					&& (!other->right || isBlack(other->right))) {
+				setRed(other);
+				node = par;
+				par = parent(node);
+			} else {
+				if (!other->left || isBlack(other->left)) {
+					setBlack(other->right);
+					setRed(other);
+					_rotLeft(tree, other);
+					other = par->left;
+				}
+				setCol(other, color(par));
+				setBlack(par);
+				setBlack(other->left);
+				_rotRight(tree, par);
+				node = tree->root;
+				break;
 			}
 		}
 	}
+	if (node) setBlack(node);
 }
 
 void RBTree_delNode(RBTree *tree, RBNode *node) {
 	if (tree == NULL || node == NULL) return ;
+	printk(WHITE, BLACK, "RBTree_delNode(): tree:%#018lx node:%#018lx\n", tree, node);
 	SpinLock_lock(&tree->lock);
 	RBNode *child, *par;
 	int col;
@@ -176,6 +238,8 @@ void RBTree_delNode(RBTree *tree, RBNode *node) {
 		node->unionParCol = old->unionParCol;
 		node->left = old->left;
 		setParent(old->left, node);
+
+		if (old == tree->root) tree->root = NULL;
 		goto rebalance;
 	}
 	par = parent(node);
@@ -185,7 +249,45 @@ void RBTree_delNode(RBTree *tree, RBNode *node) {
 		if (par->left == node) par->left = child;
 		else par->right = child;
 	} else tree->root = child;
+
+	if (node == tree->root) tree->root = NULL;
+
 	rebalance:
 	if (col == RBTree_Col_Black) _fixAfterDel(tree, child, par);
+	_debug(tree->root, 0);
 	SpinLock_unlock(&tree->lock);
+}
+
+RBNode *RBTree_getMin(RBTree *tree) {
+	if (tree == NULL || tree->root == NULL) return NULL;
+	SpinLock_lock(&tree->lock);
+	RBNode *res = tree->root;
+	while (res->left) res = res->left;
+	SpinLock_unlock(&tree->lock);
+	return res;
+}
+
+RBNode *RBTree_getMax(RBTree *tree) {
+	if (tree == NULL || tree->root == NULL) return NULL;
+	SpinLock_lock(&tree->lock);
+	RBNode *res = tree->root;
+	while (res->right) res = res->right;
+	SpinLock_unlock(&tree->lock);
+	return res;
+}
+
+RBNode *RBTree_getNext(RBTree *tree, RBNode *node) {
+	if (tree == NULL || tree->root == NULL) return NULL;
+	SpinLock_lock(&tree->lock);
+	RBNode *par;
+	if (node->right) {
+		node = node->right;
+		while (node->left) node = node->left;
+		SpinLock_unlock(&tree->lock);
+		return node;
+	}
+	while ((par = parent(node)) && node == par->right)
+		node = par;
+	SpinLock_unlock(&tree->lock);
+	return node;
 }

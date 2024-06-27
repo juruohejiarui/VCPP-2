@@ -138,7 +138,7 @@ void Intr_init() {
 }
 
 void Intr_setIstIndex(int ist) {
-	IO_Func_maskIntrPreffix
+	IO_maskIntrPreffix
 	for (int i = 32; i < 56; i++) Intr_Gate_setIntr(i, ist, intrList[i - 32]);
-	IO_Func_maskIntrSuffix
+	IO_maskIntrSuffix
 }

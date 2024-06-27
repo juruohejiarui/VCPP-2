@@ -43,7 +43,7 @@ u64 task0(u64 (*usrEntry)(u64), u64 arg) {
 u64 init(u64 (*usrEntry)(u64), u64 arg) {
 	Intr_SoftIrq_Timer_initIrq(&Task_current->scheduleTimer, 1, Task_updateCurState, NULL);
     Intr_SoftIrq_Timer_addIrq(&Task_current->scheduleTimer);
-	Task_current->state = Task_State_Running;    
+	Task_current->state = Task_State_Running;
     Task_switchToUsr(usrEntry, Task_current->pid << 32 | arg);
     return 1;
 }
@@ -53,7 +53,10 @@ u64 usrInit(u64 arg) {
     printk(WHITE, BLACK, "User level task is running, arg = %ld\n", arg);
     u64 res = Task_Syscall_usrAPI(arg, BLACK, WHITE, (u64)"Up Down Up Down baba", 20, 5);
     printk(WHITE, BLACK, "syscall, res: %ld\n", res);
-    while (1) ;
+    while (1) {
+		for (int i = 1; i <= 100000000; i++) ;
+		Task_Syscall_usrAPI(1, BLACK, WHITE, (u64)"User Task[doge]", 20, 5);
+	}
 }
 
 u64 Task_doExit(u64 arg) {

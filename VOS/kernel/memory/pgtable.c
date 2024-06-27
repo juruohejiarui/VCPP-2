@@ -14,7 +14,7 @@ static Page *cachePool[PGTable_maxCacheSize];
 static int cachePoolSize = 0, cacheSize;
 
 u64 MM_PageTable_alloc() {
-    IO_Func_maskIntrPreffix
+    IO_maskIntrPreffix
 	SpinLock_lock(&_locker);
     // find a page for page table
     Page *page = cachePool[cachePoolSize - 1];
@@ -33,9 +33,9 @@ u64 MM_PageTable_alloc() {
         }
         cacheSize += 0x1000;
     }
-    memset(DMAS_phys2Virt(page->phyAddr), 0, 512 * sizeof(u64));
 	SpinLock_unlock(&_locker);
-    IO_Func_maskIntrSuffix
+    IO_maskIntrSuffix
+    memset(DMAS_phys2Virt(page->phyAddr), 0, 512 * sizeof(u64));
     return page->phyAddr;
 }
 

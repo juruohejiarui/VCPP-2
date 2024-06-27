@@ -71,7 +71,7 @@ void Task_switch(TaskStruct *next);
 
 void Task_initMgr();
 
-void Task_updateCurState();
+void Task_updateCurState(TimerIrq *timerIrq, void *data);
 
 TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntry)(u64), u64 arg, u64 flag);
 

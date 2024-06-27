@@ -125,11 +125,11 @@ static inline void _divPageFrame(Page *page, int fr, int to) {
 }
 
 Page *MM_Buddy_alloc(u64 log2Size, u64 attr) {
-    IO_Func_maskIntrPreffix
+    IO_maskIntrPreffix
 	SpinLock_lock(&_locker);
     if (log2Size > Buddy_maxOrder) {
 		printk(RED, BLACK, "MM_Buddy_alloc: request too large(log2Size:%ld)\n", log2Size);
-		IO_Func_maskIntrSuffix
+		IO_maskIntrSuffix
 		SpinLock_unlock(&_locker);
 		return NULL;
 	}
@@ -139,7 +139,7 @@ Page *MM_Buddy_alloc(u64 log2Size, u64 attr) {
         // divide this page frame
         _divPageFrame(headPage, ord, log2Size);
         headPage->attr |= attr;
-		IO_Func_maskIntrSuffix
+		IO_maskIntrSuffix
 		#ifdef DEBUG_MM_ALLOC
         printk(GREEN, BLACK, "MM_Buddy_alloc(%d)->%p [%#018lx,%#018lx]\t", log2Size, headPage, headPage->phyAddr, headPage->phyAddr + (1 << (log2Size + Page_4KShift)) - 1);
 		#endif
@@ -148,19 +148,19 @@ Page *MM_Buddy_alloc(u64 log2Size, u64 attr) {
 			while (1) IO_hlt();
 		}
 		SpinLock_unlock(&_locker);
-		IO_Func_maskIntrSuffix
+		IO_maskIntrSuffix
         return headPage;
     }
 	SpinLock_unlock(&_locker);
-    IO_Func_maskIntrSuffix
+    IO_maskIntrSuffix
     return NULL;
 }
 
 Page *MM_Buddy_alloc4G(u64 log2Size, u64 attr) {
-	IO_Func_maskIntrPreffix
+	IO_maskIntrPreffix
 	SpinLock_lock(&_locker);
 	if (log2Size > Buddy_maxOrder) {
-		IO_Func_maskIntrSuffix
+		IO_maskIntrSuffix
 		SpinLock_unlock(&_locker);
 		return NULL;
 	}
@@ -184,23 +184,23 @@ Page *MM_Buddy_alloc4G(u64 log2Size, u64 attr) {
 		page->attr |= attr;
 
 		SpinLock_unlock(&_locker);
-		IO_Func_maskIntrSuffix
+		IO_maskIntrSuffix
 		return page;
 	}
 	SpinLock_unlock(&_locker);
-	IO_Func_maskIntrSuffix
+	IO_maskIntrSuffix
 	return NULL;
 }
 
 void MM_Buddy_free(Page *pages) {
-    IO_Func_maskIntrPreffix
+    IO_maskIntrPreffix
 	SpinLock_lock(&_locker);
 	#ifdef DEBUG_MM_ALLOC
     printk(RED, BLACK, "MM_Buddy_free(%p)\n", pages);
 	#endif
     if (pages == NULL || (pages->attr & Page_Flag_BuddyHeadPage) == 0) {
 		SpinLock_unlock(&_locker);
-    	IO_Func_maskIntrSuffix
+    	IO_maskIntrSuffix
 		return;
 	}
     List_del(&pages->listEle);
@@ -223,7 +223,7 @@ void MM_Buddy_free(Page *pages) {
     }
     _insNewFreePageFrame(MM_Buddy_getOrder(pages), pages);
 	SpinLock_unlock(&_locker);
-    IO_Func_maskIntrSuffix
+    IO_maskIntrSuffix
 }
 
 void MM_Buddy_debugLog(int range) {

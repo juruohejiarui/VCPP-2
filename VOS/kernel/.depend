@@ -132,7 +132,7 @@ lib/spinlock.o : lib/spinlock.c lib/spinlock.h lib/ds.h
 lib/algorithm.o : lib/algorithm.c lib/algorithm.h lib/ds.h 
 	$(CC) $(CFLAGS) -c lib/algorithm.c -o lib/algorithm.o 
 
-lib/rbtree.o : lib/rbtree.c lib/rbtree.h lib/ds.h lib/spinlock.h lib/memop.h includes/memory.h memory/desc.h includes/lib.h includes/config.h lib/io.h lib/algorithm.h memory/DMAS.h memory/pgtable.h memory/buddy.h memory/SLAB.h includes/log.h includes/linkage.h 
+lib/rbtree.o : lib/rbtree.c lib/rbtree.h lib/ds.h lib/spinlock.h lib/memop.h includes/log.h includes/linkage.h includes/lib.h includes/config.h lib/io.h lib/algorithm.h 
 	$(CC) $(CFLAGS) -c lib/rbtree.c -o lib/rbtree.o 
 
 ALLOBJS = head.o memory/croper.o memory/DMAS.o memory/initmm.o memory/SLAB.o memory/pgtable.o memory/buddy.o hardware/8259A.o hardware/PCIe/desc.o hardware/PCIe/PCIe.o hardware/keyboard/scancode.o hardware/keyboard/keyboard.o hardware/UEFI.o hardware/APIC.o hardware/cpu.o hardware/timer/hpet.o hardware/timer/timer.o hardware/timer/cmos.o hardware/hardware.o hardware/USB/XHCI/ringop.o hardware/USB/XHCI/thread.o hardware/USB/XHCI/XHCI.o hardware/USB/UHCI.o hardware/USB/glo.o hardware/USB/EHCI.o interrupt/softirq/softirq.o interrupt/softirq/timer.o interrupt/trap.o interrupt/gate.o interrupt/interrupt.o interrupt/entry.o task/syscall.o task/inittask.o task/switch.o task/mgr.o task/entry.o main.o log/printk.o lib/ds.o lib/memop.o lib/io.o lib/spinlock.o lib/algorithm.o lib/rbtree.o 

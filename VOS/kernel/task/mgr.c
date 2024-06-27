@@ -4,6 +4,8 @@
 extern void Task_kernelThreadEntry();
 extern void restoreAll();
 
+extern volatile int Global_state;
+
 int Task_pidCounter;
 
 void Task_checkPtRegInStack(u64 rsp) {
@@ -75,17 +77,22 @@ void Task_switchTo_inner(TaskStruct *prev, TaskStruct *next) {
 i64 _weight[50] = { 1, 2, 3, 4, 5, [5 ... 49] = -1 };
 
 struct CFS_rq {
-    TaskStruct *next[50];
     RBTree tree;
 	SpinLock locker;
 } _CFSstruct;
 
+static int _CFSTree_comparator(RBNode *a, RBNode *b) {
+	TaskStruct *task1 = container(a, TaskStruct, wNode), *task2 = container(b, TaskStruct, wNode);
+	printk(WHITE, BLACK, "%#018lx.%ld %#018lx.%ld ", task1, task1->vRunTime, task2, task2->vRunTime);
+	return task1->vRunTime != task2->vRunTime ? (task1->vRunTime < task2->vRunTime) : (task1->pid < task2->pid);
+}
+
 void Task_initMgr() {
-    RBTree_init(&_CFSstruct.tree);
+    RBTree_init(&_CFSstruct.tree, _CFSTree_comparator);
 	SpinLock_init(&_CFSstruct.locker);
 }
 
-void Task_updateCurState() {
+void Task_updateCurState(TimerIrq *timerIrq, void *data) {
     // update the vRunTime and then check if needs schedule
     Task_current->vRunTime += _weight[Task_current->priority];
     Task_current->state = Task_State_NeedSchedule;
@@ -96,17 +103,18 @@ void Task_schedule() {
 	SpinLock_lock(&_CFSstruct.locker);
 
 	// add back the sceduleTimer
-	Intr_SoftIrq_Timer_initIrq(&Task_current->scheduleTimer, 1, Task_updateCurState, NULL);
+	Intr_SoftIrq_Timer_initIrq(&Task_current->scheduleTimer, 10000, Task_updateCurState, NULL);
     Intr_SoftIrq_Timer_addIrq(&Task_current->scheduleTimer);
 
 	// insert this task into the waiting tree
     TaskStruct *dmasPtr = (TaskStruct *)DMAS_phys2Virt(MM_PageTable_getPldEntry(getCR3(), (u64)Task_current) & ~0xfff);
-	RBTree_insert(&_CFSstruct.tree, Task_current->vRunTime, &dmasPtr->listEle);
+	printk(WHITE, BLACK, "%#018lx.vRunTime->%ld\n", dmasPtr, dmasPtr->vRunTime);
+	RBTree_insNode(&_CFSstruct.tree, &dmasPtr->wNode);
 
 	// get the task with least vRuntime
     RBNode *leftMost = RBTree_getMin(&_CFSstruct.tree);
-    TaskStruct *next = container(leftMost->head.next, TaskStruct, listEle);
-    RBTree_del(&_CFSstruct.tree, leftMost->val);
+    TaskStruct *next = container(leftMost, TaskStruct, wNode);
+    RBTree_delNode(&_CFSstruct.tree, leftMost);
 
 	SpinLock_unlock(&_CFSstruct.locker);
     Task_switch(next);
@@ -128,7 +136,7 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntr
 	printk(WHITE, BLACK, "task=%#018lx ", task);
 
 	task->flags = flag;
-    task->vRunTime = 1;
+    task->vRunTime = 0;
     task->pid = Task_pidCounter++;
 	printk(WHITE, BLACK, "pid:%ld ", task->pid);
     task->mem->pgd = DMAS_phys2Virt(pgdPhyAddr);
@@ -142,6 +150,8 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntr
 	task->tss->ist2 = Task_intrStackEnd;
 	task->tss->ist3 = task->tss->ist4 = task->tss->ist5 = task->tss->ist6 = task->tss->ist7 = Task_intrStackEnd;
 	task->tss->rsp0 = task->tss->rsp1 = task->tss->rsp2 = Task_kernelStackEnd;
+
+	task->vRunTime = (Global_state ? Task_current->vRunTime : 0);
 
     *thread = Init_thread;
     thread->rip = (u64)Task_kernelThreadEntry;
@@ -198,14 +208,13 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntr
 		// copy the data into the stack
 		memcpy(&regs, (u64 *)DMAS_phys2Virt(lstPage->phyAddr + Page_4KSize - 16 - sizeof(PtReg)), sizeof(PtReg));
 	}
-	RBTree_init(&task->timerTree);
+	RBTree_init(&task->timerTree, Intr_SoftIrq_Timer_comparator);
     if (task->pid > 0) {
-		IO_Func_maskIntrPreffix
+		IO_maskIntrPreffix
 		SpinLock_lock(&_CFSstruct.locker);
-		RBTree_insert(&_CFSstruct.tree, 0, &task->listEle);
-		RBTree_debug(&_CFSstruct.tree);
+		RBTree_insNode(&_CFSstruct.tree, &task->wNode);
 		SpinLock_unlock(&_CFSstruct.locker);
-		IO_Func_maskIntrSuffix
+		IO_maskIntrSuffix
 	}
 	printk(WHITE, BLACK, "finish creating...\n");
     return task;

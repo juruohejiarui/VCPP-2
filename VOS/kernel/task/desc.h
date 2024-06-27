@@ -60,8 +60,9 @@ typedef struct tmpTaskStruct {
     u64 flags;
     RBTree timerTree;
     i64 pid, vRunTime, signal, priority;
-
-    TimerIrq scheduleTimer, delayTimer;
+    TimerIrq scheduleTimer;
+	// the rb node for CFStree
+	RBNode wNode;
 } __attribute__((packed)) TaskStruct; 
 
 union TaskUnion {

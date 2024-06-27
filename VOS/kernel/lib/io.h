@@ -32,11 +32,11 @@ u64 IO_readMSR(u64 msrAddr);
 #define IO_hlt() __asm__ volatile ("hlt \n\t" : : : "memory")
 #define IO_nop() __asm__ volatile ("nop \n\t" : : : "memory")
 
-#define IO_Func_maskIntrPreffix \
+#define IO_maskIntrPreffix \
 	int __prevFlag = (IO_getRflags() >> 9) & 1; \
 	if (__prevFlag) IO_cli();
 
-#define IO_Func_maskIntrSuffix \
+#define IO_maskIntrSuffix \
 	if (__prevFlag) IO_sti();
 
 u64 IO_getRIP();
