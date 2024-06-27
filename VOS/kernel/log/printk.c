@@ -284,7 +284,7 @@ void printk(unsigned int fcol, unsigned int bcol, const char *fmt, ...) {
     len = sprintf(buf, fmt, args);
     va_end(args);
     if (Task_getRing() == 0) printStr(fcol, bcol, buf, len);
-    else Task_Syscall_usrAPI(1, fcol, bcol, (u64)buf, len, 0);
+    else Task_Syscall_usrAPI(1, fcol, bcol, (u64)buf, len, 0, 0);
 }
 
 u64 Syscall_clearScreen(u64 _1, u64 _2, u64 _3, u64 _4, u64 _5) {

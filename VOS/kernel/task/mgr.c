@@ -211,7 +211,6 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntr
 		IO_maskIntrPreffix
 		SpinLock_lock(&_CFSstruct.locker);
 		RBTree_insNode(&_CFSstruct.tree, &task->wNode);
-        RBTree_debug(&_CFSstruct.tree);
 		SpinLock_unlock(&_CFSstruct.locker);
 		IO_maskIntrSuffix
 	}
