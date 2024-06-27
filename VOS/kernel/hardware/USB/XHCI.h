@@ -557,6 +557,6 @@ extern List HW_USB_XHCI_mgrList;
 /// @return 1: initialzation success, 0: initialization failed
 int HW_USB_XHCI_Init(PCIeConfig *xhci);
 
-void HW_USB_XHCI_thread(USB_XHCIController *ctrl);
+u64 HW_USB_XHCI_thread(u64 (*_)(u64), u64 ctrlAddr);
 
 #endif

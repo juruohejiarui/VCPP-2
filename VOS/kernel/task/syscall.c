@@ -30,12 +30,21 @@ u64 Syscall_abort(u64 intrId, u64 arg2, u64 arg3, u64 arg4, u64 arg5) {
     return 0;
 }
 
+u64 Syscall_mdelay(u64 msec, u64 arg2, u64 arg3, u64 arg4, u64 arg5) {
+    if (!(IO_getRflags() & (1 << 9))) {
+        printk(RED, BLACK, "interrupt is blocked, unable to execute mdelay()\n");
+        return -1;
+    }
+    Intr_SoftIrq_Timer_mdelay(msec);
+    return 0;
+}
+
 typedef u64 (*Syscall)(u64, u64, u64, u64, u64);
 Syscall Syscall_list[Syscall_num] = { 
     [0] = Syscall_abort,
     [1] = Syscall_printStr,
 	[2] = Syscall_divZero,
-	[3] = Syscall_noSystemCall,
+	[3] = Syscall_mdelay,
     [4 ... Syscall_num - 1] = Syscall_noSystemCall };
 
 u64 Syscall_handler(u64 index, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 arg5) {

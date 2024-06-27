@@ -45,7 +45,9 @@ void _doTimer(void *data) {
 	u64 jiffies = HW_Timer_HPET_jiffies();
 	while (minNode != NULL && (irq = container(minNode, TimerIrq, rbNode))->expireJiffies <= jiffies) {
 		// execute the function
+		if (__prevFlag) IO_sti();
 		irq->func(irq, irq->data);
+		if (__prevFlag) IO_cli();
 		RBNode *nxt = RBTree_getNext(&Task_current->timerTree, minNode);
 		RBTree_delNode(&Task_current->timerTree, minNode);
 		minNode = nxt;

@@ -83,7 +83,6 @@ struct CFS_rq {
 
 static int _CFSTree_comparator(RBNode *a, RBNode *b) {
 	TaskStruct *task1 = container(a, TaskStruct, wNode), *task2 = container(b, TaskStruct, wNode);
-	printk(WHITE, BLACK, "%#018lx.%ld %#018lx.%ld ", task1, task1->vRunTime, task2, task2->vRunTime);
 	return task1->vRunTime != task2->vRunTime ? (task1->vRunTime < task2->vRunTime) : (task1->pid < task2->pid);
 }
 
@@ -103,12 +102,11 @@ void Task_schedule() {
 	SpinLock_lock(&_CFSstruct.locker);
 
 	// add back the sceduleTimer
-	Intr_SoftIrq_Timer_initIrq(&Task_current->scheduleTimer, 10000, Task_updateCurState, NULL);
+	Intr_SoftIrq_Timer_initIrq(&Task_current->scheduleTimer, 1, Task_updateCurState, NULL);
     Intr_SoftIrq_Timer_addIrq(&Task_current->scheduleTimer);
 
 	// insert this task into the waiting tree
     TaskStruct *dmasPtr = (TaskStruct *)DMAS_phys2Virt(MM_PageTable_getPldEntry(getCR3(), (u64)Task_current) & ~0xfff);
-	printk(WHITE, BLACK, "%#018lx.vRunTime->%ld\n", dmasPtr, dmasPtr->vRunTime);
 	RBTree_insNode(&_CFSstruct.tree, &dmasPtr->wNode);
 
 	// get the task with least vRuntime
@@ -213,6 +211,7 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntr
 		IO_maskIntrPreffix
 		SpinLock_lock(&_CFSstruct.locker);
 		RBTree_insNode(&_CFSstruct.tree, &task->wNode);
+        RBTree_debug(&_CFSstruct.tree);
 		SpinLock_unlock(&_CFSstruct.locker);
 		IO_maskIntrSuffix
 	}

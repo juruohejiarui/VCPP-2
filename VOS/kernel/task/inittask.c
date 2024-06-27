@@ -37,6 +37,8 @@ u64 task0(u64 (*usrEntry)(u64), u64 arg) {
 	// launch keyboard task
 	Global_state = 1;
 	TaskStruct *kbTask = Task_createTask(Task_keyboardEvent, NULL, 0, Task_Flag_Inner | Task_Flag_Kernel);
+	for (List *list = HW_USB_XHCI_mgrList.next; list != &HW_USB_XHCI_mgrList; list = list->next)
+		Task_createTask(HW_USB_XHCI_thread, NULL, (u64)container(list, USB_XHCIController, listEle), Task_Flag_Inner | Task_Flag_Kernel);
 	while (1) IO_hlt();
 }
 
@@ -54,8 +56,8 @@ u64 usrInit(u64 arg) {
     u64 res = Task_Syscall_usrAPI(arg, BLACK, WHITE, (u64)"Up Down Up Down baba", 20, 5);
     printk(WHITE, BLACK, "syscall, res: %ld\n", res);
     while (1) {
-		for (int i = 1; i <= 100000000; i++) ;
-		Task_Syscall_usrAPI(1, BLACK, WHITE, (u64)"User Task[doge]", 20, 5);
+		Task_Syscall_usrAPI(3, 1000, 0, 0, 0, 0);
+		Task_Syscall_usrAPI(1, BLACK, WHITE, (u64)"User Task[doge]", 16, 5);
 	}
 }
 

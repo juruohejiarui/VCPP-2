@@ -306,7 +306,7 @@ int _simpleTest(USB_XHCIController *ctrl) {
 	// write a no operation TRB to the first interrupter and wait for event
 	USB_XHCI_GenerTRB *trb = _getNextCmdTRB(ctrl);
 	/// ----------------- Simple Test --------------------
-	for (int loopId = 0; loopId < 4096 + 500; loopId++, trb = _getNextCmdTRB(ctrl)) {
+	for (int loopId = 0; loopId < 1024; loopId++, trb = _getNextCmdTRB(ctrl)) {
 		trb->dw3.ctx.trbType = HW_USB_TrbType_NoOpCmd;
 		trb->dw3.ctx.cycle = ctrl->cmdRingFlag.cycleBit;
 		IO_mfence();
