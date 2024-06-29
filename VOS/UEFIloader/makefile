@@ -1,2 +1,0 @@
-.DEFAULT_GOAL = all
-

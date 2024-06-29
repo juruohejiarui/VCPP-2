@@ -90,13 +90,6 @@ void MM_PageTable_init() {
 				addr += Page_4KSize;
 		}
 	}
-	u64 *pmdEntry = DMAS_phys2Virt(0x103000);
-	for (u64 addr = 0;
-				addr < HW_UEFI_bootParamInfo->graphicsInfo.FrameBufferSize;
-				addr += Page_2MSize) {
-			*(pmdEntry + addr / Page_2MSize + 24) = (addr + HW_UEFI_bootParamInfo->graphicsInfo.FrameBufferBase) | 0x87;
-			printk(WHITE, BLACK, "Display Map: %#018lx->%#018lx\n", pmdEntry + addr / Page_2MSize + 24, addr + HW_UEFI_bootParamInfo->graphicsInfo.FrameBufferBase);
-		}
 	flushTLB();
 }
 

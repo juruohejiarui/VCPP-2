@@ -13,6 +13,14 @@
 #define _HCCP1_AC64		0
 #define _HCPP1_PWRCTRL	3
 
+#define UsbState_EveIntr		(1 << 3)
+#define UsbState_PortChange		(1 << 4)
+
+#define Port_StatusCtrl_ConnectChange 	(1 << 17)
+#define Port_StatusCtrl_Power			(1 << 9)
+#define Port_StatusCtrl_GenerAllEve		((1 << 25) | (1 << 26) | (1 << 27))
+#define Port_StatusCtrl_Reserved		((1 << 2) | (1 << 28) | (1 << 29))
+
 static inline u64 maxScratchBufs(USB_XHCIController *ctrl) {
 	u64 higt = ctrl->capRegs->hcsParams2 >> 21 & 0x1f,
 		low = ctrl->capRegs->hcsParams2 >> 27 & 0x1f;

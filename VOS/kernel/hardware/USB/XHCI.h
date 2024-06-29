@@ -521,6 +521,20 @@ typedef struct {
 	List listEle;
 } __attribute__ ((packed)) USB_XHCI_MemUsage;
 
+#define USB_XHCI_Req_Type_Cmd	1
+
+typedef struct {
+	List listEle;
+	int type;
+} USB_XHCI_ReqHeader;
+
+typedef struct {
+	USB_XHCI_ReqHeader header;
+	u64 data;
+	u8 slot;
+	
+} USB_XHCI_ReqCmd;
+
 typedef struct {
 	Device dev;
 	PCIeConfig *config;
@@ -539,6 +553,8 @@ typedef struct {
 	USB_XHCI_RingFlag *eveRingFlag;
 	USB_XHCI_RingFlag cmdRingFlag;
 	u64 *cmdsFlag;
+
+	List witReqList;
 } USB_XHCIController;
 
 #define USB_XHCI_ExtCap_Id_Legacy 	0x01

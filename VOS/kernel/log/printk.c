@@ -13,7 +13,7 @@ static unsigned int *_bufAddr;
 static SpinLock _locker;
 
 void Log_enableBuf() {
-    u64 pixelSize = HW_UEFI_bootParamInfo->graphicsInfo.FrameBufferSize;
+    u64 pixelSize = HW_UEFI_bootParamInfo->graphicsInfo.VerticalResolution * HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine * sizeof(u32);
     _bufAddr = DMAS_phys2Virt(MM_Buddy_alloc(max(log2Ceil(pixelSize) - 12, 0), Page_Flag_Active | Page_Flag_Kernel)->phyAddr);
     memcpy(position.FBAddr, _bufAddr, pixelSize);
     printk(WHITE, BLACK, "buf:%#018lx size:%ld->2^%d 4k pages\n", _bufAddr, pixelSize, max(log2Ceil(pixelSize) - 12, 0));
@@ -21,6 +21,7 @@ void Log_enableBuf() {
 
 void Log_init() {
     _bufAddr = NULL;
+    memset(lineLength, 0, sizeof(lineLength));
 	SpinLock_init(&_locker);
 }
 
@@ -259,21 +260,23 @@ void printStr(unsigned int fcol, unsigned int bcol, const char *str, int len) {
     // close the interrupt if it is open now
 	u64 prevState = (IO_getRflags() >> 9) & 1;
 	if (prevState) IO_cli();
-	// SpinLock_lock(&_locker);
+	SpinLock_lock(&_locker);
     while (len--) putchar(fcol, bcol, *str++);
-	// SpinLock_unlock(&_locker);
+	SpinLock_unlock(&_locker);
     if (prevState) IO_sti();
 }
 
 void clearScreen() {
 	u64 prevState = (IO_getRflags() >> 9) & 1;
 	if (prevState) IO_cli();
+    SpinLock_lock(&_locker);
 	memset(position.FBAddr, 0, (position.YPosition + 1) * position.YCharSize * HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine * sizeof(u32));
    	if (_bufAddr != NULL)
 		memset(_bufAddr, 0, (position.YPosition + 1) * position.YCharSize * HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine * sizeof(u32));
 	memset(lineLength, 0, 4096 * sizeof(u32));
 	position.XPosition = 0, position.YPosition = 0;
-	 if (prevState) IO_sti();
+	SpinLock_unlock(&_locker);
+	if (prevState) IO_sti();
 }
 
 void printk(unsigned int fcol, unsigned int bcol, const char *fmt, ...) {

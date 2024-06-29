@@ -1,5 +1,6 @@
 #include "../XHCI.h"
 #include "inner.h"
+#include "ringop.h"
 #include "../../../includes/interrupt.h"
 #include "../../../includes/memory.h"
 #include "../../../includes/log.h"
@@ -31,7 +32,6 @@ static void *_alloc(USB_XHCIController *ctrl, u64 size) {
 	return NULL;
 }
 
-
 static void _free(USB_XHCIController *ctrl) {
 	// free all pages
 	USB_XHCI_MemUsage *usage;
@@ -47,50 +47,6 @@ static void _free(USB_XHCIController *ctrl) {
 USB_XHCI_ExtCapEntry *_getNextExtCap(USB_XHCI_ExtCapEntry *extCap) {
 	if (extCap->nxtOff == 0) return NULL;
 	return (USB_XHCI_ExtCapEntry *)((u64)extCap + extCap->nxtOff * 4);
-}
-
-// get the next Event TRB from event ring
-static USB_XHCI_GenerTRB *_getNextEventTRB(USB_XHCIController *ctrl, int intrId) {
-	USB_XHCI_GenerTRB *trb = 
-		(USB_XHCI_GenerTRB *)DMAS_phys2Virt(ctrl->eveRingSegTbls[intrId][ctrl->eveRingFlag[intrId].segId].addr)
-			+ ctrl->eveRingFlag[intrId].pos;
-	ctrl->rtRegs->intrRegs[intrId].eveDeqPtr |= 0x8;
-	IO_mfence();
-	printk(WHITE, BLACK, "evePos:%d ", ctrl->eveRingFlag[intrId].pos);
-	if (trb->dw3.ctx.cycle != ctrl->eveRingFlag[intrId].cycleBit) return printk(YELLOW, BLACK, "XHCI: %#018lx: Event Ring [%d] Empty...", ctrl, intrId), NULL;
-	// get next ptr
-	ctrl->eveRingFlag[intrId].pos++;
-	// write the nextPtr
-	ctrl->rtRegs->intrRegs[intrId].eveDeqPtr = DMAS_virt2Phys(trb) + sizeof(USB_XHCI_GenerTRB) | (ctrl->eveRingFlag[intrId].segId & 0x7);
-	if (ctrl->eveRingFlag[intrId].pos == HW_USB_XHCI_RingEntryNum) {
-		// switch to next segment
-		ctrl->eveRingFlag[intrId].segId++;
-		ctrl->eveRingFlag[intrId].segId %= HW_USB_XHCI_EveRingSegTblSize;
-		ctrl->eveRingFlag[intrId].pos = 0;
-		if (!ctrl->eveRingFlag[intrId].segId) ctrl->eveRingFlag[intrId].cycleBit ^= 1;
-		ctrl->rtRegs->intrRegs[intrId].eveDeqPtr = 
-			ctrl->eveRingSegTbls[intrId][ctrl->eveRingFlag[intrId].segId].addr | (ctrl->eveRingFlag[intrId].segId & 0x7);
-	}
-	IO_mfence();
-	return trb;
-}
-
-// get the next cmd ring that should write to, return NULL if the command ring is full
-static USB_XHCI_GenerTRB *_getNextCmdTRB(USB_XHCIController *ctrl) {
-	USB_XHCI_GenerTRB *trb = &ctrl->cmdRing[ctrl->cmdRingFlag.pos];
-	printk(RED, BLACK, "cmdPos:%d trb0:%#018lx ", ctrl->cmdRingFlag.pos, trb);
-	// should loop back
-	if (trb->dw3.ctx.trbType == HW_USB_TrbType_Link) {
-		ctrl->cmdRingFlag.cycleBit ^= 1;
-		IO_mfence();
-		ctrl->cmdRingFlag.pos = 0;
-		trb = ctrl->cmdRing;
-	}
-	if ((ctrl->cmdsFlag[ctrl->cmdRingFlag.pos] & 1) == 0) return printk(YELLOW, BLACK, "XHCI: %#018lx: Command Ring Full...\n", ctrl), NULL;
-	ctrl->cmdsFlag[ctrl->cmdRingFlag.pos] ^= 1;
-	ctrl->cmdRingFlag.pos++;
-	printk(WHITE, BLACK, "trb1:%#018lx ", trb);
-	return trb;
 }
 
 /// @brief search the legacy support capability and set the os owned bit
@@ -233,7 +189,6 @@ static int _initMem(USB_XHCIController *ctrl) {
 		for (int i = 0; i < mxS; i++) {
 			void *buf = _alloc(ctrl, pageSize);
 			array[i] = (u64)DMAS_virt2Phys(buf);
-			printk(WHITE, BLACK, "\tbuf[%d]: %#018lx\n", i, buf);
 		}
 	}
 	_allocScratchBuf_end:
@@ -294,52 +249,8 @@ int _restartController(USB_XHCIController *ctrl) {
 		ctrl->rtRegs->intrRegs[i].mgrRegs = 0x3 | (ctrl->rtRegs->intrRegs[i].mgrRegs & (~0x3));
 	}
 	ctrl->opRegs->cmdRingCtrl = DMAS_virt2Phys(ctrl->cmdRing) | 0x3;
-	for (USB_XHCI_GenerTRB *eveTrb = _getNextEventTRB(ctrl, 0); eveTrb != NULL; eveTrb = _getNextEventTRB(ctrl, 0)) ;
-	return 1;
-}
-
-int _simpleTest(USB_XHCIController *ctrl) {
-	if (ctrl->opRegs->usbStatus & ((1 << 11) | (1 << 12) | (1 << 0))) {
-		printk(RED, BLACK, "XHCI: %#018lx: Simple test failed\n", ctrl);
-		return 0;
-	}
-	// write a no operation TRB to the first interrupter and wait for event
-	USB_XHCI_GenerTRB *trb = _getNextCmdTRB(ctrl);
-	/// ----------------- Simple Test --------------------
-	for (int loopId = 0; loopId < 1024; loopId++, trb = _getNextCmdTRB(ctrl)) {
-		trb->dw3.ctx.trbType = HW_USB_TrbType_NoOpCmd;
-		trb->dw3.ctx.cycle = ctrl->cmdRingFlag.cycleBit;
-		IO_mfence();
-		ctrl->dbRegs->cmd = 0;
-		IO_mfence();
-		for (i32 remain = 300; remain > 0; remain--) {
-			Intr_SoftIrq_Timer_mdelay(2);
-			if ((ctrl->opRegs->usbStatus & (1 << 3)) && (ctrl->rtRegs->intrRegs[0].mgrRegs & 1))
-				break;
-		}
-		if (!((ctrl->opRegs->usbStatus & (1 << 3)) && (ctrl->rtRegs->intrRegs[0].mgrRegs & 1))) {
-			printk(RED, BLACK, "\nXHCI: %#018lx: Simple test failed, no interrupt. state:%#010x\n", ctrl, ctrl->opRegs->usbStatus);
-			return 0;
-		}
-		printk(WHITE, BLACK, "usbState:%#010x ", ctrl->opRegs->usbStatus);
-		ctrl->opRegs->usbStatus = (1 << 3);
-		ctrl->rtRegs->intrRegs[0].mgrRegs |= 0x3;
-		IO_mfence();
-		USB_XHCI_GenerTRB *eveTrb = _getNextEventTRB(ctrl, 0);
-		printk(WHITE, BLACK, "%#018lx ", eveTrb);
-		if (eveTrb->dw3.ctx.trbType != 33 || DMAS_phys2Virt(*(u64 *)&eveTrb->dw[0]) != (void *)trb || ((eveTrb->dw[2] >> 24) != 1)) {
-			printk(RED, BLACK, "\nXHCI: %#018lx: Simple test failed, event TRB is invalid.\n", ctrl);
-			printk(ORANGE, BLACK, "EventTRB: %#018lx(type:%d,ptr:%#018lx,code:%d,cycle:%d) trb:%#018lx\n", 
-				eveTrb, eveTrb->dw3.ctx.trbType, *(u64 *)&eveTrb->dw[0], (eveTrb->dw[2] >> 24), (u32)eveTrb->dw3.ctx.cycle, trb);
-			return 0;
-		}
-		USB_XHCI_GenerTRB *cmdTrb = (USB_XHCI_GenerTRB *)DMAS_phys2Virt(*(u64 *)&eveTrb->dw[0]);
-		
-		int cmdId = cmdTrb - ctrl->cmdRing;
-		ctrl->cmdsFlag[cmdId] ^= 1;
-		printk(GREEN, BLACK, " %04d\r", loopId);
-	}
-	printk(GREEN, BLACK, "\nXHCI: %#018lx: Simple test passed. Has enabled this controller\n", ctrl);
+	for (USB_XHCI_GenerTRB *eveTrb = HW_USB_XHCI_getNextEveTRB(ctrl, 0); eveTrb != NULL; eveTrb = HW_USB_XHCI_getNextEveTRB(ctrl, 0)) ;
+	ctrl->opRegs->usbStatus = 0x8;
 	return 1;
 }
 
@@ -351,6 +262,8 @@ int HW_USB_XHCI_Init(PCIeConfig *xhci) {
 	ctrl->dev.install = NULL;
 	ctrl->dev.uninstall = NULL;
 	ctrl->dev.free = (void (*)(Device *))_free;
+
+	List_init(&ctrl->witReqList);
 
 	ctrl->config = xhci;
 	u64 addr = (xhci->type.type0.bar[0] | (((u64)xhci->type.type0.bar[1]) << 32)) & ~0xffful;
@@ -389,9 +302,6 @@ int HW_USB_XHCI_Init(PCIeConfig *xhci) {
 	if (!state) { ctrl->dev.free((Device *)ctrl); kfree(ctrl); return 0; }
 
 	state = _restartController(ctrl);
-	if (!state) { ctrl->dev.free((Device *)ctrl); kfree(ctrl); return 0; }
-
-	state = _simpleTest(ctrl);
 	if (!state) { ctrl->dev.free((Device *)ctrl); kfree(ctrl); return 0; }
 
 	List_insBefore(&ctrl->listEle, &HW_USB_XHCI_mgrList);

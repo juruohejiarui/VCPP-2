@@ -2,14 +2,13 @@
 #include "../../../includes/log.h"
 
 // get the next Event TRB from event ring
-static USB_XHCI_GenerTRB *_getNextEventTRB(USB_XHCIController *ctrl, int intrId) {
+USB_XHCI_GenerTRB *HW_USB_XHCI_getNextEveTRB(USB_XHCIController *ctrl, int intrId) {
 	USB_XHCI_GenerTRB *trb = 
 		(USB_XHCI_GenerTRB *)DMAS_phys2Virt(ctrl->eveRingSegTbls[intrId][ctrl->eveRingFlag[intrId].segId].addr)
 			+ ctrl->eveRingFlag[intrId].pos;
 	ctrl->rtRegs->intrRegs[intrId].eveDeqPtr |= 0x8;
 	IO_mfence();
-	printk(WHITE, BLACK, "evePos:%d ", ctrl->eveRingFlag[intrId].pos);
-	if (trb->dw3.ctx.cycle != ctrl->eveRingFlag[intrId].cycleBit) return printk(YELLOW, BLACK, "XHCI: %#018lx: Event Ring [%d] Empty...", ctrl, intrId), NULL;
+	if (trb->dw3.ctx.cycle != ctrl->eveRingFlag[intrId].cycleBit) return NULL;
 	// get next ptr
 	ctrl->eveRingFlag[intrId].pos++;
 	// write the nextPtr
@@ -28,7 +27,7 @@ static USB_XHCI_GenerTRB *_getNextEventTRB(USB_XHCIController *ctrl, int intrId)
 }
 
 // get the next cmd ring that should write to, return NULL if the command ring is full
-static USB_XHCI_GenerTRB *_getNextCmdTRB(USB_XHCIController *ctrl) {
+USB_XHCI_GenerTRB *HW_USB_XHCI_getNextCmdTRB(USB_XHCIController *ctrl) {
 	USB_XHCI_GenerTRB *trb = &ctrl->cmdRing[ctrl->cmdRingFlag.pos];
 	printk(RED, BLACK, "cmdPos:%d trb0:%#018lx ", ctrl->cmdRingFlag.pos, trb);
 	// should loop back
