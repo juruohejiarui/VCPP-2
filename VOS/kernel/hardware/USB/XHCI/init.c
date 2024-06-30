@@ -97,6 +97,8 @@ static int _stopController(USB_XHCIController *ctrl) {
 	return 1;
 }
 
+
+// reset the configuration of the controller
 static int _resetController(USB_XHCIController *ctrl) {
 	 _setCmdBit(ctrl, HW_USB_XHCI_OpReg_Cmd_HCReset);
 	 {
@@ -124,6 +126,8 @@ static int _resetController(USB_XHCIController *ctrl) {
 	return 1;
 }
 
+
+// initialize the port information
 static int _initPorts(USB_XHCIController *ctrl) {
 	// allocate memory for each port
 	ctrl->ports = (USB_XHCI_Port *)_alloc(ctrl, sizeof(USB_XHCI_Port) * maxPorts(ctrl));
@@ -166,6 +170,8 @@ static int _initPorts(USB_XHCIController *ctrl) {
 	return 1;
 }
 
+
+// allocate the memory for this controller
 static int _initMem(USB_XHCIController *ctrl) {
 	// allocate the device context base address array
 	void *addr = _alloc(ctrl, 2048);
@@ -234,6 +240,8 @@ static int _initMem(USB_XHCIController *ctrl) {
 	for (int i = 0; i < maxIntrs(ctrl); i++) ctrl->eveRingFlag[i].cycleBit = 1;
 }
 
+
+// restart the controller
 int _restartController(USB_XHCIController *ctrl) {
 	ctrl->opRegs->devNotifCtrl = (ctrl->opRegs->devNotifCtrl & ~0xffff) | (1 << 1);
 	ctrl->opRegs->cmdRingCtrl = (ctrl->opRegs->cmdRingCtrl & ~(1ul << 1)) | (1ul << 1);
@@ -251,13 +259,17 @@ int _restartController(USB_XHCIController *ctrl) {
 	for (int i = 0; i < 1; i++) {
 		ctrl->rtRegs->intrRegs[i].mgrRegs = 0x3 | (ctrl->rtRegs->intrRegs[i].mgrRegs & (~0x3));
 	}
-	ctrl->opRegs->cmdRingCtrl = DMAS_virt2Phys(ctrl->cmdRing) | 0x3;
+	ctrl->opRegs->cmdRingCtrl = (1 << 2);
+	ctrl->opRegs->cmdRingCtrl = DMAS_virt2Phys(ctrl->cmdRing) | 0x1;
 	for (USB_XHCI_GenerTRB *eveTrb = HW_USB_XHCI_getNextEveTRB(ctrl, 0); eveTrb != NULL; eveTrb = HW_USB_XHCI_getNextEveTRB(ctrl, 0)) ;
-	ctrl->opRegs->usbStatus = 0x8;
+	ctrl->opRegs->usbStatus = 0x18;
 
 	for (int i = 0; i < maxPorts(ctrl); i++) {
 		_setPortStsCtrl(&ctrl->ports[i].regs->statusCtrl, Port_StatusCtrl_Power | Port_StatusCtrl_GenerAllEve);
 	}
+
+	_writeDoorbell(ctrl, 0, 0);
+	printk(WHITE, BLACK, "XCHI: cmdRingCtrl: %#018lx\n", ctrl->opRegs->cmdRingCtrl);
 	return 1;
 }
 
@@ -316,4 +328,4 @@ int HW_USB_XHCI_Init(PCIeConfig *xhci) {
 
 	List_insBefore(&ctrl->listEle, &HW_USB_XHCI_mgrList);
 	return 1;
-}
+}  

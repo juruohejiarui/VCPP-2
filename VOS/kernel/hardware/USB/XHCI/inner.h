@@ -47,5 +47,10 @@ static inline void _setPortStsCtrl(u32 *addr, u32 val) {
 	*addr = (*addr & Port_StatusCtrl_Reserved) | val;
 }
 
+static inline void _writeDoorbell(USB_XHCIController *ctrl, int slotId, u32 val) {
+	__asm__ volatile ("sfence	\n\t": : :);
+	ctrl->dbRegs->doorbell[slotId - 1] = val;
+}
+
 
 #endif

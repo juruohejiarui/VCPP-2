@@ -113,8 +113,7 @@ u64 HW_USB_XHCI_thread(u64 (*_)(u64), u64 ctrlAddr) {
 		}
 		SpinLock_unlock(&ctrl->witQueLock);
 		if (hasCmd) {
-			ctrl->dbRegs->cmd = 0;
-			IO_mfence();
+			_writeDoorbell(ctrl, 0, 0);
 		}
 		firPeriod = 0;
 	}

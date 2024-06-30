@@ -74,8 +74,8 @@ typedef struct {
 
 // doorbell registers
 typedef struct {
-	u32 cmd;
-	u32 doorbell[0];
+	volatile u32 cmd;
+	volatile u32 doorbell[0];
 } __attribute__ ((packed)) USB_XHCI_DoorbellRegs;
 
 typedef struct {
