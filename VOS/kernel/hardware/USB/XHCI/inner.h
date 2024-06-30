@@ -43,4 +43,9 @@ static inline int _rdStsBit(USB_XHCIController *ctrl, u32 bit) {
 	return (ctrl->opRegs->usbStatus >> bit) & 1;
 }
 
+static inline void _setPortStsCtrl(u32 *addr, u32 val) {
+	*addr = (*addr & Port_StatusCtrl_Reserved) | val;
+}
+
+
 #endif

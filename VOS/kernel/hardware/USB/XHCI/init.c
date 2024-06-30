@@ -140,10 +140,12 @@ static int _initPorts(USB_XHCIController *ctrl) {
 	for (USB_XHCI_ExtCapEntry *entry = ctrl->extCapHeader; entry != NULL; entry = _getNextExtCap(entry)) {
 		if (entry->id != USB_XHCI_ExtCap_Id_Protocol) continue;
 		USB_XHCI_ExtCap_Protocol *protocol = container(entry, USB_XHCI_ExtCap_Protocol, extCap);
+		printk(WHITE, BLACK, "XHCI: %#018lx: slotType[%d,%d]=%d\n", ctrl, protocol->portOff, protocol->portCnt + protocol->portOff - 1, protocol->slotType);
 		for (int i = 0; i < protocol->portCnt; i++)
 			ctrl->ports[protocol->portOff + i - 1].flags |= 
 					(protocol->majorRev == 3 ? HW_USB_XHCI_Port_Flag_USB3 : 0) | HW_USB_XHCI_Port_Flag_Master,
-			ctrl->ports[protocol->portOff + i - 1].offset = i;
+			ctrl->ports[protocol->portOff + i - 1].offset = i,
+			ctrl->ports[protocol->portOff + i - 1].slotType = protocol->slotType;
 	}
 	// set the flag isPaired
 	printk(WHITE, BLACK, "XHCI: %#018lx: socket info: ", ctrl);
@@ -203,6 +205,7 @@ static int _initMem(USB_XHCIController *ctrl) {
 		printk(WHITE, BLACK, "XHCI: %#018lx: cmdRingCtrl:%#018lx\n", ctrl, cmdRing);
 		ctrl->cmdsFlag = _alloc(ctrl, HW_USB_XHCI_RingEntryNum * sizeof(u64));
 		for (int i = 0; i < HW_USB_XHCI_RingEntryNum; i++) ctrl->cmdsFlag[i] = 1;
+		ctrl->cmdSrc = _alloc(ctrl, HW_USB_XHCI_RingEntryNum * sizeof(USB_XHCIReq *));
 
 		// construct a link trb
 		*((u64 *)&lkTRB->dw[0]) = DMAS_virt2Phys(cmdRing);
@@ -251,6 +254,10 @@ int _restartController(USB_XHCIController *ctrl) {
 	ctrl->opRegs->cmdRingCtrl = DMAS_virt2Phys(ctrl->cmdRing) | 0x3;
 	for (USB_XHCI_GenerTRB *eveTrb = HW_USB_XHCI_getNextEveTRB(ctrl, 0); eveTrb != NULL; eveTrb = HW_USB_XHCI_getNextEveTRB(ctrl, 0)) ;
 	ctrl->opRegs->usbStatus = 0x8;
+
+	for (int i = 0; i < maxPorts(ctrl); i++) {
+		_setPortStsCtrl(&ctrl->ports[i].regs->statusCtrl, Port_StatusCtrl_Power | Port_StatusCtrl_GenerAllEve);
+	}
 	return 1;
 }
 
@@ -278,6 +285,9 @@ int HW_USB_XHCI_Init(PCIeConfig *xhci) {
 	ctrl->dbRegs = (USB_XHCI_DoorbellRegs *)((u64)ctrl->capRegs + ctrl->capRegs->dboff);
 	// get extented capability registers
 	ctrl->extCapHeader = (USB_XHCI_ExtCapEntry *)((u64)ctrl->capRegs + extCapPtr(ctrl) * 4);
+	
+	SpinLock_init(&ctrl->lock);
+	SpinLock_init(&ctrl->witQueLock);
 	printk(YELLOW, BLACK, "capReg:%#018lx opRegs:%#018lx rtRegs:%#018lx dbRegs:%#018lx extCap:%#018lx Slot:%d Intr:%d port:%d\n",
 			ctrl->capRegs, ctrl->opRegs, ctrl->rtRegs, ctrl->dbRegs, ctrl->extCapHeader,
 			maxSlots(ctrl), maxIntrs(ctrl), maxPorts(ctrl));
