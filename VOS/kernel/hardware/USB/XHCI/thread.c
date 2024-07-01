@@ -6,7 +6,11 @@
 
 static void _handler_enblSlot(USB_XHCIController *ctrl, USB_XHCIReq *req, void *arg) {
 	printk(YELLOW, BLACK, "XHCI: %#018lx: handler_enableSlot(): ", ctrl);
-	printk(WHITE, BLACK, "reg->eve->slotId:%d\n", ((USB_XHCI_CompletionTRB *)&req->eve)->dw3.ctx.slotId);
+	int code = req->eve.dw[2] >> 24;
+	if (code == 1)
+		printk(GREEN, BLACK, "successful.slotId:%d\n", ((USB_XHCI_CompletionTRB *)&req->eve)->dw3.ctx.slotId);
+	else
+		printk(RED, BLACK, "failed\n");
 	// load descriptor and allocate the management structure
 
 }
@@ -64,13 +68,13 @@ u64 HW_USB_XHCI_thread(u64 (*_)(u64), u64 ctrlAddr) {
 		SpinLock_lock(&ctrl->lock);
 		
 		for (int i = 0; i < maxIntrs(ctrl); i++) {
-			USB_XHCI_GenerTRB *intrTRB;
-			if (!(ctrl->rtRegs->intrRegs[i].eveDeqPtr & 0x8)) continue;
-			while ((intrTRB = HW_USB_XHCI_getNextEveTRB(ctrl, i)) != NULL) {
-				printk(YELLOW, BLACK, "XHCI: %#018lx: new Event TRB: %#018lx ", ctrl, intrTRB);
-				printk(WHITE, BLACK, "type:%d datas:%#018lx\n", intrTRB->dw3.ctx.trbType, *(u64 *)intrTRB->dw);
-				if (intrTRB->dw3.ctx.trbType == HW_USB_TrbType_CmdCompletionEve) {
-					USB_XHCI_GenerTRB *cmd = DMAS_phys2Virt(*(u64 *)&intrTRB->dw[0]);
+			USB_XHCI_GenerTRB intrTRB;
+			if (!(ctrl->rtRegs->intrRegs[i].mgrRegs & 0x1)) continue;
+			while (HW_USB_XHCI_getNextEveTRB(ctrl, i, &intrTRB)) {
+				printk(YELLOW, BLACK, "XHCI: %#018lx: new Event TRB: pos:%#018lx ", ctrl, ctrl->eveRingFlag[i].pos - 1);
+				printk(WHITE, BLACK, "type:%d datas:%#018lx\n", intrTRB.dw3.ctx.trbType, *(u64 *)intrTRB.dw);
+				if (intrTRB.dw3.ctx.trbType == HW_USB_TrbType_CmdCompletionEve) {
+					USB_XHCI_GenerTRB *cmd = DMAS_phys2Virt(*(u64 *)&intrTRB.dw[0]);
 					int pos = _getCmdPos(ctrl, cmd);
 
 					// set the flag of the command ring
@@ -78,13 +82,17 @@ u64 HW_USB_XHCI_thread(u64 (*_)(u64), u64 ctrlAddr) {
 
 					// handle the request
 					USB_XHCIReq *req = ctrl->cmdSrc[pos];
-					req->flag &= ~HW_USB_XHCIReq_Flag_isInRing;
-					// copy the information into the request and execute the handler
-					memcpy(intrTRB, &req->eve, sizeof(USB_XHCI_GenerTRB));
-					req->flag |= HW_USB_XHCIReq_Flag_Completed;
-					if (req->handler != NULL) req->handler(ctrl, req, req->arg);
+					ctrl->cmdSrc[pos] = NULL;
+					if (req) {
+						req->flag &= ~HW_USB_XHCIReq_Flag_isInRing;
+						// copy the information into the request and execute the handler
+						memcpy(&intrTRB, &req->eve, sizeof(USB_XHCI_GenerTRB));
+						req->flag |= HW_USB_XHCIReq_Flag_Completed;
+						if (req->handler != NULL) req->handler(ctrl, req, req->arg);
+					}
 				}
 			}
+			ctrl->rtRegs->intrRegs[i].mgrRegs = (ctrl->rtRegs->intrRegs[i].mgrRegs & ~0x3ul) | 0x3;
 		}
 		SpinLock_unlock(&ctrl->lock);
 		SpinLock_lock(&ctrl->witQueLock);
@@ -106,7 +114,7 @@ u64 HW_USB_XHCI_thread(u64 (*_)(u64), u64 ctrlAddr) {
 				ctrl->cmdSrc[pos]->flag |= HW_USB_XHCIReq_Flag_isInRing;
 				ctrl->cmdSrc[pos]->flag &= ~HW_USB_XHCIReq_Flag_Completed;
 				List_del(reqList);
-				printk(GREEN, BLACK, "->done\n");
+				printk(GREEN, BLACK, "->done addr:%#018lx\n", cmd);
 			} else {
 				// is a transfer TRB
 			}

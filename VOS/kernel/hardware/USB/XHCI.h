@@ -328,6 +328,7 @@ typedef struct USB_XHCIController {
 	USB_XHCI_Port *ports;
 
 	USB_XHCI_GenerTRB *cmdRing;
+	// device context, the address here is physical address
 	USB_XHCI_DeviceContext **devCtx;
 	USB_XHCI_EveRingSegTblEntry **eveRingSegTbls;
 	USB_XHCI_RingFlag *eveRingFlag;

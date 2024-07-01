@@ -180,24 +180,24 @@ static int _initMem(USB_XHCIController *ctrl) {
 	ctrl->devCtx = addr;
 	printk(WHITE, BLACK, "XHCI: %#018lx: devCtxBaseAddr:%#018lx\n", ctrl, ctrl->opRegs->devCtxBaseAddr);
 	// allocate the Device Context Data Structure
-	for (int i = 1; i < maxSlots(ctrl); i++) {
+	for (int i = 1; i <= maxSlots(ctrl); i++) {
 		addr = _alloc(ctrl, 
 				((ctrl->capRegs->hccparam1 & 0x4) ? 64 * 32 : sizeof(USB_XHCI_DeviceSlotContext) + 31 * sizeof(USB_XHCI_EndpointContext)));
 		if (addr == NULL) return 0;
 		ctrl->devCtx[i] = (USB_XHCI_DeviceContext *)DMAS_virt2Phys(addr);
 	}
-
+	ctrl->opRegs->config = maxSlots(ctrl) | (1 << 8) | (1 << 9) | (ctrl->opRegs->config & ~((1 << 10) - 1));
 	// allocate scratch buffer
 	{
 		int mxS = maxScratchBufs(ctrl); u64 pageSize = (ctrl->opRegs->pageSize & 0xfffful) << 12;
 		if (mxS == 0) goto _allocScratchBuf_end;
 		u64 *array = _alloc(ctrl, max(64, mxS * sizeof(u64)));
 		printk(WHITE, BLACK, "XHCI: %#018lx: maxScratchBufs:%d array: %#018lx\n", ctrl, mxS, array);
-		ctrl->devCtx[0] = (USB_XHCI_DeviceContext *)DMAS_virt2Phys(array);
 		for (int i = 0; i < mxS; i++) {
 			void *buf = _alloc(ctrl, pageSize);
 			array[i] = (u64)DMAS_virt2Phys(buf);
 		}
+		ctrl->devCtx[0] = (USB_XHCI_DeviceContext *)DMAS_virt2Phys(array);
 	}
 	_allocScratchBuf_end:
 
@@ -244,7 +244,6 @@ static int _initMem(USB_XHCIController *ctrl) {
 // restart the controller
 int _restartController(USB_XHCIController *ctrl) {
 	ctrl->opRegs->devNotifCtrl = (ctrl->opRegs->devNotifCtrl & ~0xffff) | (1 << 1);
-	ctrl->opRegs->cmdRingCtrl = (ctrl->opRegs->cmdRingCtrl & ~(1ul << 1)) | (1ul << 1);
 	ctrl->opRegs->usbStatus |= (1 << 2) | (1 << 3) | (1 << 4) | (1 << 10);
 	ctrl->opRegs->usbCmd |= (1 << 0) | (1 << 2) | (1 << 3);
 	for (int remain = 30; remain > 0; remain--) {
@@ -259,15 +258,17 @@ int _restartController(USB_XHCIController *ctrl) {
 	for (int i = 0; i < 1; i++) {
 		ctrl->rtRegs->intrRegs[i].mgrRegs = 0x3 | (ctrl->rtRegs->intrRegs[i].mgrRegs & (~0x3));
 	}
-	ctrl->opRegs->cmdRingCtrl = (1 << 2);
-	ctrl->opRegs->cmdRingCtrl = DMAS_virt2Phys(ctrl->cmdRing) | 0x1;
-	for (USB_XHCI_GenerTRB *eveTrb = HW_USB_XHCI_getNextEveTRB(ctrl, 0); eveTrb != NULL; eveTrb = HW_USB_XHCI_getNextEveTRB(ctrl, 0)) ;
+	// clear the useless events
+	while (HW_USB_XHCI_getNextEveTRB(ctrl, 0, NULL)) ;
 	ctrl->opRegs->usbStatus = 0x18;
 
 	for (int i = 0; i < maxPorts(ctrl); i++) {
 		_setPortStsCtrl(&ctrl->ports[i].regs->statusCtrl, Port_StatusCtrl_Power | Port_StatusCtrl_GenerAllEve);
 	}
-
+	USB_XHCI_GenerTRB *cmd = HW_USB_XHCI_getNextCmdTRB(ctrl);
+	printk(WHITE, BLACK, "XHCI: No op address: %#018lx\n", cmd);
+	cmd->dw3.ctx.cycle = 1, cmd->dw3.ctx.trbType = 23;
+	ctrl->opRegs->cmdRingCtrl = DMAS_virt2Phys(ctrl->cmdRing) | 0x1;
 	_writeDoorbell(ctrl, 0, 0);
 	printk(WHITE, BLACK, "XCHI: cmdRingCtrl: %#018lx\n", ctrl->opRegs->cmdRingCtrl);
 	return 1;
