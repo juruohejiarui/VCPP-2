@@ -244,104 +244,107 @@ kallsyms_addresses:
 	.quad	0xffff80000010fba5
 	.quad	0xffff80000010feae
 	.quad	0xffff80000010ffd5
-	.quad	0xffff80000011001a
-	.quad	0xffff80000011006d
-	.quad	0xffff8000001100ac
-	.quad	0xffff8000001100db
-	.quad	0xffff80000011010b
-	.quad	0xffff800000110132
+	.quad	0xffff80000011008a
+	.quad	0xffff8000001100cf
+	.quad	0xffff800000110122
 	.quad	0xffff800000110161
-	.quad	0xffff80000011030a
-	.quad	0xffff8000001103b4
-	.quad	0xffff8000001103ed
-	.quad	0xffff80000011054d
-	.quad	0xffff800000110655
-	.quad	0xffff8000001107fe
-	.quad	0xffff800000110e50
-	.quad	0xffff8000001115ee
-	.quad	0xffff80000011189c
-	.quad	0xffff800000111d01
-	.quad	0xffff800000111d28
-	.quad	0xffff800000111d57
-	.quad	0xffff800000111e0b
-	.quad	0xffff800000111e90
-	.quad	0xffff80000011212f
-	.quad	0xffff80000011215f
-	.quad	0xffff80000011283e
-	.quad	0xffff800000112966
-	.quad	0xffff800000112974
-	.quad	0xffff800000112b4a
-	.quad	0xffff800000112cfa
-	.quad	0xffff800000112d64
-	.quad	0xffff800000112fae
-	.quad	0xffff800000113076
-	.quad	0xffff800000113140
-	.quad	0xffff8000001133e2
-	.quad	0xffff8000001135f4
-	.quad	0xffff800000113607
-	.quad	0xffff80000011361a
-	.quad	0xffff800000113902
-	.quad	0xffff8000001139e5
-	.quad	0xffff800000113a2f
-	.quad	0xffff800000113e01
-	.quad	0xffff800000113f07
-	.quad	0xffff800000113f48
-	.quad	0xffff800000113f99
-	.quad	0xffff8000001145b7
-	.quad	0xffff8000001145ca
-	.quad	0xffff8000001145f2
-	.quad	0xffff8000001145f8
-	.quad	0xffff80000011479f
-	.quad	0xffff80000011481c
-	.quad	0xffff800000114844
-	.quad	0xffff80000011488a
-	.quad	0xffff8000001148d2
-	.quad	0xffff800000114907
-	.quad	0xffff800000114954
-	.quad	0xffff800000114985
-	.quad	0xffff8000001149c2
-	.quad	0xffff800000114a02
-	.quad	0xffff800000114a24
-	.quad	0xffff800000114a3d
-	.quad	0xffff800000114abd
-	.quad	0xffff800000114b41
-	.quad	0xffff800000114b87
-	.quad	0xffff800000114bc3
-	.quad	0xffff800000114c08
-	.quad	0xffff800000114c5a
-	.quad	0xffff800000114cfc
-	.quad	0xffff800000114d48
-	.quad	0xffff800000114d75
-	.quad	0xffff800000114da3
-	.quad	0xffff800000114e87
-	.quad	0xffff800000114f6b
-	.quad	0xffff800000114fa4
-	.quad	0xffff8000001150ce
-	.quad	0xffff800000115146
-	.quad	0xffff800000115186
-	.quad	0xffff8000001153b1
-	.quad	0xffff800000115528
-	.quad	0xffff80000011592b
-	.quad	0xffff800000115c0e
-	.quad	0xffff800000115ca5
-	.quad	0xffff800000115d3c
-	.quad	0xffff800000115e34
-	.quad	0xffff800000115e55
-	.quad	0xffff800000115e78
-	.quad	0xffff800000115e96
-	.quad	0xffff800000115ec9
-	.quad	0xffff800000115f00
-	.quad	0xffff800000115f35
-	.quad	0xffff800000115f69
-	.quad	0xffff800000115fab
-	.quad	0xffff800000115fd2
-	.quad	0xffff80000011630e
+	.quad	0xffff800000110190
+	.quad	0xffff8000001101c0
+	.quad	0xffff8000001101e7
+	.quad	0xffff800000110216
+	.quad	0xffff80000011024f
+	.quad	0xffff8000001103af
+	.quad	0xffff8000001104b7
+	.quad	0xffff800000110660
+	.quad	0xffff800000110cb2
+	.quad	0xffff800000111450
+	.quad	0xffff8000001116fe
+	.quad	0xffff800000111b63
+	.quad	0xffff800000111d0c
+	.quad	0xffff800000111db6
+	.quad	0xffff800000111ddd
+	.quad	0xffff800000111e0c
+	.quad	0xffff800000111e51
+	.quad	0xffff800000111ed6
+	.quad	0xffff800000111f85
+	.quad	0xffff80000011234b
+	.quad	0xffff80000011260d
+	.quad	0xffff80000011263d
+	.quad	0xffff800000112d1c
+	.quad	0xffff800000112e44
+	.quad	0xffff800000112e52
+	.quad	0xffff800000113028
+	.quad	0xffff8000001131d8
+	.quad	0xffff800000113242
+	.quad	0xffff80000011348c
+	.quad	0xffff800000113554
+	.quad	0xffff80000011361e
+	.quad	0xffff8000001138c0
+	.quad	0xffff800000113ad2
+	.quad	0xffff800000113ae5
+	.quad	0xffff800000113af8
+	.quad	0xffff800000113de0
+	.quad	0xffff800000113ec3
+	.quad	0xffff800000113f0d
+	.quad	0xffff8000001142df
+	.quad	0xffff8000001143e5
+	.quad	0xffff800000114426
+	.quad	0xffff800000114477
+	.quad	0xffff800000114a95
+	.quad	0xffff800000114aa8
+	.quad	0xffff800000114ad0
+	.quad	0xffff800000114ad6
+	.quad	0xffff800000114c7d
+	.quad	0xffff800000114cfa
+	.quad	0xffff800000114d22
+	.quad	0xffff800000114d68
+	.quad	0xffff800000114db0
+	.quad	0xffff800000114de5
+	.quad	0xffff800000114e32
+	.quad	0xffff800000114e63
+	.quad	0xffff800000114ea0
+	.quad	0xffff800000114ee0
+	.quad	0xffff800000114f02
+	.quad	0xffff800000114f1b
+	.quad	0xffff800000114f9b
+	.quad	0xffff80000011501f
+	.quad	0xffff800000115065
+	.quad	0xffff8000001150a1
+	.quad	0xffff8000001150e6
+	.quad	0xffff800000115138
+	.quad	0xffff8000001151da
+	.quad	0xffff800000115226
+	.quad	0xffff800000115253
+	.quad	0xffff800000115281
+	.quad	0xffff800000115365
+	.quad	0xffff800000115449
+	.quad	0xffff800000115482
+	.quad	0xffff8000001155ac
+	.quad	0xffff800000115624
+	.quad	0xffff800000115664
+	.quad	0xffff80000011588f
+	.quad	0xffff800000115a06
+	.quad	0xffff800000115e09
+	.quad	0xffff8000001160ec
+	.quad	0xffff800000116183
+	.quad	0xffff80000011621a
+	.quad	0xffff800000116312
+	.quad	0xffff800000116333
+	.quad	0xffff800000116356
+	.quad	0xffff800000116374
+	.quad	0xffff8000001163a7
+	.quad	0xffff8000001163de
+	.quad	0xffff800000116413
+	.quad	0xffff800000116447
+	.quad	0xffff800000116489
+	.quad	0xffff8000001164b0
+	.quad	0xffff8000001167ec
 
 .globl kallsyms_syms_num
 .align 8
 
 kallsyms_syms_num:
-	.quad	332
+	.quad	335
 
 .globl kallsyms_index
 .align 8
@@ -587,98 +590,101 @@ kallsyms_index:
 	.quad	3785
 	.quad	3811
 	.quad	3837
-	.quad	3852
-	.quad	3863
-	.quad	3874
-	.quad	3884
-	.quad	3894
-	.quad	3910
-	.quad	3925
-	.quad	3932
-	.quad	3938
-	.quad	3953
-	.quad	3967
-	.quad	3983
+	.quad	3867
+	.quad	3882
+	.quad	3893
+	.quad	3904
+	.quad	3914
+	.quad	3924
+	.quad	3940
+	.quad	3955
+	.quad	3970
+	.quad	3984
 	.quad	4000
-	.quad	4011
-	.quad	4020
-	.quad	4039
+	.quad	4017
+	.quad	4028
+	.quad	4037
 	.quad	4056
-	.quad	4072
-	.quad	4087
-	.quad	4105
-	.quad	4113
-	.quad	4127
-	.quad	4138
+	.quad	4073
+	.quad	4091
+	.quad	4108
+	.quad	4124
+	.quad	4139
+	.quad	4149
 	.quad	4157
-	.quad	4169
-	.quad	4186
-	.quad	4194
-	.quad	4201
-	.quad	4210
-	.quad	4227
-	.quad	4247
-	.quad	4259
+	.quad	4174
+	.quad	4192
+	.quad	4206
+	.quad	4217
+	.quad	4236
+	.quad	4248
+	.quad	4265
+	.quad	4273
 	.quad	4280
-	.quad	4297
-	.quad	4313
-	.quad	4329
-	.quad	4342
-	.quad	4353
-	.quad	4366
-	.quad	4378
-	.quad	4394
-	.quad	4414
-	.quad	4436
-	.quad	4455
-	.quad	4477
-	.quad	4491
-	.quad	4510
-	.quad	4536
-	.quad	4544
-	.quad	4554
-	.quad	4569
-	.quad	4584
-	.quad	4597
-	.quad	4606
-	.quad	4614
+	.quad	4289
+	.quad	4306
+	.quad	4326
+	.quad	4338
+	.quad	4359
+	.quad	4376
+	.quad	4392
+	.quad	4408
+	.quad	4421
+	.quad	4432
+	.quad	4445
+	.quad	4457
+	.quad	4473
+	.quad	4493
+	.quad	4515
+	.quad	4534
+	.quad	4556
+	.quad	4570
+	.quad	4589
+	.quad	4615
 	.quad	4623
-	.quad	4632
-	.quad	4640
-	.quad	4654
-	.quad	4661
-	.quad	4668
-	.quad	4675
-	.quad	4682
-	.quad	4689
-	.quad	4697
+	.quad	4633
+	.quad	4648
+	.quad	4663
+	.quad	4676
+	.quad	4685
+	.quad	4693
 	.quad	4702
 	.quad	4711
-	.quad	4721
-	.quad	4728
-	.quad	4737
+	.quad	4719
+	.quad	4733
+	.quad	4740
 	.quad	4747
-	.quad	4757
-	.quad	4764
-	.quad	4777
-	.quad	4789
-	.quad	4802
-	.quad	4817
-	.quad	4830
-	.quad	4845
-	.quad	4859
-	.quad	4873
-	.quad	4888
+	.quad	4754
+	.quad	4761
+	.quad	4768
+	.quad	4776
+	.quad	4781
+	.quad	4790
+	.quad	4800
+	.quad	4807
+	.quad	4816
+	.quad	4826
+	.quad	4836
+	.quad	4843
+	.quad	4856
+	.quad	4868
+	.quad	4881
 	.quad	4896
-	.quad	4905
-	.quad	4914
-	.quad	4921
-	.quad	4929
-	.quad	4937
-	.quad	4949
-	.quad	4960
-	.quad	4970
-	.quad	4982
+	.quad	4909
+	.quad	4924
+	.quad	4938
+	.quad	4952
+	.quad	4967
+	.quad	4975
+	.quad	4984
+	.quad	4993
+	.quad	5000
+	.quad	5008
+	.quad	5016
+	.quad	5028
+	.quad	5039
+	.quad	5049
+	.quad	5061
 
 .globl kallsyms_names
 .align 8
@@ -923,6 +929,7 @@ kallsyms_names:
 	.asciz	"HW_PCIe_init"
 	.asciz	"HW_USB_XHCI_getNextEveTRB"
 	.asciz	"HW_USB_XHCI_getNextCmdTRB"
+	.asciz	"HW_USB_XHCI_allocTransferRing"
 	.asciz	"maxScratchBufs"
 	.asciz	"_setCmdBit"
 	.asciz	"_clrCmdBit"
@@ -930,8 +937,6 @@ kallsyms_names:
 	.asciz	"_rdStsBit"
 	.asciz	"_setPortStsCtrl"
 	.asciz	"_writeDoorbell"
-	.asciz	"_alloc"
-	.asciz	"_free"
 	.asciz	"_getNextExtCap"
 	.asciz	"_getOwnership"
 	.asciz	"_stopController"
@@ -940,10 +945,14 @@ kallsyms_names:
 	.asciz	"_initMem"
 	.asciz	"_restartController"
 	.asciz	"HW_USB_XHCI_Init"
+	.asciz	"HW_USB_XHCI_alloc"
+	.asciz	"HW_USB_XHCI_free"
 	.asciz	"_setPortStsCtrl"
 	.asciz	"_writeDoorbell"
-	.asciz	"_handler_enblSlot"
+	.asciz	"mxPktSize"
 	.asciz	"_addReq"
+	.asciz	"_handler_setAddr"
+	.asciz	"_handler_enblSlot"
 	.asciz	"_portChgEvent"
 	.asciz	"_getCmdPos"
 	.asciz	"HW_USB_XHCI_thread"

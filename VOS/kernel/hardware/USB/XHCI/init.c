@@ -7,43 +7,6 @@
 
 List HW_USB_XHCI_mgrList;
 
-// allocate memory for the controller，use DMAS_virt2Phys to get the physical address
-static void *_alloc(USB_XHCIController *ctrl, u64 size) {
-	if (size == 0) return NULL;
-	void *addr; Page *page;
-	if (size >= Page_4KSize) {
-		page = MM_Buddy_alloc(log2Ceil(size) - Page_4KShift, Page_Flag_Kernel | Page_Flag_Active);
-		if (page == NULL) goto _alloc_Fail;
-		addr = DMAS_phys2Virt(page->phyAddr);
-	} else {
-		addr = kmalloc(size, 0);
-		if (addr == NULL) goto _alloc_Fail;
-	}
-	USB_XHCI_MemUsage *usage = (USB_XHCI_MemUsage *)kmalloc(sizeof(USB_XHCI_MemUsage), 0);
-	List_init(&usage->listEle);
-	List_insBefore(&usage->listEle, &ctrl->memList);
-	if (size < Page_4KSize) usage->addr = (u64)addr;
-	else usage->addr = ((u64)page) | 1;
-	memset(addr, 0, size);
-	return addr;
-	_alloc_Fail:
-	printk(RED, BLACK, "XHCI: alloc memory fail");
-	printk(YELLOW, BLACK, "(ctrl:%#018lx,size:%#018lx)", ctrl, size);
-	return NULL;
-}
-
-static void _free(USB_XHCIController *ctrl) {
-	// free all pages
-	USB_XHCI_MemUsage *usage;
-	while (!List_isEmpty(&ctrl->memList)) {
-		usage = container(ctrl->memList.next, USB_XHCI_MemUsage, listEle);
-		List_del(&usage->listEle);
-		if (usage->addr & 1) MM_Buddy_free((Page *)(usage->addr ^ 1));
-		else kfree((void *)usage->addr);
-		kfree(usage);
-	}
-}
-
 USB_XHCI_ExtCapEntry *_getNextExtCap(USB_XHCI_ExtCapEntry *extCap) {
 	if (extCap->nxtOff == 0) return NULL;
 	return (USB_XHCI_ExtCapEntry *)((u64)extCap + extCap->nxtOff * 4);
@@ -130,7 +93,7 @@ static int _resetController(USB_XHCIController *ctrl) {
 // initialize the port information
 static int _initPorts(USB_XHCIController *ctrl) {
 	// allocate memory for each port
-	ctrl->ports = (USB_XHCI_Port *)_alloc(ctrl, sizeof(USB_XHCI_Port) * maxPorts(ctrl));
+	ctrl->ports = (USB_XHCI_Port *)HW_USB_XHCI_alloc(ctrl, sizeof(USB_XHCI_Port) * maxPorts(ctrl));
 	if (ctrl->ports == 0) {
 		printk(RED, BLACK, "XHCI: %#018lx: allocate memory for ports failed\n", ctrl);
 		return 0;
@@ -144,7 +107,10 @@ static int _initPorts(USB_XHCIController *ctrl) {
 	for (USB_XHCI_ExtCapEntry *entry = ctrl->extCapHeader; entry != NULL; entry = _getNextExtCap(entry)) {
 		if (entry->id != USB_XHCI_ExtCap_Id_Protocol) continue;
 		USB_XHCI_ExtCap_Protocol *protocol = container(entry, USB_XHCI_ExtCap_Protocol, extCap);
-		printk(WHITE, BLACK, "XHCI: %#018lx: slotType[%d,%d]=%d\n", ctrl, protocol->portOff, protocol->portCnt + protocol->portOff - 1, protocol->slotType);
+
+		printk(WHITE, BLACK, "XHCI: %#018lx: slotType[%d,%d]=%d\n", 
+				ctrl, protocol->portOff, protocol->portCnt + protocol->portOff - 1, protocol->slotType);
+				
 		for (int i = 0; i < protocol->portCnt; i++)
 			ctrl->ports[protocol->portOff + i - 1].flags |= 
 					(protocol->majorRev == 3 ? HW_USB_XHCI_Port_Flag_USB3 : 0) | HW_USB_XHCI_Port_Flag_Master,
@@ -174,27 +140,27 @@ static int _initPorts(USB_XHCIController *ctrl) {
 // allocate the memory for this controller
 static int _initMem(USB_XHCIController *ctrl) {
 	// allocate the device context base address array
-	void *addr = _alloc(ctrl, 2048);
+	void *addr = HW_USB_XHCI_alloc(ctrl, 2048);
 	if (addr == NULL) return 0;
 	ctrl->opRegs->devCtxBaseAddr = DMAS_virt2Phys(addr);
 	ctrl->devCtx = addr;
 	printk(WHITE, BLACK, "XHCI: %#018lx: devCtxBaseAddr:%#018lx\n", ctrl, ctrl->opRegs->devCtxBaseAddr);
 	// allocate the Device Context Data Structure
 	for (int i = 1; i <= maxSlots(ctrl); i++) {
-		addr = _alloc(ctrl, 
-				((ctrl->capRegs->hccparam1 & 0x4) ? 64 * 32 : sizeof(USB_XHCI_DeviceSlotContext) + 31 * sizeof(USB_XHCI_EndpointContext)));
+		addr = HW_USB_XHCI_alloc(ctrl, 
+				(CSZ(ctrl) ? 64 * 32 : sizeof(USB_XHCI_DeviceSlotContext) + 31 * sizeof(USB_XHCI_EndpointContext)));
 		if (addr == NULL) return 0;
 		ctrl->devCtx[i] = (USB_XHCI_DeviceContext *)DMAS_virt2Phys(addr);
 	}
-	ctrl->opRegs->config = maxSlots(ctrl) | (1 << 8) | (1 << 9) | (ctrl->opRegs->config & ~((1 << 10) - 1));
+	ctrl->opRegs->config = maxSlots(ctrl) | (1 << 8) | (ctrl->opRegs->config & ~((1 << 10) - 1));
 	// allocate scratch buffer
 	{
 		int mxS = maxScratchBufs(ctrl); u64 pageSize = (ctrl->opRegs->pageSize & 0xfffful) << 12;
 		if (mxS == 0) goto _allocScratchBuf_end;
-		u64 *array = _alloc(ctrl, max(64, mxS * sizeof(u64)));
+		u64 *array = HW_USB_XHCI_alloc(ctrl, max(64, mxS * sizeof(u64)));
 		printk(WHITE, BLACK, "XHCI: %#018lx: maxScratchBufs:%d array: %#018lx\n", ctrl, mxS, array);
 		for (int i = 0; i < mxS; i++) {
-			void *buf = _alloc(ctrl, pageSize);
+			void *buf = HW_USB_XHCI_alloc(ctrl, pageSize);
 			array[i] = (u64)DMAS_virt2Phys(buf);
 		}
 		ctrl->devCtx[0] = (USB_XHCI_DeviceContext *)DMAS_virt2Phys(array);
@@ -203,15 +169,15 @@ static int _initMem(USB_XHCIController *ctrl) {
 
 	// allocate command ring of 64 KB
 	{
-		USB_XHCI_GenerTRB *cmdRing = _alloc(ctrl, Page_4KSize * 16), *lkTRB = cmdRing + HW_USB_XHCI_RingEntryNum - 1;
+		USB_XHCI_GenerTRB *cmdRing = HW_USB_XHCI_alloc(ctrl, Page_4KSize * 16), *lkTRB = cmdRing + HW_USB_XHCI_RingEntryNum - 1;
 		ctrl->cmdRing = cmdRing;
 		ctrl->cmdRingFlag.cycleBit = 1;
 		ctrl->cmdRingFlag.segId = 0;
 		ctrl->cmdRingFlag.pos = 0;
 		printk(WHITE, BLACK, "XHCI: %#018lx: cmdRingCtrl:%#018lx\n", ctrl, cmdRing);
-		ctrl->cmdsFlag = _alloc(ctrl, HW_USB_XHCI_RingEntryNum * sizeof(u64));
+		ctrl->cmdsFlag = HW_USB_XHCI_alloc(ctrl, HW_USB_XHCI_RingEntryNum * sizeof(u64));
 		for (int i = 0; i < HW_USB_XHCI_RingEntryNum; i++) ctrl->cmdsFlag[i] = 1;
-		ctrl->cmdSrc = _alloc(ctrl, HW_USB_XHCI_RingEntryNum * sizeof(USB_XHCIReq *));
+		ctrl->cmdSrc = HW_USB_XHCI_alloc(ctrl, HW_USB_XHCI_RingEntryNum * sizeof(USB_XHCIReq *));
 
 		// construct a link trb
 		*((u64 *)&lkTRB->dw[0]) = DMAS_virt2Phys(cmdRing);
@@ -219,16 +185,16 @@ static int _initMem(USB_XHCIController *ctrl) {
 		lkTRB->dw3.raw |= 3; // Toggle Cycle | Cycle bit
 	}
 	// allocate event ring for each interrupter
-	ctrl->eveRingSegTbls = _alloc(ctrl, max(64, sizeof(USB_XHCI_EveRingSegTblEntry *) * maxIntrs(ctrl)));
+	ctrl->eveRingSegTbls = HW_USB_XHCI_alloc(ctrl, max(64, sizeof(USB_XHCI_EveRingSegTblEntry *) * maxIntrs(ctrl)));
 	for (int i = 0; i < maxIntrs(ctrl); i++) {
 		// stop the interrupter
 		ctrl->rtRegs->intrRegs[i].mgrRegs = 0x1;
 		USB_XHCI_IntrRegs *regs = ctrl->rtRegs->intrRegs + i;
 		// allocate 4 segments for one interrupter
-		USB_XHCI_EveRingSegTblEntry *segTbl = _alloc(ctrl, max(64, sizeof(USB_XHCI_EveRingSegTblEntry) * HW_USB_XHCI_EveRingSegTblSize));
+		USB_XHCI_EveRingSegTblEntry *segTbl = HW_USB_XHCI_alloc(ctrl, max(64, sizeof(USB_XHCI_EveRingSegTblEntry) * HW_USB_XHCI_EveRingSegTblSize));
 		ctrl->eveRingSegTbls[i] = segTbl;
 		for (int tblId = 0; tblId < HW_USB_XHCI_EveRingSegTblSize; tblId++) {
-			USB_XHCI_GenerTRB *eveRing = _alloc(ctrl, Page_4KSize * 16);
+			USB_XHCI_GenerTRB *eveRing = HW_USB_XHCI_alloc(ctrl, Page_4KSize * 16);
 			ctrl->eveRingSegTbls[i][tblId].addr = (u64)DMAS_virt2Phys(eveRing);
 			ctrl->eveRingSegTbls[i][tblId].size = HW_USB_XHCI_RingEntryNum;
 		}
@@ -236,7 +202,7 @@ static int _initMem(USB_XHCIController *ctrl) {
 		ctrl->rtRegs->intrRegs[i].eveSegTblAddr = DMAS_virt2Phys(segTbl) | (ctrl->rtRegs->intrRegs[i].eveSegTblAddr & 0x3f);
 		ctrl->rtRegs->intrRegs[i].eveDeqPtr = 0x8 | segTbl[0].addr;
 	}
-	ctrl->eveRingFlag = _alloc(ctrl, sizeof(USB_XHCI_RingFlag) * maxIntrs(ctrl));
+	ctrl->eveRingFlag = HW_USB_XHCI_alloc(ctrl, sizeof(USB_XHCI_RingFlag) * maxIntrs(ctrl));
 	for (int i = 0; i < maxIntrs(ctrl); i++) ctrl->eveRingFlag[i].cycleBit = 1;
 }
 
@@ -281,7 +247,7 @@ int HW_USB_XHCI_Init(PCIeConfig *xhci) {
 	// set the device struct
 	ctrl->dev.install = NULL;
 	ctrl->dev.uninstall = NULL;
-	ctrl->dev.free = (void (*)(Device *))_free;
+	ctrl->dev.free = (void (*)(Device *))HW_USB_XHCI_free;
 
 	List_init(&ctrl->witReqList);
 

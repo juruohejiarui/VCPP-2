@@ -8,6 +8,8 @@
 #define HW_USB_TrbType_Link				6
 #define HW_USB_TrbType_NoOp				8
 #define HW_USB_TrbType_EnblSlotCmd		9
+#define HW_USB_TrbType_DisableSlotCmd	10
+#define HW_USB_TrbType_SetAddrCmd		11
 #define HW_USB_TrbType_NoOpCmd			23
 #define HW_USB_TrbType_CmdCompletionEve	33
 
@@ -227,6 +229,28 @@ typedef struct {
 		} __attribute__ ((packed)) ctx;
 	} __attribute__ ((packed)) dw3;
 } __attribute__ ((packed)) USB_XHCI_CompletionTRB;
+
+// link trb
+typedef struct {
+	// first and second dwords : link pointer
+	u64 ptr;
+	// third dword: reserved
+	u32 dw2;
+	// fourth dword
+	union {
+		u32 raw;
+		struct {
+			u8 cycle : 1;
+			u8 toggle : 1;
+			u8 reserved : 8;
+			u8 trbType: 6;
+			u16 reserved1;
+		} __attribute__ ((packed)) ctx;
+	} __attribute__ ((packed)) dw3;
+} __attribute__ ((packed)) USB_XHCI_LinkTRB;
+
 #pragma endregion
+
+#define HW_USB_XHCI_TRB_Completion_Success	1
 
 #endif

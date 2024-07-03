@@ -6,9 +6,15 @@
 #define maxSlots(ctrl) ((ctrl->capRegs->hcsParams1) & 0xff)
 #define maxIntrs(ctrl) ((ctrl->capRegs->hcsParams1 >> 8) & 0x7ff)
 #define maxPorts(ctrl) ((ctrl->capRegs->hcsParams1 >> 24) & 0xff)
-#define extCapPtr(ctrl) ((ctrl->capRegs->hccparam1 >> 16) & 0xffff)
 #define ist(ctrl) (ctrl->capRegs->hcsParams2 & 0x7)
 #define maxEveRingSegTbl(ctrl) ((ctrl->capRegs->hcsParams2 & 0xf) >> 4);
+
+#define extCapPtr(ctrl) ((ctrl->capRegs->hccParams1 >> 16) & 0xffff)
+
+// context size
+#define CSZ(ctrl) ((ctrl->capRegs->hccParams1 >> 2) & 1)
+// cofiguration information capability
+#define CIC(ctrl) ((ctrl->capRegs->hccParams2 >> 5) & 1)
 
 #define _HCCP1_AC64		0
 #define _HCPP1_PWRCTRL	3
@@ -52,5 +58,9 @@ static inline void _writeDoorbell(USB_XHCIController *ctrl, int slotId, u32 val)
 	ctrl->dbRegs->doorbell[slotId - 1] = val;
 }
 
+// allocate memory for the controller，use DMAS_virt2Phys to get the physical address
+void *HW_USB_XHCI_alloc(USB_XHCIController *ctrl, u64 size);
+
+void HW_USB_XHCI_free(USB_XHCIController *ctrl);
 
 #endif

@@ -4,21 +4,88 @@
 #include "../../../includes/log.h"
 
 
-static void _handler_enblSlot(USB_XHCIController *ctrl, USB_XHCIReq *req, void *arg) {
-	printk(YELLOW, BLACK, "XHCI: %#018lx: handler_enableSlot(): ", ctrl);
-	int code = req->eve.dw[2] >> 24;
-	if (code == 1)
-		printk(GREEN, BLACK, "successful.slotId:%d\n", ((USB_XHCI_CompletionTRB *)&req->eve)->dw3.ctx.slotId);
-	else
-		printk(RED, BLACK, "failed\n");
-	// load descriptor and allocate the management structure
+typedef struct EnableSlotInfo {
+	// the parent device information, set to NULL if attached to the host
+	Device *parent;
+	u8 spd, port;
+} EnableSlotInfo;
 
+static int mxPktSize(int spd) {
+	switch (spd) {
+		case 4: return 512; // super speed
+		case 3: case 1: return 64; // full speed and high speed
+		case 2: return 8;
+	}
+	return -1;
 }
 
 static void _addReq(USB_XHCIController *ctrl, USB_XHCIReq *req) {
 	SpinLock_lock(&ctrl->witQueLock);
 	List_insBefore(&req->listEle, &ctrl->witReqList);
 	SpinLock_unlock(&ctrl->witQueLock);
+}
+
+static void _handler_setAddr(USB_XHCIController *ctrl, USB_XHCIReq *req, void *arg) {
+	printk(YELLOW, BLACK, "XHCI: %#018lx: handler_setAddr(): req:%#018lx ", ctrl, req);
+	int code = req->eve.dw[2] >> 24;
+	if (code == HW_USB_XHCI_TRB_Completion_Success) {
+		printk(GREEN, BLACK, "success\n");
+	} else printk(RED, BLACK, "failed.(code:%d)\n", code);
+}
+
+static void _handler_enblSlot(USB_XHCIController *ctrl, USB_XHCIReq *req, void *arg) {
+	printk(YELLOW, BLACK, "XHCI: %#018lx: handler_enableSlot(): ", ctrl);
+	int code = req->eve.dw[2] >> 24, slotId = ((USB_XHCI_CompletionTRB *)&req->eve)->dw3.ctx.slotId;
+	if (code == HW_USB_XHCI_TRB_Completion_Success)
+		printk(GREEN, BLACK, "successful.slotId:%d\n", slotId);
+	else
+		printk(RED, BLACK, "failed\n");
+	// create the input control context and add the request for setting address
+	memset(req, 0, sizeof(req));
+
+	req->req.dw3.ctx.trbType = HW_USB_TrbType_SetAddrCmd;
+	req->req.dw3.raw |= ((u32)slotId) << 24;
+
+	EnableSlotInfo *info = (EnableSlotInfo *)arg;
+	{
+		u64 ctxSz = CSZ(ctrl) ? 64 : 32;
+		USB_XHCI_InputCtrlContext *inCtx = kmalloc(ctxSz * 32, 0);
+		USB_XHCI_DeviceSlotContext *slotCtx = (USB_XHCI_DeviceSlotContext *)((u64)inCtx + ctxSz);
+		USB_XHCI_EndpointContext *ep0Ctx = (USB_XHCI_EndpointContext *)((u64)slotCtx + ctxSz);
+
+		memset(inCtx, 0, ctxSz * 32);
+
+		inCtx->addFlags |= 3;
+
+		// setting the basic information
+		slotCtx->dw0.ctx.ctxEntries = 1;
+		slotCtx->dw0.ctx.speed = info->spd;
+		slotCtx->dw1.ctx.rootHubPort = info->port + 1;
+		slotCtx->dw2.ctx.intTarget = (slotId - 1) % maxIntrs(ctrl) + 1;
+		
+		ep0Ctx->dw0.ctx.lsa = 1;
+		ep0Ctx->dw0.ctx.interval = 0;
+		ep0Ctx->dw1.ctx.errCnt = 3;
+		ep0Ctx->dw1.ctx.epType = 4;
+		ep0Ctx->dw1.ctx.mxPktSize = mxPktSize(info->spd);
+		ep0Ctx->dw2_3.trDeqPtr = DMAS_virt2Phys(HW_USB_XHCI_allocTransferRing(ctrl, NULL, NULL));
+		ep0Ctx->dw2_3.deqCycSts = 1;
+
+		ep0Ctx->dw4.ctx.avgTRBLen = 8;
+
+		printk(WHITE, BLACK, "ep0Ctx->dw1.mxPktSize=%d transfer ring:%#018lx ", ep0Ctx->dw1.ctx.mxPktSize, ep0Ctx->dw2_3.trDeqPtr);
+
+		*(u64 *)&req->req.dw[0] = DMAS_virt2Phys(inCtx);
+
+		printk(WHITE, BLACK, "inCtx:%#018lx\n", DMAS_virt2Phys(inCtx));
+
+		IO_mfence();
+	}
+
+	req->arg = NULL;
+	req->handler = _handler_setAddr;
+
+	_addReq(ctrl, req);
 }
 
 static void _portChgEvent(USB_XHCIController *ctrl, u32 port) {
@@ -37,12 +104,19 @@ static void _portChgEvent(USB_XHCIController *ctrl, u32 port) {
 	// initialize the request block
 	USB_XHCIReq *req = (USB_XHCIReq *)kmalloc(sizeof(USB_XHCIReq), 0);
 	memset(req, 0, sizeof(USB_XHCIReq));
-	req->handler = _handler_enblSlot;
 	req->req.dw3.ctx.trbType = HW_USB_TrbType_EnblSlotCmd;
-	req->arg = (void *)(u64)port;
+
+	// set the handler
+	req->handler = _handler_enblSlot;
+	{
+		EnableSlotInfo *info = (EnableSlotInfo *)kmalloc(sizeof(EnableSlotInfo), 0);
+		info->parent = NULL;
+		info->port = port;
+		info->spd = spdId;
+		req->arg = info;
+	}
 	req->flag |= HW_USB_XHCIReq_Flag_isCommand;
 	ctrl->ports[port].dev = NULL;
-	List_init(&req->listEle);
 	_addReq(ctrl, req);
 }
 

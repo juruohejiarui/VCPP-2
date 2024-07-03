@@ -3,9 +3,9 @@
 
 #include "../includes/lib.h"
 
-typedef struct tmpDevice Device;
+typedef struct Device Device;
 
-struct tmpDevice {
+struct Device {
 	void (*install)(Device *device);
 	void (*uninstall)(Device *device);
 
