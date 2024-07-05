@@ -246,7 +246,7 @@ inline void putchar(unsigned int fcol, unsigned int bcol, char ch) {
     } else if (ch == '\t') {
         do {
             putchar(fcol, bcol, ' ');
-        } while (((position.XPosition + 1) >> 2) & 1);
+        } while (position.XPosition & 3);
     } else {
         if (position.XPosition == position.XResolution / position.XCharSize)
             putchar(fcol, bcol, '\n');

@@ -48,7 +48,7 @@ USB_XHCI_GenerTRB *HW_USB_XHCI_getNextCmdTRB(USB_XHCIController *ctrl) {
 USB_XHCI_GenerTRB *HW_USB_XHCI_allocTransferRing(USB_XHCIController *ctrl, USB_XHCI_LinkTRB *fr, USB_XHCI_GenerTRB *to) {
 	USB_XHCI_GenerTRB *ring = HW_USB_XHCI_alloc(ctrl, Page_4KSize * 16);
 	// construct the link trb at the end of this ring
-	USB_XHCI_LinkTRB *lkTrb = ring + HW_USB_XHCI_RingEntryNum - 1;
+	USB_XHCI_LinkTRB *lkTrb = (USB_XHCI_LinkTRB *)(ring + HW_USB_XHCI_RingEntryNum - 1);
 	lkTrb->dw3.raw |= 3;
 	lkTrb->dw3.ctx.trbType = HW_USB_TrbType_Link;
 	lkTrb->ptr = (u64)DMAS_virt2Phys(to == NULL ? ring : to);

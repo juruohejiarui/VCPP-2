@@ -120,7 +120,7 @@ typedef struct {
 		// error count, the number of consecutive errors that the endpoint has detected
 		u8 errCnt : 2;
 		// endpoint type
-		// 0 : not valid, 1: Isochoronous OUT, 2: Bulk OUT, 3: Interrupt OUT, 5: Isochoronous IN, 6: Bulk IN, 7: Interrupt IN
+		// 0 : not valid, 1: Isochoronous OUT, 2: Bulk OUT, 3: Interrupt OUT, 4: Control, 5: Isochoronous IN, 6: Bulk IN, 7: Interrupt IN
 		u8 epType : 3;
 		// reserved
 		u8 reserved2 : 1;
@@ -141,7 +141,6 @@ typedef struct {
 			u32 trDeqPtrLo;
 			u32 trDeqPtrHi;
 		} __attribute__ ((packed)) trDeqPtr32;
-		u8 deqCycSts : 1;
 	} __attribute__ ((packed)) dw2_3;
 
 	// fifth dword

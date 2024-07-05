@@ -40,13 +40,15 @@ static void _handler_enblSlot(USB_XHCIController *ctrl, USB_XHCIReq *req, void *
 		printk(GREEN, BLACK, "successful.slotId:%d\n", slotId);
 	else
 		printk(RED, BLACK, "failed\n");
+	
+	EnableSlotInfo *info = (EnableSlotInfo *)arg;
+
 	// create the input control context and add the request for setting address
 	memset(req, 0, sizeof(req));
 
 	req->req.dw3.ctx.trbType = HW_USB_TrbType_SetAddrCmd;
 	req->req.dw3.raw |= ((u32)slotId) << 24;
 
-	EnableSlotInfo *info = (EnableSlotInfo *)arg;
 	{
 		u64 ctxSz = CSZ(ctrl) ? 64 : 32;
 		USB_XHCI_InputCtrlContext *inCtx = kmalloc(ctxSz * 32, 0);
@@ -61,19 +63,20 @@ static void _handler_enblSlot(USB_XHCIController *ctrl, USB_XHCIReq *req, void *
 		slotCtx->dw0.ctx.ctxEntries = 1;
 		slotCtx->dw0.ctx.speed = info->spd;
 		slotCtx->dw1.ctx.rootHubPort = info->port + 1;
-		slotCtx->dw2.ctx.intTarget = (slotId - 1) % maxIntrs(ctrl) + 1;
+		slotCtx->dw2.ctx.intTarget = slotId % maxIntrs(ctrl);
+
+		printk(WHITE, BLACK, "\tslotCtx: speed:%d rootHubPort:%d intTarget:%d\n", slotCtx->dw0.ctx.speed, slotCtx->dw1.ctx.rootHubPort, slotCtx->dw2.ctx.intTarget);
 		
 		ep0Ctx->dw0.ctx.lsa = 1;
 		ep0Ctx->dw0.ctx.interval = 0;
 		ep0Ctx->dw1.ctx.errCnt = 3;
 		ep0Ctx->dw1.ctx.epType = 4;
 		ep0Ctx->dw1.ctx.mxPktSize = mxPktSize(info->spd);
-		ep0Ctx->dw2_3.trDeqPtr = DMAS_virt2Phys(HW_USB_XHCI_allocTransferRing(ctrl, NULL, NULL));
-		ep0Ctx->dw2_3.deqCycSts = 1;
+		ep0Ctx->dw2_3.trDeqPtr = DMAS_virt2Phys(HW_USB_XHCI_allocTransferRing(ctrl, NULL, NULL)) | 1;
 
 		ep0Ctx->dw4.ctx.avgTRBLen = 8;
 
-		printk(WHITE, BLACK, "ep0Ctx->dw1.mxPktSize=%d transfer ring:%#018lx ", ep0Ctx->dw1.ctx.mxPktSize, ep0Ctx->dw2_3.trDeqPtr);
+		printk(WHITE, BLACK, "\tep0Ctx->dw1.mxPktSize=%d transfer ring:%#018lx ", ep0Ctx->dw1.ctx.mxPktSize, ep0Ctx->dw2_3.trDeqPtr);
 
 		*(u64 *)&req->req.dw[0] = DMAS_virt2Phys(inCtx);
 
