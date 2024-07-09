@@ -144,6 +144,7 @@ static int _initMem(USB_XHCIController *ctrl) {
 	if (addr == NULL) return 0;
 	ctrl->opRegs->devCtxBaseAddr = DMAS_virt2Phys(addr);
 	ctrl->devCtx = addr;
+	ctrl->devices = (USB_XHCI_Device **)HW_USB_XHCI_alloc(ctrl, sizeof(USB_XHCI_Device *));
 	printk(WHITE, BLACK, "XHCI: %#018lx: devCtxBaseAddr:%#018lx\n", ctrl, ctrl->opRegs->devCtxBaseAddr);
 	// allocate the Device Context Data Structure
 	for (int i = 1; i <= maxSlots(ctrl); i++) {
@@ -152,7 +153,9 @@ static int _initMem(USB_XHCIController *ctrl) {
 		if (addr == NULL) return 0;
 		ctrl->devCtx[i] = (USB_XHCI_DeviceContext *)DMAS_virt2Phys(addr);
 	}
+
 	ctrl->opRegs->config = maxSlots(ctrl) | (1 << 8) | (ctrl->opRegs->config & ~((1 << 10) - 1));
+
 	// allocate scratch buffer
 	{
 		int mxS = maxScratchBufs(ctrl); u64 pageSize = (ctrl->opRegs->pageSize & 0xfffful) << 12;

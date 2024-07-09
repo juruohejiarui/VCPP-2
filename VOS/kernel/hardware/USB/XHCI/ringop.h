@@ -14,4 +14,7 @@ USB_XHCI_GenerTRB *HW_USB_XHCI_getNextCmdTRB(USB_XHCIController *ctrl);
 // if to == NULL, then the link trb at the end of this ring points to the beginning to this ring.
 USB_XHCI_GenerTRB *HW_USB_XHCI_allocTransferRing(USB_XHCIController *ctrl, USB_XHCI_LinkTRB *fr, USB_XHCI_GenerTRB *to);
 
+// get the next transfer TRB from the transfer ring of EP-th endpoint of the SLOT_ID-th slot. 
+USB_XHCI_GenerTRB *HW_USB_XHCI_getNextTransferTRB(USB_XHCIController *ctrl, int slotId, int ep);
+
 #endif

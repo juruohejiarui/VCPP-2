@@ -13,7 +13,7 @@ typedef struct EnableSlotInfo {
 static int mxPktSize(int spd) {
 	switch (spd) {
 		case 4: return 512; // super speed
-		case 3: case 1: return 64; // full speed and high speed
+		case 3: case 1: case 0: return 64; // full speed and high speed
 		case 2: return 8;
 	}
 	return -1;
@@ -31,6 +31,23 @@ static void _handler_setAddr(USB_XHCIController *ctrl, USB_XHCIReq *req, void *a
 	if (code == HW_USB_XHCI_TRB_Completion_Success) {
 		printk(GREEN, BLACK, "success\n");
 	} else printk(RED, BLACK, "failed.(code:%d)\n", code);
+
+	USB_XHCI_Device *dev = ctrl->devices[req->slot] = kmalloc(sizeof(USB_XHCI_Device), 0);
+	dev->ctrl = ctrl;
+	dev->ctx = ctrl->devCtx[req->slot];
+	dev->enableEp = 3;
+	
+	USB_XHCI_InputCtrlContext *inCtx = arg;
+	USB_XHCI_DeviceSlotContext *slotCtx = (USB_XHCI_DeviceSlotContext *)(inCtx + 1);
+	USB_XHCI_EndpointContext *ep0 = (USB_XHCI_EndpointContext *)(slotCtx + 1);
+	printk(WHITE, BLACK, "\tdev:%#018lx inCtx:%#018lx\n", dev, inCtx);
+	dev->transferRing = kmalloc(sizeof(USB_XHCI_GenerTRB *) * 32, 0);
+	dev->inqPtr = kmalloc(sizeof(USB_XHCI_GenerTRB *) * 32, 0);
+	dev->cycFlags = kmalloc(sizeof(u8) * 32, 0);
+	dev->transferRing[0] = dev->inqPtr[0] = DMAS_phys2Virt(ep0->dw2_3.trDeqPtr & ~0x1ul);
+	dev->cycFlags[0] = 1;
+
+	kfree(inCtx);
 }
 
 static void _handler_enblSlot(USB_XHCIController *ctrl, USB_XHCIReq *req, void *arg) {
@@ -38,16 +55,32 @@ static void _handler_enblSlot(USB_XHCIController *ctrl, USB_XHCIReq *req, void *
 	int code = req->eve.dw[2] >> 24, slotId = ((USB_XHCI_CompletionTRB *)&req->eve)->dw3.ctx.slotId;
 	if (code == HW_USB_XHCI_TRB_Completion_Success)
 		printk(GREEN, BLACK, "successful.slotId:%d\n", slotId);
-	else
+	else {
 		printk(RED, BLACK, "failed\n");
-	
+		return ;
+	}
+
 	EnableSlotInfo *info = (EnableSlotInfo *)arg;
+
+	// for USB2.0 devices, reset the port to enable it
+	if (info->spd < 4) {
+		ctrl->ports[info->port].regs->statusCtrl |= (1 << 4);
+		for (i32 remain = 30; remain >= 0; remain--) {
+			if (ctrl->ports[info->port].regs->statusCtrl & (1 << 21)) break;
+			Intr_SoftIrq_Timer_mdelay(1);
+		}
+		if (!(ctrl->ports[info->port].regs->statusCtrl & (1 << 21)) || (ctrl->ports[info->port].regs->statusCtrl & (1 << 4))) {
+			printk(RED, BLACK, "\tfail to reset USB 2.0 port.\n");
+			return ;
+		}
+	}
 
 	// create the input control context and add the request for setting address
 	memset(req, 0, sizeof(req));
 
 	req->req.dw3.ctx.trbType = HW_USB_TrbType_SetAddrCmd;
 	req->req.dw3.raw |= ((u32)slotId) << 24;
+	req->slot = slotId;
 
 	{
 		u64 ctxSz = CSZ(ctrl) ? 64 : 32;
@@ -79,14 +112,16 @@ static void _handler_enblSlot(USB_XHCIController *ctrl, USB_XHCIReq *req, void *
 		printk(WHITE, BLACK, "\tep0Ctx->dw1.mxPktSize=%d transfer ring:%#018lx ", ep0Ctx->dw1.ctx.mxPktSize, ep0Ctx->dw2_3.trDeqPtr);
 
 		*(u64 *)&req->req.dw[0] = DMAS_virt2Phys(inCtx);
+		req->arg = inCtx;
 
 		printk(WHITE, BLACK, "inCtx:%#018lx\n", DMAS_virt2Phys(inCtx));
 
 		IO_mfence();
 	}
 
-	req->arg = NULL;
 	req->handler = _handler_setAddr;
+
+	kfree(info);
 
 	_addReq(ctrl, req);
 }
@@ -101,7 +136,6 @@ static void _portChgEvent(USB_XHCIController *ctrl, u32 port) {
 	}
 	u8 spdId = (ctrl->ports[port].regs->statusCtrl >> 10) & ((1 << 4) - 1);
 	printk(WHITE, BLACK, "XHCI: %#018lx: Port %d connect, speed %d\t", ctrl, port, spdId);
-	if (spdId == 0) { printk(RED, BLACK, "Error...\n"); return ; }
 	printk(WHITE, BLACK, "\n");
 
 	// initialize the request block
@@ -174,6 +208,7 @@ u64 HW_USB_XHCI_thread(u64 (*_)(u64), u64 ctrlAddr) {
 		SpinLock_unlock(&ctrl->lock);
 		SpinLock_lock(&ctrl->witQueLock);
 		int hasCmd = 0;
+		
 		for (List *reqList = ctrl->witReqList.next, *nxt; reqList != &ctrl->witReqList; reqList = nxt) {
 			nxt = reqList->next;
 			USB_XHCIReq *req = container(reqList, USB_XHCIReq, listEle);
@@ -194,6 +229,7 @@ u64 HW_USB_XHCI_thread(u64 (*_)(u64), u64 ctrlAddr) {
 				printk(GREEN, BLACK, "->done addr:%#018lx\n", cmd);
 			} else {
 				// is a transfer TRB
+				
 			}
 		}
 		SpinLock_unlock(&ctrl->witQueLock);

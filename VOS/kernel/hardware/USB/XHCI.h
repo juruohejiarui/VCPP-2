@@ -127,6 +127,9 @@ typedef struct USB_XHCI_Port {
 
 #include "./XHCI/ctx.h"
 
+struct USB_XHCIController;
+struct USB_XHCIReq;
+
 // device context data block
 typedef struct {
 	USB_XHCI_DeviceSlotContext slot;
@@ -134,6 +137,18 @@ typedef struct {
 } __attribute__ ((packed)) USB_XHCI_DeviceContext;
 
 #include "./XHCI/trb.h"
+
+typedef struct {
+	USB_XHCI_DeviceContext *ctx;
+	u32 enableEp;
+	USB_XHCI_GenerTRB **transferRing;
+	USB_XHCI_GenerTRB **inqPtr;
+	struct USB_XHCIReq **src;
+	u8 *cycFlags;
+	
+	// the controller that this device belongs to.
+	struct USB_XHCIController *ctrl;
+} USB_XHCI_Device;
 
 // event ring segment table entry
 typedef struct {
@@ -165,11 +180,11 @@ typedef struct {
 #define HW_USB_XHCIReq_Flag_isInRing		(1 << 2)
 #define HW_USB_XHCIReq_Flag_isCommand		(1 << 1)
 
-struct USB_XHCIController;
 
 typedef struct USB_XHCIReq {
 	USB_XHCI_GenerTRB req, eve;
 	u8 flag;
+	u32 slot, endpoint;
 	void *arg;
 	void (*handler)(struct USB_XHCIController *ctrl, struct USB_XHCIReq *req, void *arg);
 	List listEle;
@@ -187,11 +202,14 @@ typedef struct USB_XHCIController {
 	List listEle, memList;
 	USB_XHCI_Port *ports;
 
-	USB_XHCI_GenerTRB *cmdRing;
 	// device context, the address here is physical address
 	USB_XHCI_DeviceContext **devCtx;
+	USB_XHCI_Device **devices;
+
 	USB_XHCI_EveRingSegTblEntry **eveRingSegTbls;
 	USB_XHCI_RingFlag *eveRingFlag;
+
+	USB_XHCI_GenerTRB *cmdRing;
 	USB_XHCI_RingFlag cmdRingFlag;
 	// the flags of each command in the command ring
 	u64 *cmdsFlag;
