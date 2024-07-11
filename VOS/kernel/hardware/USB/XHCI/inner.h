@@ -24,6 +24,7 @@
 
 #define Port_StatusCtrl_ConnectChange 	(1 << 17)
 #define Port_StatusCtrl_Power			(1 << 9)
+#define Port_StatusCtrl_Reset			(1 << 4)
 #define Port_StatusCtrl_GenerAllEve		((1 << 25) | (1 << 26) | (1 << 27))
 #define Port_StatusCtrl_Reserved		((1 << 2) | (1 << 28) | (1 << 29))
 
@@ -60,7 +61,6 @@ static inline void _writeDoorbell(USB_XHCIController *ctrl, int slotId, u32 val)
 
 // allocate memory for the controller，use DMAS_virt2Phys to get the physical address
 void *HW_USB_XHCI_alloc(USB_XHCIController *ctrl, u64 size);
-
-void HW_USB_XHCI_free(USB_XHCIController *ctrl);
-
+void HW_USB_XHCI_free(USB_XHCIController *ctrl, void *addr);
+void HW_USB_XHCI_freeAll(USB_XHCIController *ctrl);
 #endif

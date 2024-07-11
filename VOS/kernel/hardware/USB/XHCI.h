@@ -128,7 +128,7 @@ typedef struct USB_XHCI_Port {
 #include "./XHCI/ctx.h"
 
 struct USB_XHCIController;
-struct USB_XHCIReq;
+struct USB_XHCIReqBlock;
 
 // device context data block
 typedef struct {
@@ -139,15 +139,32 @@ typedef struct {
 #include "./XHCI/trb.h"
 
 typedef struct {
-	USB_XHCI_DeviceContext *ctx;
+		USB_XHCI_InputCtrlContext inCtx;
+		USB_XHCI_DeviceSlotContext slotCtx;
+		USB_XHCI_EndpointContext epCtx[30];
+} __attribute__ ((packed)) USB_XHCI_InputContext;
+
+typedef struct {
+	// pointer to the read-only context in controller
+	USB_XHCI_DeviceContext *roctx;
 	u32 enableEp;
-	USB_XHCI_GenerTRB **transferRing;
-	USB_XHCI_GenerTRB **inqPtr;
-	struct USB_XHCIReq **src;
-	u8 *cycFlags;
+
+	// pointers to the transfer rings
+	USB_XHCI_GenerTRB *transRing[31];
+	// the inqueue pointers of each transfer rings
+	USB_XHCI_GenerTRB *transInqPtr[31];
+	// the source of request of each transfer TRB
+	struct USB_XHCIReqBlock **transSrc[31];
+	// the cycle flags of each transfer rings
+	u8 transCycFlags[31];
 	
 	// the controller that this device belongs to.
 	struct USB_XHCIController *ctrl;
+
+	// the copy of teach contexts
+	USB_XHCI_InputContext *ctx;
+
+	u8 *desc;
 } USB_XHCI_Device;
 
 // event ring segment table entry
@@ -174,21 +191,25 @@ typedef struct {
 	List listEle;
 } __attribute__ ((packed)) USB_XHCI_MemUsage;
 
-#define USB_XHCI_Req_Type_Cmd	1
-
-#define HW_USB_XHCIReq_Flag_Completed		(1 << 0)
-#define HW_USB_XHCIReq_Flag_isInRing		(1 << 2)
 #define HW_USB_XHCIReq_Flag_isCommand		(1 << 1)
 
+typedef void (*USB_XHCIReqHandler)(struct USB_XHCIController *, struct USB_XHCIReqBlock *, void *);
 
-typedef struct USB_XHCIReq {
-	USB_XHCI_GenerTRB req, eve;
-	u8 flag;
-	u32 slot, endpoint;
-	void *arg;
-	void (*handler)(struct USB_XHCIController *ctrl, struct USB_XHCIReq *req, void *arg);
+typedef struct USB_XHCIReqBlock {
+	// there are at most 256 requst in one reqBlocks
+	int reqCnt;
+
+	int slot, endpoint;
+
+	u8 flags;
+
 	List listEle;
-} USB_XHCIReq;
+
+	void *arg;
+	USB_XHCIReqHandler handler;
+
+	USB_XHCI_GenerTRB res, reqs[0];
+} USB_XHCIReqBlock;
 
 typedef struct USB_XHCIController {
 	Device dev;
@@ -212,9 +233,8 @@ typedef struct USB_XHCIController {
 	USB_XHCI_GenerTRB *cmdRing;
 	USB_XHCI_RingFlag cmdRingFlag;
 	// the flags of each command in the command ring
-	u64 *cmdsFlag;
 	// where the command in the command ring is from
-	USB_XHCIReq **cmdSrc;
+	USB_XHCIReqBlock **cmdSrc;
 
 	List witReqList;
 

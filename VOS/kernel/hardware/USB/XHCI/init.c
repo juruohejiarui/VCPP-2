@@ -178,9 +178,7 @@ static int _initMem(USB_XHCIController *ctrl) {
 		ctrl->cmdRingFlag.segId = 0;
 		ctrl->cmdRingFlag.pos = 0;
 		printk(WHITE, BLACK, "XHCI: %#018lx: cmdRingCtrl:%#018lx\n", ctrl, cmdRing);
-		ctrl->cmdsFlag = HW_USB_XHCI_alloc(ctrl, HW_USB_XHCI_RingEntryNum * sizeof(u64));
-		for (int i = 0; i < HW_USB_XHCI_RingEntryNum; i++) ctrl->cmdsFlag[i] = 1;
-		ctrl->cmdSrc = HW_USB_XHCI_alloc(ctrl, HW_USB_XHCI_RingEntryNum * sizeof(USB_XHCIReq *));
+		ctrl->cmdSrc = HW_USB_XHCI_alloc(ctrl, HW_USB_XHCI_RingEntryNum * sizeof(USB_XHCIReqBlock *));
 
 		// construct a link trb
 		*((u64 *)&lkTRB->dw[0]) = DMAS_virt2Phys(cmdRing);
@@ -250,7 +248,7 @@ int HW_USB_XHCI_Init(PCIeConfig *xhci) {
 	// set the device struct
 	ctrl->dev.install = NULL;
 	ctrl->dev.uninstall = NULL;
-	ctrl->dev.free = (void (*)(Device *))HW_USB_XHCI_free;
+	ctrl->dev.free = (void (*)(Device *))HW_USB_XHCI_freeAll;
 
 	List_init(&ctrl->witReqList);
 

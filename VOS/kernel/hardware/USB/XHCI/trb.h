@@ -5,7 +5,10 @@
 
 #pragma region transfer request block (TRB)
 
+#define HW_USB_TrbType_SetupStage		2
+#define HW_USB_TrbType_DataStage		3
 #define HW_USB_TrbType_Link				6
+#define HW_USB_TrbType_EventData		7
 #define HW_USB_TrbType_NoOp				8
 #define HW_USB_TrbType_EnblSlotCmd		9
 #define HW_USB_TrbType_DisableSlotCmd	10

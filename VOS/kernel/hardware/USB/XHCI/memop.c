@@ -26,7 +26,21 @@ void *HW_USB_XHCI_alloc(USB_XHCIController *ctrl, u64 size) {
 	return NULL;
 }
 
-void HW_USB_XHCI_free(USB_XHCIController *ctrl) {
+void HW_USB_XHCI_free(USB_XHCIController *ctrl, void *addr) {
+	USB_XHCI_MemUsage *usage;
+	for (List *list = ctrl->memList.next; list != &ctrl->memList; list = list->next) {
+		usage = container(ctrl->memList.next, USB_XHCI_MemUsage, listEle);
+		if ((usage->addr & 0x1ul ? DMAS_phys2Virt(((Page *)(usage->addr & ~0x1ul))->phyAddr) : (void *)usage->addr) == addr) {
+			List_del(list);
+			if (usage->addr & 1) MM_Buddy_free((Page *)(usage->addr ^ 1));
+			else kfree((void *)usage->addr);
+			kfree(usage);
+			break;
+		}
+	}
+}
+
+void HW_USB_XHCI_freeAll(USB_XHCIController *ctrl) {
 	// free all pages
 	USB_XHCI_MemUsage *usage;
 	while (!List_isEmpty(&ctrl->memList)) {
