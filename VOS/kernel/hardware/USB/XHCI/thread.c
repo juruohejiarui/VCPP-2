@@ -72,7 +72,6 @@ static void _handler_addrDev(USB_XHCIController *ctrl, USB_XHCIReqBlock *req, US
 		data->dw2.ctx.trbLen = 8;
 		data->dw3.ctx.evalNxtTRB = 1;
 		data->dw3.ctx.chainBit = 1;
-		data->dw3.ctx.ioc = 1;
 		data->dw3.ctx.trbType = HW_USB_TrbType_DataStage;
 		data->dw3.ctx.direct = 1;
 	}
@@ -137,6 +136,7 @@ static void _handler_enblSlot(USB_XHCIController *ctrl, USB_XHCIReqBlock *req, U
 	dev->transSrc[0] = HW_USB_XHCI_alloc(ctrl, HW_USB_XHCI_RingEntryNum * sizeof(USB_XHCIReqBlock *));
 	dev->transCycFlags[0] = 1;
 	ctx->epCtx[0].dw2_3.trDeqPtr = 0x1 | DMAS_virt2Phys(dev->transRing[0]);
+	printk(WHITE, BLACK, "\tep0->trDepPtr=%#018lx\n", ctx->epCtx[0].dw2_3.trDeqPtr);
 
 	ctx->epCtx[0].dw4.ctx.avgTRBLen = 8;
 
