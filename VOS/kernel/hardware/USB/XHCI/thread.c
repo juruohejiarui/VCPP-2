@@ -30,6 +30,21 @@ static int _resetPort(USB_XHCIController *ctrl, int portId) {
 	return 0;
 }
 
+static void _handler_getDesc(USB_XHCIController *ctrl, USB_XHCIReqBlock *req, USB_XHCI_Device *dev) {
+	printk(WHITE, BLACK, "XHCI: %#018lx: handler of get descriptor: ");
+	int code = req->res.dw[2] >> 24;
+	if (code != 1) {
+		printk(RED, BLACK, "fail(code:%d)\n", code);
+		return ;
+	}
+	printk(GREEN, BLACK, "success\n");
+
+	u64 len = req->res.dw[2] & ((1ul << 24) - 1);
+	printk(WHITE, BLACK, "\ttransfer length: %d\n\t", len);
+	for (u64 i = 0; i < len; i++) printk(WHITE, BLACK, "%02x ", dev->desc[i]);
+	printk(WHITE, BLACK, "\n");
+}
+
 static void _handler_addrDev(USB_XHCIController *ctrl, USB_XHCIReqBlock *req, USB_XHCI_Device *dev) {
 	printk(WHITE, BLACK, "XHCI: %#018lx: handler of address device: ");
 	int code = req->res.dw[2] >> 24;
@@ -59,14 +74,16 @@ static void _handler_addrDev(USB_XHCIController *ctrl, USB_XHCIReqBlock *req, US
 		setup->dw0.ctx.bReq = 6;
 		setup->dw0.ctx.wVal = 0x0100;
 		setup->dw1.ctx.wIndex = 0;
-		setup->dw1.ctx.wLen = 0;
+		setup->dw1.ctx.wLen = 8;
+
+		printk(WHITE, BLACK, "[%#018lx]\n", *(u64 *)&setup->dw0);
 		setup->dw2.ctx.trbLen = 8;
 		setup->dw3.ctx.idt = 1;
 		setup->dw3.ctx.trbType = HW_USB_TrbType_SetupStage;
 		setup->dw3.ctx.tfType = 3;
 	}
 	{
-		USB_XHCI_dataTRB *data = (USB_XHCI_dataTRB *)&req->reqs[1];
+		USB_XHCI_DataTRB *data = (USB_XHCI_DataTRB *)&req->reqs[1];
 		dev->desc = kmalloc(64, 0);
 		data->dw0_1.dtBuf = DMAS_virt2Phys(dev->desc);
 		data->dw2.ctx.trbLen = 8;
@@ -82,7 +99,7 @@ static void _handler_addrDev(USB_XHCIController *ctrl, USB_XHCIReqBlock *req, US
 		data->dw3.ctx.trbType = HW_USB_TrbType_EventData;
 	}
 
-	req->handler = NULL;
+	req->handler = (USB_XHCIReqHandler)_handler_getDesc;
 
 	_addReq(ctrl, req);
 }
@@ -144,7 +161,7 @@ static void _handler_enblSlot(USB_XHCIController *ctrl, USB_XHCIReqBlock *req, U
 
 	*(u64 *)&req->reqs->dw[0] = DMAS_virt2Phys(ctx);
 	req->reqs->dw3.ctx.trbType = HW_USB_TrbType_SetAddrCmd;
-	req->reqs->dw3.raw |= (slotId << 24);
+	req->reqs->dw3.raw |= (1 << 9) | (slotId << 24); // block the device
 
 	req->handler = (USB_XHCIReqHandler)_handler_addrDev;
 
@@ -217,18 +234,36 @@ u64 HW_USB_XHCI_thread(u64 (*_)(u64), u64 ctrlAddr) {
 			while (HW_USB_XHCI_getNextEveTRB(ctrl, i, &intrTRB)) {
 				printk(YELLOW, BLACK, "XHCI: %#018lx: new Event TRB: pos:%04d ", ctrl, ctrl->eveRingFlag[i].pos - 1);
 				printk(WHITE, BLACK, "type:%d datas:%#018lx\n", intrTRB.dw3.ctx.trbType, *(u64 *)intrTRB.dw);
-				if (intrTRB.dw3.ctx.trbType == HW_USB_TrbType_CmdCompletionEve) {
-					USB_XHCI_GenerTRB *cmd = DMAS_phys2Virt(*(u64 *)&intrTRB.dw[0]);
-					int pos = HW_USB_getRingPos(cmd);
+				switch (intrTRB.dw3.ctx.trbType) {
+					case HW_USB_TrbType_CmdCompletionEve: {
+						USB_XHCI_GenerTRB *cmd = DMAS_phys2Virt(*(u64 *)&intrTRB.dw[0]);
+						int pos = HW_USB_getRingPos(cmd);
 
-					// handle the request
-					USB_XHCIReqBlock *reqBlk = ctrl->cmdSrc[pos];
-					ctrl->cmdSrc[pos] = NULL;
-					if (reqBlk) {
-						// copy the information into the request and execute the handler
-						memcpy(&intrTRB, &reqBlk->res, sizeof(USB_XHCI_GenerTRB));
+						// handle the request
+						USB_XHCIReqBlock *reqBlk = ctrl->cmdSrc[pos];
+						ctrl->cmdSrc[pos] = NULL;
+						if (reqBlk) {
+							// copy the information into the request and execute the handler
+							memcpy(&intrTRB, &reqBlk->res, sizeof(USB_XHCI_GenerTRB));
+							
+							if (reqBlk->handler != NULL) reqBlk->handler(ctrl, reqBlk, reqBlk->arg);
+						}
+						break;
+					}
+					case HW_USB_TrbType_TransferEve: {
+						USB_XHCI_DataTRB *data = DMAS_phys2Virt(*(u64 *)&intrTRB.dw[0]);
+						int pos = HW_USB_getRingPos((USB_XHCI_GenerTRB *)data), slot = intrTRB.dw3.raw >> 24, ep = ((intrTRB.dw3.raw >> 16) & 0x1f) - 1;
+
+						printk(WHITE, BLACK, "from %d-%d pos:%d code:%d\n", slot, ep, pos, (intrTRB.dw[2] >> 24));
+						USB_XHCI_Device *dev = ctrl->devices[slot - 1];
 						
-						if (reqBlk->handler != NULL) reqBlk->handler(ctrl, reqBlk, reqBlk->arg);
+						USB_XHCIReqBlock *reqBlk = dev->transSrc[ep][pos];
+						dev->transSrc[ep][pos] = NULL;
+						if (reqBlk) {
+							memcpy(&intrTRB, &reqBlk->res, sizeof(USB_XHCI_GenerTRB));
+							if (reqBlk->handler != NULL) reqBlk->handler(ctrl, reqBlk, reqBlk->arg);
+						}
+						break;
 					}
 				}
 			}
@@ -262,35 +297,47 @@ u64 HW_USB_XHCI_thread(u64 (*_)(u64), u64 ctrlAddr) {
 				_writeDoorbell(ctrl, 0, 0);
 				break;
 			} else { // is a transfer request block
-				printk(WHITE, BLACK, "XHCI: %#018lx: try to push %#018lx into transfer ring %d-%d ", ctrl, reqBlk, reqBlk->slot, reqBlk->endpoint);
+				printk(WHITE, BLACK, "XHCI: %#018lx: try to push %#018lx into transfer ring %d-%d\n", ctrl, reqBlk, reqBlk->slot, reqBlk->endpoint);
 				USB_XHCI_Device *dev = ctrl->devices[reqBlk->slot];
 				if (dev == NULL) { printk(RED, BLACK, "->fail, the device does not exist.\n"); continue; }
 				int remain = 0;
+
+				USB_XHCI_DeviceSlotContext *slotCtx = DMAS_phys2Virt(ctrl->devCtx[reqBlk->slot + 1]);
+				USB_XHCI_EndpointContext *epCtx = (USB_XHCI_EndpointContext *)((u64)slotCtx + sizeof(USB_XHCI_DeviceSlotContext)) + reqBlk->endpoint;
+
 				// save the state for restoring
 				USB_XHCI_GenerTRB *_lstPtr = dev->transInqPtr[reqBlk->endpoint];
 				u8 _lstFlag = dev->transCycFlags[reqBlk->endpoint];
+
+				printk(WHITE, BLACK, "\tslotState:%d epState:%d deqPtr:%#018lx transInqPtr:%#018lx\n", slotCtx->dw3.ctx.slotState, epCtx->dw0.ctx.epState, epCtx->dw2_3.trDeqPtr, _lstPtr);
+
+				// get enough idle TRBs
 				for (int i = 0; i < reqBlk->reqCnt; i++) {
 					tmpList[i] = dev->transCycFlags[reqBlk->endpoint] | (u64)HW_USB_XHCI_getNextTransferTRB(ctrl, reqBlk->slot, reqBlk->endpoint);
 					if ((void *)(tmpList[i] & ~0x1ul) == NULL) { remain = reqBlk->reqCnt - i; break; }
 				}
+
+				// check if it failed to get enough idle TRBs
 				if (remain) {
-					printk(RED, BLACK, "->fail, not enough idle TRB, remain %d trb(s)\n", remain);
+					printk(RED, BLACK, "\t->fail, not enough idle TRB, remain %d trb(s)\n", remain);
 					dev->transInqPtr[reqBlk->endpoint] = _lstPtr;
 					dev->transCycFlags[reqBlk->endpoint] = _lstFlag;
 					while (1); IO_hlt();
 					continue;
 				}
+
+				// copy the TRBs in request block into the transfer ring
 				for (int i = 0; i < reqBlk->reqCnt; i++) {
 					USB_XHCI_GenerTRB *trb = (void *)(tmpList[i] & ~0x1ul);
-
 					int pos = HW_USB_getRingPos(trb);
 					memcpy(&reqBlk->reqs[i], trb, sizeof(USB_XHCI_GenerTRB));
+					// set cycle bit and the pointer in source list
 					trb->dw3.ctx.cycle = tmpList[i] & 1;
 					dev->transSrc[reqBlk->endpoint][pos] = reqBlk;
 				}
 				List_del(reqList);
-				_writeDoorbell(ctrl, reqBlk->slot + 1, reqBlk->endpoint + 1);
-				printk(GREEN, BLACK, "->success\n");
+				_writeDoorbell(ctrl, reqBlk->slot + 1, (reqBlk->endpoint + 1) | (1 << 16));
+				printk(GREEN, BLACK, "\t->success\n");
 				break;
 			}
 		}

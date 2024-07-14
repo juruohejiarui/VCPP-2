@@ -154,7 +154,7 @@ static int _initMem(USB_XHCIController *ctrl) {
 		ctrl->devCtx[i] = (USB_XHCI_DeviceContext *)DMAS_virt2Phys(addr);
 	}
 
-	ctrl->opRegs->config = maxSlots(ctrl) | (1 << 8) | (ctrl->opRegs->config & ~((1 << 10) - 1));
+	ctrl->opRegs->config = maxSlots(ctrl) | (1 << 8) | (ctrl->opRegs->config & ~((1u << 10) - 1));
 
 	// allocate scratch buffer
 	{

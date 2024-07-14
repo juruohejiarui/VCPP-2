@@ -14,6 +14,7 @@
 #define HW_USB_TrbType_DisableSlotCmd	10
 #define HW_USB_TrbType_SetAddrCmd		11
 #define HW_USB_TrbType_NoOpCmd			23
+#define HW_USB_TrbType_TransferEve		32
 #define HW_USB_TrbType_CmdCompletionEve	33
 
 // general format of transfer request block
@@ -169,7 +170,7 @@ typedef struct {
 		} __attribute__ ((packed)) ctx;
 		u32 raw;
 	} dw3;
-} __attribute__ ((packed)) USB_XHCI_dataTRB;
+} __attribute__ ((packed)) USB_XHCI_DataTRB;
 
 // status state transfer request block
 typedef struct {

@@ -50,8 +50,8 @@ USB_XHCI_GenerTRB *HW_USB_XHCI_allocTransferRing(USB_XHCIController *ctrl, USB_X
 	USB_XHCI_LinkTRB *lkTrb = (USB_XHCI_LinkTRB *)(ring + HW_USB_XHCI_RingEntryNum - 1);
 	lkTrb->dw3.raw |= 3;
 	lkTrb->dw3.ctx.trbType = HW_USB_TrbType_Link;
-	lkTrb->ptr = (u64)DMAS_virt2Phys(to == NULL ? ring : to);
-	if (fr != NULL) fr->ptr = (u64)DMAS_virt2Phys(ring);
+	lkTrb->ptr = DMAS_virt2Phys(to == NULL ? ring : to);
+	if (fr != NULL) fr->ptr = DMAS_virt2Phys(ring);
 	return ring;
 }
 
@@ -59,6 +59,8 @@ USB_XHCI_GenerTRB *HW_USB_XHCI_getNextTransferTRB(USB_XHCIController *ctrl, int 
 	USB_XHCI_Device *dev = ctrl->devices[slotId];
     USB_XHCI_GenerTRB *trb = dev->transInqPtr[ep], *nxt = trb + 1;
 	int pos = HW_USB_getRingPos(trb);
+
+	printk(ORANGE, BLACK, "XHCI: %#018lx: slot:%d ep:%d -> trb=%#018lx,pos:%d\n", ctrl, slotId, ep, trb, pos);
 	
 	// there is an unfinished transfer
 	if (dev->transSrc[ep][pos] != NULL) return NULL;
