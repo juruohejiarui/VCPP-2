@@ -56,8 +56,9 @@ u64 usrInit(u64 arg) {
     u64 res = Task_Syscall_usrAPI(arg, BLACK, WHITE, (u64)"Up Down Up Down baba", 20, 0, 0);
     printk(WHITE, BLACK, "syscall, res: %ld\n", res);
     while (1) {
-		// Task_Syscall_usrAPI(3, 1000, 0, 0, 0, 0, 0);
+		Task_Syscall_usrAPI(3, 1000, 0, 0, 0, 0, 0);
 		// Task_Syscall_usrAPI(1, BLACK, WHITE, (u64)"User Task[doge]\n", 16, 0, 0);
+		// IO_hlt();
 	}
 }
 

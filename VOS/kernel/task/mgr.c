@@ -120,7 +120,7 @@ void Task_schedule() {
 
 TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntry)(u64), u64 arg, u64 flag) {
     u64 pgdPhyAddr = MM_PageTable_alloc(); Page *tskStructPage = MM_Buddy_alloc(0, Page_Flag_Active);
-    printk(YELLOW, BLACK, "pgdPhyAddr: %#018lx, tskStructPage: %#018lx\t", pgdPhyAddr, tskStructPage->phyAddr);
+    // printk(YELLOW, BLACK, "pgdPhyAddr: %#018lx, tskStructPage: %#018lx\t", pgdPhyAddr, tskStructPage->phyAddr);
 
 	// contruct basic structures
 	TaskStruct *task = (TaskStruct *)DMAS_phys2Virt(tskStructPage->phyAddr); 
@@ -131,12 +131,12 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntr
 	task->thread = thread;
 	task->mem = (TaskMemStruct *)(thread + 1);
 	task->tss = (TSS *)(task->mem + 1);
-	printk(WHITE, BLACK, "task=%#018lx ", task);
+	// printk(WHITE, BLACK, "task=%#018lx ", task);
 
 	task->flags = flag;
     task->vRunTime = 0;
     task->pid = Task_pidCounter++;
-	printk(WHITE, BLACK, "pid:%ld ", task->pid);
+	// printk(WHITE, BLACK, "pid:%ld ", task->pid);
     task->mem->pgd = DMAS_phys2Virt(pgdPhyAddr);
     task->mem->pgdPhyAddr = pgdPhyAddr;
 	task->state = Task_State_Uninterruptible;
@@ -214,7 +214,7 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntr
 		SpinLock_unlock(&_CFSstruct.locker);
 		IO_maskIntrSuffix
 	}
-	printk(WHITE, BLACK, "finish creating...\n");
+	// printk(WHITE, BLACK, "finish creating...\n");
     return task;
 }
 

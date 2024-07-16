@@ -136,9 +136,9 @@ void Slab_pushNewSlab(int id) {
 }
 
 /// @brief allocate a memory block for kernel process from the slab system
-/// @param size 
-/// @param arg 
-/// @return 
+/// @param size the size of memory block
+/// @param arg the argument for this allocation, currently should be zero
+/// @return the pointer to the memory block
 void *kmalloc(u64 size, u64 arg) {
     IO_maskIntrPreffix
     // printk(BLACK, WHITE, "kmalloc %08d\t", size);

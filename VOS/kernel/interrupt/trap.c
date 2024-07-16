@@ -257,9 +257,6 @@ u64 doPageFault(u64 rsp, u64 errorCode) {
 	u64 cr2 = 0;
 	__asm__ volatile("movq %%cr2, %0":"=r"(cr2)::"memory");
 	p = (u64 *)(rsp + 0x98);
-	printk(RED,BLACK,"do_page_fault(14),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx,CR2:%#018lx\t",errorCode , rsp , *p , cr2);
-	if (Global_state) printk(WHITE, BLACK, "pid = %ld\n", Task_current->pid);
-	else printk(WHITE, BLACK, "\n");
 	u64 pldEntry = MM_PageTable_getPldEntry_debug(getCR3(), cr2);
 	// only has attributes
 	if ((pldEntry & ~0xffful) == 0 && (pldEntry & 0xffful)) {
@@ -267,6 +264,9 @@ u64 doPageFault(u64 rsp, u64 errorCode) {
 		Page *page = MM_Buddy_alloc(0, Page_Flag_Active);
 		MM_PageTable_map(getCR3(), cr2 & ~0xfff, page->phyAddr, pldEntry | MM_PageTable_Flag_Presented);
 	} else {
+		printk(RED,BLACK,"do_page_fault(14),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx,CR2:%#018lx\t",errorCode , rsp , *p , cr2);
+		if (Global_state) printk(WHITE, BLACK, "pid = %ld\n", Task_current->pid);
+		else printk(WHITE, BLACK, "\n");
 		// blank pldEntry means the page is not mapped
 		_printRegs(rsp);
 		printk(RED, BLACK, "Invalid entry : %#018lx\n", pldEntry);

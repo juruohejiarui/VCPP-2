@@ -133,7 +133,7 @@ struct USB_XHCIReqBlock;
 // device context data block
 typedef struct {
 	USB_XHCI_DeviceSlotContext slot;
-	USB_XHCI_EndpointContext ctx[0];
+	USB_XHCI_EndpointContext ep[0];
 } __attribute__ ((packed)) USB_XHCI_DeviceContext;
 
 #include "./XHCI/trb.h"
@@ -141,7 +141,7 @@ typedef struct {
 typedef struct {
 		USB_XHCI_InputCtrlContext inCtx;
 		USB_XHCI_DeviceSlotContext slotCtx;
-		USB_XHCI_EndpointContext epCtx[30];
+		USB_XHCI_EndpointContext epCtx[31];
 } __attribute__ ((packed)) USB_XHCI_InputContext;
 
 typedef struct {

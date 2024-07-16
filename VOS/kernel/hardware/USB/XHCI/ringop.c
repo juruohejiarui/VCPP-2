@@ -59,8 +59,6 @@ USB_XHCI_GenerTRB *HW_USB_XHCI_getNextTransferTRB(USB_XHCIController *ctrl, int 
 	USB_XHCI_Device *dev = ctrl->devices[slotId];
     USB_XHCI_GenerTRB *trb = dev->transInqPtr[ep], *nxt = trb + 1;
 	int pos = HW_USB_getRingPos(trb);
-
-	printk(ORANGE, BLACK, "XHCI: %#018lx: slot:%d ep:%d -> trb=%#018lx,pos:%d\n", ctrl, slotId, ep, trb, pos);
 	
 	// there is an unfinished transfer
 	if (dev->transSrc[ep][pos] != NULL) return NULL;

@@ -7,6 +7,7 @@
 
 #define HW_USB_TrbType_SetupStage		2
 #define HW_USB_TrbType_DataStage		3
+#define HW_USB_TrbType_StatusStage		4
 #define HW_USB_TrbType_Link				6
 #define HW_USB_TrbType_EventData		7
 #define HW_USB_TrbType_NoOp				8
@@ -199,7 +200,7 @@ typedef struct {
 		} __attribute__ ((packed)) ctx;
 		u32 raw;
 	} __attribute__ ((packed)) dw3;
-} __attribute__ ((packed)) USB_XHCI_statusTRB;
+} __attribute__ ((packed)) USB_XHCI_StatusTRB;
 
 // command completion transfer request block
 typedef struct {
@@ -256,5 +257,16 @@ typedef struct {
 #pragma endregion
 
 #define HW_USB_XHCI_TRB_Completion_Success	1
+
+// the event data buffer
+typedef struct {
+	// pointer to the trb structure in the transfer ring
+	USB_XHCI_NormalTRB *trb;
+	// seperator to keep the address of DT is 16-aligned.
+	u64 reserved;
+	u8 dt[0];
+} USB_XHCI_EventDataBuffer;
+
+USB_XHCI_EventDataBuffer *HW_USB_XHCI_makeEveDataBuf(u64 size);
 
 #endif

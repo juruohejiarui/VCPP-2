@@ -96,7 +96,7 @@ typedef struct {
 			// endpoint state, 0: disabled, 1: running, 2: halted, 3: stopped, 4: error 5~7: reserved
 			u8 epState : 3;
 			// reserved
-			u8 reserved : 4;
+			u8 reserved : 5;
 			// mult, the number of transactions per microframe
 			u8 multi : 2;
 			// max primary streams, the number of primary stream IDs that the endpoint supports
