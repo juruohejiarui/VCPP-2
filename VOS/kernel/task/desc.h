@@ -40,6 +40,10 @@ extern char* kallsyms_names __attribute__((weak));
 typedef struct tmpTaskMemStruct {
     PageTable *pgd;
     u64 pgdPhyAddr;
+
+    u64 quote;
+    u64 totUsage;
+    List pageUsage;
 } TaskMemStruct;
 typedef struct tmpThreadStruct {
     u64 rip;

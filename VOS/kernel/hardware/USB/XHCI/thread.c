@@ -30,8 +30,8 @@ static int _resetPort(USB_XHCIController *ctrl, int portId) {
 	return 0;
 }
 
-static void _handler_getDesc(USB_XHCIController *ctrl, USB_XHCIReqBlock *req, USB_XHCI_Device *dev) {
-	printk(WHITE, BLACK, "XHCI: %#018lx: handler of get descriptor: ");
+static void _ack_getDesc(USB_XHCIController *ctrl, USB_XHCIReqBlock *req, USB_XHCI_Device *dev) {
+	printk(ORANGE, BLACK, "XHCI: %#018lx: ack of get descriptor: ");
 	int code = req->res.dw[2] >> 24;
 	if (code != 1) {
 		printk(RED, BLACK, "fail(code:%d)\n", code);
@@ -44,10 +44,19 @@ static void _handler_getDesc(USB_XHCIController *ctrl, USB_XHCIReqBlock *req, US
 		*(u16 *)&dev->desc[8], *(u16 *)&dev->desc[10], *(u16 *)&dev->desc[12]);
 	printk(WHITE, BLACK, "\tiManufacturer: %02x iProduct: %02x iSerialNumber: %02x bNumConfig: %02x\n",
 		dev->desc[14], dev->desc[15], dev->desc[16], dev->desc[17]);
+
+	// get the string descriptor
+	// allocate the space for string descriptor
+	dev->strDesc = kmalloc(64, 0);
+	// modify the TRBs and acknowledge function for the new request
+	{
+		USB_XHCI_SetupTRB *setup = (USB_XHCI_SetupTRB *)&req->reqs[0];
+
+	}
 }
 
-static void _handler_addrDev(USB_XHCIController *ctrl, USB_XHCIReqBlock *req, USB_XHCI_Device *dev) {
-	printk(WHITE, BLACK, "XHCI: %#018lx: handler of address device: ");
+static void _ack_addrDev(USB_XHCIController *ctrl, USB_XHCIReqBlock *req, USB_XHCI_Device *dev) {
+	printk(ORANGE, BLACK, "XHCI: %#018lx: ack of address device: ");
 	int code = req->res.dw[2] >> 24;
 	if (code != 1) {
 		printk(RED, BLACK, "fail(code:%d)\n", code);
@@ -70,7 +79,7 @@ static void _handler_addrDev(USB_XHCIController *ctrl, USB_XHCIReqBlock *req, US
 	req->endpoint = 0;
 	req->flags &= ~HW_USB_XHCIReq_Flag_isCommand;
 	{
-		USB_XHCI_setupTRB *setup = (USB_XHCI_setupTRB *)&req->reqs[0];
+		USB_XHCI_SetupTRB *setup = (USB_XHCI_SetupTRB *)&req->reqs[0];
 		setup->dw0.ctx.bmReqType = 0x80;
 		setup->dw0.ctx.bReq = 6;
 		setup->dw0.ctx.wVal = 0x0100;
@@ -113,13 +122,13 @@ static void _handler_addrDev(USB_XHCIController *ctrl, USB_XHCIReqBlock *req, US
 		data->dw3.ctx.trbType = HW_USB_TrbType_EventData;
 	}
 
-	req->handler = (USB_XHCIReqHandler)_handler_getDesc;
+	req->ack = (USB_XHCIReqAck)_ack_getDesc;
 
 	_addReq(ctrl, req);
 }
 
-static void _handler_enblSlot(USB_XHCIController *ctrl, USB_XHCIReqBlock *req, USB_XHCI_Device *dev) {
-	printk(WHITE, BLACK, "XHCI: %#018lx: handler of enable Slot: ");
+static void _ack_enblSlot(USB_XHCIController *ctrl, USB_XHCIReqBlock *req, USB_XHCI_Device *dev) {
+	printk(ORANGE, BLACK, "XHCI: %#018lx: ack of enable Slot: ");
 	{
 		int code = req->res.dw[2] >> 24;
 		if (code != 1) {
@@ -177,20 +186,20 @@ static void _handler_enblSlot(USB_XHCIController *ctrl, USB_XHCIReqBlock *req, U
 	req->reqs->dw3.ctx.trbType = HW_USB_TrbType_SetAddrCmd;
 	req->reqs->dw3.raw |= (slotId << 24);
 
-	req->handler = (USB_XHCIReqHandler)_handler_addrDev;
+	req->ack = (USB_XHCIReqAck)_ack_addrDev;
 
 	_addReq(ctrl, req);
 }
 
-/// @brief the handler of port connection change
+/// @brief the ack of port connection change
 /// @param ctrl the xhci controller
 /// @param portId the 0-based port index
 static void _portChgEvent(USB_XHCIController *ctrl, int portId) {
 	if (!(ctrl->ports[portId].regs->statusCtrl & 0x1)) {
-		printk(WHITE, BLACK, "XHCI: %#018lx: port %d disconnected\n", ctrl, portId);
+		printk(ORANGE, BLACK, "XHCI: %#018lx: port %d disconnected\n", ctrl, portId);
 		return ;
 	}
-	printk(WHITE, BLACK, "XHCI: %#018lx: port %d connected ", ctrl, portId);
+	printk(ORANGE, BLACK, "XHCI: %#018lx: port %d connected ", ctrl, portId);
 	// start to setup up the device of this port
 	// roadmap: 1. enable a slot for it, 2. do address operation to setup context 3. get descriptor
 	USB_XHCI_Device *dev = kmalloc(sizeof(USB_XHCI_Device), 0);
@@ -217,7 +226,7 @@ static void _portChgEvent(USB_XHCIController *ctrl, int portId) {
 	reqBlk->flags = HW_USB_XHCIReq_Flag_isCommand;
 
 	reqBlk->arg = dev;
-	reqBlk->handler = (USB_XHCIReqHandler)_handler_enblSlot;
+	reqBlk->ack = (USB_XHCIReqAck)_ack_enblSlot;
 
 	_addReq(ctrl, reqBlk);
 }
@@ -255,12 +264,14 @@ u64 HW_USB_XHCI_thread(u64 (*_)(u64), u64 ctrlAddr) {
 
 						// handle the request
 						USB_XHCIReqBlock *reqBlk = ctrl->cmdSrc[pos];
-						ctrl->cmdSrc[pos] = NULL;
 						if (reqBlk) {
-							// copy the information into the request and execute the handler
+							ctrl->cmdSrc[pos] = NULL;
+							
+							reqBlk->flags |= HW_USB_XHCIReq_Flag_replied;
+							// copy the information into the request and execute the ack
 							memcpy(&intrTRB, &reqBlk->res, sizeof(USB_XHCI_GenerTRB));
 							
-							if (reqBlk->handler != NULL) reqBlk->handler(ctrl, reqBlk, reqBlk->arg);
+							if (reqBlk->ack != NULL) reqBlk->ack(ctrl, reqBlk, reqBlk->arg);
 						}
 						break;
 					}
@@ -280,10 +291,13 @@ u64 HW_USB_XHCI_thread(u64 (*_)(u64), u64 ctrlAddr) {
 
 						
 						USB_XHCIReqBlock *reqBlk = dev->transSrc[ep][pos];
-						dev->transSrc[ep][pos] = NULL;
 						if (reqBlk) {
+							dev->transSrc[ep][pos] = NULL;
+
+							reqBlk->flags |= HW_USB_XHCIReq_Flag_replied;
+
 							memcpy(&intrTRB, &reqBlk->res, sizeof(USB_XHCI_GenerTRB));
-							if (reqBlk->handler != NULL) reqBlk->handler(ctrl, reqBlk, reqBlk->arg);
+							if (reqBlk->ack != NULL) reqBlk->ack(ctrl, reqBlk, reqBlk->arg);
 						}
 						break;
 					}
@@ -314,6 +328,8 @@ u64 HW_USB_XHCI_thread(u64 (*_)(u64), u64 ctrlAddr) {
 					trb->dw3.ctx.cycle = tmpList[i] & 1;
 					ctrl->cmdSrc[pos] = reqBlk;
 				}
+
+				reqBlk->flags &= ~HW_USB_XHCIReq_Flag_replied;
 				List_del(reqList);
 				printk(GREEN, BLACK, "->succes\n");
 				_writeDoorbell(ctrl, 0, 0);
@@ -361,6 +377,8 @@ u64 HW_USB_XHCI_thread(u64 (*_)(u64), u64 ctrlAddr) {
 					trb->dw3.ctx.cycle = tmpList[i] & 1;
 					dev->transSrc[reqBlk->endpoint][pos] = reqBlk;
 				}
+
+				reqBlk->flags &= ~HW_USB_XHCIReq_Flag_replied;
 				List_del(reqList);
 				_writeDoorbell(ctrl, reqBlk->slot + 1, (reqBlk->endpoint + 1));
 				printk(GREEN, BLACK, "->success\n");

@@ -73,6 +73,8 @@ void Task_initMgr();
 
 void Task_updateCurState(TimerIrq *timerIrq, void *data);
 
+void Task_exit();
+
 TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntry)(u64), u64 arg, u64 flag);
 
 #define Task_countDown() ((--Task_current->counter) == 0)

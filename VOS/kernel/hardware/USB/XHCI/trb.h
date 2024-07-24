@@ -130,7 +130,7 @@ typedef struct {
 		} __attribute__ ((packed)) ctx;
 		u32 raw;
 	} __attribute__ ((packed)) dw3;
-} __attribute__ ((packed)) USB_XHCI_setupTRB;
+} __attribute__ ((packed)) USB_XHCI_SetupTRB;
 
 // data stage transfer request block
 typedef struct {

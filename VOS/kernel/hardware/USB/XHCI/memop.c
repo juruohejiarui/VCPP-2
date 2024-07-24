@@ -5,8 +5,9 @@
 void *HW_USB_XHCI_alloc(USB_XHCIController *ctrl, u64 size) {
 	if (size == 0) return NULL;
 	void *addr; Page *page;
-	if (size >= Page_4KSize) {
-		page = MM_Buddy_alloc(log2Ceil(size) - Page_4KShift, Page_Flag_Kernel | Page_Flag_Active);
+	// 1MB
+	if (size >= (1 << 20)) {
+		page = MM_Buddy_alloc(log2Ceil(size) - Page_4KShift, Page_Flag_Kernel | Page_Flag_Active | Page_Flag_KernelShare);
 		if (page == NULL) goto _alloc_Fail;
 		addr = DMAS_phys2Virt(page->phyAddr);
 	} else {

@@ -165,6 +165,7 @@ typedef struct {
 	USB_XHCI_InputContext *ctx;
 
 	u8 *desc;
+	char *strDesc;
 } USB_XHCI_Device;
 
 // event ring segment table entry
@@ -192,8 +193,9 @@ typedef struct {
 } __attribute__ ((packed)) USB_XHCI_MemUsage;
 
 #define HW_USB_XHCIReq_Flag_isCommand		(1 << 1)
+#define HW_USB_XHCIReq_Flag_replied			(1 << 2)
 
-typedef void (*USB_XHCIReqHandler)(struct USB_XHCIController *, struct USB_XHCIReqBlock *, void *);
+typedef void (*USB_XHCIReqAck)(struct USB_XHCIController *, struct USB_XHCIReqBlock *, void *);
 
 typedef struct USB_XHCIReqBlock {
 	// there are at most 256 requst in one reqBlocks
@@ -206,7 +208,7 @@ typedef struct USB_XHCIReqBlock {
 	List listEle;
 
 	void *arg;
-	USB_XHCIReqHandler handler;
+	USB_XHCIReqAck ack;
 
 	USB_XHCI_GenerTRB res, reqs[0];
 } USB_XHCIReqBlock;

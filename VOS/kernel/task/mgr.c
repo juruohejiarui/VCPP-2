@@ -118,8 +118,13 @@ void Task_schedule() {
     Task_switch(next);
 }
 
+/// @brief when the task is finished, this function will be executed to recycle the resource that this task used. (e.g. memory, ports)
+void Task_exit() {
+    
+}
+
 TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntry)(u64), u64 arg, u64 flag) {
-    u64 pgdPhyAddr = MM_PageTable_alloc(); Page *tskStructPage = MM_Buddy_alloc(0, Page_Flag_Active);
+    u64 pgdPhyAddr = MM_PageTable_alloc(); Page *tskStructPage = MM_Buddy_alloc(0, Page_Flag_Active | Page_Flag_KernelShare);
     // printk(YELLOW, BLACK, "pgdPhyAddr: %#018lx, tskStructPage: %#018lx\t", pgdPhyAddr, tskStructPage->phyAddr);
 
 	// contruct basic structures
@@ -154,7 +159,7 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntr
     *thread = Init_thread;
     thread->rip = (u64)Task_kernelThreadEntry;
     thread->rbp = Task_kernelStackEnd;
-    thread->rsp0 = thread->rsp = Task_kernelStackEnd - sizeof(PtReg);
+    thread->rsp0 = thread->rsp = Task_kernelStackEnd - sizeof(PtReg) - sizeof(void *);
     thread->rsp3 = Task_userStackEnd;
 	thread->fs = thread->gs = Segment_kernelData;
 
@@ -171,10 +176,11 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntr
 	regs.rsp = Task_kernelStackEnd;
 
 	// construct page table and stack
-	{
+    {
 		// copy the kernel part (except stack) of pgd
 		u64 *srcCR3 = DMAS_phys2Virt((flag & Task_Flag_Slaver) ? Task_current->mem->pgdPhyAddr : 0x101000);
 		memcpy(srcCR3 + 256, (u64 *)DMAS_phys2Virt(pgdPhyAddr) + 256, 255 * sizeof(u64));
+        *((u64 *)DMAS_phys2Virt(pgdPhyAddr) + 255) = 0;
 		// set the Task_current
 		MM_PageTable_map(
 				pgdPhyAddr,
@@ -204,8 +210,13 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntr
 					MM_PageTable_Flag_Writable | (vAddr == Task_kernelStackEnd - 0xff0ul ? MM_PageTable_Flag_Presented : 0));
 
 		// copy the data into the stack
-		memcpy(&regs, (u64 *)DMAS_phys2Virt(lstPage->phyAddr + Page_4KSize - 16 - sizeof(PtReg)), sizeof(PtReg));
+        *(u64 *)DMAS_phys2Virt(lstPage->phyAddr + Page_4KSize - 16 - sizeof(void *)) = (u64)Task_exit;
+		memcpy(&regs, (u64 *)DMAS_phys2Virt(lstPage->phyAddr + Page_4KSize - 16 - sizeof(void *) - sizeof(PtReg)), sizeof(PtReg));
 	}
+
+    // initalize the usage information
+    List_init(&task->mem->pageUsage);
+
 	RBTree_init(&task->timerTree, Intr_SoftIrq_Timer_comparator);
     if (task->pid > 0) {
 		IO_maskIntrPreffix

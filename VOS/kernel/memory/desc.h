@@ -44,6 +44,7 @@ extern char _end;
 #define Page_Flag_Active        (1ul << 2)
 #define Page_Flag_ShareK2U      (1ul << 3)
 #define Page_Flag_BuddyHeadPage (1ul << 4)
+#define Page_Flag_KernelShare   (1ul << 5)
 
 #define userAddrStart   0x0000000000000000ul
 #define userAddrEd      0x00007ffffffffffful

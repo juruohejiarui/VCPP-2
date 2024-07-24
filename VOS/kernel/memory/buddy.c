@@ -7,11 +7,16 @@
 
 static SpinLock _locker;
 
+extern volatile int Global_state;
+
 inline int MM_Buddy_getOrder(Page *pageStructAddr) {
     return (pageStructAddr->attr >> 6) & ((1ul << 4) - 1);
 }
 inline void MM_Buddy_setOrder(Page *page, int ord) {
     page->attr = (page->attr & (~(((1ul << 4) - 1) << 6))) | (ord << 6);
+}
+static inline int _recordUsage(u64 pageAttr) {
+    return Global_state == 1 && (pageAttr & Page_Flag_KernelShare);
 }
 
 static struct BuddyManageStruct {
@@ -147,6 +152,13 @@ Page *MM_Buddy_alloc(u64 log2Size, u64 attr) {
 			printk(RED, BLACK, "Buddy Align Error: %d->%d\n", log2(lowbit(headPage->phyAddr)) - 12, log2Size);
 			while (1) IO_hlt();
 		}
+
+        // insert this page frame into the usage record of current task
+        if (_recordUsage(attr)) {
+            List_init(&headPage->listEle);
+            List_insBefore(&headPage->listEle, &Task_current->mem->pageUsage);
+            Task_current->mem->totUsage += (1 << log2Size);
+        }
 		SpinLock_unlock(&_locker);
 		IO_maskIntrSuffix
         return headPage;
@@ -221,6 +233,10 @@ void MM_Buddy_free(Page *pages) {
         MM_Buddy_setOrder(rChild, 0),   MM_Buddy_setOrder(lChild, i + 1);
         pages = lChild;
     }
+    if (_recordUsage(pages->attr)) {
+        List_del(&pages->listEle);
+        Task_current->mem->totUsage -= 1 << MM_Buddy_getOrder(pages);
+    }
     _insNewFreePageFrame(MM_Buddy_getOrder(pages), pages);
 	SpinLock_unlock(&_locker);
     IO_maskIntrSuffix
@@ -243,13 +259,18 @@ void MM_Buddy_debugLog(int range) {
 
 Page *MM_Buddy_divPageFrame(Page *headPage) {
     int ord = MM_Buddy_getOrder(headPage);
+    // the 4K Page frame can not be divided further
     if (ord == 0) return NULL;
+
     Page *rPage = headPage + (1 << (ord - 1));
     rPage->buddyId = rChildPos(headPage->buddyId);
     headPage->buddyId = lChildPos(headPage->buddyId);
     MM_Buddy_setOrder(rPage, ord - 1);
     MM_Buddy_setOrder(headPage, ord - 1);
     List_init(&rPage->listEle);
+    
+    // update the usage record
+    if (_recordUsage(headPage->attr)) List_insBefore(&rPage->listEle, &Task_current->mem->pageUsage);
     rPage->attr = headPage->attr;
     return rPage;
 }

@@ -8,6 +8,11 @@
 #define PGTable_maxCacheSize 0x1100
 #define PGTable_minCacheSize 0x100
 
+static inline int _getPldIndex(u64 vAddr) { return ((vAddr >> 12) & 0x1ff); }
+static inline int _getPmdIndex(u64 vAddr) { return ((vAddr >> 21) & 0x1ff); }
+static inline int _getPudIndex(u64 vAddr) { return ((vAddr >> 30) & 0x1ff); }
+static inline int _getPgdIndex(u64 vAddr) { return ((vAddr >> 39) & 0x1ff); }
+
 static SpinLock _locker;
 
 static Page *cachePool[PGTable_maxCacheSize];
@@ -26,7 +31,7 @@ u64 MM_PageTable_alloc() {
     }
     cacheSize--;
     if (cacheSize < PGTable_minCacheSize) {
-        cachePool[cachePoolSize++] = MM_Buddy_alloc(12, Page_Flag_Active | Page_Flag_Kernel);
+        cachePool[cachePoolSize++] = MM_Buddy_alloc(12, Page_Flag_Active | Page_Flag_Kernel | Page_Flag_KernelShare);
         if (cachePool[cachePoolSize - 1] == NULL) {
             printk(RED, BLACK, "MM_PageTable_alloc(): fail to allocate a page for page table\n");
             return (u64)NULL;
@@ -37,6 +42,21 @@ u64 MM_PageTable_alloc() {
     IO_maskIntrSuffix
     memset(DMAS_phys2Virt(page->phyAddr), 0, 512 * sizeof(u64));
     return page->phyAddr;
+}
+
+u64 MM_PageTable_free(u64 *tbl) {
+    IO_maskIntrPreffix
+    SpinLock_lock(&_locker);
+    Page *page = memManageStruct.pages + (DMAS_virt2Phys(tbl) >> Page_4KShift);
+    // if there is enough cache, then just free this page
+    if (cachePoolSize == PGTable_maxCacheSize)
+        MM_Buddy_free(page);
+    else {
+        cachePool[cachePoolSize++] = page;
+        cacheSize++;
+    }
+    SpinLock_unlock(&_locker);
+    IO_maskIntrSuffix
 }
 
 void MM_PageTable_map1G(u64 cr3, u64 vAddr, u64 pAddr, u64 flag) {
@@ -109,75 +129,73 @@ extern int Global_state;
 /// @param pAddr
 void MM_PageTable_map(u64 cr3, u64 vAddr, u64 pAddr, u64 flag) {
 	vAddr = Page_4KDownAlign(vAddr), pAddr = Page_4KDownAlign(pAddr);
-    u64 *entry = (u64 *)DMAS_phys2Virt(cr3) + ((vAddr >> 39) & 0x1ff);
+    u64 *entry = (u64 *)DMAS_phys2Virt(cr3) + _getPgdIndex(vAddr);
     if (*entry == 0) *entry = MM_PageTable_alloc() | 0x7;
-    entry = (u64 *)DMAS_phys2Virt(*entry & ~0xffful) + ((vAddr >> 30) & 0x1ff);
-    if (*entry == 0) *entry = MM_PageTable_alloc() | 0x7;
-	if (*entry & 0x80) return ;
-    entry = (u64 *)DMAS_phys2Virt(*entry & ~0xffful) + ((vAddr >> 21) & 0x1ff);
+    entry = (u64 *)DMAS_phys2Virt(*entry & ~0xffful) + _getPudIndex(vAddr);
     if (*entry == 0) *entry = MM_PageTable_alloc() | 0x7;
 	if (*entry & 0x80) return ;
-    entry = (u64 *)DMAS_phys2Virt(*entry & ~0xffful) + ((vAddr >> 12) & 0x1ff);
+    entry = (u64 *)DMAS_phys2Virt(*entry & ~0xffful) + _getPmdIndex(vAddr);
+    if (*entry == 0) *entry = MM_PageTable_alloc() | 0x7;
+	if (*entry & 0x80) return ;
+    entry = (u64 *)DMAS_phys2Virt(*entry & ~0xffful) + _getPldIndex(vAddr);
     *entry = pAddr | flag;
 	flushTLB();
 }
 
 u64 MM_PageTable_getPldEntry(u64 cr3, u64 vAddr) {
-    u64 *entry = (u64 *)DMAS_phys2Virt(cr3) + ((vAddr >> 39) & 0x1ff);
+    u64 *entry = (u64 *)DMAS_phys2Virt(cr3) + _getPgdIndex(vAddr);
     if (*entry == 0) return 0;
-    entry = (u64 *)DMAS_phys2Virt(*entry & ~0xffful) + ((vAddr >> 30) & 0x1ff);
-    if (*entry == 0) return 0;
-	if (*entry & 0x80) return *entry;
-    entry = (u64 *)DMAS_phys2Virt(*entry & ~0xffful) + ((vAddr >> 21) & 0x1ff);
+    entry = (u64 *)DMAS_phys2Virt(*entry & ~0xffful) + _getPudIndex(vAddr);
     if (*entry == 0) return 0;
 	if (*entry & 0x80) return *entry;
-    entry = (u64 *)DMAS_phys2Virt(*entry & ~0xffful) + ((vAddr >> 12) & 0x1ff);
+    entry = (u64 *)DMAS_phys2Virt(*entry & ~0xffful) + _getPmdIndex(vAddr);
+    if (*entry == 0) return 0;
+	if (*entry & 0x80) return *entry;
+    entry = (u64 *)DMAS_phys2Virt(*entry & ~0xffful) + _getPldIndex(vAddr);
     return *entry;
 }
 
 u64 MM_PageTable_getPldEntry_debug(u64 cr3, u64 vAddr) {
-    u64 *entry = (u64 *)DMAS_phys2Virt(cr3) + ((vAddr >> 39) & 0x1ff);
+    u64 *entry = (u64 *)DMAS_phys2Virt(cr3) + _getPgdIndex(vAddr);
     printk(WHITE, BLACK, "MM_PageTable_getPldEntry_debug: cr3:%#018lx->%#018lx", cr3, *entry);
     if (*entry == 0) return printk(WHITE, BLACK, "\n"), 0;
-    entry = (u64 *)DMAS_phys2Virt(*entry & ~0xffful) + ((vAddr >> 30) & 0x1ff);
+    entry = (u64 *)DMAS_phys2Virt(*entry & ~0xffful) + _getPudIndex(vAddr);
     printk(WHITE, BLACK, "->%#018lx", *entry);
     if (*entry == 0) return printk(WHITE, BLACK, "\n"), 0;
 	if (*entry & 0x80) return printk(WHITE, BLACK, "\n"), *entry;
-    entry = (u64 *)DMAS_phys2Virt(*entry & ~0xffful) + ((vAddr >> 21) & 0x1ff);
+    entry = (u64 *)DMAS_phys2Virt(*entry & ~0xffful) + _getPmdIndex(vAddr);
     printk(WHITE, BLACK, "->%#018lx", *entry);
     if (*entry == 0) return printk(WHITE, BLACK, "\n"), 0;
 	if (*entry & 0x80) return printk(WHITE, BLACK, "\n"), *entry;
-    entry = (u64 *)DMAS_phys2Virt(*entry & ~0xffful) + ((vAddr >> 12) & 0x1ff);
+    entry = (u64 *)DMAS_phys2Virt(*entry & ~0xffful) + _getPldIndex(vAddr);
     printk(WHITE, BLACK, "->%#018lx\n", *entry);
     return *entry;
 }
 
+// return 1 if free this table successfully, return 0 otherwise.
+int _tryFree(u64 *tbl) {
+    int empty = 1;
+    for (int i = 0; i < 0x200; i++) if (tbl[i] != NULL) { empty = 1; break; }
+    if (!empty) return 0;
+    MM_PageTable_free(tbl);
+    return 1;
+}
 
-/// @brief fork the current page table, using the allocated physics address in the old page table
-/// @return the physics address of the new page table
-u64 MM_PageTable_fork() {
-    u64 oldCr3 = getCR3(), newCR3;
-    Page *pgdPage = MM_Buddy_alloc(0, Page_Flag_Active | Page_Flag_Kernel);
-    newCR3 = pgdPage->phyAddr;
-    u64 *oldPgd = (u64 *)DMAS_phys2Virt(oldCr3), *newPgd = (u64 *)DMAS_phys2Virt(pgdPage->phyAddr);
-    memset(newPgd, 0, 512 * sizeof(u64));
-    for (int i = 0; i < 512; i++) if (*(oldPgd + i)) {
-        Page *pudPage = MM_Buddy_alloc(0, Page_Flag_Active | Page_Flag_Kernel);
-        *(newPgd + i) = pudPage->phyAddr | 0x7;
-        u64 *oldPud = (u64 *)DMAS_phys2Virt(*(oldPgd + i)), *newPud = (u64 *)DMAS_phys2Virt(pudPage->phyAddr);
-        memset(newPud, 0, 512 * sizeof(u64));
-        for (int j = 0; j < 512; j++) if (*(oldPud + j)) {
-            Page *pmdPage = MM_Buddy_alloc(0, Page_Flag_Active | Page_Flag_Kernel);
-            *(newPud + j) = pmdPage->phyAddr | 0x7;
-            u64 *oldPmd = (u64 *)DMAS_phys2Virt(*(oldPud + j)), *newPmd = (u64 *)DMAS_phys2Virt(pmdPage->phyAddr);
-            memset(newPmd, 0, 512 * sizeof(u64));
-            for (int k = 0; k < 512; k++) if (*(oldPmd + k)) {
-                Page *pldPage = MM_Buddy_alloc(0, Page_Flag_Active | Page_Flag_Kernel);
-                *(newPmd + k) = pldPage->phyAddr | 0x7;
-                u64 *oldPld = (u64 *)DMAS_phys2Virt(*(oldPmd + k)), *newPld = (u64 *)DMAS_phys2Virt(pldPage->phyAddr);
-                memcpy(newPld, oldPld, 512 * sizeof(u64));
-            }
-        }
-    }
-    return newCR3;
+void MM_PageTable_unmap(u64 cr3, u64 vAddr) {
+    u64 *pgdEntry = (u64 *)DMAS_phys2Virt(cr3) + _getPgdIndex(vAddr),
+        *pudEntry = (u64 *)DMAS_phys2Virt(*pgdEntry & ~0xffful) + _getPudIndex(vAddr),
+        *pmdEntry = (u64 *)DMAS_phys2Virt(*pudEntry & ~0xffful) + _getPmdIndex(vAddr),
+        *pldEntry = (u64 *)DMAS_phys2Virt(*pmdEntry & ~0xffful) + _getPldIndex(vAddr);
+    *pldEntry = 0;
+    // try to free the pld table
+    int succ = _tryFree((u64 *)(*pmdEntry & ~0xffful));
+    if (!succ) return ;
+    *pmdEntry = 0;
+    // try to free the pmd table
+    succ = _tryFree((u64 *)(*pudEntry & ~0xffful));
+    if (!succ) return ;
+    // try to free the pud table
+    *pldEntry = 0;
+    succ = _tryFree((u64 *)(*pgdEntry & ~0xffful));
+    if (succ) *pgdEntry = 0;
 }

@@ -47,7 +47,7 @@ void MM_Slab_init() {
     printk(GREEN, BLACK, "MM_Slab_init: require %d Pages for initialization\n", 1ul << log2Size);
 	#endif
 
-    Page *page = MM_Buddy_alloc(log2Size, Page_Flag_Kernel);
+    Page *page = MM_Buddy_alloc(log2Size, Page_Flag_Kernel | Page_Flag_KernelShare);
     if (page == NULL) {
         printk(RED, BLACK, "MM_Slab_init: MM_Buddy_alloc failed\n");
         return ;
