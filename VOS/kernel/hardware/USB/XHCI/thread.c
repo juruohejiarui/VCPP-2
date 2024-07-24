@@ -6,8 +6,8 @@
 static int mxPktSize(int spd) {
 	switch (spd) {
 		case 4: return 512; // super speed
-		case 3: case 1: case 0: return 64; // full speed and high speed
-		case 2: return 8;
+		case 3: case 1: return 64;	// full speed and high speed
+		case 2: case 0: return 8;	// low speed and USB 1.1 / USB 1.0
 		default: return 512;
 	}
 	return -1;
@@ -38,10 +38,12 @@ static void _handler_getDesc(USB_XHCIController *ctrl, USB_XHCIReqBlock *req, US
 		return ;
 	}
 	printk(GREEN, BLACK, "success\n");
-	printk(WHITE, BLACK, "\tdesc: ");
-	u64 len = req->res.dw[2] & ((1ul << 24) - 1);
-	for (u64 i = 0; i < 8; i++) printk(WHITE, BLACK, "%02x ", dev->desc[i]);
-	printk(WHITE, BLACK, "\n");
+	printk(WHITE, BLACK, "\tbcdUSB: %1x:%02x class:subClass: %02x:%02x Proto: %02x mxPkt0: %02x\n",
+		dev->desc[3], dev->desc[2], dev->desc[4], dev->desc[5], dev->desc[6], dev->desc[7]);
+	printk(WHITE, BLACK, "\tvendor: %04x product: %04x bcdDev: %04x\n",
+		*(u16 *)&dev->desc[8], *(u16 *)&dev->desc[10], *(u16 *)&dev->desc[12]);
+	printk(WHITE, BLACK, "\tiManufacturer: %02x iProduct: %02x iSerialNumber: %02x bNumConfig: %02x\n",
+		dev->desc[14], dev->desc[15], dev->desc[16], dev->desc[17]);
 }
 
 static void _handler_addrDev(USB_XHCIController *ctrl, USB_XHCIReqBlock *req, USB_XHCI_Device *dev) {
@@ -73,7 +75,7 @@ static void _handler_addrDev(USB_XHCIController *ctrl, USB_XHCIReqBlock *req, US
 		setup->dw0.ctx.bReq = 6;
 		setup->dw0.ctx.wVal = 0x0100;
 		setup->dw1.ctx.wIndex = 0;
-		setup->dw1.ctx.wLen = 8;
+		setup->dw1.ctx.wLen = 0x12;
 
 		setup->dw2.ctx.trbLen = 8;
 		setup->dw3.ctx.idt = 1;
@@ -85,7 +87,7 @@ static void _handler_addrDev(USB_XHCIController *ctrl, USB_XHCIReqBlock *req, US
 		dev->desc = kmalloc(64, 0);
 		memset(dev->desc, 0, 64);
 		data->dw0_1.dtBuf = DMAS_virt2Phys(dev->desc);
-		data->dw2.ctx.trbLen = 8;
+		data->dw2.ctx.trbLen = 0x12;
 		data->dw3.ctx.evalNxtTRB = 1;
 		data->dw3.ctx.chainBit = 1;
 		data->dw3.ctx.trbType = HW_USB_TrbType_DataStage;
@@ -95,7 +97,7 @@ static void _handler_addrDev(USB_XHCIController *ctrl, USB_XHCIReqBlock *req, US
 		USB_XHCI_NormalTRB *data = (USB_XHCI_NormalTRB *)&req->reqs[2];
 		USB_XHCI_EventDataBuffer *buf = HW_USB_XHCI_makeEveDataBuf(64);
 		data->dw0_1.dtBufPtr = DMAS_virt2Phys(buf->dt);
-		data->dw3.ctx.ioc = 1;
+		data->dw3.ctx.ioc = 0;
 		data->dw3.ctx.trbType = HW_USB_TrbType_EventData;
 	}
 	{
