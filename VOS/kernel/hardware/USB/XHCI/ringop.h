@@ -18,7 +18,7 @@ USB_XHCI_GenerTRB *HW_USB_XHCI_allocTransferRing(USB_XHCIController *ctrl, USB_X
 USB_XHCI_GenerTRB *HW_USB_XHCI_getNextTransferTRB(USB_XHCIController *ctrl, int slotId, int ep);
 
 // get the pos that this TRB in the current ring
-static inline int HW_USB_getRingPos(USB_XHCI_GenerTRB *trb) {
+__always_inline__ int HW_USB_getRingPos(USB_XHCI_GenerTRB *trb) {
     return trb - (USB_XHCI_GenerTRB *)(downAlignTo((u64)trb, Page_4KSize * 16));
 }
 

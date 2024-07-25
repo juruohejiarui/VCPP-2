@@ -69,11 +69,16 @@ extern int Task_pidCounter;
 
 void Task_switch(TaskStruct *next);
 
+// the current task
+#define Task_current ((TaskStruct *)(Task_kernelStackEnd - Task_kernelStackSize))
+
 void Task_initMgr();
 
 void Task_updateCurState(TimerIrq *timerIrq, void *data);
 
 void Task_exit();
+
+u64 Task_recycleThread(u64 (*usrEntry)(u64), u64 arg);
 
 TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntry)(u64), u64 arg, u64 flag);
 
@@ -85,7 +90,21 @@ int Task_sleep();
 
 void Task_stopSleep();
 
-// the current task
-#define Task_current ((TaskStruct *)(Task_kernelStackEnd - Task_kernelStackSize))
+static __always_inline__ void Task_kernelEntryHeader() {
+	Intr_SoftIrq_Timer_initIrq(&Task_current->scheduleTimer, 1, Task_updateCurState, NULL);
+    Intr_SoftIrq_Timer_addIrq(&Task_current->scheduleTimer);
+	Task_current->state = Task_State_Running;
+}
+
+static __always_inline__ void Task_kernelEntryEnd(int retVal) {
+	__asm__ volatile(
+		"movq %0, %%rax					\n\t"
+		"leaq Task_exit(%%rip), %%rbx	\n\t"
+		"jmp *%%rbx						\n\t"
+		: "=m"(retVal)
+		:
+		: "rax", "rbx", "memory"
+	);
+}
 
 #endif

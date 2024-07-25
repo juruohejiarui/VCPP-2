@@ -232,9 +232,7 @@ static void _portChgEvent(USB_XHCIController *ctrl, int portId) {
 }
 u64 HW_USB_XHCI_thread(u64 (*_)(u64), u64 ctrlAddr) {
 	static u64 tmpList[256];
-	Intr_SoftIrq_Timer_initIrq(&Task_current->scheduleTimer, 1, Task_updateCurState, NULL);
-    Intr_SoftIrq_Timer_addIrq(&Task_current->scheduleTimer);
-	Task_current->state = Task_State_Running;
+	Task_kernelEntryHeader();
 	USB_XHCIController *ctrl = (USB_XHCIController *)ctrlAddr;
 	int firPeriod = 1;
 	printk(WHITE, BLACK, "HW_USB_XHCI_thread(): %#018lx\n", ctrl);
@@ -388,4 +386,5 @@ u64 HW_USB_XHCI_thread(u64 (*_)(u64), u64 ctrlAddr) {
 		SpinLock_unlock(&ctrl->witQueLock);
 		firPeriod = 0;
 	}
+	Task_kernelEntryEnd(0);
 }

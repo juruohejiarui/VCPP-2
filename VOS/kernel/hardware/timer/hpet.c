@@ -18,14 +18,11 @@ extern volatile int Global_state;
 
 static inline void _setTimerConfig(u32 id, u64 config) {
 	u64 readonlyPart = *(u64 *)(DMAS_phys2Virt(_hpetDesc->address.Address) + 0x100 + 0x20 * id) & 0x8030;
-	printk(WHITE, BLACK, "HPET: Timer %d: ", id);
-	if (readonlyPart & 0x20) printk(WHITE, BLACK, "64-bit\n");
-	else printk(WHITE, BLACK, "32-bit\n");
 	// focused to run in 32-bit mode
 	*(u64 *)(DMAS_phys2Virt(_hpetDesc->address.Address) + 0x100 + 0x20 * id) = config | readonlyPart | 0x100;
 	IO_mfence();
 }
-static inline void _setTimerComparator(u32 id, u32 comparator) {
+static __always_inline__ void _setTimerComparator(u32 id, u32 comparator) {
 	*(u32 *)(DMAS_phys2Virt(_hpetDesc->address.Address) + 0x108 + 0x20 * id) = comparator;
 	IO_mfence();
 }

@@ -8,10 +8,10 @@
 #define isBlack(nd) (color(nd))
 #define setRed(nd)		do { (nd)->unionParCol &= ~1ull; } while (0)
 #define setBlack(nd)	do { (nd)->unionParCol |= 1ull; } while (0)
-static inline void setParent(RBNode *node, RBNode *par) {
+static __always_inline__ void setParent(RBNode *node, RBNode *par) {
 	node->unionParCol = (node->unionParCol & 3) | (u64)par;
 }
-static inline void setCol(RBNode *node, int col) {
+static __always_inline__ void setCol(RBNode *node, int col) {
 	node->unionParCol = (node->unionParCol & ~1ul) | col;
 }
 

@@ -8,14 +8,14 @@ i32 _devCnt;
 
 static List _mgrList;
 
-static inline PCIeConfig *_getDevPtr(u64 addrBase, u8 bus, u8 dev, u8 func) {
+static __always_inline__ PCIeConfig *_getDevPtr(u64 addrBase, u8 bus, u8 dev, u8 func) {
     return (PCIeConfig *)DMAS_phys2Virt(addrBase | ((u64)bus << 20) | ((u64)dev << 15) | ((u64)func << 12));
 }
 
-static inline u16 _getVendor(u64 addrBase, u8 bus, u8 dev, u8 func) {
+static __always_inline__ u16 _getVendor(u64 addrBase, u8 bus, u8 dev, u8 func) {
     return _getDevPtr(addrBase, bus, dev, func)->vendorID;
 }
-static inline u8 _getHeaderType(u32 addrBase, u8 bus, u8 dev, u8 func) {
+static __always_inline__ u8 _getHeaderType(u32 addrBase, u8 bus, u8 dev, u8 func) {
     return _getDevPtr(addrBase, bus, dev, func)->headerType;
 }
 

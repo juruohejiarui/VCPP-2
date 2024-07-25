@@ -35,15 +35,15 @@ extern char* kallsyms_names __attribute__((weak));
 #define Task_Priority_IO        1
 #define Task_Priority_Sleeping  3
 #define Task_Priority_Trapped   4
+#define Task_Priority_Killed    5
 
 
 typedef struct tmpTaskMemStruct {
     PageTable *pgd;
     u64 pgdPhyAddr;
-
-    u64 quote;
     u64 totUsage;
     List pageUsage;
+    Page *intrPage, *lstKerPage;
 } TaskMemStruct;
 typedef struct tmpThreadStruct {
     u64 rip;

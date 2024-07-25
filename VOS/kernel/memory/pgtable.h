@@ -63,6 +63,8 @@ void MM_PageTable_unmap(u64 cr3, u64 vAddr);
 u64 MM_PageTable_getPldEntry(u64 cr3, u64 vAddr);
 u64 MM_PageTable_getPldEntry_debug(u64 cr3, u64 vAddr);
 
-u64 MM_PageTable_fork();
+// free the memory mapped on this page table and the entries of this page table
+// the space from 0xffff800000000000 to 0xffffC80000000000 will not be clean, which is the kernel share space.
+void MM_PageTable_cleanMap(u64 cr3);
 
 #endif

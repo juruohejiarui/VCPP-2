@@ -8,10 +8,10 @@
 #define PGTable_maxCacheSize 0x1100
 #define PGTable_minCacheSize 0x100
 
-static inline int _getPldIndex(u64 vAddr) { return ((vAddr >> 12) & 0x1ff); }
-static inline int _getPmdIndex(u64 vAddr) { return ((vAddr >> 21) & 0x1ff); }
-static inline int _getPudIndex(u64 vAddr) { return ((vAddr >> 30) & 0x1ff); }
-static inline int _getPgdIndex(u64 vAddr) { return ((vAddr >> 39) & 0x1ff); }
+__always_inline__ int _getPldIndex(u64 vAddr) { return ((vAddr >> 12) & 0x1ff); }
+__always_inline__ int _getPmdIndex(u64 vAddr) { return ((vAddr >> 21) & 0x1ff); }
+__always_inline__ int _getPudIndex(u64 vAddr) { return ((vAddr >> 30) & 0x1ff); }
+__always_inline__ int _getPgdIndex(u64 vAddr) { return ((vAddr >> 39) & 0x1ff); }
 
 static SpinLock _locker;
 
@@ -175,7 +175,7 @@ u64 MM_PageTable_getPldEntry_debug(u64 cr3, u64 vAddr) {
 // return 1 if free this table successfully, return 0 otherwise.
 int _tryFree(u64 *tbl) {
     int empty = 1;
-    for (int i = 0; i < 0x200; i++) if (tbl[i] != NULL) { empty = 1; break; }
+    for (int i = 0; i < 0x200; i++) if (tbl[i] != (u64)NULL) { empty = 1; break; }
     if (!empty) return 0;
     MM_PageTable_free(tbl);
     return 1;
@@ -186,6 +186,7 @@ void MM_PageTable_unmap(u64 cr3, u64 vAddr) {
         *pudEntry = (u64 *)DMAS_phys2Virt(*pgdEntry & ~0xffful) + _getPudIndex(vAddr),
         *pmdEntry = (u64 *)DMAS_phys2Virt(*pudEntry & ~0xffful) + _getPmdIndex(vAddr),
         *pldEntry = (u64 *)DMAS_phys2Virt(*pmdEntry & ~0xffful) + _getPldIndex(vAddr);
+    if ((*pldEntry & ~0xffful) != (u64)NULL)
     *pldEntry = 0;
     // try to free the pld table
     int succ = _tryFree((u64 *)(*pmdEntry & ~0xffful));
@@ -198,4 +199,28 @@ void MM_PageTable_unmap(u64 cr3, u64 vAddr) {
     *pldEntry = 0;
     succ = _tryFree((u64 *)(*pgdEntry & ~0xffful));
     if (succ) *pgdEntry = 0;
+}
+
+// free all the physical memory and the page table entries
+// lvl: 0: pldTable, 1: pmdTable, 2: pudTable
+void _cleanMap(u64 *entry, int lvl) {
+    if (!lvl) {
+        MM_PageTable_free(entry);
+        return ;
+    }
+    for (u64 i = 0; i < 0x200; i++) {
+        if ((entry[i] & ~0xffful) == 0) continue;
+        _cleanMap(DMAS_phys2Virt(entry[i] & ~0xffful), lvl - 1);
+    }
+    MM_PageTable_free(entry);
+}
+void MM_PageTable_cleanMap(u64 cr3) {
+    u64 *pgdEntry = DMAS_phys2Virt(cr3), i;
+    for (i = 0; i < 256; i++) {
+        if ((pgdEntry[i] & ~0xffful) == 0) continue;
+        _cleanMap(DMAS_phys2Virt(pgdEntry[i] & ~0xffful), 2);
+    }
+    if (pgdEntry[0x1ff] & ~0xffful) {
+        _cleanMap(DMAS_phys2Virt(pgdEntry[0x1ff] & ~0xffful), 2);
+    }
 }

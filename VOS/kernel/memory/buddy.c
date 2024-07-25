@@ -9,13 +9,13 @@ static SpinLock _locker;
 
 extern volatile int Global_state;
 
-inline int MM_Buddy_getOrder(Page *pageStructAddr) {
+__always_inline__ int MM_Buddy_getOrder(Page *pageStructAddr) {
     return (pageStructAddr->attr >> 6) & ((1ul << 4) - 1);
 }
-inline void MM_Buddy_setOrder(Page *page, int ord) {
+__always_inline__ void MM_Buddy_setOrder(Page *page, int ord) {
     page->attr = (page->attr & (~(((1ul << 4) - 1) << 6))) | (ord << 6);
 }
-static inline int _recordUsage(u64 pageAttr) {
+__always_inline__ int _recordUsage(u64 pageAttr) {
     return Global_state == 1 && (pageAttr & Page_Flag_KernelShare);
 }
 
