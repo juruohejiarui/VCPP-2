@@ -149,12 +149,18 @@ u64 Task_recycleThread(u64 (*usrEntry)(u64), u64 arg) {
         _CFSstruct.recycState = RecycleThread_State_Running;
         RBNode *rMost = RBTree_getMax(&_CFSstruct.killedTree);
         if (rMost != NULL) {
+            RBTree_delNode(&_CFSstruct.killedTree, rMost);
             TaskStruct *tsk = container(rMost, TaskStruct, wNode);
-            printk(BLACK, WHITE, "recycle task %d\n", tsk->pid);
+            printk(BLACK, WHITE, "recycle task %d at %#018lx\n", tsk->pid, tsk);
+            printk(WHITE, BLACK, "intrPage:%#018lx lstKerPage:%#018lx\n", tsk->mem->intrPage, tsk->mem->lstKerPage);
             MM_Buddy_free(tsk->mem->intrPage);
             MM_Buddy_free(tsk->mem->lstKerPage);
             MM_PageTable_cleanMap(tsk->mem->pgdPhyAddr);
-            RBTree_delNode(&_CFSstruct.killedTree, rMost);
+            
+            // free the page of the task structure
+            Page *tskPage = memManageStruct.pages + (DMAS_virt2Phys(tsk) >> Page_4KShift);
+            printk(WHITE, BLACK, "tskPage:%#018lx\n", tskPage);
+            MM_Buddy_free(tskPage);
         }
         _CFSstruct.recycState = RecycleThread_State_Idle;
     }
@@ -166,7 +172,7 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntr
     // printk(YELLOW, BLACK, "pgdPhyAddr: %#018lx, tskStructPage: %#018lx\t", pgdPhyAddr, tskStructPage->phyAddr);
 
 	// contruct basic structures
-	TaskStruct *task = (TaskStruct *)DMAS_phys2Virt(tskStructPage->phyAddr); 
+	TaskStruct *task = (TaskStruct *)DMAS_phys2Virt(tskStructPage->phyAddr);
     memset(task, 0, sizeof(TaskStruct) + sizeof(ThreadStruct) + sizeof(TaskMemStruct) + sizeof(TSS));
 	
 	// set the pointers of sub-structs

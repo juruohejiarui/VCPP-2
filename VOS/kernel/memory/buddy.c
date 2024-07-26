@@ -9,6 +9,8 @@ static SpinLock _locker;
 
 extern volatile int Global_state;
 
+#define _orderField(page) ((page)->attr & (((1ul << 4) - 1) << 6))
+
 __always_inline__ int MM_Buddy_getOrder(Page *pageStructAddr) {
     return (pageStructAddr->attr >> 6) & ((1ul << 4) - 1);
 }
@@ -16,7 +18,7 @@ __always_inline__ void MM_Buddy_setOrder(Page *page, int ord) {
     page->attr = (page->attr & (~(((1ul << 4) - 1) << 6))) | (ord << 6);
 }
 __always_inline__ int _recordUsage(u64 pageAttr) {
-    return Global_state == 1 && (pageAttr & Page_Flag_KernelShare);
+    return Global_state == 1 && !(pageAttr & Page_Flag_KernelShare);
 }
 
 static struct BuddyManageStruct {
@@ -195,6 +197,12 @@ Page *MM_Buddy_alloc4G(u64 log2Size, u64 attr) {
 		_divPageFrame(page, ord, log2Size);
 		page->attr |= attr;
 
+        if (_recordUsage(attr)) {
+            List_init(&page->listEle);
+            List_insBefore(&page->listEle, &Task_current->mem->pageUsage);
+            Task_current->mem->totUsage += (1 << log2Size);
+        }
+
 		SpinLock_unlock(&_locker);
 		IO_maskIntrSuffix
 		return page;
@@ -211,12 +219,16 @@ void MM_Buddy_free(Page *pages) {
     printk(RED, BLACK, "MM_Buddy_free(%p)\n", pages);
 	#endif
     if (pages == NULL || (pages->attr & Page_Flag_BuddyHeadPage) == 0) {
+        printk(RED, BLACK, "MM_Buddy_free(): error: invalid page\n");
 		SpinLock_unlock(&_locker);
     	IO_maskIntrSuffix
-		return;
+		return; 
 	}
+    printk(WHITE, BLACK, "MM_Buddy_free(): page: %#018lx order : %d\n", pages, MM_Buddy_getOrder(pages));
+    if (_recordUsage(pages->attr))
+        Task_current->mem->totUsage -= 1 << MM_Buddy_getOrder(pages);
     List_del(&pages->listEle);
-    pages->attr = Page_Flag_BuddyHeadPage;
+    pages->attr = Page_Flag_BuddyHeadPage | _orderField(pages);
     for (int i = MM_Buddy_getOrder(pages); i < Buddy_maxOrder; i++) {
         revBit(pages);
         if (getBit(pages)) break;
@@ -232,10 +244,6 @@ void MM_Buddy_free(Page *pages) {
         rChild->buddyId = 0,        lChild->buddyId = parentPos(lChild->buddyId);
         MM_Buddy_setOrder(rChild, 0),   MM_Buddy_setOrder(lChild, i + 1);
         pages = lChild;
-    }
-    if (_recordUsage(pages->attr)) {
-        List_del(&pages->listEle);
-        Task_current->mem->totUsage -= 1 << MM_Buddy_getOrder(pages);
     }
     _insNewFreePageFrame(MM_Buddy_getOrder(pages), pages);
 	SpinLock_unlock(&_locker);
