@@ -7,7 +7,7 @@
 
 #define alloc2MPage() MM_Buddy_alloc(9, Page_Flag_Kernel)
 
-static SpinLock _locker;
+static SpinLock _SlabLocker;
 
 SlabCache Slab_kmallocCache[16] = {
     {32,        0, 0, NULL, NULL, NULL},
@@ -30,7 +30,7 @@ SlabCache Slab_kmallocCache[16] = {
 
 void MM_Slab_init() {
     printk(RED, BLACK, "MM_Slab_init()\n");
-	SpinLock_init(&_locker);
+	SpinLock_init(&_SlabLocker);
     // calculate the total size of Slab and colMap
     u64 totSize = 16 * sizeof(Slab);
     for (int i = 0; i < 16; i++)
@@ -142,10 +142,10 @@ void Slab_pushNewSlab(int id) {
 void *kmalloc(u64 size, u64 arg) {
     IO_maskIntrPreffix
     // printk(BLACK, WHITE, "kmalloc %08d\t", size);
-	if (!arg) SpinLock_lock(&_locker);
+	if (!arg) SpinLock_lock(&_SlabLocker);
     int id = 0;
     if (size > MM_Slab_maxSize) {
-		if (!arg) SpinLock_unlock(&_locker);
+		if (!arg) SpinLock_unlock(&_SlabLocker);
 		return NULL;
 	}
     while (Slab_kmallocCache[id].size < size) id++;
@@ -168,7 +168,7 @@ void *kmalloc(u64 size, u64 arg) {
         Bit_set1(slab->colMap + (j >> 6), j & 63);
         slab->usingCnt++, slab->freeCnt--;
         Slab_kmallocCache[id].usingCnt++, Slab_kmallocCache[id].freeCnt--;
-		if (!arg) SpinLock_unlock(&_locker);
+		if (!arg) SpinLock_unlock(&_SlabLocker);
         IO_maskIntrSuffix
 		#ifdef DEBUG_MM_ALLOC
         printk(GREEN, BLACK, "kmalloc(%#018lx, %#018lx)->%#018lx\n", size, arg, (u64)slab->virtAddr + j * Slab_kmallocCache[id].size);
@@ -176,7 +176,7 @@ void *kmalloc(u64 size, u64 arg) {
         return (void *)((u64)slab->virtAddr + j * Slab_kmallocCache[id].size);
     }
     printk(RED, BLACK, "kmalloc: invalid state\n");
-	if (!arg) SpinLock_unlock(&_locker);
+	if (!arg) SpinLock_unlock(&_SlabLocker);
     IO_maskIntrSuffix
     return NULL;
 }

@@ -13,14 +13,14 @@ __always_inline__ int _getPmdIndex(u64 vAddr) { return ((vAddr >> 21) & 0x1ff); 
 __always_inline__ int _getPudIndex(u64 vAddr) { return ((vAddr >> 30) & 0x1ff); }
 __always_inline__ int _getPgdIndex(u64 vAddr) { return ((vAddr >> 39) & 0x1ff); }
 
-static SpinLock _locker;
+static SpinLock _PageTableLocker;
 
 static Page *cachePool[PGTable_maxCacheSize];
 static int cachePoolSize = 0, cacheSize;
 
 u64 MM_PageTable_alloc() {
     IO_maskIntrPreffix
-	SpinLock_lock(&_locker);
+	SpinLock_lock(&_PageTableLocker);
     // find a page for page table
     Page *page = cachePool[cachePoolSize - 1];
     if (MM_Buddy_getOrder(page) == 0) cachePool[--cachePoolSize] = NULL;
@@ -38,7 +38,7 @@ u64 MM_PageTable_alloc() {
         }
         cacheSize += 0x1000;
     }
-	SpinLock_unlock(&_locker);
+	SpinLock_unlock(&_PageTableLocker);
     IO_maskIntrSuffix
     memset(DMAS_phys2Virt(page->phyAddr), 0, 512 * sizeof(u64));
     return page->phyAddr;
@@ -46,7 +46,7 @@ u64 MM_PageTable_alloc() {
 
 u64 MM_PageTable_free(u64 *tbl) {
     IO_maskIntrPreffix
-    SpinLock_lock(&_locker);
+    SpinLock_lock(&_PageTableLocker);
     Page *page = memManageStruct.pages + (DMAS_virt2Phys(tbl) >> Page_4KShift);
     // if there is enough cache, then just free this page
     if (cachePoolSize == PGTable_maxCacheSize)
@@ -55,7 +55,7 @@ u64 MM_PageTable_free(u64 *tbl) {
         cachePool[cachePoolSize++] = page;
         cacheSize++;
     }
-    SpinLock_unlock(&_locker);
+    SpinLock_unlock(&_PageTableLocker);
     IO_maskIntrSuffix
 }
 
@@ -83,7 +83,7 @@ void MM_PageTable_map2M(u64 cr3, u64 vAddr, u64 pAddr, u64 flag) {
 }
 
 void MM_PageTable_init() {
-	SpinLock_init(&_locker);
+	SpinLock_init(&_PageTableLocker);
     cachePool[0] = MM_Buddy_alloc(12, Page_Flag_Active | Page_Flag_Kernel);
     cacheSize = 0x1000, cachePoolSize = 1;
     // unmap the 0-th entry of pgd

@@ -58,14 +58,14 @@ extern char _end;
 #define Segment_userData   0x30
 #define Segment_userCode   0x38
 
-struct tmpPage {
+struct Page {
     u64 phyAddr;
     u64 attr;
-    u64 buddyId;
+    u32 buddyId;
     List listEle;
     struct tmpZone *blgZone;
-};
-typedef struct tmpPage Page;
+} __attribute__ ((packed));
+typedef struct Page Page;
 
 struct tmpZone {
     u64 phyAddrSt, phyAddrEd;

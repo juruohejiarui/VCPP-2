@@ -30,8 +30,9 @@ u64 Task_keyboardEvent(u64 (*usrEntry)(u64), u64 arg) {
 
 u64 task_empty(u64 (*usrEntry)(u64), u64 arg) {
 	Task_kernelEntryHeader();
-	Page *page = MM_Buddy_alloc(3, 0);
+	Page *page = MM_Buddy_alloc(3, Page_Flag_Active);
 	printk(WHITE, BLACK, "Task_empty(): %#018lx\n", page->phyAddr);
+	printk(WHITE, BLACK, "order: %d %d\n", MM_Buddy_getOrder(Task_current->mem->intrPage), MM_Buddy_getOrder(Task_current->mem->lstKerPage));
 	Task_kernelEntryEnd(1);
 }
 

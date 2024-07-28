@@ -5,17 +5,17 @@
 
 #define Buddy_maxOrder 15
 
-static SpinLock _locker;
+static SpinLock _BuddyLocker;
 
 extern volatile int Global_state;
 
-#define _orderField(page) ((page)->attr & (((1ul << 4) - 1) << 6))
+#define _orderField(page) ((page)->attr & (((1ul << 4) - 1) << 8))
 
 __always_inline__ int MM_Buddy_getOrder(Page *pageStructAddr) {
-    return (pageStructAddr->attr >> 6) & ((1ul << 4) - 1);
+    return (pageStructAddr->attr >> 8) & ((1ul << 4) - 1);
 }
 __always_inline__ void MM_Buddy_setOrder(Page *page, int ord) {
-    page->attr = (page->attr & (~(((1ul << 4) - 1) << 6))) | (ord << 6);
+    page->attr = (page->attr & (~(((1ul << 4) - 1) << 8))) | (ord << 8);
 }
 __always_inline__ int _recordUsage(u64 pageAttr) {
     return Global_state == 1 && !(pageAttr & Page_Flag_KernelShare);
@@ -31,7 +31,17 @@ static struct BuddyManageStruct {
 #define rChildPos(pos) (((pos) << 1) | 1)
 #define isLeft(pos) (!((pos) & 1))
 #define isRight(pos) ((pos) & 1)
-#define buddyPages(headPage) (isLeft(headPage->buddyId) ? (headPage + (1 << MM_Buddy_getOrder(headPage))) : (headPage - (1 << MM_Buddy_getOrder(headPage))))
+__always_inline__ Page *MM_Buddy_getBuddy(Page *headPage) {
+    return isLeft(headPage->buddyId) ? (headPage + (1 << MM_Buddy_getOrder(headPage))) : (headPage - (1 << MM_Buddy_getOrder(headPage)));
+}
+
+static void _rmFreePageFrame(int ord, Page *pages) {
+    if (mmStruct.freeList[ord] == pages) {
+        if (List_isEmpty(&pages->listEle)) mmStruct.freeList[ord] = NULL;
+        else mmStruct.freeList[ord] = container(pages->listEle.next, Page, listEle);
+    }
+    List_del(&pages->listEle);
+}
 
 static int getBit(Page *headPage) {
     if (headPage->buddyId == 1) return 1;
@@ -54,18 +64,10 @@ static inline void _insNewFreePageFrame(int ord, Page *headPage) {
     else List_insBefore(&headPage->listEle, &mmStruct.freeList[ord]->listEle);
 }
 
-static inline Page *_popFreePageFrame(int ord) {
-    Page *headPage = mmStruct.freeList[ord];
-    if (headPage == NULL) return NULL;
-    if (List_isEmpty(&headPage->listEle)) mmStruct.freeList[ord] = NULL;
-    else mmStruct.freeList[ord] = container(headPage->listEle.next, Page, listEle), List_del(&headPage->listEle);
-    return headPage;
-}
-
 void MM_Buddy_init() {
     // allocate pages for bitmap
     printk(RED, BLACK, "MM_Buddy_init()\n");
-	SpinLock_init(&_locker);
+	SpinLock_init(&_BuddyLocker);
     u64 bitsSize = upAlignTo(Page_4KUpAlign(memManageStruct.totMemSize) >> Page_4KShift, 64) / 8;
     if (Page_4KSize > bitsSize) {
         u64 numOfOnePage = (u64)Page_4KSize / bitsSize;
@@ -107,7 +109,7 @@ void MM_Buddy_init() {
 			Page *headPage = zone->pages + pgPos;
 			u64 ord = min(log2(lowbit(headPage->phyAddr)) - 12, Buddy_maxOrder);
 			while (pgPos + (1ul << ord) > zone->pagesLength) ord--;
-			headPage->attr |= Page_Flag_BuddyHeadPage;
+			headPage->attr = Page_Flag_BuddyHeadPage;
 			MM_Buddy_setOrder(headPage, ord);
 			List_init(&headPage->listEle);
 			headPage->buddyId = 1;
@@ -133,20 +135,22 @@ static inline void _divPageFrame(Page *page, int fr, int to) {
 
 Page *MM_Buddy_alloc(u64 log2Size, u64 attr) {
     IO_maskIntrPreffix
-	SpinLock_lock(&_locker);
+	SpinLock_lock(&_BuddyLocker);
     if (log2Size > Buddy_maxOrder) {
 		printk(RED, BLACK, "MM_Buddy_alloc: request too large(log2Size:%ld)\n", log2Size);
 		IO_maskIntrSuffix
-		SpinLock_unlock(&_locker);
+		SpinLock_unlock(&_BuddyLocker);
 		return NULL;
 	}
     for (int ord = log2Size; ord <= Buddy_maxOrder; ord++) {
-        Page *headPage = _popFreePageFrame(ord);
+        Page *headPage = mmStruct.freeList[ord];
         if (headPage == NULL) continue;
+        _rmFreePageFrame(ord, headPage);
+        revBit(headPage);
         // divide this page frame
         _divPageFrame(headPage, ord, log2Size);
-        headPage->attr |= attr;
-		IO_maskIntrSuffix
+        headPage->attr = attr | Page_Flag_BuddyHeadPage;
+        MM_Buddy_setOrder(headPage, log2Size);
 		#ifdef DEBUG_MM_ALLOC
         printk(GREEN, BLACK, "MM_Buddy_alloc(%d)->%p [%#018lx,%#018lx]\t", log2Size, headPage, headPage->phyAddr, headPage->phyAddr + (1 << (log2Size + Page_4KShift)) - 1);
 		#endif
@@ -154,28 +158,27 @@ Page *MM_Buddy_alloc(u64 log2Size, u64 attr) {
 			printk(RED, BLACK, "Buddy Align Error: %d->%d\n", log2(lowbit(headPage->phyAddr)) - 12, log2Size);
 			while (1) IO_hlt();
 		}
-
         // insert this page frame into the usage record of current task
         if (_recordUsage(attr)) {
             List_init(&headPage->listEle);
             List_insBefore(&headPage->listEle, &Task_current->mem->pageUsage);
             Task_current->mem->totUsage += (1 << log2Size);
         }
-		SpinLock_unlock(&_locker);
+        SpinLock_unlock(&_BuddyLocker);
 		IO_maskIntrSuffix
         return headPage;
     }
-	SpinLock_unlock(&_locker);
+	SpinLock_unlock(&_BuddyLocker);
     IO_maskIntrSuffix
     return NULL;
 }
 
 Page *MM_Buddy_alloc4G(u64 log2Size, u64 attr) {
 	IO_maskIntrPreffix
-	SpinLock_lock(&_locker);
+	SpinLock_lock(&_BuddyLocker);
 	if (log2Size > Buddy_maxOrder) {
 		IO_maskIntrSuffix
-		SpinLock_unlock(&_locker);
+		SpinLock_unlock(&_BuddyLocker);
 		return NULL;
 	}
 	for (int ord = log2Size; ord <= Buddy_maxOrder; ord++) {
@@ -188,14 +191,13 @@ Page *MM_Buddy_alloc4G(u64 log2Size, u64 attr) {
 		} while (page != mmStruct.freeList[ord]);
 		if (page->phyAddr >= (1ul << 32)) continue;
 		// remove this page from free list
-		if (page == mmStruct.freeList[ord]) {
-			if (List_isEmpty(&page->listEle)) mmStruct.freeList[ord] = NULL;
-			else mmStruct.freeList[ord] = container(page->listEle.next, Page, listEle);
-		}
-		List_del(&page->listEle);
+		_rmFreePageFrame(ord, page);
+        revBit(page);
 		// divide this page frame
 		_divPageFrame(page, ord, log2Size);
-		page->attr |= attr;
+		
+        page->attr = attr | Page_Flag_BuddyHeadPage;
+        MM_Buddy_setOrder(page, log2Size);
 
         if (_recordUsage(attr)) {
             List_init(&page->listEle);
@@ -203,40 +205,40 @@ Page *MM_Buddy_alloc4G(u64 log2Size, u64 attr) {
             Task_current->mem->totUsage += (1 << log2Size);
         }
 
-		SpinLock_unlock(&_locker);
+		SpinLock_unlock(&_BuddyLocker);
 		IO_maskIntrSuffix
 		return page;
 	}
-	SpinLock_unlock(&_locker);
+	SpinLock_unlock(&_BuddyLocker);
 	IO_maskIntrSuffix
 	return NULL;
 }
 
 void MM_Buddy_free(Page *pages) {
     IO_maskIntrPreffix
-	SpinLock_lock(&_locker);
+	SpinLock_lock(&_BuddyLocker);
 	#ifdef DEBUG_MM_ALLOC
     printk(RED, BLACK, "MM_Buddy_free(%p)\n", pages);
 	#endif
     if (pages == NULL || (pages->attr & Page_Flag_BuddyHeadPage) == 0) {
-        printk(RED, BLACK, "MM_Buddy_free(): error: invalid page\n");
-		SpinLock_unlock(&_locker);
+        printk(RED, BLACK, "MM_Buddy_free(): error: invalid page\n\tpage:%#018lx", pages);
+        if (pages != NULL) printk(RED, BLACK, " phyAddr%#018lx,attr:%#018lx\n", pages->phyAddr, pages->attr);
+        else printk(WHITE, BLACK, "\n");
+		SpinLock_unlock(&_BuddyLocker);
     	IO_maskIntrSuffix
 		return; 
 	}
-    printk(WHITE, BLACK, "MM_Buddy_free(): page: %#018lx order : %d\n", pages, MM_Buddy_getOrder(pages));
     if (_recordUsage(pages->attr))
         Task_current->mem->totUsage -= 1 << MM_Buddy_getOrder(pages);
-    List_del(&pages->listEle);
-    pages->attr = Page_Flag_BuddyHeadPage | _orderField(pages);
-    for (int i = MM_Buddy_getOrder(pages); i < Buddy_maxOrder; i++) {
+    int ord = MM_Buddy_getOrder(pages);
+    pages->attr = Page_Flag_BuddyHeadPage;
+    MM_Buddy_setOrder(pages, ord);
+    for (int i = ord; i <= Buddy_maxOrder; i++) {
         revBit(pages);
         if (getBit(pages)) break;
-        Page *buddy = buddyPages(pages);
+        Page *buddy = MM_Buddy_getBuddy(pages);
         // the buddy page is the the only free page in freeList[i]
-        if (List_isEmpty(&buddy->listEle))
-            mmStruct.freeList[i] = NULL;
-        List_del(&buddy->listEle);
+        _rmFreePageFrame(i, buddy);
         Page    *rChild = isRight(pages->buddyId) ? pages : buddy,
                 *lChild = isRight(pages->buddyId) ? buddy : pages;
         rChild->attr = 0;
@@ -246,7 +248,7 @@ void MM_Buddy_free(Page *pages) {
         pages = lChild;
     }
     _insNewFreePageFrame(MM_Buddy_getOrder(pages), pages);
-	SpinLock_unlock(&_locker);
+	SpinLock_unlock(&_BuddyLocker);
     IO_maskIntrSuffix
 }
 

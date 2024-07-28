@@ -98,9 +98,11 @@ static __always_inline__ void Task_kernelEntryHeader() {
 
 static __always_inline__ void Task_kernelEntryEnd(int retVal) {
 	__asm__ volatile(
-		"movq %0, %%rax					\n\t"
-		"leaq Task_exit(%%rip), %%rbx	\n\t"
-		"jmp *%%rbx						\n\t"
+		// switch task to intr Task
+		"movq $0xffffffffff800000, %%rsp	\n\t"
+		"movq %0, %%rax						\n\t"
+		"leaq Task_exit(%%rip), %%rbx		\n\t"
+		"callq *%%rbx						\n\t"
 		: "=m"(retVal)
 		:
 		: "rax", "rbx", "memory"
