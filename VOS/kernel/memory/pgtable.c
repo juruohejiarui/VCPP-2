@@ -211,7 +211,7 @@ void MM_PageTable_cleanMap(u64 cr3) {
         if ((pgdEntry[i] & ~0xffful) == 0) continue;
         _cleanMap(DMAS_phys2Virt(pgdEntry[i] & ~0xffful), 2);
     }
-    if (pgdEntry[0x1ff] & ~0xffful) {
+    if (pgdEntry[0x1ff] & ~0xffful)
         _cleanMap(DMAS_phys2Virt(pgdEntry[0x1ff] & ~0xffful), 2);
-    }
+    MM_PageTable_free(pgdEntry);
 }

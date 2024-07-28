@@ -45,14 +45,10 @@ static void _ack_getDesc(USB_XHCIController *ctrl, USB_XHCIReqBlock *req, USB_XH
 	printk(WHITE, BLACK, "\tiManufacturer: %02x iProduct: %02x iSerialNumber: %02x bNumConfig: %02x\n",
 		dev->desc[14], dev->desc[15], dev->desc[16], dev->desc[17]);
 
-	// get the string descriptor
-	// allocate the space for string descriptor
-	dev->strDesc = kmalloc(64, 0);
-	// modify the TRBs and acknowledge function for the new request
-	{
-		USB_XHCI_SetupTRB *setup = (USB_XHCI_SetupTRB *)&req->reqs[0];
-
-	}
+	// free the request block
+	kfree(req);
+	// create a new thread to manage this device
+	TaskStruct *devTsk = Task_createTask(HW_USB_XHCI_devThread, NULL, (u64)dev, Task_Flag_Inner | Task_Flag_Kernel);
 }
 
 static void _ack_addrDev(USB_XHCIController *ctrl, USB_XHCIReqBlock *req, USB_XHCI_Device *dev) {
@@ -230,12 +226,12 @@ static void _portChgEvent(USB_XHCIController *ctrl, int portId) {
 
 	_addReq(ctrl, reqBlk);
 }
-u64 HW_USB_XHCI_thread(u64 (*_)(u64), u64 ctrlAddr) {
+u64 HW_USB_XHCI_mainThread(u64 (*_)(u64), u64 ctrlAddr) {
 	static u64 tmpList[256];
 	Task_kernelEntryHeader();
 	USB_XHCIController *ctrl = (USB_XHCIController *)ctrlAddr;
 	int firPeriod = 1;
-	printk(WHITE, BLACK, "HW_USB_XHCI_thread(): %#018lx\n", ctrl);
+	printk(WHITE, BLACK, "HW_USB_XHCI_mainThread(): %#018lx\n", ctrl);
 	while (1) {
 		// clean the event interrupter bbit and the port change bit
 		ctrl->opRegs->usbStatus = UsbState_EveIntr | UsbState_PortChange;
@@ -386,5 +382,13 @@ u64 HW_USB_XHCI_thread(u64 (*_)(u64), u64 ctrlAddr) {
 		SpinLock_unlock(&ctrl->witQueLock);
 		firPeriod = 0;
 	}
+	Task_kernelEntryEnd(0);
+}
+
+u64 HW_USB_XHCI_devThread(u64 (*_)(u64), u64 devAddr) {
+	Task_kernelEntryHeader();
+	USB_XHCI_Device *dev = (USB_XHCI_Device *)devAddr;
+	printk(WHITE, BLACK, "devThread(%#018lx)\n", dev);
+	while (1) IO_hlt();
 	Task_kernelEntryEnd(0);
 }
