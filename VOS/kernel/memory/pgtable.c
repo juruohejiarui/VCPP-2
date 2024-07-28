@@ -113,15 +113,6 @@ void MM_PageTable_init() {
 	flushTLB();
 }
 
-void PGTable_free(u64 phyAddr) {
-    Page *page = memManageStruct.pages + (phyAddr >> Page_4KShift);
-    if (cacheSize >= PGTable_maxCacheSize) MM_Buddy_free(page);
-    else {
-        cachePool[cachePoolSize++] = page;
-        cacheSize++;
-    }
-}
-
 extern int Global_state;
 
 /// @brief Map a memory block [pAddr, pAddr + 4K - 1]
