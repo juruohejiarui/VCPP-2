@@ -1,4 +1,5 @@
 #include "inner.h"
+#include "api.h"
 #include "ringop.h"
 #include "../../../includes/task.h"
 #include "../../../includes/log.h"
@@ -46,7 +47,7 @@ static void _ack_getDesc(USB_XHCIController *ctrl, USB_XHCIReqBlock *req, USB_XH
 		dev->desc[14], dev->desc[15], dev->desc[16], dev->desc[17]);
 
 	// free the request block
-	kfree(req, 0);
+	HW_USB_XHCI_freeReqBlk(req);
 	// create a new thread to manage this device
 	TaskStruct *devTsk = Task_createTask(HW_USB_XHCI_devThread, NULL, (u64)dev, Task_Flag_Inner | Task_Flag_Kernel);
 }
