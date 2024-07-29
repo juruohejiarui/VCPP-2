@@ -200,7 +200,6 @@ typedef void (*USB_XHCIReqAck)(struct USB_XHCIController *, struct USB_XHCIReqBl
 typedef struct USB_XHCIReqBlock {
 	// there are at most 256 requst in one reqBlocks
 	int reqCnt;
-
 	int slot, endpoint;
 
 	u8 flags;
@@ -211,7 +210,7 @@ typedef struct USB_XHCIReqBlock {
 	USB_XHCIReqAck ack;
 
 	USB_XHCI_GenerTRB res, reqs[0];
-} USB_XHCIReqBlock;
+} __attribute__((packed)) USB_XHCIReqBlock;
 
 typedef struct USB_XHCIController {
 	Device dev;

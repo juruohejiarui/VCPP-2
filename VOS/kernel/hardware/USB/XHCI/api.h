@@ -5,7 +5,7 @@
 
 void HW_USB_XHCI_insReqBlk(USB_XHCIController *ctrl, USB_XHCIReqBlock *reqs);
 
-int HW_USB_XHCI_waitRely(USB_XHCIReqBlock *reqs);
+int HW_USB_XHCI_waitRely(USB_XHCIController *ctrl, USB_XHCIReqBlock *reqs);
 
 USB_XHCIReqBlock *HW_USB_XHCI_mkCmdBlk(int trbType, u64 slot, u64 arg);
 
