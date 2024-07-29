@@ -158,14 +158,14 @@ Page *MM_Buddy_alloc(u64 log2Size, u64 attr) {
 			printk(RED, BLACK, "Buddy Align Error: %d->%d\n", log2(lowbit(headPage->phyAddr)) - 12, log2Size);
 			while (1) IO_hlt();
 		}
+        SpinLock_unlock(&_BuddyLocker);
+		IO_maskIntrSuffix
         // insert this page frame into the usage record of current task
         if (_recordUsage(attr)) {
             List_init(&headPage->listEle);
             List_insBefore(&headPage->listEle, &Task_current->mem->pageUsage);
             Task_current->mem->totUsage += (1 << log2Size);
         }
-        SpinLock_unlock(&_BuddyLocker);
-		IO_maskIntrSuffix
         return headPage;
     }
 	SpinLock_unlock(&_BuddyLocker);
@@ -273,6 +273,7 @@ Page *MM_Buddy_divPageFrame(Page *headPage) {
     if (ord == 0) return NULL;
 
     Page *rPage = headPage + (1 << (ord - 1));
+    rPage->attr = headPage->attr;
     rPage->buddyId = rChildPos(headPage->buddyId);
     headPage->buddyId = lChildPos(headPage->buddyId);
     MM_Buddy_setOrder(rPage, ord - 1);
@@ -281,6 +282,5 @@ Page *MM_Buddy_divPageFrame(Page *headPage) {
     
     // update the usage record
     if (_recordUsage(headPage->attr)) List_insBefore(&rPage->listEle, &Task_current->mem->pageUsage);
-    rPage->attr = headPage->attr;
     return rPage;
 }

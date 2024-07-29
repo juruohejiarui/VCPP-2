@@ -37,15 +37,19 @@ extern char* kallsyms_names __attribute__((weak));
 #define Task_Priority_Trapped   4
 #define Task_Priority_Killed    5
 
+typedef struct TaskKmallocUsage {
+    void *addr;
+    List listEle;
+} TaskKmallocUsage;
 
-typedef struct tmpTaskMemStruct {
+typedef struct TaskMemStruct {
     PageTable *pgd;
     u64 pgdPhyAddr;
     u64 totUsage;
-    List pageUsage;
+    List pageUsage, kmallocUsage;
     Page *intrPage, *lstKerPage;
 } TaskMemStruct;
-typedef struct tmpThreadStruct {
+typedef struct ThreadStruct {
     u64 rip;
     u64 rsp0, rsp3, rsp, rbp;
     u64 fs, gs;
@@ -55,7 +59,7 @@ typedef struct tmpThreadStruct {
     u64 rflags;
 } ThreadStruct;
 
-typedef struct tmpTaskStruct {
+typedef struct TaskStruct {
     List listEle;
     volatile i64 state;
     ThreadStruct *thread;

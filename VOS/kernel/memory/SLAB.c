@@ -5,7 +5,7 @@
 #include "../includes/log.h"
 #include "../includes/task.h"
 
-#define alloc2MPage() MM_Buddy_alloc(9, Page_Flag_Kernel)
+#define alloc2MPage() MM_Buddy_alloc(9, Page_Flag_Kernel | Page_Flag_KernelShare)
 
 static SpinLock _SlabLocker;
 
@@ -137,7 +137,7 @@ void Slab_pushNewSlab(int id) {
 
 /// @brief allocate a memory block for kernel process from the slab system
 /// @param size the size of memory block
-/// @param arg the argument for this allocation, currently should be zero
+/// @param arg the argument for this allocation, bit 0 : from inner code, will not acquire spin lock
 /// @return the pointer to the memory block
 void *kmalloc(u64 size, u64 arg) {
     IO_maskIntrPreffix
@@ -187,14 +187,15 @@ void Slab_destroySlab(int id, Slab *slab) {
     if (0 <= id && id < 5) {
         MM_Buddy_free(slab->page);
     } else {
-        kfree(slab->colMap);
+        kfree(slab->colMap, 1);
         MM_Buddy_free(slab->page);
-        kfree(slab);
+        kfree(slab, 1);
     }
 }
 
-void kfree(void *addr) {
+void kfree(void *addr, u64 arg) {
     IO_maskIntrPreffix
+    if (!arg) SpinLock_lock(&_SlabLocker);
     int id = 0, flag = 0;
     Slab *slab = NULL;
     for (id = 0; id < 16; id++) {
@@ -211,6 +212,8 @@ void kfree(void *addr) {
     if (!flag) {
         printk(RED, BLACK, "kfree: invalid address %#018lx\n", addr);
         while (1) ;
+        if (!arg) SpinLock_unlock(&_SlabLocker);
+        IO_maskIntrSuffix
         return ;
     }
     u64 offset = ((u64)addr - (u64)slab->virtAddr) / Slab_kmallocCache[id].size;
@@ -219,5 +222,6 @@ void kfree(void *addr) {
     Slab_kmallocCache[id].freeCnt++, Slab_kmallocCache[id].usingCnt--;
     if (slab->usingCnt == 0 && Slab_kmallocCache[id].freeCnt >= slab->colCnt * 3 / 2 && Slab_kmallocCache[id].slabs != slab)
         Slab_destroySlab(id, slab);
+    if (!arg) SpinLock_unlock(&_SlabLocker);
     IO_maskIntrSuffix
 }

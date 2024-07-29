@@ -209,9 +209,11 @@ void MM_PageTable_cleanMap(u64 cr3) {
     u64 *pgdEntry = DMAS_phys2Virt(cr3), i;
     for (i = 0; i < 256; i++) {
         if ((pgdEntry[i] & ~0xffful) == 0) continue;
+        printk(WHITE, BLACK, "MM_PageTable_cleanMap(): [%#018lx, ...]\n", i * (1ul << 39));
         _cleanMap(DMAS_phys2Virt(pgdEntry[i] & ~0xffful), 2);
     }
     if (pgdEntry[0x1ff] & ~0xffful)
+        printk(WHITE, BLACK, "MM_PageTable_cleanMap(): [%#018lx, ...]\n", 0x1ff * (1ul << 39)),
         _cleanMap(DMAS_phys2Virt(pgdEntry[0x1ff] & ~0xffful), 2);
     MM_PageTable_free(pgdEntry);
 }

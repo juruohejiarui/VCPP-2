@@ -46,7 +46,7 @@ static void _ack_getDesc(USB_XHCIController *ctrl, USB_XHCIReqBlock *req, USB_XH
 		dev->desc[14], dev->desc[15], dev->desc[16], dev->desc[17]);
 
 	// free the request block
-	kfree(req);
+	kfree(req, 0);
 	// create a new thread to manage this device
 	TaskStruct *devTsk = Task_createTask(HW_USB_XHCI_devThread, NULL, (u64)dev, Task_Flag_Inner | Task_Flag_Kernel);
 }
@@ -56,10 +56,9 @@ static void _ack_addrDev(USB_XHCIController *ctrl, USB_XHCIReqBlock *req, USB_XH
 	int code = req->res.dw[2] >> 24;
 	if (code != 1) {
 		printk(RED, BLACK, "fail(code:%d)\n", code);
-		kfree(dev->ctx), HW_USB_XHCI_free(ctrl, dev->transRing), HW_USB_XHCI_free(ctrl, dev->transSrc);
-		kfree(dev);
-		kfree(req->reqs);
-		kfree(req);
+		kfree(dev->ctx, 0), HW_USB_XHCI_free(ctrl, dev->transRing), HW_USB_XHCI_free(ctrl, dev->transSrc);
+		kfree(dev, 0);
+		kfree(req, 0);
 		return ;
 	}
 	printk(GREEN, BLACK, "success\n");
@@ -129,7 +128,7 @@ static void _ack_enblSlot(USB_XHCIController *ctrl, USB_XHCIReqBlock *req, USB_X
 		int code = req->res.dw[2] >> 24;
 		if (code != 1) {
 			printk(RED, BLACK, "fail(code:%d\n)", code);
-			kfree(dev->ctx), kfree(dev); kfree(req->reqs); kfree(req);
+			kfree(dev->ctx, 0), kfree(dev, 0); kfree(req, 0);
 			return ;
 		}
 		printk(GREEN, BLACK, "success\n");

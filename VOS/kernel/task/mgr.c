@@ -134,14 +134,15 @@ void Task_schedule() {
 
 /// @brief when the task is finished, this function will be executed to recycle the resource that this task used. (e.g. memory, ports)
 void Task_exit() {
-    Task_current->mem->totUsage = 0;
     for (List *pageList = Task_current->mem->pageUsage.next, *nxt = NULL; pageList != &Task_current->mem->pageUsage; pageList = nxt) {
         nxt = pageList->next;
         List_del(pageList);
-        printk(BLACK, WHITE, "Task_exit(): pid:%ld free page %#018lx, phyAddr:%#018lx\n", Task_current->pid, container(pageList, Page, listEle), container(pageList, Page, listEle)->phyAddr);
         MM_Buddy_free(container(pageList, Page, listEle));
     }
-    printk(WHITE, BLACK, "task %d killed\n", Task_current->pid);
+    if (Task_current->mem->totUsage > 0) {
+        printk(RED, BLACK, "Task_exit(): task %ld: failed to recycle all the page frame, remain %ld pages.\n", Task_current->pid, Task_current->mem->totUsage);
+        while (1) IO_hlt();
+    }
     IO_cli();
     Task_current->priority = Task_Priority_Killed;
     IO_sti();
@@ -159,10 +160,8 @@ u64 Task_recycleThread(u64 (*usrEntry)(u64), u64 arg) {
             RBTree_delNode(&_CFSstruct.killedTree, rMost);
             TaskStruct *tsk = container(rMost, TaskStruct, wNode);
             printk(BLACK, WHITE, "recycle task %d at %#018lx\n", tsk->pid, tsk);
-            printk(WHITE, BLACK, "intrPage:%#018lx lstKerPage:%#018lx\n", tsk->mem->intrPage, tsk->mem->lstKerPage);
             MM_Buddy_free(tsk->mem->intrPage);
             MM_Buddy_free(tsk->mem->lstKerPage);
-            printk(WHITE, BLACK, "clearning page table...\n");
             MM_PageTable_cleanMap(tsk->mem->pgdPhyAddr);
             
             // free the page of the task structure

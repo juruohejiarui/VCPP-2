@@ -53,7 +53,7 @@ static int _stopController(USB_XHCIController *ctrl) {
 	} while (remain -= 5);
 	if (!_rdStsBit(ctrl, HW_USB_XHCI_OpReg_Status_HCHalted)) {
 		printk(RED, BLACK, "XHCI: stop controller failed\n");
-		ctrl->dev.free((Device *)ctrl), kfree(ctrl);
+		ctrl->dev.free((Device *)ctrl), kfree(ctrl, 0);
 		return 0;
 	}
 	printk(WHITE, BLACK, "XHCI: %#018lx: success to stop controller.", ctrl);
@@ -274,25 +274,25 @@ int HW_USB_XHCI_Init(PCIeConfig *xhci) {
 
 	int state;
 	state = _stopController(ctrl);
-	if (!state) { ctrl->dev.free((Device *)ctrl); kfree(ctrl); return 0; }
+	if (!state) { ctrl->dev.free((Device *)ctrl); kfree(ctrl, 0); return 0; }
 
 	// reset the controller
 	state = _resetController(ctrl);
-	if (!state) { ctrl->dev.free((Device *)ctrl); kfree(ctrl); return 0; }
+	if (!state) { ctrl->dev.free((Device *)ctrl); kfree(ctrl, 0); return 0; }
 
 	state = _getOwnership(ctrl);
-	if (!state) { ctrl->dev.free((Device *)ctrl); kfree(ctrl); return 0; }
+	if (!state) { ctrl->dev.free((Device *)ctrl); kfree(ctrl, 0); return 0; }
 
 	// pair up the USB3 and USB2
 	state = _initPorts(ctrl);
-	if (!state) { ctrl->dev.free((Device *)ctrl); kfree(ctrl); return 0; }
+	if (!state) { ctrl->dev.free((Device *)ctrl); kfree(ctrl, 0); return 0; }
 
 	// allocate memory for the controller
 	state = _initMem(ctrl);
-	if (!state) { ctrl->dev.free((Device *)ctrl); kfree(ctrl); return 0; }
+	if (!state) { ctrl->dev.free((Device *)ctrl); kfree(ctrl, 0); return 0; }
 
 	state = _restartController(ctrl);
-	if (!state) { ctrl->dev.free((Device *)ctrl); kfree(ctrl); return 0; }
+	if (!state) { ctrl->dev.free((Device *)ctrl); kfree(ctrl, 0); return 0; }
 
 	List_insBefore(&ctrl->listEle, &HW_USB_XHCI_mgrList);
 	return 1;

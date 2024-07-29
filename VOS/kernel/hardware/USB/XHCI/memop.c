@@ -34,8 +34,8 @@ void HW_USB_XHCI_free(USB_XHCIController *ctrl, void *addr) {
 		if ((usage->addr & 0x1ul ? DMAS_phys2Virt(((Page *)(usage->addr & ~0x1ul))->phyAddr) : (void *)usage->addr) == addr) {
 			List_del(list);
 			if (usage->addr & 1) MM_Buddy_free((Page *)(usage->addr ^ 1));
-			else kfree((void *)usage->addr);
-			kfree(usage);
+			else kfree((void *)usage->addr, 0);
+			kfree(usage, 0);
 			break;
 		}
 	}
@@ -48,7 +48,7 @@ void HW_USB_XHCI_freeAll(USB_XHCIController *ctrl) {
 		usage = container(ctrl->memList.next, USB_XHCI_MemUsage, listEle);
 		List_del(&usage->listEle);
 		if (usage->addr & 1) MM_Buddy_free((Page *)(usage->addr ^ 1));
-		else kfree((void *)usage->addr);
-		kfree(usage);
+		else kfree((void *)usage->addr, 0);
+		kfree(usage, 0);
 	}
 }
