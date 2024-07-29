@@ -61,7 +61,6 @@ u64 MM_PageTable_free(u64 *tbl) {
 
 void MM_PageTable_map1G(u64 cr3, u64 vAddr, u64 pAddr, u64 flag) {
 	vAddr = Page_1GDownAlign(vAddr), pAddr = Page_1GDownAlign(pAddr);
-    printk(WHITE, BLACK, "MM_PageTable_map1G(): cr3:%#018lx vAddr:%#018lx pAddr:%#018lx flag:%#018lx\n", cr3, vAddr, pAddr, flag);
     u64 *pgdEntry = (u64 *)DMAS_phys2Virt(cr3) + ((vAddr >> 39) & 0x1ff);
     if (*pgdEntry == 0) *pgdEntry = MM_PageTable_alloc() | 0x7;
     u64 *pudEntry = (u64 *)DMAS_phys2Virt(*pgdEntry & ~0xffful) + ((vAddr >> 30) & 0x1ff);
@@ -71,7 +70,6 @@ void MM_PageTable_map1G(u64 cr3, u64 vAddr, u64 pAddr, u64 flag) {
 
 void MM_PageTable_map2M(u64 cr3, u64 vAddr, u64 pAddr, u64 flag) {
 	vAddr = Page_2MDownAlign(vAddr), pAddr = Page_2MDownAlign(pAddr);
-	printk(WHITE, BLACK, "MM_PageTable_map2M(): cr3:%#018lx vAddr:%#018lx pAddr:%#018lx flag:%#018lx\n", cr3, vAddr, pAddr, flag);
     u64 *pgdEntry = (u64 *)DMAS_phys2Virt(cr3) + ((vAddr >> 39) & 0x1ff);
     if (*pgdEntry == 0) *pgdEntry = MM_PageTable_alloc() | 0x7;
     u64 *pudEntry = (u64 *)DMAS_phys2Virt(*pgdEntry & ~0xffful) + ((vAddr >> 30) & 0x1ff);
@@ -96,8 +94,6 @@ void MM_PageTable_init() {
 	for (int i = 0; i <= memManageStruct.e820Length; i++) {
 		if (memManageStruct.e820[i].type == 1) continue;
 		u64 bound = Page_4KUpAlign(memManageStruct.e820[i].addr + memManageStruct.e820[i].size);
-		printk(WHITE, BLACK, "IO Map: [%#018lx, %#018lx]\n",
-			Page_4KDownAlign(memManageStruct.e820[i].addr), bound);
 		for (u64 addr = Page_4KDownAlign(memManageStruct.e820[i].addr); addr < bound;) {
 			if (!(addr & ((1ul << Page_1GShift) - 1)) && addr + Page_1GSize <= bound)
 				MM_PageTable_map1G(getCR3(), (u64)DMAS_phys2Virt(addr), addr, MM_PageTable_Flag_Writable),

@@ -33,12 +33,6 @@ static void _ack_getDesc(USB_XHCIController *ctrl, USB_XHCIReqBlock *req, USB_XH
 		return ;
 	}
 	printk(GREEN, BLACK, "success\n");
-	printk(WHITE, BLACK, "\tbcdUSB: %1x:%02x class:subClass: %02x:%02x Proto: %02x mxPkt0: %02x\n",
-		dev->desc[3], dev->desc[2], dev->desc[4], dev->desc[5], dev->desc[6], dev->desc[7]);
-	printk(WHITE, BLACK, "\tvendor: %04x product: %04x bcdDev: %04x\n",
-		*(u16 *)&dev->desc[8], *(u16 *)&dev->desc[10], *(u16 *)&dev->desc[12]);
-	printk(WHITE, BLACK, "\tiManufacturer: %02x iProduct: %02x iSerialNumber: %02x bNumConfig: %02x\n",
-		dev->desc[14], dev->desc[15], dev->desc[16], dev->desc[17]);
 
 	// free the request block
 	HW_USB_XHCI_freeReqBlk(req);
@@ -74,7 +68,7 @@ static void _ack_addrDev(USB_XHCIController *ctrl, USB_XHCIReqBlock *req, USB_XH
 		setup->dw0.ctx.bReq = 6;
 		setup->dw0.ctx.wVal = 0x0100;
 		setup->dw1.ctx.wIndex = 0;
-		setup->dw1.ctx.wLen = 0x12;
+		setup->dw1.ctx.wLen = sizeof(USB_XHCI_DevDesc);
 
 		setup->dw2.ctx.trbLen = 8;
 		setup->dw3.ctx.idt = 1;
@@ -83,10 +77,10 @@ static void _ack_addrDev(USB_XHCIController *ctrl, USB_XHCIReqBlock *req, USB_XH
 	}
 	{
 		USB_XHCI_DataTRB *data = (USB_XHCI_DataTRB *)&req->reqs[1];
-		dev->desc = kmalloc(64, 0);
-		memset(dev->desc, 0, 64);
+		dev->desc = kmalloc(sizeof(USB_XHCI_DevDesc), 0);
+		memset(dev->desc, 0, sizeof(USB_XHCI_DevDesc));
 		data->dw0_1.dtBuf = DMAS_virt2Phys(dev->desc);
-		data->dw2.ctx.trbLen = 0x12;
+		data->dw2.ctx.trbLen = sizeof(USB_XHCI_DevDesc);
 		data->dw3.ctx.evalNxtTRB = 1;
 		data->dw3.ctx.chainBit = 1;
 		data->dw3.ctx.trbType = HW_USB_TrbType_DataStage;
@@ -392,21 +386,31 @@ u64 HW_USB_XHCI_devThread(u64 (*_)(u64), u64 devAddr) {
 	printk(WHITE, BLACK, "devThread(%#018lx) slot:%d\n", dev, dev->slot);
 
 	// get the string descriptor for further management
-	dev->strDesc = kmalloc(64, 0);
-	USB_XHCIReqBlock *strDescBlk = HW_USB_XHCI_mkGetDescBlk(dev->slot, HW_USB_XHCI_SetupPkt_DescType_String, 0, 0, 64, dev->strDesc);
-	HW_USB_XHCI_insReqBlk(dev->ctrl, strDescBlk);
-	HW_USB_XHCI_waitRely(dev->ctrl, strDescBlk);
-	HW_USB_XHCI_freeReqBlk(strDescBlk);
+	dev->cfgDesc = kmalloc(0xff, 0);
+	dev->interfaceDesc = kmalloc(sizeof(USB_XHCI_InterfaceDesc *) * dev->desc->numConfig, 0);
+	for (int i = 0; i < dev->desc->numConfig; i++) {
+		USB_XHCIReqBlock *reqs = HW_USB_XHCI_mkGetDescBlk(dev->slot, HW_USB_XHCI_SetupPkt_DescType_Config, i, 0, 0xff, &dev->cfgDesc[i]);
+		HW_USB_XHCI_insReqBlk(dev->ctrl, reqs);
+		HW_USB_XHCI_waitRely(dev->ctrl, reqs);
+		HW_USB_XHCI_freeReqBlk(reqs);
+		printk(WHITE, BLACK, "\tconfig #%d: numInterface=%d\n", i, dev->cfgDesc[i].numInterface);
+		dev->interfaceDesc[i] = kmalloc(sizeof(USB_XHCI_InterfaceDesc) * dev->cfgDesc[i].numInterface, 0);
+		u64 off = 0x09, idx = 0;
+		u8 *desc = (u8 *)dev->cfgDesc;
+		while (off < dev->cfgDesc[i].totLen) {
+			if (desc[off + 1] == HW_USB_XHCI_SetupPkt_DescType_Interface) {
+				memcpy(desc + off, &dev->interfaceDesc[i][idx], sizeof(USB_XHCI_InterfaceDesc));
+				idx++;
+			}
+			off += desc[off];
+		}
+		for (int j = 0; j < dev->cfgDesc->numInterface; j++) {
+			printk(WHITE, BLACK, "\t\tinterface #%d: class=%#04x idx=%d\n", j, dev->interfaceDesc[i][j].interfaceClass, dev->interfaceDesc[i][j].interfaceNum);
+		}
+	}
 
-	char *str = kmalloc(256, 0);
-	strDescBlk = HW_USB_XHCI_mkGetDescBlk(dev->slot, HW_USB_XHCI_SetupPkt_DescType_String, 0x2, *(u16 *)&dev->strDesc[2], 256, str);
-	HW_USB_XHCI_insReqBlk(dev->ctrl, strDescBlk);
-	HW_USB_XHCI_waitRely(dev->ctrl, strDescBlk);
-	HW_USB_XHCI_freeReqBlk(strDescBlk);
-	printk(YELLOW, BLACK, "string descriptor 2: ");
-	for (int i = 2; i < str[0]; i += 2) printk(WHITE, BLACK, "%c", str[i]);
-	printk(WHITE, BLACK, "\n");
-
+	// search for driver for this device
+	
 	while (1) IO_hlt();
 	Task_kernelEntryEnd(0);
 }

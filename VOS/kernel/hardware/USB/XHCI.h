@@ -3,6 +3,7 @@
 
 #include "../PCIe.h"
 #include "../../includes/memory.h"
+#include "./XHCI/desc.h"
 
 // capability registers
 typedef struct {
@@ -139,9 +140,9 @@ typedef struct {
 #include "./XHCI/trb.h"
 
 typedef struct {
-		USB_XHCI_InputCtrlContext inCtx;
-		USB_XHCI_DeviceSlotContext slotCtx;
-		USB_XHCI_EndpointContext epCtx[31];
+	USB_XHCI_InputCtrlContext inCtx;
+	USB_XHCI_DeviceSlotContext slotCtx;
+	USB_XHCI_EndpointContext epCtx[31];
 } __attribute__ ((packed)) USB_XHCI_InputContext;
 
 typedef struct {
@@ -167,7 +168,13 @@ typedef struct {
 	// the copy of teach contexts
 	USB_XHCI_InputContext *ctx;
 
-	u8 *desc, *strDesc;
+	// descriptors
+	USB_XHCI_DevDesc *desc;
+	USB_XHCI_ConfigDesc *cfgDesc;
+	USB_XHCI_InterfaceDesc **interfaceDesc;
+
+	u8 *strDesc;
+	
 } USB_XHCI_Device;
 
 // event ring segment table entry
