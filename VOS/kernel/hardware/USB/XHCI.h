@@ -147,7 +147,10 @@ typedef struct {
 typedef struct {
 	// pointer to the read-only context in controller
 	USB_XHCI_DeviceContext *roctx;
+	// one bit map represents the state of one endpoint
 	u32 enableEp;
+	// zero based slot index
+	u32 slot;
 
 	// pointers to the transfer rings
 	USB_XHCI_GenerTRB *transRing[31];
@@ -164,8 +167,7 @@ typedef struct {
 	// the copy of teach contexts
 	USB_XHCI_InputContext *ctx;
 
-	u8 *desc;
-	char *strDesc;
+	u8 *desc, *strDesc;
 } USB_XHCI_Device;
 
 // event ring segment table entry
