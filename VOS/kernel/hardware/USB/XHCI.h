@@ -129,7 +129,7 @@ typedef struct USB_XHCI_Port {
 #include "./XHCI/ctx.h"
 
 struct USB_XHCIController;
-struct USB_XHCIReqBlock;
+struct USB_XHCI_ReqBlock;
 
 // device context data block
 typedef struct {
@@ -158,7 +158,7 @@ typedef struct {
 	// the inqueue pointers of each transfer rings
 	USB_XHCI_GenerTRB *transInqPtr[31];
 	// the source of request of each transfer TRB
-	struct USB_XHCIReqBlock **transSrc[31];
+	struct USB_XHCI_ReqBlock **transSrc[31];
 	// the cycle flags of each transfer rings
 	u8 transCycFlags[31];
 	
@@ -170,8 +170,7 @@ typedef struct {
 
 	// descriptors
 	USB_XHCI_DevDesc *desc;
-	USB_XHCI_ConfigDesc *cfgDesc;
-	USB_XHCI_InterfaceDesc **interfaceDesc;
+	USB_XHCI_ConfigDesc **cfgDesc;
 
 	u8 *strDesc;
 	
@@ -201,12 +200,13 @@ typedef struct {
 	List listEle;
 } __attribute__ ((packed)) USB_XHCI_MemUsage;
 
+#define HW_USB_XHCIReq_Flag_failed			(1 << 0)
 #define HW_USB_XHCIReq_Flag_isCommand		(1 << 1)
 #define HW_USB_XHCIReq_Flag_replied			(1 << 2)
 
-typedef void (*USB_XHCIReqAck)(struct USB_XHCIController *, struct USB_XHCIReqBlock *, void *);
+typedef void (*USB_XHCI_ReqAck)(struct USB_XHCIController *, struct USB_XHCI_ReqBlock *, void *);
 
-typedef struct USB_XHCIReqBlock {
+typedef struct USB_XHCI_ReqBlock {
 	// there are at most 256 requst in one reqBlocks
 	int reqCnt;
 	int slot, endpoint;
@@ -216,10 +216,10 @@ typedef struct USB_XHCIReqBlock {
 	List listEle;
 
 	void *arg;
-	USB_XHCIReqAck ack;
+	USB_XHCI_ReqAck ack;
 
 	USB_XHCI_GenerTRB res, reqs[0];
-} __attribute__((packed)) USB_XHCIReqBlock;
+} __attribute__((packed)) USB_XHCI_ReqBlock;
 
 typedef struct USB_XHCIController {
 	Device dev;
@@ -244,7 +244,7 @@ typedef struct USB_XHCIController {
 	USB_XHCI_RingFlag cmdRingFlag;
 	// the flags of each command in the command ring
 	// where the command in the command ring is from
-	USB_XHCIReqBlock **cmdSrc;
+	USB_XHCI_ReqBlock **cmdSrc;
 
 	List witReqList;
 
@@ -277,37 +277,41 @@ u64 HW_USB_XHCI_devThread(u64 (*_)(u64), u64 devAddr);
 #define HW_USB_XHCI_DriverCheck_Success			2
 
 typedef struct USB_XHCI_Driver {
-	u64 (*task)(u64 (*usrEntry)(u64 arg), USB_XHCI_Device *dev);
-	u64 taskFlags;
+	u64 (*loader)(USB_XHCI_Device *dev);
 	int (*chk)(USB_XHCI_Device *dev);
 	char *name;
 	List listEle;
 } USB_XHCI_Driver;
 
-extern List HW_USB_XHCI_DrvList;
-void HW_USB_XHCI_insReqBlk(USB_XHCIController *ctrl, USB_XHCIReqBlock *reqs);
+extern List HW_USB_XHCI_drvList;
+extern SpinLock HW_USB_XHCI_drvListLock;
 
-int HW_USB_XHCI_waitRely(USB_XHCIController *ctrl, USB_XHCIReqBlock *reqs);
+void HW_USB_XHCI_insReqBlk(USB_XHCIController *ctrl, USB_XHCI_ReqBlock *reqs);
 
-USB_XHCIReqBlock *HW_USB_XHCI_mkCmdBlk(int trbType, u64 slot, u64 arg);
+int HW_USB_XHCI_waitRely(USB_XHCIController *ctrl, USB_XHCI_ReqBlock *reqs);
 
-#define HW_USB_XHCI_SetupPkt_DescType_Device	0x1
-#define HW_USB_XHCI_SetupPkt_DescType_Config	0x2
-#define HW_USB_XHCI_SetupPkt_DescType_String	0x3
-#define HW_USB_XHCI_SetupPkt_DescType_Interface	0x4
+int HW_USB_XHCI_chkSucc(USB_XHCI_ReqBlock *reqs);
 
-USB_XHCIReqBlock *HW_USB_XHCI_mkGetDescBlk(u64 slot, u64 descType, u64 idx, u64 wIdx, u64 len, void *buf);
+static void HW_USB_XHCI_normalAck(USB_XHCIController *ctrl, USB_XHCI_ReqBlock *req, USB_XHCI_Device *dev);
 
-USB_XHCIReqBlock *HW_USB_XHCI_mkGetDataBlk(u64 slot, u64 epId, u64 len, void *buf);
+USB_XHCI_ReqBlock *HW_USB_XHCI_mkCmdBlk(int trbType, u64 slot, u64 arg);
 
-USB_XHCIReqBlock *HW_USB_XHCI_mkSetDataBlk(u64 slot, u64 epId, u64 len, void *buf);
+USB_XHCI_ReqBlock *HW_USB_XHCI_mkGetDescBlk(u64 slot, u64 descType, u64 idx, u64 wIdx, u64 len, void *buf);
 
-void HW_USB_XHCI_freeReqBlk(USB_XHCIReqBlock *reqs);
+USB_XHCI_ReqBlock *HW_USB_XHCI_mkSetCfgBlk(u64 slot, u64 cfgVal);
+
+USB_XHCI_ReqBlock *HW_USB_XHCI_mkGetDataBlk(u64 slot, u64 epId, u64 len, void *buf);
+
+USB_XHCI_ReqBlock *HW_USB_XHCI_mkSetDataBlk(u64 slot, u64 epId, u64 len, void *buf);
+
+void HW_USB_XHCI_freeReqBlk(USB_XHCI_ReqBlock *reqs);
 
 void HW_USB_XHCI_addDriver(USB_XHCI_Driver *drv);
 
 void HW_USB_XHCI_delDriver(USB_XHCI_Driver *drv);
 
 USB_XHCI_Driver *HW_USB_XHCI_getDriver(USB_XHCI_Device *dev);
+
+USB_XHCI_DescHeader *HW_USB_XHCI_getNxtDesc(USB_XHCI_ConfigDesc *cfg, USB_XHCI_DescHeader *hdr);
 
 #endif

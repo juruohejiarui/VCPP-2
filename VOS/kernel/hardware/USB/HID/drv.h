@@ -11,12 +11,12 @@ typedef struct USB_HID_EvtBuf {
 	int val[3];
 } USB_HID_EveBuf;
 
-u64 USB_HID_task(u64 (*usrEntry)(u64), u64 arg);
+u64 HW_USB_HID_loader(USB_XHCI_Device *dev);
 
-int USB_HID_chk(USB_XHCI_Device *dev);
+int HW_USB_HID_chk(USB_XHCI_Device *dev);
 
-USB_HID_EveBuf USB_HID_popEvent();
+USB_HID_EveBuf HW_USB_HID_popEvent();
 
-void USB_HID_init();
+void HW_USB_HID_init();
 
 #endif

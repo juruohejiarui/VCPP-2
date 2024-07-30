@@ -18,6 +18,9 @@ typedef struct {
     u8 reserved1;
 } __attribute__ ((packed)) USB_XHCI_InputCtrlContext;
 
+static __always_inline__ int HW_USB_XHCI_EndpointId(int idx, int isIn) {
+	return idx > 0 ? (idx - 1) * 2 + 1 + isIn : 0;
+} 
 
 // slot context
 typedef struct {
@@ -103,7 +106,7 @@ typedef struct {
 			u8 mxPStreams : 5;
 			// linear stream array, 0: disabled, 1: enabled
 			u8 lsa : 1;
-			// interval, the interval for polling endpoint for data transfersq
+			// interval, the interval for polling endpoint for data transfers
 			u8 interval : 8;
 			// max endpoint service time interval payload (high 8 bit)
 			u8 mxESITPayloadHi : 8;

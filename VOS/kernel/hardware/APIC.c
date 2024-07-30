@@ -20,7 +20,7 @@ void APIC_setReg_IA32_APIC_BASE_address(u64 phyAddr) {
 }
 void APIC_initLocal() {
     printk(RED, BLACK, "APIC_initLocal()\n");
-    apicRegPage = (Page *)MM_Buddy_alloc(0, Page_Flag_Kernel);
+    apicRegPage = (Page *)MM_Buddy_alloc(0, Page_Flag_Kernel | Page_Flag_KernelShare);
     memset(DMAS_phys2Virt(apicRegPage->phyAddr), 0, Page_4KSize);
     APIC_setReg_IA32_APIC_BASE_address(apicRegPage->phyAddr);
     u32 eax, ebx, ecx, edx;

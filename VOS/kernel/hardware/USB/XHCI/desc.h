@@ -3,9 +3,19 @@
 
 #include "../../../includes/lib.h"
 
-typedef struct USB_XHCI_DevDesc {
+#define HW_USB_XHCI_DescType_Device		0x1
+#define HW_USB_XHCI_DescType_Config		0x2
+#define HW_USB_XHCI_DescType_String		0x3
+#define HW_USB_XHCI_DescType_Interface	0x4
+#define HW_USB_XHCI_DescType_Endpoint	0x5
+#define HW_USB_XHCI_DescType_HID		0x21
+
+typedef struct USB_XHCI_DescHeader {
 	u8 len;
 	u8 descType;
+} __attribute__((packed)) USB_XHCI_DescHeader;
+typedef struct USB_XHCI_DevDesc {
+	USB_XHCI_DescHeader header;
 	
 	u16 bcdUSB;
 	u8 class;
@@ -22,19 +32,18 @@ typedef struct USB_XHCI_DevDesc {
 } __attribute__((packed)) USB_XHCI_DevDesc;
 
 typedef struct USB_XHCI_ConfigDesc {
-	u8 len;
-	u8 descType;
+	USB_XHCI_DescHeader header;
 
 	u16 totLen;
 	u8 numInterface;
+	u8 configVal;
 	u8 iConfig;
 	u8 attributes;
 	u8 mxPwr;
 } __attribute__((packed)) USB_XHCI_ConfigDesc;
 
 typedef struct USB_XHCI_InterfaceDesc {
-	u8 len;
-	u8 descType;
+	USB_XHCI_DescHeader header;
 
 	u8 interfaceNum;
 	u8 alterSetting;
@@ -44,4 +53,13 @@ typedef struct USB_XHCI_InterfaceDesc {
 	u8 interfaceProtocol;
 	u8 interface;
 } __attribute__((packed)) USB_XHCI_InterfaceDesc;
+
+typedef struct USB_XHCI_EndpointDesc {
+	USB_XHCI_DescHeader header;
+
+	u8 epAddr;
+	u8 attr;
+	u16 mxPktSz;
+	u8 interval;
+} __attribute__((packed)) USB_XHCI_EndpointDesc;
 #endif

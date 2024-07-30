@@ -14,7 +14,7 @@ static SpinLock _locker;
 
 void Log_enableBuf() {
     u64 pixelSize = HW_UEFI_bootParamInfo->graphicsInfo.VerticalResolution * HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine * sizeof(u32);
-    _bufAddr = DMAS_phys2Virt(MM_Buddy_alloc(max(log2Ceil(pixelSize) - 12, 0), Page_Flag_Active | Page_Flag_Kernel)->phyAddr);
+    _bufAddr = DMAS_phys2Virt(MM_Buddy_alloc(max(log2Ceil(pixelSize) - 12, 0), Page_Flag_Active | Page_Flag_Kernel | Page_Flag_KernelShare)->phyAddr);
     memcpy(position.FBAddr, _bufAddr, pixelSize);
     printk(WHITE, BLACK, "buf:%#018lx size:%ld->2^%d 4k pages\n", _bufAddr, pixelSize, max(log2Ceil(pixelSize) - 12, 0));
 }

@@ -34,7 +34,7 @@ static void _setup(USB_UHCIController *ctrl) {
 	IO_out16(ctrl->ioRegAddr + HW_USB_UHCI_ioReg_intrEnable, 0x000f);
 	IO_out16(ctrl->ioRegAddr + HW_USB_UHCI_ioReg_frNum, 0x0000);
 	// allocate frame list
-	Page *page = MM_Buddy_alloc4G(1, 0);
+	Page *page = MM_Buddy_alloc4G(1, Page_Flag_KernelShare);
 	IO_out32(ctrl->ioRegAddr + HW_USB_UHCI_ioReg_frBaseAddr, page->phyAddr);
 	if (page == NULL || page->phyAddr >= (1ul << 32)) {
 		printk(RED, BLACK, "UHCI ERROR: failed to allocate frame list\n");

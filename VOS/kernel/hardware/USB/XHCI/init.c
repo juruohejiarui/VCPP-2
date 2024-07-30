@@ -178,7 +178,7 @@ static int _initMem(USB_XHCIController *ctrl) {
 		ctrl->cmdRingFlag.segId = 0;
 		ctrl->cmdRingFlag.pos = 0;
 		printk(WHITE, BLACK, "XHCI: %#018lx: cmdRingCtrl:%#018lx\n", ctrl, cmdRing);
-		ctrl->cmdSrc = HW_USB_XHCI_alloc(ctrl, HW_USB_XHCI_RingEntryNum * sizeof(USB_XHCIReqBlock *));
+		ctrl->cmdSrc = HW_USB_XHCI_alloc(ctrl, HW_USB_XHCI_RingEntryNum * sizeof(USB_XHCI_ReqBlock *));
 
 		// construct a link trb
 		*((u64 *)&lkTRB->dw[0]) = DMAS_virt2Phys(cmdRing);

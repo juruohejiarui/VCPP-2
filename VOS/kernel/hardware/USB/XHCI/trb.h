@@ -14,6 +14,7 @@
 #define HW_USB_TrbType_EnblSlotCmd		9
 #define HW_USB_TrbType_DisableSlotCmd	10
 #define HW_USB_TrbType_SetAddrCmd		11
+#define HW_USB_TrbType_ConfigEpCmd		12
 #define HW_USB_TrbType_NoOpCmd			23
 #define HW_USB_TrbType_TransferEve		32
 #define HW_USB_TrbType_CmdCompletionEve	33

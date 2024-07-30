@@ -2,12 +2,16 @@
 #include "XHCI.h"
 #include "EHCI.h"
 #include "UHCI.h"
+#include "HID.h"
 #include "../../includes/log.h"
 
 void HW_USB_init() {
     printk(RED, BLACK, "HW_USB_init()\n");
     List_init(&HW_USB_UHCI_mgrList);
 	List_init(&HW_USB_XHCI_mgrList);
+
+	List_init(&HW_USB_XHCI_drvList);
+	SpinLock_init(&HW_USB_XHCI_drvListLock);
     List *pcieListHeader = HW_PCIe_getMgrList();
     for (List *pcieListEle = pcieListHeader->next; pcieListEle != pcieListHeader; pcieListEle = pcieListEle->next) {
         PCIeManager *mgrStruct = container(pcieListEle, PCIeManager, listEle);
@@ -25,4 +29,5 @@ void HW_USB_init() {
                 break;
         }
     }
+	HW_USB_HID_init();
 }
