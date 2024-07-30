@@ -271,4 +271,43 @@ u64 HW_USB_XHCI_mainThread(u64 (*_)(u64), u64 ctrlAddr);
 
 u64 HW_USB_XHCI_devThread(u64 (*_)(u64), u64 devAddr);
 
+
+#define HW_USB_XHCI_DriverCheck_Unmatched		0
+#define HW_USB_XHCI_DriverCheck_PartlySuccess	1
+#define HW_USB_XHCI_DriverCheck_Success			2
+
+typedef struct USB_XHCI_Driver {
+	u64 (*task)(u64 (*usrEntry)(u64 arg), USB_XHCI_Device *dev);
+	u64 taskFlags;
+	int (*chk)(USB_XHCI_Device *dev);
+	char *name;
+	List listEle;
+} USB_XHCI_Driver;
+
+extern List HW_USB_XHCI_DrvList;
+void HW_USB_XHCI_insReqBlk(USB_XHCIController *ctrl, USB_XHCIReqBlock *reqs);
+
+int HW_USB_XHCI_waitRely(USB_XHCIController *ctrl, USB_XHCIReqBlock *reqs);
+
+USB_XHCIReqBlock *HW_USB_XHCI_mkCmdBlk(int trbType, u64 slot, u64 arg);
+
+#define HW_USB_XHCI_SetupPkt_DescType_Device	0x1
+#define HW_USB_XHCI_SetupPkt_DescType_Config	0x2
+#define HW_USB_XHCI_SetupPkt_DescType_String	0x3
+#define HW_USB_XHCI_SetupPkt_DescType_Interface	0x4
+
+USB_XHCIReqBlock *HW_USB_XHCI_mkGetDescBlk(u64 slot, u64 descType, u64 idx, u64 wIdx, u64 len, void *buf);
+
+USB_XHCIReqBlock *HW_USB_XHCI_mkGetDataBlk(u64 slot, u64 epId, u64 len, void *buf);
+
+USB_XHCIReqBlock *HW_USB_XHCI_mkSetDataBlk(u64 slot, u64 epId, u64 len, void *buf);
+
+void HW_USB_XHCI_freeReqBlk(USB_XHCIReqBlock *reqs);
+
+void HW_USB_XHCI_addDriver(USB_XHCI_Driver *drv);
+
+void HW_USB_XHCI_delDriver(USB_XHCI_Driver *drv);
+
+USB_XHCI_Driver *HW_USB_XHCI_getDriver(USB_XHCI_Device *dev);
+
 #endif

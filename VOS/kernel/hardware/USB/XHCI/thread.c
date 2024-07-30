@@ -1,5 +1,4 @@
 #include "inner.h"
-#include "api.h"
 #include "ringop.h"
 #include "../../../includes/task.h"
 #include "../../../includes/log.h"
@@ -405,12 +404,19 @@ u64 HW_USB_XHCI_devThread(u64 (*_)(u64), u64 devAddr) {
 			off += desc[off];
 		}
 		for (int j = 0; j < dev->cfgDesc->numInterface; j++) {
-			printk(WHITE, BLACK, "\t\tinterface #%d: class=%#04x idx=%d\n", j, dev->interfaceDesc[i][j].interfaceClass, dev->interfaceDesc[i][j].interfaceNum);
+			printk(WHITE, BLACK, "\t\tinterface #%d: class=%#04x subClass=%#04x proto=%#04x idx=%d\n", 
+				j, dev->interfaceDesc[i][j].interfaceClass, dev->interfaceDesc[i][j].interfaceSubClass, dev->interfaceDesc[i][j].interfaceProtocol, dev->interfaceDesc[i][j].interfaceNum);
 		}
 	}
 
 	// search for driver for this device
-	
-	while (1) IO_hlt();
+	while (1) {
+		USB_XHCI_Driver *drv = HW_USB_XHCI_getDriver(dev);
+		if (drv != NULL) {
+			Task_createTask(drv->task, NULL, drv, drv->taskFlags);
+			break;
+		}
+		Intr_SoftIrq_Timer_mdelay(1000);
+	}
 	Task_kernelEntryEnd(0);
 }

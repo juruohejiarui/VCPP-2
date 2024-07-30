@@ -1,4 +1,7 @@
-#include "api.h"
+#include "inner.h"
+
+SpinLock HW_USB_XHCI_DrvListLock;
+List HW_USB_XHCI_DrvList;
 
 void HW_USB_XHCI_insReqBlk(USB_XHCIController *ctrl, USB_XHCIReqBlock *reqs) {
 	SpinLock_lock(&ctrl->witQueLock);
@@ -88,4 +91,29 @@ void HW_USB_XHCI_freeReqBlk(USB_XHCIReqBlock *reqs) {
 		kfree(buf, 0);
 	}
 	kfree(reqs, 0);
+}
+
+void HW_USB_XHCI_addDriver(USB_XHCI_Driver *drv) {
+	SpinLock_lock(&HW_USB_XHCI_DrvListLock);
+	List_init(&drv->listEle);
+	List_insBefore(&drv->listEle, &HW_USB_XHCI_DrvList);
+	SpinLock_unlock(&HW_USB_XHCI_DrvListLock);
+}
+
+void HW_USB_XHCI_delDriver(USB_XHCI_Driver *drv) {
+	SpinLock_lock(&HW_USB_XHCI_DrvListLock);
+	List_del(&drv->listEle);
+	SpinLock_unlock(&HW_USB_XHCI_DrvListLock);
+}
+
+USB_XHCI_Driver *HW_USB_XHCI_getDriver(USB_XHCI_Device *dev) {
+	USB_XHCI_Driver *bst = NULL;
+	int bstSts = HW_USB_XHCI_DriverCheck_Unmatched, sts;
+	SpinLock_lock(&HW_USB_XHCI_DrvListLock);
+	for (List *drvList = HW_USB_XHCI_DrvList.next; drvList != &HW_USB_XHCI_DrvList; drvList = drvList->next) {
+		USB_XHCI_Driver *drv = container(drvList, USB_XHCI_Driver, listEle);
+		if ((sts = drv->chk(dev)) > bstSts) bstSts = sts, bst = drv;
+	}
+	SpinLock_unlock(&HW_USB_XHCI_DrvListLock);
+	return bst;
 }
