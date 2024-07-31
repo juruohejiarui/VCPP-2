@@ -27,8 +27,8 @@ static void _setupEndpoints(USB_XHCI_Device *dev) {
 		int epId = HW_USB_XHCI_EndpointId(desc->epAddr & ((1u << 7) - 1), (desc->epAddr >> 7) & 1);
 		dev->ctx->inCtx.addFlags |= (1 << (epId + 1));
 
-		// if (dev->ctx->slotCtx.dw0.ctx.ctxEntries < epId)
-			// dev->ctx->slotCtx.dw0.ctx.ctxEntries = epId;
+		if (dev->ctx->slotCtx.dw0.ctx.ctxEntries < epId)
+			dev->ctx->slotCtx.dw0.ctx.ctxEntries = epId;
 
 		USB_XHCI_EndpointContext *epCtx = &dev->ctx->epCtx[epId];
 		memset(epCtx, 0, sizeof(USB_XHCI_EndpointContext));
