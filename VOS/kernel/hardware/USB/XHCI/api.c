@@ -147,7 +147,7 @@ USB_XHCI_ReqBlock *HW_USB_XHCI_mkGetReportBlk(u64 slot, u64 ep, u32 reportType, 
 	memset(req, 0, sizeof(USB_XHCI_ReqBlock) + 5 * sizeof(USB_XHCI_GenerTRB));
 	req->reqCnt = 5;
 	req->slot = slot;
-	// req->endpoint = ep;
+	req->endpoint = ep;
 	_setNormal(req);
 	{
 		USB_XHCI_SetupTRB *setup = (USB_XHCI_SetupTRB *)&req->reqs[0];

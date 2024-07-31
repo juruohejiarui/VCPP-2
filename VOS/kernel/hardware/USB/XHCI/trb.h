@@ -248,9 +248,12 @@ typedef struct {
 		struct {
 			u8 cycle : 1;
 			u8 toggle : 1;
-			u8 reserved : 8;
+			u8 reserved : 2;
+			u8 chainBit : 1;
+			u8 ioc : 1;
+			u8 reserved1 : 4;
 			u8 trbType: 6;
-			u16 reserved1;
+			u16 reserved2;
 		} __attribute__ ((packed)) ctx;
 	} __attribute__ ((packed)) dw3;
 } __attribute__ ((packed)) USB_XHCI_LinkTRB;
