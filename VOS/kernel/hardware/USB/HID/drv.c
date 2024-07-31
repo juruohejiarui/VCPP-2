@@ -11,8 +11,17 @@ struct USB_HidDriver {
 struct USB_HidDriver drv;
 
 static void _getReportDesc(USB_XHCI_Device *dev) {
-	USB_XHCI_ReqBlock *reqs;
-	
+	u8 *report = kmalloc(0xff, 0);
+	USB_XHCI_ReqBlock *reqs = HW_USB_XHCI_mkGetDescBlk(dev->slot, HW_USB_XHCI_DescType_Report, 0, 0, 0xff, report);
+	HW_USB_XHCI_insReqBlk(dev->ctrl, reqs);
+	HW_USB_XHCI_waitRely(dev->ctrl, reqs); 
+	if (reqs->flags & HW_USB_XHCIReq_Flag_failed) {
+		printk(RED, BLACK, "failed to get report descriptor for device %#018lx\n", dev);
+		while (1) IO_hlt();
+	}
+	printk(WHITE, BLACK, "Report: ");
+	for (int i = 0; i < 80; i++) printk(WHITE, BLACK, "%02x ", report[i]);
+	printk(WHITE, BLACK, "\n");
 }
 
 static void _setupEndpoints(USB_XHCI_Device *dev) {
@@ -24,8 +33,9 @@ static void _setupEndpoints(USB_XHCI_Device *dev) {
 		if (hdr->descType != HW_USB_XHCI_DescType_Endpoint) continue;
 
 		USB_XHCI_EndpointDesc *desc = container(hdr, USB_XHCI_EndpointDesc, header);
-		int epId = HW_USB_XHCI_EndpointId(desc->epAddr & ((1u << 7) - 1), (desc->epAddr >> 7) & 1);
+		int epId = HW_USB_XHCI_EndpointId(desc->epAddr & ((1u << 7) - 1), (desc->epAddr >> 7) & 1); 
 		dev->ctx->inCtx.addFlags |= (1 << (epId + 1));
+		dev->enableEp |= (1 << epId);
 
 		if (dev->ctx->slotCtx.dw0.ctx.ctxEntries < epId)
 			dev->ctx->slotCtx.dw0.ctx.ctxEntries = epId;
@@ -33,7 +43,7 @@ static void _setupEndpoints(USB_XHCI_Device *dev) {
 		USB_XHCI_EndpointContext *epCtx = &dev->ctx->epCtx[epId];
 		memset(epCtx, 0, sizeof(USB_XHCI_EndpointContext));
 		
-		epCtx->dw0.ctx.interval = desc->interval * 10;
+		epCtx->dw0.ctx.interval = desc->interval;
 		epCtx->dw1.ctx.mxPktSize = desc->mxPktSz & 0x7ff;
 		epCtx->dw1.ctx.errCnt = 3;
 		epCtx->dw1.ctx.epType = (desc->attr & 3) | ((desc->epAddr & (1 << 7)) >> 5);
@@ -45,7 +55,6 @@ static void _setupEndpoints(USB_XHCI_Device *dev) {
 			printk(WHITE, BLACK, "mxPktSz:%d mxESITPayload:%d\n", epCtx->dw1.ctx.mxPktSize, mxESITPayload);
 		}
 
-		
 		// allocate the transfer ring
 		dev->transRing[epId] = HW_USB_XHCI_allocTransferRing(dev->ctrl, NULL, NULL);
 		dev->transInqPtr[epId] = dev->transRing[epId];
@@ -56,7 +65,7 @@ static void _setupEndpoints(USB_XHCI_Device *dev) {
 
 	}
 	// config the endpoint
-	reqs = HW_USB_XHCI_mkCmdBlk(HW_USB_TrbType_ConfigEpCmd, dev->slot, DMAS_virt2Phys(dev->ctx));
+	reqs = HW_USB_XHCI_mkCmdBlk(HW_USB_TrbType_ConfigEpCmd, dev->slot, DMAS_virt2Phys(dev->ctx), 0, 0);
 	HW_USB_XHCI_insReqBlk(dev->ctrl, reqs);
 	HW_USB_XHCI_waitRely(dev->ctrl, reqs);
 	if (reqs->flags & HW_USB_XHCIReq_Flag_failed) {
@@ -74,6 +83,22 @@ static void _setupEndpoints(USB_XHCI_Device *dev) {
 		while (1) IO_hlt();
 	}
 	HW_USB_XHCI_freeReqBlk(reqs);
+
+	u8 *report = kmalloc(0xff, 0);
+	while (1) {
+		reqs = HW_USB_XHCI_mkGetReportBlk(dev->slot, 2, 1, 1, 0, 0xff, report);
+		HW_USB_XHCI_insReqBlk(dev->ctrl, reqs);
+		HW_USB_XHCI_waitRely(dev->ctrl, reqs);
+		if (reqs->flags & HW_USB_XHCIReq_Flag_failed) {
+			printk(RED, BLACK, "failed to get report from dev %#018lx endpoint 2 interface 0.\n");
+			while (1) IO_hlt();
+		}
+		printk(WHITE, BLACK, "report : ");
+		HW_USB_XHCI_freeReqBlk(reqs);
+		for (int i = 0; i < 16; i++) printk(WHITE, BLACK, "%02x ", report[i]);
+		printk(WHITE, BLACK, "\r");
+		Intr_SoftIrq_Timer_mdelay(1);
+	}
 }
 
 u64 USB_HID_thread(u64 (*_)(u64), u64 arg) {

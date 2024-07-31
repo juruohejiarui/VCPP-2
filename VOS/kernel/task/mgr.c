@@ -152,10 +152,9 @@ void Task_exit() {
 u64 Task_recycleThread(u64 (*usrEntry)(u64), u64 arg) {
     Task_kernelEntryHeader();
     while (1) {
-        IO_cli();
+        _CFSstruct.recycState = RecycleThread_State_Running;
         SpinLock_lock(&_CFSstruct.killedTreeLocker);
         RBNode *rMost = RBTree_getMax(&_CFSstruct.killedTree);
-        _CFSstruct.recycState = RecycleThread_State_Running;
         if (rMost != NULL) {
             RBTree_delNode(&_CFSstruct.killedTree, rMost);
             TaskStruct *tsk = container(rMost, TaskStruct, wNode);
@@ -169,7 +168,6 @@ u64 Task_recycleThread(u64 (*usrEntry)(u64), u64 arg) {
             MM_Buddy_free(tskPage);
         }
         SpinLock_unlock(&_CFSstruct.killedTreeLocker);
-        IO_sti();
         _CFSstruct.recycState = RecycleThread_State_Idle;
     }
     Task_kernelEntryEnd(0);

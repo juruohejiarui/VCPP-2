@@ -9,6 +9,7 @@
 #define HW_USB_XHCI_DescType_Interface	0x4
 #define HW_USB_XHCI_DescType_Endpoint	0x5
 #define HW_USB_XHCI_DescType_HID		0x21
+#define HW_USB_XHCI_DescType_Report		0x22
 
 typedef struct USB_XHCI_DescHeader {
 	u8 len;

@@ -26,22 +26,63 @@ int HW_USB_XHCI_chkSucc(USB_XHCI_ReqBlock *reqs) {
 }
 
 void HW_USB_XHCI_normalAck(USB_XHCIController *ctrl, USB_XHCI_ReqBlock *req, USB_XHCI_Device *dev) {
+	if (req->target) {
+		for (int i = 0; i < req->reqCnt; i++) *req->target[i] = NULL;
+		kfree(req->target, 0);
+	}
 	if (!HW_USB_XHCI_chkSucc(req)) printk(RED, BLACK, "reqs %#018lx failed. code=%d\n", req, req->res.dw[2] >> 24), req->flags |= HW_USB_XHCIReq_Flag_failed;
 }
 
-USB_XHCI_ReqBlock *HW_USB_XHCI_mkCmdBlk(int trbType, u64 slot, u64 arg) {
+static void _setNormal(USB_XHCI_ReqBlock *req) {
+	req->ack = (USB_XHCI_ReqAck)HW_USB_XHCI_normalAck;
+}
+
+USB_XHCI_ReqBlock *HW_USB_XHCI_mkCmdBlk(int trbType, u64 slot, u64 arg, u32 status, u32 flags) {
 	USB_XHCI_ReqBlock *req = kmalloc(sizeof(USB_XHCI_ReqBlock) + sizeof(USB_XHCI_GenerTRB), 0);
 	memset(req, 0, sizeof(USB_XHCI_ReqBlock) + sizeof(USB_XHCI_GenerTRB));
 	req->flags |= HW_USB_XHCIReq_Flag_isCommand;
 	req->reqCnt = 1;
-	req->ack = (USB_XHCI_ReqAck)HW_USB_XHCI_normalAck;
+	_setNormal(req);
 	{
 		USB_XHCI_GenerTRB *cmd = &req->reqs[0];
 		*(u64 *)cmd->dw = arg;
-		cmd->dw3.raw |= slot << 24;
+		cmd->dw[2] = status;
+		cmd->dw3.raw |= ((slot + 1) << 24) | flags;
 		cmd->dw3.ctx.trbType = trbType;
 	}
 	return req;
+}
+
+void _setDataStatus(USB_XHCI_ReqBlock *req, u32 direct, u32 idx, u64 len, void *buf) {
+	{
+		USB_XHCI_DataTRB *data = (USB_XHCI_DataTRB *)&req->reqs[idx];
+		data->dw0_1.dtBuf = DMAS_virt2Phys(buf);
+		data->dw2.ctx.trbLen = len;
+		data->dw3.ctx.evalNxtTRB = 1;
+		data->dw3.ctx.chainBit = 1;
+		data->dw3.ctx.trbType = HW_USB_TrbType_DataStage;
+		data->dw3.ctx.direct = direct;
+	}
+	{
+		USB_XHCI_NormalTRB *data = (USB_XHCI_NormalTRB *)&req->reqs[idx + 1];
+		USB_XHCI_EventDataBuffer *buf = HW_USB_XHCI_makeEveDataBuf(8);
+		data->dw0_1.dtBufPtr = DMAS_virt2Phys(buf->dt);
+		data->dw2.ctx.trbLen = 8;
+		data->dw3.ctx.trbType = HW_USB_TrbType_EventData;
+	}
+	{
+		USB_XHCI_StatusTRB *data = (USB_XHCI_StatusTRB *)&req->reqs[idx + 2];
+		data->dw3.ctx.chainBit = 1;
+		data->dw3.ctx.trbType = HW_USB_TrbType_StatusStage;
+	}
+	{
+		USB_XHCI_NormalTRB *data = (USB_XHCI_NormalTRB *)&req->reqs[idx + 3];
+		USB_XHCI_EventDataBuffer *buf = HW_USB_XHCI_makeEveDataBuf(8);
+		data->dw0_1.dtBufPtr = DMAS_virt2Phys(buf->dt);
+		data->dw2.ctx.trbLen = 8;
+		data->dw3.ctx.ioc = 1;
+		data->dw3.ctx.trbType = HW_USB_TrbType_EventData;
+	}
 }
 
 USB_XHCI_ReqBlock *HW_USB_XHCI_mkGetDescBlk(u64 slot, u64 descType, u64 idx, u64 wIdx, u64 len, void *buf) {
@@ -49,7 +90,7 @@ USB_XHCI_ReqBlock *HW_USB_XHCI_mkGetDescBlk(u64 slot, u64 descType, u64 idx, u64
 	memset(req, 0, sizeof(USB_XHCI_ReqBlock) + 5 * sizeof(USB_XHCI_GenerTRB));
 	req->reqCnt = 5;
 	req->slot = slot;
-	req->ack = (USB_XHCI_ReqAck)HW_USB_XHCI_normalAck;
+	_setNormal(req);
 	{
 		USB_XHCI_SetupTRB *setup = (USB_XHCI_SetupTRB *)&req->reqs[0];
 		setup->dw0.ctx.bmReqType = 0x80;
@@ -63,35 +104,7 @@ USB_XHCI_ReqBlock *HW_USB_XHCI_mkGetDescBlk(u64 slot, u64 descType, u64 idx, u64
 		setup->dw3.ctx.trbType = HW_USB_TrbType_SetupStage;
 		setup->dw3.ctx.tfType = 3;
 	}
-	{
-		USB_XHCI_DataTRB *data = (USB_XHCI_DataTRB *)&req->reqs[1];
-		data->dw0_1.dtBuf = DMAS_virt2Phys(buf);
-		data->dw2.ctx.trbLen = len;
-		data->dw3.ctx.evalNxtTRB = 1;
-		data->dw3.ctx.chainBit = 1;
-		data->dw3.ctx.trbType = HW_USB_TrbType_DataStage;
-		data->dw3.ctx.direct = 1;
-	}
-	{
-		USB_XHCI_NormalTRB *data = (USB_XHCI_NormalTRB *)&req->reqs[2];
-		USB_XHCI_EventDataBuffer *buf = HW_USB_XHCI_makeEveDataBuf(8);
-		data->dw0_1.dtBufPtr = DMAS_virt2Phys(buf->dt);
-		data->dw2.ctx.trbLen = 8;
-		data->dw3.ctx.trbType = HW_USB_TrbType_EventData;
-	}
-	{
-		USB_XHCI_StatusTRB *data = (USB_XHCI_StatusTRB *)&req->reqs[3];
-		data->dw3.ctx.chainBit = 1;
-		data->dw3.ctx.trbType = HW_USB_TrbType_StatusStage;
-	}
-	{
-		USB_XHCI_NormalTRB *data = (USB_XHCI_NormalTRB *)&req->reqs[4];
-		USB_XHCI_EventDataBuffer *buf = HW_USB_XHCI_makeEveDataBuf(8);
-		data->dw0_1.dtBufPtr = DMAS_virt2Phys(buf->dt);
-		data->dw2.ctx.trbLen = 8;
-		data->dw3.ctx.ioc = 1;
-		data->dw3.ctx.trbType = HW_USB_TrbType_EventData;
-	}
+	_setDataStatus(req, 1, 1, len, buf);
 	return req;
 }
 
@@ -100,7 +113,7 @@ USB_XHCI_ReqBlock *HW_USB_XHCI_mkSetCfgBlk(u64 slot, u64 cfgVal) {
 	memset(req, 0, sizeof(USB_XHCI_ReqBlock) + 3 * sizeof(USB_XHCI_GenerTRB));
 	req->reqCnt = 3;
 	req->slot = slot;
-	req->ack = (USB_XHCI_ReqAck)HW_USB_XHCI_normalAck;
+	_setNormal(req);
 	{
 		USB_XHCI_SetupTRB *setup = (USB_XHCI_SetupTRB *)&req->reqs[0];
 		setup->dw0.ctx.bmReqType = 0;
@@ -129,8 +142,31 @@ USB_XHCI_ReqBlock *HW_USB_XHCI_mkSetCfgBlk(u64 slot, u64 cfgVal) {
 	return req;
 }
 
+USB_XHCI_ReqBlock *HW_USB_XHCI_mkGetReportBlk(u64 slot, u64 ep, u32 reportType, u32 reportId, u32 interfaceId, u32 len, void *buf) {
+    USB_XHCI_ReqBlock *req = kmalloc(sizeof(USB_XHCI_ReqBlock) + sizeof(USB_XHCI_GenerTRB) * 5, 0);
+	memset(req, 0, sizeof(USB_XHCI_ReqBlock) + 5 * sizeof(USB_XHCI_GenerTRB));
+	req->reqCnt = 5;
+	req->slot = slot;
+	// req->endpoint = ep;
+	_setNormal(req);
+	{
+		USB_XHCI_SetupTRB *setup = (USB_XHCI_SetupTRB *)&req->reqs[0];
+		setup->dw0.ctx.bmReqType = 0xa1;
+		setup->dw0.ctx.bReq = 0x01;
+		setup->dw0.ctx.wVal = (reportType << 8) | reportId;
+		setup->dw1.ctx.wIndex = interfaceId;
+		setup->dw1.ctx.wLen = len;
+
+		setup->dw2.ctx.trbLen = 8;
+		setup->dw3.ctx.idt = 1;
+		setup->dw3.ctx.trbType = HW_USB_TrbType_SetupStage;
+		setup->dw3.ctx.tfType = 3;
+	}
+	_setDataStatus(req, 1, 1, len, buf);
+	return req;
+}
 void HW_USB_XHCI_freeReqBlk(USB_XHCI_ReqBlock *reqs) {
-	for (int i = 0; i < reqs->reqCnt; i++) {
+    for (int i = 0; i < reqs->reqCnt; i++) {
 		if (reqs->reqs[i].dw3.ctx.trbType != HW_USB_TrbType_EventData) continue;
 		USB_XHCI_EventDataBuffer *buf = container(DMAS_phys2Virt(*(u64 *)&reqs->reqs[i].dw[0]), USB_XHCI_EventDataBuffer, dt);
 		kfree(buf, 0);

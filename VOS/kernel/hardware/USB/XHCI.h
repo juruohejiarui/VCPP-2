@@ -218,6 +218,9 @@ typedef struct USB_XHCI_ReqBlock {
 	void *arg;
 	USB_XHCI_ReqAck ack;
 
+	// used to store position of transfer ring the TRBs in this block 
+	struct USB_XHCI_ReqBlock ***target;
+
 	USB_XHCI_GenerTRB res, reqs[0];
 } __attribute__((packed)) USB_XHCI_ReqBlock;
 
@@ -292,13 +295,15 @@ int HW_USB_XHCI_waitRely(USB_XHCIController *ctrl, USB_XHCI_ReqBlock *reqs);
 
 int HW_USB_XHCI_chkSucc(USB_XHCI_ReqBlock *reqs);
 
-static void HW_USB_XHCI_normalAck(USB_XHCIController *ctrl, USB_XHCI_ReqBlock *req, USB_XHCI_Device *dev);
+void HW_USB_XHCI_normalAck(USB_XHCIController *ctrl, USB_XHCI_ReqBlock *req, USB_XHCI_Device *dev);
 
-USB_XHCI_ReqBlock *HW_USB_XHCI_mkCmdBlk(int trbType, u64 slot, u64 arg);
+USB_XHCI_ReqBlock *HW_USB_XHCI_mkCmdBlk(int trbType, u64 slot, u64 arg, u32 status, u32 flags);
 
 USB_XHCI_ReqBlock *HW_USB_XHCI_mkGetDescBlk(u64 slot, u64 descType, u64 idx, u64 wIdx, u64 len, void *buf);
 
 USB_XHCI_ReqBlock *HW_USB_XHCI_mkSetCfgBlk(u64 slot, u64 cfgVal);
+
+USB_XHCI_ReqBlock *HW_USB_XHCI_mkGetReportBlk(u64 slot, u64 ep, u32 reportType, u32 reportId, u32 interfaceId, u32 len, void *buf);
 
 USB_XHCI_ReqBlock *HW_USB_XHCI_mkGetDataBlk(u64 slot, u64 epId, u64 len, void *buf);
 
