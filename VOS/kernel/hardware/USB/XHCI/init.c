@@ -1,6 +1,5 @@
 #include "../XHCI.h"
 #include "inner.h"
-#include "ringop.h"
 #include "../../../includes/interrupt.h"
 #include "../../../includes/memory.h"
 #include "../../../includes/log.h"

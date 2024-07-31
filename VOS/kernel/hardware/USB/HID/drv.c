@@ -10,45 +10,77 @@ struct USB_HidDriver {
 
 struct USB_HidDriver drv;
 
-void _setupEndpoints(USB_XHCI_Device *dev) {
-	// initailize the configuration and address the device again
-	for (int i = 0; i < dev->desc->numConfig; i++) {
-		for (USB_XHCI_DescHeader *hdr = HW_USB_XHCI_getNxtDesc(dev->cfgDesc[i], NULL); hdr != NULL; hdr = HW_USB_XHCI_getNxtDesc(dev->cfgDesc[i], hdr)) {
-			if (hdr->descType != HW_USB_XHCI_DescType_Interface || container(hdr, USB_XHCI_InterfaceDesc, header)->interfaceClass != 0x03) {
-				for (int i = 0; i < hdr->len; i++) printk(WHITE, BLACK, "%02x ", *((u8 *)hdr + i));
-				printk(WHITE, BLACK, "\n");
-				continue;
-			}
-			USB_XHCI_InterfaceDesc *desc = container(hdr, USB_XHCI_InterfaceDesc, header);
-			printk(WHITE, BLACK, "dev %#018lx: interface %#018lx: subClass:%d proto:%d\n", dev, desc, desc->interfaceSubClass, desc->interfaceProtocol);
-		}
-	}
+static void _getReportDesc(USB_XHCI_Device *dev) {
+	USB_XHCI_ReqBlock *reqs;
+	
+}
+
+static void _setupEndpoints(USB_XHCI_Device *dev) {
+	USB_XHCI_ReqBlock *reqs;
 	// choose the configuration 0
-	dev->ctx->inCtx.addFlags = dev->ctx->inCtx.dropFlags = 0;
+	// enable endpoints
+	dev->ctx->inCtx.addFlags = 0, dev->ctx->inCtx.dropFlags = 0;
 	for (USB_XHCI_DescHeader *hdr = HW_USB_XHCI_getNxtDesc(dev->cfgDesc[0], NULL); hdr != NULL; hdr = HW_USB_XHCI_getNxtDesc(dev->cfgDesc[0], hdr)) {
 		if (hdr->descType != HW_USB_XHCI_DescType_Endpoint) continue;
 
 		USB_XHCI_EndpointDesc *desc = container(hdr, USB_XHCI_EndpointDesc, header);
 		int epId = HW_USB_XHCI_EndpointId(desc->epAddr & ((1u << 7) - 1), (desc->epAddr >> 7) & 1);
-		printk(WHITE, BLACK, "enable endpoint %d\n", epId);
-		dev->ctx->inCtx.addFlags |= (1 << epId);
+		dev->ctx->inCtx.addFlags |= (1 << (epId + 1));
+
+		// if (dev->ctx->slotCtx.dw0.ctx.ctxEntries < epId)
+			// dev->ctx->slotCtx.dw0.ctx.ctxEntries = epId;
 
 		USB_XHCI_EndpointContext *epCtx = &dev->ctx->epCtx[epId];
 		memset(epCtx, 0, sizeof(USB_XHCI_EndpointContext));
+		
+		epCtx->dw0.ctx.interval = desc->interval * 10;
+		epCtx->dw1.ctx.mxPktSize = desc->mxPktSz & 0x7ff;
+		epCtx->dw1.ctx.errCnt = 3;
+		epCtx->dw1.ctx.epType = (desc->attr & 3) | ((desc->epAddr & (1 << 7)) >> 5);
+		
+		{
+			u32 mxESITPayload = desc->mxPktSz * (epCtx->dw1.ctx.mxBurstSize + 1);
+			epCtx->dw0.ctx.mxESITPayloadHi = (mxESITPayload >> 16) & 0xff;
+			epCtx->dw4.ctx.mxESITPayloadLo = mxESITPayload & 0xffff;
+			printk(WHITE, BLACK, "mxPktSz:%d mxESITPayload:%d\n", epCtx->dw1.ctx.mxPktSize, mxESITPayload);
+		}
+
+		
+		// allocate the transfer ring
+		dev->transRing[epId] = HW_USB_XHCI_allocTransferRing(dev->ctrl, NULL, NULL);
+		dev->transInqPtr[epId] = dev->transRing[epId];
+		dev->transSrc[epId] = HW_USB_XHCI_alloc(dev->ctrl, HW_USB_XHCI_RingEntryNum * sizeof(USB_XHCI_ReqBlock *));
+		dev->transCycFlags[epId] = 1;
+		epCtx->dw2_3.trDeqPtr = 0x1 | DMAS_virt2Phys(dev->transRing[epId]);
+		epCtx->dw4.ctx.avgTRBLen = (1 << 10); // set the average TRB len to 1kb
+
 	}
 	// config the endpoint
-	USB_XHCI_ReqBlock *reqs = HW_USB_XHCI_mkCmdBlk(HW_USB_TrbType_ConfigEpCmd, dev->slot, (u64)dev->ctx);
+	reqs = HW_USB_XHCI_mkCmdBlk(HW_USB_TrbType_ConfigEpCmd, dev->slot, DMAS_virt2Phys(dev->ctx));
+	HW_USB_XHCI_insReqBlk(dev->ctrl, reqs);
+	HW_USB_XHCI_waitRely(dev->ctrl, reqs);
+	if (reqs->flags & HW_USB_XHCIReq_Flag_failed) {
+		printk(RED, BLACK, "fail to configure endpoints for device %#018lx\n", dev);
+		while (1) IO_hlt();
+	}
+	HW_USB_XHCI_freeReqBlk(reqs);
+
 	// set configuration
 	reqs = HW_USB_XHCI_mkSetCfgBlk(dev->slot, dev->cfgDesc[0]->configVal);
 	HW_USB_XHCI_insReqBlk(dev->ctrl, reqs);
 	HW_USB_XHCI_waitRely(dev->ctrl, reqs);
-	if (reqs->flags & HW_USB_XHCIReq_Flag_failed) printk(RED, BLACK, "fail to set %#018lx to config 0\n", dev);
+	if (reqs->flags & HW_USB_XHCIReq_Flag_failed) {
+		printk(RED, BLACK, "fail to set %#018lx to config 0\n", dev);
+		while (1) IO_hlt();
+	}
+	HW_USB_XHCI_freeReqBlk(reqs);
 }
 
 u64 USB_HID_thread(u64 (*_)(u64), u64 arg) {
 	Task_kernelEntryHeader();
 	USB_XHCI_Device *dev = (USB_XHCI_Device *)arg;
 	printk(WHITE, BLACK, "USB_HID_thread(): dev %#018lx is a hid device\n", dev);
+	_getReportDesc(dev);
 	// setup endpoints of this device
 	_setupEndpoints(dev);
 	while (1) IO_hlt();

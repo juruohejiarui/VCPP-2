@@ -1,5 +1,4 @@
 #include "inner.h"
-#include "ringop.h"
 #include "../../../includes/task.h"
 #include "../../../includes/log.h"
 
@@ -144,7 +143,6 @@ static void _ack_enblSlot(USB_XHCIController *ctrl, USB_XHCI_ReqBlock *req, USB_
 	
 	ctx->slotCtx.dw0.ctx.ctxEntries = 1;
 
-	ctx->epCtx[0].dw0.ctx.lsa = 1;
 	ctx->epCtx[0].dw1.ctx.mxPktSize = mxPktSize(ctx->slotCtx.dw0.ctx.speed);
 	ctx->epCtx[0].dw1.ctx.errCnt = 3;
 	ctx->epCtx[0].dw1.ctx.epType = 4;

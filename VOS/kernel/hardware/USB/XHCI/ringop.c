@@ -1,4 +1,4 @@
-#include "ringop.h"
+#include "inner.h"
 #include "../../../includes/log.h"
 
 // get the next Event TRB from event ring, copy it into OUTPUT and return whether the event ring is empty.

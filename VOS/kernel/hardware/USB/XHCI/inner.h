@@ -58,9 +58,4 @@ __always_inline__ void _writeDoorbell(USB_XHCIController *ctrl, int slotId, u32 
 	__asm__ volatile ("sfence	\n\t": : :);
 	ctrl->dbRegs->doorbell[slotId - 1] = val;
 }
-
-// allocate memory for the controller，use DMAS_virt2Phys to get the physical address
-void *HW_USB_XHCI_alloc(USB_XHCIController *ctrl, u64 size);
-void HW_USB_XHCI_free(USB_XHCIController *ctrl, void *addr);
-void HW_USB_XHCI_freeAll(USB_XHCIController *ctrl);
 #endif

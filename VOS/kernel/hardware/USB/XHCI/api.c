@@ -29,8 +29,7 @@ void HW_USB_XHCI_normalAck(USB_XHCIController *ctrl, USB_XHCI_ReqBlock *req, USB
 	if (!HW_USB_XHCI_chkSucc(req)) printk(RED, BLACK, "reqs %#018lx failed. code=%d\n", req, req->res.dw[2] >> 24), req->flags |= HW_USB_XHCIReq_Flag_failed;
 }
 
-USB_XHCI_ReqBlock *HW_USB_XHCI_mkCmdBlk(int trbType, u64 slot, u64 arg)
-{
+USB_XHCI_ReqBlock *HW_USB_XHCI_mkCmdBlk(int trbType, u64 slot, u64 arg) {
 	USB_XHCI_ReqBlock *req = kmalloc(sizeof(USB_XHCI_ReqBlock) + sizeof(USB_XHCI_GenerTRB), 0);
 	memset(req, 0, sizeof(USB_XHCI_ReqBlock) + sizeof(USB_XHCI_GenerTRB));
 	req->flags |= HW_USB_XHCIReq_Flag_isCommand;
@@ -39,7 +38,7 @@ USB_XHCI_ReqBlock *HW_USB_XHCI_mkCmdBlk(int trbType, u64 slot, u64 arg)
 	{
 		USB_XHCI_GenerTRB *cmd = &req->reqs[0];
 		*(u64 *)cmd->dw = arg;
-		cmd->dw[2] |= slot << 24;
+		cmd->dw3.raw |= slot << 24;
 		cmd->dw3.ctx.trbType = trbType;
 	}
 	return req;
@@ -101,9 +100,11 @@ USB_XHCI_ReqBlock *HW_USB_XHCI_mkSetCfgBlk(u64 slot, u64 cfgVal) {
 		setup->dw0.ctx.bReq = 9;
 		setup->dw0.ctx.wVal = cfgVal;
 
+		setup->dw2.ctx.trbLen = 8;
+		
 		setup->dw3.ctx.idt = 1;
 		setup->dw3.ctx.trbType = HW_USB_TrbType_SetupStage;
-		setup->dw3.ctx.tfType = 3;
+		setup->dw3.ctx.tfType = 0;
 	}
 	{
 		USB_XHCI_StatusTRB *data = (USB_XHCI_StatusTRB *)&req->reqs[1];
