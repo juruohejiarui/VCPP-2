@@ -53,6 +53,19 @@ USB_XHCI_ReqBlock *HW_USB_XHCI_mkCmdBlk(int trbType, u64 slot, u64 arg, u32 stat
 	return req;
 }
 
+void _setSetup(USB_XHCI_SetupTRB *trb, u8 reqType, u8 req, u16 val, u16 idx, u16 len, u8 tfType) {
+	trb->dw0.ctx.bmReqType = reqType;
+	trb->dw0.ctx.bReq = req;
+	trb->dw0.ctx.wVal = val;
+	trb->dw1.ctx.wIndex = idx;
+	trb->dw1.ctx.wLen = len;
+
+	trb->dw2.ctx.trbLen = 8;
+	trb->dw3.ctx.idt = 1;
+	trb->dw3.ctx.trbType = HW_USB_TrbType_SetupStage;
+	trb->dw3.ctx.tfType = tfType;
+}
+
 void _setDataStatus(USB_XHCI_ReqBlock *req, u32 direct, u32 idx, u64 len, void *buf) {
 	{
 		USB_XHCI_DataTRB *data = (USB_XHCI_DataTRB *)&req->reqs[idx];
@@ -91,19 +104,7 @@ USB_XHCI_ReqBlock *HW_USB_XHCI_mkGetDescBlk(u64 slot, u64 descType, u64 idx, u64
 	req->reqCnt = 5;
 	req->slot = slot;
 	_setNormal(req);
-	{
-		USB_XHCI_SetupTRB *setup = (USB_XHCI_SetupTRB *)&req->reqs[0];
-		setup->dw0.ctx.bmReqType = 0x80;
-		setup->dw0.ctx.bReq = 6;
-		setup->dw0.ctx.wVal = (descType << 8) | (idx);
-		setup->dw1.ctx.wIndex = 0;
-		setup->dw1.ctx.wLen = len;
-
-		setup->dw2.ctx.trbLen = 8;
-		setup->dw3.ctx.idt = 1;
-		setup->dw3.ctx.trbType = HW_USB_TrbType_SetupStage;
-		setup->dw3.ctx.tfType = 3;
-	}
+	_setSetup((USB_XHCI_SetupTRB *)&req->reqs[0], 0x80, 6, (descType << 8) | idx, 0, len, 3);
 	_setDataStatus(req, 1, 1, len, buf);
 	return req;
 }
@@ -114,18 +115,7 @@ USB_XHCI_ReqBlock *HW_USB_XHCI_mkSetCfgBlk(u64 slot, u64 cfgVal) {
 	req->reqCnt = 3;
 	req->slot = slot;
 	_setNormal(req);
-	{
-		USB_XHCI_SetupTRB *setup = (USB_XHCI_SetupTRB *)&req->reqs[0];
-		setup->dw0.ctx.bmReqType = 0;
-		setup->dw0.ctx.bReq = 9;
-		setup->dw0.ctx.wVal = cfgVal;
-
-		setup->dw2.ctx.trbLen = 8;
-		
-		setup->dw3.ctx.idt = 1;
-		setup->dw3.ctx.trbType = HW_USB_TrbType_SetupStage;
-		setup->dw3.ctx.tfType = 0;
-	}
+	_setSetup((USB_XHCI_SetupTRB *)&req->reqs[0], 0, 9, cfgVal, 0, 0, 0);
 	{
 		USB_XHCI_StatusTRB *data = (USB_XHCI_StatusTRB *)&req->reqs[1];
 		data->dw3.ctx.chainBit = 1;
@@ -142,6 +132,30 @@ USB_XHCI_ReqBlock *HW_USB_XHCI_mkSetCfgBlk(u64 slot, u64 cfgVal) {
 	return req;
 }
 
+USB_XHCI_ReqBlock *HW_USB_XHCI_mkSetIdleBlk(u64 slot, u32 reportId, u32 interval, u32 interfaceId) {
+	USB_XHCI_ReqBlock *req = kmalloc(sizeof(USB_XHCI_ReqBlock) + sizeof(USB_XHCI_GenerTRB) * 3, 0);
+	memset(req, 0, sizeof(USB_XHCI_ReqBlock) + 3 * sizeof(USB_XHCI_GenerTRB));
+	req->reqCnt = 3;
+	req->slot = slot;
+	_setNormal(req);
+	_setSetup((USB_XHCI_SetupTRB *)&req->reqs[0], 0x21, 0x0a, (interval << 8) | reportId, interfaceId, 0, 0);
+	{
+		USB_XHCI_StatusTRB *data = (USB_XHCI_StatusTRB *)&req->reqs[1];
+		data->dw3.ctx.chainBit = 1;
+		data->dw3.ctx.trbType = HW_USB_TrbType_StatusStage;
+	}
+	{
+		USB_XHCI_NormalTRB *data = (USB_XHCI_NormalTRB *)&req->reqs[2];
+		USB_XHCI_EventDataBuffer *buf = HW_USB_XHCI_makeEveDataBuf(0xff);
+		data->dw0_1.dtBufPtr = DMAS_virt2Phys(buf->dt);
+		data->dw2.ctx.trbLen = 0xff;
+		data->dw3.ctx.ioc = 1;
+		data->dw3.ctx.trbType = HW_USB_TrbType_EventData;
+	}
+	return req;
+}
+
+
 USB_XHCI_ReqBlock *HW_USB_XHCI_mkGetReportBlk(u64 slot, u64 ep, u32 reportType, u32 reportId, u32 interfaceId, u32 len, void *buf) {
     USB_XHCI_ReqBlock *req = kmalloc(sizeof(USB_XHCI_ReqBlock) + sizeof(USB_XHCI_GenerTRB) * 5, 0);
 	memset(req, 0, sizeof(USB_XHCI_ReqBlock) + 5 * sizeof(USB_XHCI_GenerTRB));
@@ -149,20 +163,8 @@ USB_XHCI_ReqBlock *HW_USB_XHCI_mkGetReportBlk(u64 slot, u64 ep, u32 reportType, 
 	req->slot = slot;
 	req->endpoint = ep;
 	_setNormal(req);
-	{
-		USB_XHCI_SetupTRB *setup = (USB_XHCI_SetupTRB *)&req->reqs[0];
-		setup->dw0.ctx.bmReqType = 0xa1;
-		setup->dw0.ctx.bReq = 0x01;
-		setup->dw0.ctx.wVal = (reportType << 8) | reportId;
-		setup->dw1.ctx.wIndex = interfaceId;
-		setup->dw1.ctx.wLen = len;
-
-		setup->dw2.ctx.trbLen = 8;
-		setup->dw3.ctx.idt = 1;
-		setup->dw3.ctx.trbType = HW_USB_TrbType_SetupStage;
-		setup->dw3.ctx.tfType = 3;
-	}
-	_setDataStatus(req, 1, 1, len, buf);
+	_setSetup((USB_XHCI_SetupTRB *)&req->reqs[0], 0xa1, 0x01, (reportType << 8) | reportId, interfaceId, len, 3);
+	_setDataStatus(req, 0, 1, len, buf);
 	return req;
 }
 void HW_USB_XHCI_freeReqBlk(USB_XHCI_ReqBlock *reqs) {

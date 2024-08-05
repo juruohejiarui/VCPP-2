@@ -30,7 +30,11 @@ static void _setupEndpoints(USB_XHCI_Device *dev) {
 	// enable endpoints
 	dev->ctx->inCtx.addFlags = 0, dev->ctx->inCtx.dropFlags = 0;
 	for (USB_XHCI_DescHeader *hdr = HW_USB_XHCI_getNxtDesc(dev->cfgDesc[0], NULL); hdr != NULL; hdr = HW_USB_XHCI_getNxtDesc(dev->cfgDesc[0], hdr)) {
+		if (hdr->descType == HW_USB_XHCI_DescType_Interface) {
+			USB_XHCI_InterfaceDesc *interfaceDesc = container(hdr, USB_XHCI_InterfaceDesc, header);
+		}
 		if (hdr->descType != HW_USB_XHCI_DescType_Endpoint) continue;
+		
 
 		USB_XHCI_EndpointDesc *desc = container(hdr, USB_XHCI_EndpointDesc, header);
 		int epId = HW_USB_XHCI_EndpointId(desc->epAddr & ((1u << 7) - 1), (desc->epAddr >> 7) & 1); 
@@ -84,9 +88,19 @@ static void _setupEndpoints(USB_XHCI_Device *dev) {
 	}
 	HW_USB_XHCI_freeReqBlk(reqs);
 
+	// set idle
+	reqs = HW_USB_XHCI_mkSetIdleBlk(dev->slot, 0, 2, 0);
+	HW_USB_XHCI_insReqBlk(dev->ctrl, reqs);
+	HW_USB_XHCI_waitRely(dev->ctrl, reqs);
+	if (reqs->flags & HW_USB_XHCIReq_Flag_failed) {
+		printk(RED, BLACK, "fail to set %#018lx to config 0\n", dev);
+		while (1) IO_hlt();
+	}
+	HW_USB_XHCI_freeReqBlk(reqs);
+
 	u8 *report = kmalloc(0xff, 0);
 	while (1) {
-		reqs = HW_USB_XHCI_mkGetReportBlk(dev->slot, 2, 1, 1, 0, 0xff, report);
+		reqs = HW_USB_XHCI_mkGetReportBlk(dev->slot, 2, 1, 0, 0, 0xff, report);
 		HW_USB_XHCI_insReqBlk(dev->ctrl, reqs);
 		HW_USB_XHCI_waitRely(dev->ctrl, reqs);
 		if (reqs->flags & HW_USB_XHCIReq_Flag_failed) {
@@ -95,7 +109,10 @@ static void _setupEndpoints(USB_XHCI_Device *dev) {
 		}
 		printk(WHITE, BLACK, "report : ");
 		HW_USB_XHCI_freeReqBlk(reqs);
-		for (int i = 0; i < 16; i++) printk(WHITE, BLACK, "%02x ", report[i]);
+		int notZe = 0;
+		for (int i = 0; i < 16; i++) if (report[i]) { notZe = 1; break; }
+		if (notZe)
+			for (int i = 0; i < 16; i++) printk(WHITE, BLACK, "%02x ", report[i]);
 		printk(WHITE, BLACK, "\r");
 		Intr_SoftIrq_Timer_mdelay(1);
 	}

@@ -76,12 +76,12 @@ void Task_switchTo_inner(TaskStruct *prev, TaskStruct *next) {
 
 i64 _weight[50] = { 1, 2, 3, 4, 5, 6, [6 ... 49] = -1 };
 
-#define RecycleThread_State_Idle    0
-#define RecycleThread_State_Running 1
+#define RecycleThread_State_Idle        0
+#define RecycleThread_State_Scanning    1
+#define RecycleThread_State_Running     2
 
 static struct CFS_rq {
     RBTree tree, killedTree;
-    int recycState;
 	SpinLock locker, killedTreeLocker;
 } _CFSstruct;
 
@@ -95,7 +95,6 @@ void Task_initMgr() {
     RBTree_init(&_CFSstruct.killedTree, _CFSTree_comparator);
 	SpinLock_init(&_CFSstruct.locker);
     SpinLock_init(&_CFSstruct.killedTreeLocker);
-    _CFSstruct.recycState = RecycleThread_State_Idle;
 }
 
 void Task_updateCurState(TimerIrq *timerIrq, void *data) {
@@ -115,11 +114,7 @@ void Task_schedule() {
 
 	// insert this task into the waiting tree
     TaskStruct *dmasPtr = (TaskStruct *)DMAS_phys2Virt(MM_PageTable_getPldEntry(getCR3(), (u64)Task_current) & ~0xfff);
-    if (Task_current->priority == Task_Priority_Killed && _CFSstruct.recycState != RecycleThread_State_Running) {
-        SpinLock_lock(&_CFSstruct.killedTreeLocker);
-        RBTree_insNode(&_CFSstruct.killedTree, &dmasPtr->wNode);
-        SpinLock_unlock(&_CFSstruct.killedTreeLocker);
-    } else RBTree_insNode(&_CFSstruct.tree, &dmasPtr->wNode);
+    if (Task_current->priority != Task_Priority_Killed) RBTree_insNode(&_CFSstruct.tree, &dmasPtr->wNode);
 	// get the task with least vRuntime
     RBNode *leftMost = RBTree_getMin(&_CFSstruct.tree);
 
@@ -143,32 +138,32 @@ void Task_exit() {
         printk(RED, BLACK, "Task_exit(): task %ld: failed to recycle all the page frame, remain %ld pages.\n", Task_current->pid, Task_current->mem->totUsage);
         while (1) IO_hlt();
     }
-    IO_cli();
+    SpinLock_lock(&_CFSstruct.killedTreeLocker);
+    TaskStruct *dmasPtr = (TaskStruct *)DMAS_phys2Virt(MM_PageTable_getPldEntry(getCR3(), (u64)Task_current) & ~0xfff);
+    RBTree_insNode(&_CFSstruct.killedTree, &dmasPtr->wNode);
+    SpinLock_unlock(&_CFSstruct.killedTreeLocker);
     Task_current->priority = Task_Priority_Killed;
-    IO_sti();
     while (1) IO_hlt();
 }
 
 u64 Task_recycleThread(u64 (*usrEntry)(u64), u64 arg) {
     Task_kernelEntryHeader();
     while (1) {
-        _CFSstruct.recycState = RecycleThread_State_Running;
         SpinLock_lock(&_CFSstruct.killedTreeLocker);
         RBNode *rMost = RBTree_getMax(&_CFSstruct.killedTree);
         if (rMost != NULL) {
             RBTree_delNode(&_CFSstruct.killedTree, rMost);
+            SpinLock_unlock(&_CFSstruct.killedTreeLocker);
             TaskStruct *tsk = container(rMost, TaskStruct, wNode);
             printk(BLACK, WHITE, "recycle task %d at %#018lx\n", tsk->pid, tsk);
             MM_Buddy_free(tsk->mem->intrPage);
             MM_Buddy_free(tsk->mem->lstKerPage);
             MM_PageTable_cleanMap(tsk->mem->pgdPhyAddr);
-            
             // free the page of the task structure
             Page *tskPage = memManageStruct.pages + (DMAS_virt2Phys(tsk) >> Page_4KShift);
             MM_Buddy_free(tskPage);
-        }
-        SpinLock_unlock(&_CFSstruct.killedTreeLocker);
-        _CFSstruct.recycState = RecycleThread_State_Idle;
+        } else
+            SpinLock_unlock(&_CFSstruct.killedTreeLocker);
     }
     Task_kernelEntryEnd(0);
 }

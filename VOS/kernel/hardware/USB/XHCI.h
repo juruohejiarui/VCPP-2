@@ -303,6 +303,8 @@ USB_XHCI_ReqBlock *HW_USB_XHCI_mkGetDescBlk(u64 slot, u64 descType, u64 idx, u64
 
 USB_XHCI_ReqBlock *HW_USB_XHCI_mkSetCfgBlk(u64 slot, u64 cfgVal);
 
+USB_XHCI_ReqBlock *HW_USB_XHCI_mkSetIdleBlk(u64 slot, u32 reportId, u32 interval, u32 interfaceId);
+
 USB_XHCI_ReqBlock *HW_USB_XHCI_mkGetReportBlk(u64 slot, u64 ep, u32 reportType, u32 reportId, u32 interfaceId, u32 len, void *buf);
 
 USB_XHCI_ReqBlock *HW_USB_XHCI_mkGetDataBlk(u64 slot, u64 epId, u64 len, void *buf);
