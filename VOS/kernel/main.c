@@ -5,6 +5,7 @@
 #include "includes/memory.h"
 #include "includes/task.h"
 #include "includes/hardware.h"
+#include "includes/smp.h"
 
 volatile int Global_state;
 
@@ -35,6 +36,8 @@ void startKernel() {
 
     Intr_Trap_setSysVec();
     MM_init();
+
+    SMP_init();
 
     Log_enableBuf();
 

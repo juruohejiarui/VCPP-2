@@ -289,9 +289,9 @@ typedef struct USB_XHCI_Driver {
 extern List HW_USB_XHCI_drvList;
 extern SpinLock HW_USB_XHCI_drvListLock;
 
-void HW_USB_XHCI_insReqBlk(USB_XHCIController *ctrl, USB_XHCI_ReqBlock *reqs);
+void HW_USB_XHCI_insBlk(USB_XHCIController *ctrl, USB_XHCI_ReqBlock *reqs);
 
-int HW_USB_XHCI_waitRely(USB_XHCIController *ctrl, USB_XHCI_ReqBlock *reqs);
+int HW_USB_XHCI_waitReply(USB_XHCIController *ctrl, USB_XHCI_ReqBlock *reqs);
 
 int HW_USB_XHCI_chkSucc(USB_XHCI_ReqBlock *reqs);
 

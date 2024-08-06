@@ -13,8 +13,8 @@ struct USB_HidDriver drv;
 static void _getReportDesc(USB_XHCI_Device *dev) {
 	u8 *report = kmalloc(0xff, 0);
 	USB_XHCI_ReqBlock *reqs = HW_USB_XHCI_mkGetDescBlk(dev->slot, HW_USB_XHCI_DescType_Report, 0, 0, 0xff, report);
-	HW_USB_XHCI_insReqBlk(dev->ctrl, reqs);
-	HW_USB_XHCI_waitRely(dev->ctrl, reqs); 
+	HW_USB_XHCI_insBlk(dev->ctrl, reqs);
+	HW_USB_XHCI_waitReply(dev->ctrl, reqs); 
 	if (reqs->flags & HW_USB_XHCIReq_Flag_failed) {
 		printk(RED, BLACK, "failed to get report descriptor for device %#018lx\n", dev);
 		while (1) IO_hlt();
@@ -70,8 +70,8 @@ static void _setupEndpoints(USB_XHCI_Device *dev) {
 	}
 	// config the endpoint
 	reqs = HW_USB_XHCI_mkCmdBlk(HW_USB_TrbType_ConfigEpCmd, dev->slot, DMAS_virt2Phys(dev->ctx), 0, 0);
-	HW_USB_XHCI_insReqBlk(dev->ctrl, reqs);
-	HW_USB_XHCI_waitRely(dev->ctrl, reqs);
+	HW_USB_XHCI_insBlk(dev->ctrl, reqs);
+	HW_USB_XHCI_waitReply(dev->ctrl, reqs);
 	if (reqs->flags & HW_USB_XHCIReq_Flag_failed) {
 		printk(RED, BLACK, "fail to configure endpoints for device %#018lx\n", dev);
 		while (1) IO_hlt();
@@ -80,8 +80,8 @@ static void _setupEndpoints(USB_XHCI_Device *dev) {
 
 	// set configuration
 	reqs = HW_USB_XHCI_mkSetCfgBlk(dev->slot, dev->cfgDesc[0]->configVal);
-	HW_USB_XHCI_insReqBlk(dev->ctrl, reqs);
-	HW_USB_XHCI_waitRely(dev->ctrl, reqs);
+	HW_USB_XHCI_insBlk(dev->ctrl, reqs);
+	HW_USB_XHCI_waitReply(dev->ctrl, reqs);
 	if (reqs->flags & HW_USB_XHCIReq_Flag_failed) {
 		printk(RED, BLACK, "fail to set %#018lx to config 0\n", dev);
 		while (1) IO_hlt();
@@ -90,8 +90,8 @@ static void _setupEndpoints(USB_XHCI_Device *dev) {
 
 	// set idle
 	reqs = HW_USB_XHCI_mkSetIdleBlk(dev->slot, 0, 2, 0);
-	HW_USB_XHCI_insReqBlk(dev->ctrl, reqs);
-	HW_USB_XHCI_waitRely(dev->ctrl, reqs);
+	HW_USB_XHCI_insBlk(dev->ctrl, reqs);
+	HW_USB_XHCI_waitReply(dev->ctrl, reqs);
 	if (reqs->flags & HW_USB_XHCIReq_Flag_failed) {
 		printk(RED, BLACK, "fail to set %#018lx to config 0\n", dev);
 		while (1) IO_hlt();
@@ -100,21 +100,20 @@ static void _setupEndpoints(USB_XHCI_Device *dev) {
 
 	u8 *report = kmalloc(0xff, 0);
 	while (1) {
-		reqs = HW_USB_XHCI_mkGetReportBlk(dev->slot, 2, 1, 0, 0, 0xff, report);
-		HW_USB_XHCI_insReqBlk(dev->ctrl, reqs);
-		HW_USB_XHCI_waitRely(dev->ctrl, reqs);
+		reqs = HW_USB_XHCI_mkGetReportBlk(dev->slot, 0, 1, 5, 7, 0xff, report);
+		HW_USB_XHCI_insBlk(dev->ctrl, reqs);
+		HW_USB_XHCI_waitReply(dev->ctrl, reqs);
 		if (reqs->flags & HW_USB_XHCIReq_Flag_failed) {
 			printk(RED, BLACK, "failed to get report from dev %#018lx endpoint 2 interface 0.\n");
 			while (1) IO_hlt();
 		}
-		printk(WHITE, BLACK, "report : ");
 		HW_USB_XHCI_freeReqBlk(reqs);
-		int notZe = 0;
-		for (int i = 0; i < 16; i++) if (report[i]) { notZe = 1; break; }
-		if (notZe)
-			for (int i = 0; i < 16; i++) printk(WHITE, BLACK, "%02x ", report[i]);
+		
+		printk(WHITE, BLACK, "report : ");
+		for (int i = 0; i < 16; i++) printk(WHITE, BLACK, "%02x ", report[i]);
 		printk(WHITE, BLACK, "\r");
-		Intr_SoftIrq_Timer_mdelay(1);
+		
+		Intr_SoftIrq_Timer_mdelay(8);
 	}
 }
 

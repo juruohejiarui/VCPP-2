@@ -30,7 +30,6 @@ static int _getOwnership(USB_XHCIController *ctrl) {
 	legacy->data1 |= (1 << 8);
 	for (int i = 0; i <= 10; i++) {
 		if ((legacy->data1 & ((1 << 8) | (1 << 0))) == (1 << 8)) {
-			printk(WHITE, BLACK, "XHCI: %#018lx: success to get ownership. (prevVal:%x)\n", ctrl, prevVal);
 			return 1;
 		} 
 		Intr_SoftIrq_Timer_mdelay(2);
@@ -55,7 +54,6 @@ static int _stopController(USB_XHCIController *ctrl) {
 		ctrl->dev.free((Device *)ctrl), kfree(ctrl, 0);
 		return 0;
 	}
-	printk(WHITE, BLACK, "XHCI: %#018lx: success to stop controller.", ctrl);
 	return 1;
 }
 
@@ -106,9 +104,6 @@ static int _initPorts(USB_XHCIController *ctrl) {
 	for (USB_XHCI_ExtCapEntry *entry = ctrl->extCapHeader; entry != NULL; entry = _getNextExtCap(entry)) {
 		if (entry->id != USB_XHCI_ExtCap_Id_Protocol) continue;
 		USB_XHCI_ExtCap_Protocol *protocol = container(entry, USB_XHCI_ExtCap_Protocol, extCap);
-
-		printk(WHITE, BLACK, "XHCI: %#018lx: slotType[%d,%d]=%d\n", 
-				ctrl, protocol->portOff, protocol->portCnt + protocol->portOff - 1, protocol->slotType);
 				
 		for (int i = 0; i < protocol->portCnt; i++)
 			ctrl->ports[protocol->portOff + i - 1].flags |= 
@@ -117,7 +112,6 @@ static int _initPorts(USB_XHCIController *ctrl) {
 			ctrl->ports[protocol->portOff + i - 1].slotType = protocol->slotType;
 	}
 	// set the flag isPaired
-	printk(WHITE, BLACK, "XHCI: %#018lx: socket info: ", ctrl);
 	for (int i = 0; i < maxPorts(ctrl); i++) {
 		for (int j = i + 1; j < maxPorts(ctrl); j++) {
 			if (ctrl->ports[i].offset != ctrl->ports[j].offset) continue;
@@ -128,7 +122,6 @@ static int _initPorts(USB_XHCIController *ctrl) {
 			ctrl->ports[j].flags |= HW_USB_XHCI_Port_Flag_Paired;
 			ctrl->ports[i].pair = &ctrl->ports[j];
 			ctrl->ports[j].pair = &ctrl->ports[i];
-			printk(WHITE, BLACK, "(%d,%d) ", i, j);
 		}
 	}
 	printk(WHITE, BLACK, "\n");
@@ -231,9 +224,6 @@ int _restartController(USB_XHCIController *ctrl) {
 	for (int i = 0; i < maxPorts(ctrl); i++) {
 		_setPortStsCtrl(&ctrl->ports[i].regs->statusCtrl, Port_StatusCtrl_Power | Port_StatusCtrl_GenerAllEve);
 	}
-	USB_XHCI_GenerTRB *cmd = HW_USB_XHCI_getNextCmdTRB(ctrl);
-	printk(WHITE, BLACK, "XHCI: No op address: %#018lx\n", cmd);
-	cmd->dw3.ctx.cycle = 1, cmd->dw3.ctx.trbType = 23;
 	ctrl->opRegs->cmdRingCtrl = DMAS_virt2Phys(ctrl->cmdRing) | 0x1;
 	_writeDoorbell(ctrl, 0, 0);
 	printk(WHITE, BLACK, "XCHI: cmdRingCtrl: %#018lx\n", ctrl->opRegs->cmdRingCtrl);

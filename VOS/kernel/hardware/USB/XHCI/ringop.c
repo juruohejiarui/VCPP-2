@@ -34,9 +34,8 @@ USB_XHCI_GenerTRB *HW_USB_XHCI_getNextCmdTRB(USB_XHCIController *ctrl) {
 	// should loop back
 	if (trb->dw3.ctx.trbType == HW_USB_TrbType_Link) {
 		ctrl->cmdRingFlag.cycleBit ^= 1;
-		IO_mfence();
 		ctrl->cmdRingFlag.pos = 0;
-		trb = ctrl->cmdRing;
+		return trb;
 	}
 	if (ctrl->cmdSrc[ctrl->cmdRingFlag.pos] != NULL) return NULL;
 	ctrl->cmdRingFlag.pos++;
@@ -58,17 +57,17 @@ USB_XHCI_GenerTRB *HW_USB_XHCI_allocTransferRing(USB_XHCIController *ctrl, USB_X
 
 USB_XHCI_GenerTRB *HW_USB_XHCI_getNextTransferTRB(USB_XHCIController *ctrl, int slotId, int ep) {
 	USB_XHCI_Device *dev = ctrl->devices[slotId];
-    USB_XHCI_GenerTRB *trb = dev->transInqPtr[ep], *nxt = trb + 1;
+    USB_XHCI_GenerTRB *trb = dev->transInqPtr[ep];
+	if (trb->dw3.ctx.trbType == HW_USB_TrbType_Link) {
+		if (trb->dw3.raw & 0x2) dev->transCycFlags[ep] ^= 1;
+		dev->transInqPtr[ep] = DMAS_phys2Virt(*(u64 *)&trb->dw[0]);
+		return trb;
+	}
 	int pos = HW_USB_getRingPos(trb);
 	
 	// there is an unfinished transfer
 	if (dev->transSrc[ep][pos] != NULL) return NULL;
-
-	if (nxt->dw3.ctx.trbType == HW_USB_TrbType_Link) {
-		// if toggle the cycle bit.
-		if (nxt->dw3.raw & 0x2) dev->transCycFlags[ep] ^= 1;
-		dev->transInqPtr[ep] = DMAS_phys2Virt(*(u64 *)&nxt->dw[0]);
-	} else dev->transInqPtr[ep] = nxt;
+	dev->transInqPtr[ep] = trb + 1;
 
 	return trb;
 }

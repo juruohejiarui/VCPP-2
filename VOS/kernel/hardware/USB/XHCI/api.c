@@ -4,13 +4,13 @@
 SpinLock HW_USB_XHCI_drvListLock;
 List HW_USB_XHCI_drvList;
 
-void HW_USB_XHCI_insReqBlk(USB_XHCIController *ctrl, USB_XHCI_ReqBlock *reqs) {
+void HW_USB_XHCI_insBlk(USB_XHCIController *ctrl, USB_XHCI_ReqBlock *reqs) {
 	SpinLock_lock(&ctrl->witQueLock);
 	List_insBefore(&reqs->listEle, &ctrl->witReqList);
 	SpinLock_unlock(&ctrl->witQueLock);
 }
 
-int HW_USB_XHCI_waitRely(USB_XHCIController *ctrl, USB_XHCI_ReqBlock *reqs) {
+int HW_USB_XHCI_waitReply(USB_XHCIController *ctrl, USB_XHCI_ReqBlock *reqs) {
 	while (1) {
 		SpinLock_lock(&ctrl->lock);
 		u8 flag = reqs->flags;
