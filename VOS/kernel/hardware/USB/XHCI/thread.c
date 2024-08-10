@@ -23,7 +23,29 @@ static int _resetPort(USB_XHCIController *ctrl, int portId) {
 	return 0;
 }
 
-void Task_recycleUnconfigDev(USB_XHCI_Device *dev) {
+void _ack_disableSlot(USB_XHCIController *ctrl, USB_XHCI_ReqBlock *req, USB_XHCI_Device *dev) {
+	HW_USB_XHCI_normalAck(ctrl, req, dev);
+	printk(ORANGE, BLACK, "XHCI: %#018lx: ack of disbale slot : ", ctrl);
+	printk(WHITE, BLACK, "slot:%d ", (req->reqs[0].dw3.raw >> 24) - 1);
+	
+}
+
+void _recycUnconfigDev(USB_XHCI_Device *dev, int inDevThread) {
+	printk(WHITE, BLACK, "_recycleUnconfigDev: rflags:%#018lx\n", IO_getRflags());
+	if (dev->slot != -1) {
+		// disable the slot if this device
+		USB_XHCI_ReqBlock *req = HW_USB_XHCI_mkCmdBlk(HW_USB_TrbType_DisableSlotCmd, dev->slot, 0, 0, 0);
+		if (inDevThread) {
+			HW_USB_XHCI_insBlk(dev->ctrl, req);
+			HW_USB_XHCI_waitReply(dev->ctrl, req);
+			kfree(req, Slab_kmalloc_arg_Private);
+		} else {
+			req->ack = (USB_XHCI_ReqAck)_ack_disableSlot;
+			req->arg = dev;
+			HW_USB_XHCI_insBlk(dev->ctrl, req);
+		}
+	}
+	printk(WHITE, BLACK, "success to disable slot\n");
 	for (int i = 0; i < 31; i++) {
 		if (dev->transRing[i] != NULL) HW_USB_XHCI_free(dev->ctrl, dev->transRing[i]);
 		if (dev->transSrc[i] != NULL)HW_USB_XHCI_free(dev->ctrl, dev->transSrc[i]);
@@ -55,7 +77,7 @@ static void _ack_addrDev(USB_XHCIController *ctrl, USB_XHCI_ReqBlock *req, USB_X
 	int code = req->res.dw[2] >> 24;
 	if (code != 1) {
 		printk(RED, BLACK, "fail(code:%d)\n", code);
-		Task_recycleUnconfigDev(dev);
+		_recycUnconfigDev(dev, 0);
 		kfree(req, 0);
 		return ;
 	}
@@ -83,7 +105,7 @@ static void _ack_enblSlot(USB_XHCIController *ctrl, USB_XHCI_ReqBlock *req, USB_
 		int code = req->res.dw[2] >> 24;
 		if (code != 1) {
 			printk(RED, BLACK, "fail(code:%d\n)", code);
-			Task_recycleUnconfigDev(dev);
+			_recycUnconfigDev(dev, 0);
 			kfree(req, 0);
 			return ;
 		}
@@ -146,9 +168,10 @@ static void _portChgEvent(USB_XHCIController *ctrl, int portId) {
 	if (!(ctrl->ports[portId].regs->statusCtrl & 0x1)) {
 		printk(ORANGE, BLACK, "XHCI: %#018lx: port %d disconnected\n", ctrl, portId);
 		if (ctrl->ports[portId].dev != NULL) {
+			u32 slot = ctrl->ports[portId].dev->slot;
 			if (ctrl->ports[portId].dev->drvTask != NULL) Task_setSignal(ctrl->ports[portId].dev->drvTask, Task_Signal_Int);
-			else Task_recycleUnconfigDev(ctrl->ports[portId].dev);
-			if (ctrl->ports[portId].dev->slot != -1) ctrl->devices[ctrl->ports[portId].dev->slot] = NULL;
+			else _recycUnconfigDev(ctrl->ports[portId].dev, 0);
+			if (slot != -1) ctrl->devices[slot] = NULL;
 			ctrl->ports[portId].dev = NULL;
 		}
 		return ;
@@ -185,7 +208,7 @@ static void _portChgEvent(USB_XHCIController *ctrl, int portId) {
 
 	ctrl->ports[portId].dev = dev;
 
-	HW_USB_XHCI_insBlk(ctrl, reqBlk);
+	HW_USB_XHCI_insBlk(ctrl, reqBlk); 
 }
 
 static void _handleWitQue(USB_XHCIController *ctrl) {
@@ -229,7 +252,6 @@ static void _handleWitQue(USB_XHCIController *ctrl) {
 
 			reqBlk->flags &= ~HW_USB_XHCIReq_Flag_replied;
 			List_del(reqList);
-			// printk(GREEN, BLACK, "->succes\n");
 			slotId = 0, epId = 0;
 		} else { // is a transfer request block
 			USB_XHCI_Device *dev = ctrl->devices[reqBlk->slot];
@@ -359,11 +381,20 @@ u64 HW_USB_XHCI_mainThread(u64 (*_)(u64), u64 ctrlAddr) {
 		_handleWitQue(ctrl);
 		firPeriod = 0;
 	}
-	Task_kernelEntryEnd(0);
+	Task_kernelThreadExit(0);
 }
 
-void _signalHandler_Int(u64 signal) {
-	
+void _signalHandler_Int(u64 signal, u64 devAddr) {
+	if (!devAddr) { printk(WHITE, BLACK, "signal handler for INT: unable to kill this thread...\n"); return ; }
+	USB_XHCI_Device *dev = (USB_XHCI_Device *)devAddr;
+	printk(WHITE, BLACK, "signal handler for INT of dev %#018lx thread pid:%ld\n", dev, Task_current->pid);
+	if (dev->cfgDesc) {
+		for (int i = 0; i < dev->desc->numConfig; i++)
+			if (dev->cfgDesc[i] != NULL) kfree(dev->cfgDesc[i], 0);
+		kfree(dev->cfgDesc, 0);
+	}
+	_recycUnconfigDev(dev, 1);
+	Task_kernelThreadExit(0);
 }
 
 u64 HW_USB_XHCI_devThread(u64 (*_)(u64), u64 devAddr) {
@@ -374,13 +405,13 @@ u64 HW_USB_XHCI_devThread(u64 (*_)(u64), u64 devAddr) {
 
 	printk(WHITE, BLACK, "XHCI: dev %#018lx: mkPkt=%d\n", dev, dev->desc->mxPkt0);
 	// get the string descriptor for further management
-	dev->cfgDesc = kmalloc(sizeof(USB_XHCI_ConfigDesc *) * sizeof(dev->desc->numConfig), 0, NULL);
+	dev->cfgDesc = kmalloc(sizeof(USB_XHCI_ConfigDesc *) * sizeof(dev->desc->numConfig), Slab_kmalloc_arg_Clear, NULL);
 	for (int i = 0; i < dev->desc->numConfig; i++) {
 		dev->cfgDesc[i] = kmalloc(0xff, 0, NULL);
 		USB_XHCI_ReqBlock *reqs = HW_USB_XHCI_mkGetDescBlk(dev->slot, HW_USB_XHCI_DescType_Config, i, 0, 0xff, dev->cfgDesc[i]);
-		HW_USB_XHCI_insBlk(dev->ctrl, reqs);
+		HW_USB_XHCI_insBlk(dev->ctrl, reqs); 
 		HW_USB_XHCI_waitReply(dev->ctrl, reqs);
-		HW_USB_XHCI_freeReqBlk(reqs);
+		kfree(reqs, Slab_kmalloc_arg_Private);
 	}
 
 	// search for driver for this device
@@ -395,5 +426,5 @@ u64 HW_USB_XHCI_devThread(u64 (*_)(u64), u64 devAddr) {
 		}
 		Intr_SoftIrq_Timer_mdelay(1000);
 	}
-	Task_kernelEntryEnd(0);
+	Task_kernelThreadExit(0);
 }

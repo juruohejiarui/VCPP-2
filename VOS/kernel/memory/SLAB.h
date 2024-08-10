@@ -33,6 +33,7 @@ void MM_Slab_debugLog();
 
 #define Slab_kmalloc_arg_Inner      (1 << 0)
 #define Slab_kmalloc_arg_Private 	(1 << 1)
+#define Slab_kmalloc_arg_Clear		(1 << 2)
 /// @brief allocate a memory block for kernel process from the slab system
 /// @param size the size of the memory block
 /// @param arg the argument for the constructer

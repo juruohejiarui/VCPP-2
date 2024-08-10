@@ -191,10 +191,15 @@ void *kmalloc(u64 size, u64 arg, void (*desctrutor)(void *)) {
         Bit_set1(slab->colMap + (j >> 6), j & 63);
         slab->usingCnt++, slab->freeCnt--;
         Slab_kmallocCache[id].usingCnt++, Slab_kmallocCache[id].freeCnt--;
+		
+		// finally calculate the address
+		u64 addr = (u64)slab->virtAddr + j * Slab_kmallocCache[id].size;
+		// clear the memory block to 0 if needed
+		if (arg & Slab_kmalloc_arg_Clear) memset((void *)addr, 0, size);
+		// release the spin lock and enable the interrupts
 		if (!(arg & Slab_kmalloc_arg_Inner)) SpinLock_unlock(&_SlabLocker);
         IO_maskIntrSuffix
-
-		u64 addr = (u64)slab->virtAddr + j * Slab_kmallocCache[id].size;
+		// record this memory block if it is private
 		if (arg & Slab_kmalloc_arg_Private) _addUsage((void *)addr, desctrutor); 
         return (void *)(addr);
     }

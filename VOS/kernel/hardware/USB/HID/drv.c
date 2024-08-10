@@ -136,7 +136,7 @@ u64 USB_HID_thread(u64 (*_)(u64), u64 arg) {
 	// setup endpoints of this device
 	_setupDevice(dev);
 	while (1) IO_hlt();
-	Task_kernelEntryEnd(0);
+	Task_kernelThreadExit(0);
 }
 
 u64 HW_USB_HID_loader(USB_XHCI_Device *dev) {

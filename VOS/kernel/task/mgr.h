@@ -78,6 +78,10 @@ void Task_updateCurState(TimerIrq *timerIrq, void *data);
 
 void Task_exit();
 
+void Task_schedule();
+
+void Task_defaultSignalHandler(u64 signal);
+
 u64 Task_recycleThread(u64 (*usrEntry)(u64), u64 arg);
 
 TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntry)(u64), u64 arg, u64 flag);
@@ -96,7 +100,7 @@ static __always_inline__ void Task_kernelEntryHeader() {
 	Task_current->state = Task_State_Running;
 }
 
-static __always_inline__ void Task_kernelEntryEnd(int retVal) {
+static __always_inline__ void Task_kernelThreadExit(int retVal) {
 	__asm__ volatile(
 		// switch task to intr Task
 		"movq $0xffffffffff800000, %%rsp	\n\t"

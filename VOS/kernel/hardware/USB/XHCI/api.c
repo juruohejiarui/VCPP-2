@@ -35,6 +35,7 @@ void HW_USB_XHCI_normalAck(USB_XHCIController *ctrl, USB_XHCI_ReqBlock *req, USB
 
 static void _setNormal(USB_XHCI_ReqBlock *req) {
 	req->ack = (USB_XHCI_ReqAck)HW_USB_XHCI_normalAck;
+	req->arg = NULL;
 }
 
 USB_XHCI_ReqBlock *HW_USB_XHCI_mkCmdBlk(int trbType, u64 slot, u64 arg, u32 status, u32 flags) {

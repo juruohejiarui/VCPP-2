@@ -110,7 +110,7 @@ void Task_defaultSignalHandler(u64 signal) {
 	switch (signal) {
 		case Task_Signal_Kill :
 		case Task_Signal_Int :
-			Task_kernelEntryEnd(-1);
+			Task_kernelThreadExit(-1);
 			break;
 		default :
 			while (1) IO_hlt();
@@ -121,23 +121,12 @@ void Task_defaultSignalHandler(u64 signal) {
 void Task_setSignal(TaskStruct *task, u64 signal) { task->signal = signal; }
 
 void Task_schedule() {
-	// handle the signal
-	{
-		u64 signal = Task_current->signal;
-		if (signal) {
-			Task_current->signal = 0;
-			// when the task handle the signal by the custom handler, then this signal is treated as "handled"
-			if (Task_current->signalHandler[signal])
-				Task_current->signalHandler[signal](signal, Task_current->signalHandlerArg[signal]);
-			// using the default signal handler means this signal is "not handled"
-			else Task_defaultSignalHandler(signal);
-		}
-	}
     IO_cli();
+	SpinLock_lock(&_CFSstruct.locker);
+	
 	// add back the sceduleTimer
 	Intr_SoftIrq_Timer_initIrq(&Task_current->scheduleTimer, 1, Task_updateCurState, NULL);
     Intr_SoftIrq_Timer_addIrq(&Task_current->scheduleTimer);
-	SpinLock_lock(&_CFSstruct.locker);
 
 	// insert this task into the waiting tree
     TaskStruct *dmasPtr = (TaskStruct *)DMAS_phys2Virt(MM_PageTable_getPldEntry(getCR3(), (u64)Task_current) & ~0xfff);
@@ -161,15 +150,24 @@ void Task_exit() {
         List_del(pageList);
         MM_Buddy_free(container(pageList, Page, listEle));
     }
+	for (List *kmallocList = Task_current->mem->kmallocUsage.next, *nxt = NULL; kmallocList != &Task_current->mem->kmallocUsage; kmallocList = nxt) {
+		nxt = kmallocList->next;
+		printk(WHITE, BLACK, "Task_exit(): recycle SLAB memory %#018lx\n", container(kmallocList, Task_KmallocUsage, listEle)->addr);
+		kfree(container(kmallocList, Task_KmallocUsage, listEle)->addr, Slab_kmalloc_arg_Private);
+	}
     if (Task_current->mem->totUsage > 0) {
         printk(RED, BLACK, "Task_exit(): task %ld: failed to recycle all the page frame, remain %ld pages.\n", Task_current->pid, Task_current->mem->totUsage);
         while (1) IO_hlt();
     }
     SpinLock_lock(&_CFSstruct.killedTreeLocker);
+	IO_maskIntrPreffix
     TaskStruct *dmasPtr = (TaskStruct *)DMAS_phys2Virt(MM_PageTable_getPldEntry(getCR3(), (u64)Task_current) & ~0xfff);
     RBTree_insNode(&_CFSstruct.killedTree, &dmasPtr->wNode);
+	Task_current->priority = Task_Priority_Killed;
+	IO_maskIntrSuffix
     SpinLock_unlock(&_CFSstruct.killedTreeLocker);
-    Task_current->priority = Task_Priority_Killed;
+
+
     while (1) IO_hlt();
 }
 
@@ -192,7 +190,7 @@ u64 Task_recycleThread(u64 (*usrEntry)(u64), u64 arg) {
         } else
             SpinLock_unlock(&_CFSstruct.killedTreeLocker);
     }
-    Task_kernelEntryEnd(0);
+    Task_kernelThreadExit(0);
 }
 
 TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntry)(u64), u64 arg, u64 flag) {

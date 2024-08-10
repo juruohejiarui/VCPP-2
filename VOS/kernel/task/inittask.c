@@ -25,7 +25,7 @@ u64 Task_keyboardEvent(u64 (*usrEntry)(u64), u64 arg) {
 		kfree(kpEvent, 0);
 	}
 	while(1) IO_hlt();
-	Task_kernelEntryEnd(0);
+	Task_kernelThreadExit(0);
 }
 
 u64 task_empty(u64 (*usrEntry)(u64), u64 arg) {
@@ -33,7 +33,7 @@ u64 task_empty(u64 (*usrEntry)(u64), u64 arg) {
 	Page *page = NULL;
 	for (int i = 0; i < Task_current->pid; i++)
 		page = MM_Buddy_alloc(3, Page_Flag_Active);
-	Task_kernelEntryEnd(1);
+	Task_kernelThreadExit(1);
 }
 
 u64 task0(u64 (*usrEntry)(u64), u64 arg) {
@@ -46,13 +46,13 @@ u64 task0(u64 (*usrEntry)(u64), u64 arg) {
 		Task_createTask(HW_USB_XHCI_mainThread, NULL, (u64)container(list, USB_XHCIController, listEle), Task_Flag_Inner | Task_Flag_Kernel);
 	for (int i = 0; i < 5; i++) Task_createTask(task_empty, NULL, (u64)-1, Task_Flag_Inner | Task_Flag_Kernel);
 	while (1) IO_hlt();
-	Task_kernelEntryEnd(0);
+	Task_kernelThreadExit(0);
 }
 
 u64 init(u64 (*usrEntry)(u64), u64 arg) {
 	Task_kernelEntryHeader();
     Task_switchToUsr(usrEntry, Task_current->pid << 32 | arg);
-    Task_kernelEntryEnd(0);
+    Task_kernelThreadExit(0);
 }
 
 u64 usrInit(u64 arg) {

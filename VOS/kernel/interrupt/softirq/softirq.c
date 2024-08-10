@@ -30,6 +30,17 @@ void Intr_SoftIrq_dispatch() {
 	u64 state = Intr_SoftIrq_state;
 	Intr_SoftIrq_state = 0;
 	IO_sti();
+	{
+		u64 signal = Task_current->signal;
+		if (signal) {
+			Task_current->signal = 0;
+			// when the task handle the signal by the custom handler, then this signal is treated as "handled"
+			if (Task_current->signalHandler[signal])
+				Task_current->signalHandler[signal](signal, Task_current->signalHandlerArg[signal]);
+			// using the default signal handler means this signal is "not handled"
+			else Task_defaultSignalHandler(signal);
+		}
+	}
 	for (int i = 0; i < 64; i++)
 		if ((state & (1 << i)) && softIrqs[i].handler != NULL)
 			softIrqs[i].handler(softIrqs[i].data);
