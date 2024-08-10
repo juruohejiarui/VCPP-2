@@ -37,11 +37,6 @@ extern char* kallsyms_names __attribute__((weak));
 #define Task_Priority_Trapped   4
 #define Task_Priority_Killed    5
 
-typedef struct TaskKmallocUsage {
-    void *addr;
-    List listEle;
-} TaskKmallocUsage;
-
 typedef struct TaskMemStruct {
     PageTable *pgd;
     u64 pgdPhyAddr;
@@ -59,19 +54,42 @@ typedef struct ThreadStruct {
     u64 rflags;
 } ThreadStruct;
 
+typedef void (*Task_SignalHandler)(u64 signal, u64 arg);
+#define Task_signalNum 32
+enum Task_Signal {
+	Task_Signal_Int			= 1,
+	Task_Signal_FloatError,
+	Task_Signal_Kill
+};
+
+typedef struct Task_KmallocUsage {
+	List listEle;
+	void *addr;
+	void (*desctrutor)(void *);
+} Task_KmallocUsage;
+
 typedef struct TaskStruct {
     List listEle;
-    volatile i64 state;
+    volatile i64 state;	
     ThreadStruct *thread;
     TaskMemStruct *mem;
 	TSS *tss;
     u64 flags;
     RBTree timerTree;
-    i64 pid, vRunTime, signal, priority;
+    i64 pid, vRunTime;
+	u64 signal, priority;
     TimerIrq scheduleTimer;
 	// the rb node for CFStree
 	RBNode wNode;
+
+	Task_SignalHandler signalHandler[Task_signalNum];
+	u64 signalHandlerArg[Task_signalNum];
 } __attribute__((packed)) TaskStruct; 
+
+// set the signal handler of current task
+void Task_setSignalHandler(u64 signal, Task_SignalHandler handler, u64 arg);
+// set signal to TASK
+void Task_setSignal(TaskStruct *task, u64 signal);
 
 union TaskUnion {
     TaskStruct task;

@@ -67,8 +67,14 @@ u64 usrInit(u64 arg) {
 	}
 }
 
-void Task_init() {
-    printk(RED, BLACK, "Task_init()\n");
+void Task_setSignalHandler(u64 signal, Task_SignalHandler handler, u64 arg) {
+	Task_current->signalHandlerArg[signal] = arg;
+	Task_current->signalHandler[signal] = handler;
+}
+
+void Task_init()
+{
+	printk(RED, BLACK, "Task_init()\n");
     Task_initMgr();
     Task_pidCounter = 0;
 	// fake the task struction of the current task

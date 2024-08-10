@@ -34,7 +34,7 @@ void _chkFunc(u64 addrBase, u8 bus, u8 dev, u8 func) {
             (PCIeClassDesc[devPtr->classCode][devPtr->subclass] == NULL ? "Unknown" : PCIeClassDesc[devPtr->classCode][devPtr->subclass]));
 	#endif
     
-    PCIeManager *mgrStruct = (PCIeManager *)kmalloc(sizeof(PCIeManager), 0);
+    PCIeManager *mgrStruct = (PCIeManager *)kmalloc(sizeof(PCIeManager), 0, NULL);
     memset(mgrStruct, 0, sizeof(PCIeManager));
     List_init(&mgrStruct->listEle);
     mgrStruct->bus = bus;

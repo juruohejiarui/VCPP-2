@@ -64,7 +64,7 @@ u8 _getKeyCode() {
 
 KeyboardEvent *HW_Keyboard_getEvent() {
     if (_buffer->size == 0) return NULL;
-	KeyboardEvent *e = (KeyboardEvent *)kmalloc(sizeof(KeyboardEvent), 0);
+	KeyboardEvent *e = (KeyboardEvent *)kmalloc(sizeof(KeyboardEvent), 0, NULL);
 	u8 fir = _getKeyCode();
 	e->isCtrlKey = 1;
 	e->isKeyUp = 0;
@@ -116,7 +116,7 @@ KeyboardEvent *HW_Keyboard_getEvent() {
 }
 
 void HW_Keyboard_init() {
-    _buffer = (struct KeyboardBuffer *)kmalloc(sizeof(struct KeyboardBuffer), 0);
+    _buffer = (struct KeyboardBuffer *)kmalloc(sizeof(struct KeyboardBuffer), 0, NULL);
 	_buffer->head = _buffer->tail = _buffer->data;
 	_buffer->size = 0;
 	memset(_buffer->data, 0, HW_Keyboard_BufferSize);

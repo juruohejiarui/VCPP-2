@@ -22,7 +22,7 @@ typedef struct USB_XHCI_DevDesc {
 	u8 class;
 	u8 subClass;
 	u8 proto;
-	u8 mkPkt0;
+	u8 mxPkt0;
 	u16 vendorId;
 	u16 productId;
 	u16 bcdDev;

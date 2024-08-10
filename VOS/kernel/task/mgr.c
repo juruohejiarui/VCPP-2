@@ -105,12 +105,39 @@ void Task_updateCurState(TimerIrq *timerIrq, void *data) {
 
 extern u8 Init_stack[32768];
 
+void Task_defaultSignalHandler(u64 signal) {
+	printk(WHITE, BLACK, "Task %ld get signal %ld\r", Task_current->pid, signal);
+	switch (signal) {
+		case Task_Signal_Kill :
+		case Task_Signal_Int :
+			Task_kernelEntryEnd(-1);
+			break;
+		default :
+			while (1) IO_hlt();
+			break;
+	}
+}
+
+void Task_setSignal(TaskStruct *task, u64 signal) { task->signal = signal; }
+
 void Task_schedule() {
+	// handle the signal
+	{
+		u64 signal = Task_current->signal;
+		if (signal) {
+			Task_current->signal = 0;
+			// when the task handle the signal by the custom handler, then this signal is treated as "handled"
+			if (Task_current->signalHandler[signal])
+				Task_current->signalHandler[signal](signal, Task_current->signalHandlerArg[signal]);
+			// using the default signal handler means this signal is "not handled"
+			else Task_defaultSignalHandler(signal);
+		}
+	}
     IO_cli();
-	SpinLock_lock(&_CFSstruct.locker);
 	// add back the sceduleTimer
 	Intr_SoftIrq_Timer_initIrq(&Task_current->scheduleTimer, 1, Task_updateCurState, NULL);
     Intr_SoftIrq_Timer_addIrq(&Task_current->scheduleTimer);
+	SpinLock_lock(&_CFSstruct.locker);
 
 	// insert this task into the waiting tree
     TaskStruct *dmasPtr = (TaskStruct *)DMAS_phys2Virt(MM_PageTable_getPldEntry(getCR3(), (u64)Task_current) & ~0xfff);
@@ -262,6 +289,9 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntr
 
     // initalize the usage information
     List_init(&task->mem->pageUsage);
+	List_init(&task->mem->kmallocUsage);
+
+	// set the signal handler
 
 	RBTree_init(&task->timerTree, Intr_SoftIrq_Timer_comparator);
     if (task->pid > 0) {

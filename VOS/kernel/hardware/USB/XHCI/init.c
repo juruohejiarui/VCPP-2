@@ -231,7 +231,7 @@ int _restartController(USB_XHCIController *ctrl) {
 }
 
 int HW_USB_XHCI_Init(PCIeConfig *xhci) {
-    USB_XHCIController *ctrl = (USB_XHCIController *)kmalloc(sizeof(USB_XHCIController), 0);
+    USB_XHCIController *ctrl = (USB_XHCIController *)kmalloc(sizeof(USB_XHCIController), 0, NULL);
 	List_init(&ctrl->listEle), List_init(&ctrl->memList);
 
 	// set the device struct

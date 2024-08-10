@@ -11,10 +11,10 @@ void *HW_USB_XHCI_alloc(USB_XHCIController *ctrl, u64 size) {
 		if (page == NULL) goto _alloc_Fail;
 		addr = DMAS_phys2Virt(page->phyAddr);
 	} else {
-		addr = kmalloc(size, 0);
+		addr = kmalloc(size, 0, NULL);
 		if (addr == NULL) goto _alloc_Fail;
 	}
-	USB_XHCI_MemUsage *usage = (USB_XHCI_MemUsage *)kmalloc(sizeof(USB_XHCI_MemUsage), 0);
+	USB_XHCI_MemUsage *usage = (USB_XHCI_MemUsage *)kmalloc(sizeof(USB_XHCI_MemUsage), 0, NULL);
 	List_init(&usage->listEle);
 	List_insBefore(&usage->listEle, &ctrl->memList);
 	if (size > MM_Slab_maxSize) usage->addr = (u64)addr;
@@ -33,7 +33,7 @@ void HW_USB_XHCI_free(USB_XHCIController *ctrl, void *addr) {
 		usage = container(ctrl->memList.next, USB_XHCI_MemUsage, listEle);
 		if ((usage->addr & 0x1ul ? DMAS_phys2Virt(((Page *)(usage->addr & ~0x1ul))->phyAddr) : (void *)usage->addr) == addr) {
 			List_del(list);
-			if (usage->addr & 1) MM_Buddy_free((Page *)(usage->addr ^ 1));
+			if (usage->addr & 1) MM_Buddy_free((Page *)(usage->addr & ~0x1ul));
 			else kfree((void *)usage->addr, 0);
 			kfree(usage, 0);
 			break;

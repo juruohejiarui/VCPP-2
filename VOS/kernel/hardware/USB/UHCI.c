@@ -59,7 +59,7 @@ static void _chkPort(USB_UHCIController *ctrl, int x) {
 
 void HW_USB_UHCI_init(PCIeConfig *uhci) {
 	printk(YELLOW, BLACK, "UHCI: %#018lx\t", uhci);
-	USB_UHCIController *ctrl = (USB_UHCIController *)kmalloc(sizeof(USB_UHCIController), 0);
+	USB_UHCIController *ctrl = (USB_UHCIController *)kmalloc(sizeof(USB_UHCIController), 0, NULL);
 	List_init(&ctrl->listEle);
 	List_insBefore(&ctrl->listEle, &HW_USB_UHCI_mgrList);
 	ctrl->config = uhci;

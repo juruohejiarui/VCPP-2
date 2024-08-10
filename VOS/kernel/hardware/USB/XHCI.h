@@ -4,6 +4,7 @@
 #include "../PCIe.h"
 #include "../../includes/memory.h"
 #include "./XHCI/desc.h"
+#include "../../includes/task.h"
 
 // capability registers
 typedef struct {
@@ -123,7 +124,7 @@ typedef struct USB_XHCI_Port {
 	u64 flags, offset;
 	u8 slotType;
 	struct USB_XHCI_Port *pair;
-	Device *dev;
+	struct USB_XHCI_Device *dev;
 } USB_XHCI_Port;
 
 #include "./XHCI/ctx.h"
@@ -145,7 +146,8 @@ typedef struct {
 	USB_XHCI_EndpointContext epCtx[31];
 } __attribute__ ((packed)) USB_XHCI_InputContext;
 
-typedef struct {
+typedef struct USB_XHCI_Device {
+	TaskStruct *drvTask;
 	// pointer to the read-only context in controller
 	USB_XHCI_DeviceContext *roctx;
 	// one bit map represents the state of one endpoint
