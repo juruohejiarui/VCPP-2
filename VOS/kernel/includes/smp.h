@@ -5,7 +5,7 @@
 #include "hardware.h"
 
 typedef struct SMP_CPUInfoPkg {
-	struct TaskStruct *simdRegDomainer;
+	struct TaskStruct *simdRegDomain;
 	u32 *tssTable;
 	u32 trIdx;
 } SMP_CPUInfoPkg;

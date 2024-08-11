@@ -6,6 +6,7 @@
 #include "includes/task.h"
 #include "includes/hardware.h"
 #include "includes/smp.h"
+#include "includes/simd.h"
 
 volatile int Global_state;
 
@@ -44,15 +45,9 @@ void startKernel() {
 
     Intr_init();
 
-    u64 cr0 = IO_getCR(0), cr4 = IO_getCR(4), xcr0 = 0;
-    // set bit 18 of cr4 to enable xsave
-    IO_setCR(4, cr4 | (1ul << 18));
-    xcr0 = IO_getXCR(0);
-    IO_setXCR(0, xcr0 | (1ul << 1) | (1ul << 2));
-    xcr0 = IO_getXCR(0);
-    printk(WHITE, BLACK, "cr0:%#018lx cr4:%#018lx xcr0:%#018lx\n", cr0, cr4, xcr0);
-
     HW_init();
+
+	SIMD_init();
     
     Task_Syscall_init();
     Task_init();

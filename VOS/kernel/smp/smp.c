@@ -32,7 +32,7 @@ u32 SMP_registerCPU(u32 topoIdx) {
 void SMP_init() {
     for (int i = 0; ; i++) {
         u32 a, b, c, d;
-        HW_CPU_getID(0xb, i, &a, &b, &c, &d);
+        HW_CPU_cpuid(0xb, i, &a, &b, &c, &d);
         if (((c >> 8) & 0xff) == 0) {
             printk(WHITE, BLACK, "SMP: x2 APIC: level:%d current logical processor:%d\n", c & 0xff, d);
             _x2APICIdx = i;
@@ -52,7 +52,7 @@ void SMP_init() {
 
 u32 SMP_getCurCPUIndex() {
     u32 a, b, c, d;
-    HW_CPU_getID(0xb, _x2APICIdx, &a, &b, &c, &d);
+    HW_CPU_cpuid(0xb, _x2APICIdx, &a, &b, &c, &d);
     return _cvtId(d);
 }
 

@@ -24,7 +24,7 @@ void APIC_initLocal() {
     memset(DMAS_phys2Virt(apicRegPage->phyAddr), 0, Page_4KSize);
     APIC_setReg_IA32_APIC_BASE_address(apicRegPage->phyAddr);
     u32 eax, ebx, ecx, edx;
-    HW_CPU_getID(1, 0, &eax, &ebx, &ecx, &edx);
+    HW_CPU_cpuid(1, 0, &eax, &ebx, &ecx, &edx);
     printk(WHITE, BLACK, "CPUID\t01, eax: %#010x, ebx: %#010x, ecx: %#010x, edx: %#010x\n", eax, ebx, ecx, edx);
 
     // check the support of APIC & xAPIC

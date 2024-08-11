@@ -82,6 +82,12 @@ void Task_exit();
 
 void Task_schedule();
 
+// save the current status of simd registers to a specific task
+void Task_saveSIMDReg(TaskStruct *task);
+
+// load simd registers from a specific task
+void Task_loadSIMDReg(TaskStruct *task);
+
 void Task_defaultSignalHandler(u64 signal);
 
 u64 Task_recycleThread(u64 (*usrEntry)(u64), u64 arg);

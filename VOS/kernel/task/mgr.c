@@ -118,7 +118,11 @@ void Task_updateCurState(TimerIrq *timerIrq, void *data) {
 
 extern u8 Init_stack[32768];
 
-void Task_defaultSignalHandler(u64 signal) {
+void Task_loadSIMDReg(TaskStruct *task) {
+} 
+
+void Task_defaultSignalHandler(u64 signal)
+{
 	printk(WHITE, BLACK, "Task %ld get signal %ld\r", Task_current->pid, signal);
 	switch (signal) {
 		case Task_Signal_Kill :
@@ -153,6 +157,10 @@ void Task_schedule() {
 
 	SpinLock_unlock(&_CFSstruct.locker);
     Task_switch(next);
+}
+
+void Task_saveSIMDReg(TaskStruct *task) {
+
 }
 
 /// @brief when the task is finished, this function will be executed to recycle the resource that this task used. (e.g. memory, ports)

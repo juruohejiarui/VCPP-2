@@ -2,6 +2,7 @@
 #include "../includes/log.h"
 #include "../includes/memory.h"
 #include "../includes/task.h"
+#include "../includes/smp.h"
 #include "gate.h"
 
 extern volatile int Global_state;
@@ -150,8 +151,13 @@ void doDevNotAvailable(u64 rsp, u64 errorCode) {
 	p = (u64 *)(rsp + 0x98);
 	if (Global_state) {
 		Task_current->flags |= Task_Flag_UseFloat;
+		SMP_CPUInfoPkg *cpuInfo = SMP_getCPUInfoPkg(SMP_getCurCPUIndex());
+		if (cpuInfo->simdRegDomain) Task_saveSIMDReg(cpuInfo->simdRegDomain);
+		Task_loadSIMDReg(Task_current);
+		cpuInfo->simdRegDomain = Task_currentDMAS();
 	} else {
 		printk(RED,BLACK,"do_device_not_available(7),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",errorCode , rsp , *p);
+		while (1) IO_hlt();
 	}
 }
 
