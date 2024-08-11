@@ -72,6 +72,8 @@ void Task_switch(TaskStruct *next);
 // the current task
 #define Task_current ((TaskStruct *)(Task_kernelStackEnd - Task_kernelStackSize))
 
+TaskStruct *Task_currentDMAS();
+
 void Task_initMgr();
 
 void Task_updateCurState(TimerIrq *timerIrq, void *data);
@@ -103,7 +105,7 @@ static __always_inline__ void Task_kernelEntryHeader() {
 static __always_inline__ void Task_kernelThreadExit(int retVal) {
 	__asm__ volatile(
 		// switch task to intr Task
-		"movq $0xffffffffff800000, %%rsp	\n\t"
+		"movq $0xffffffffffff8000, %%rsp	\n\t"
 		"movq %0, %%rax						\n\t"
 		"leaq Task_exit(%%rip), %%rbx		\n\t"
 		"callq *%%rbx						\n\t"

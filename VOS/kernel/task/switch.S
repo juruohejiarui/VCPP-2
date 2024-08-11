@@ -16,7 +16,7 @@ TaskMemStruct_pgdPhyAddr = 0x08
 ENTRY(Task_switch)
 	pushq %rbp
 	pushq %rax
-	movq $0xffffffffff800000, %rcx
+	movq $0xffffffffffff8000, %rcx
 	movq TaskStruct_thread(%rcx), %rbx
 	// save rip, rsp, and cr3
 	movq %rsp, ThreadStruct_rsp(%rbx)
@@ -37,7 +37,7 @@ ENTRY(Task_switch)
 	movq TaskMemStruct_pgdPhyAddr(%rbx), %rax
 	movq %rax, %cr3
 	mfence
-	movq $0xffffffffff800000, %rcx
+	movq $0xffffffffffff8000, %rcx
 	movq $0x2, %rax
 	movq %rax, TaskStruct_state(%rcx)
 	movq TaskStruct_thread(%rcx), %rbx

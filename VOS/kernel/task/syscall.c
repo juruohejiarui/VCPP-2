@@ -4,6 +4,7 @@
 #include "../includes/interrupt.h"
 #include "../includes/memory.h"
 #include "../includes/log.h"
+#include "../includes/smp.h"
 
 void Syscall_entry();
 void Syscall_exit();
@@ -52,6 +53,7 @@ u64 Syscall_handler(u64 index, PtReg *regs) {
     // switch stack and segment registers
     Task_current->tss->rsp0 = Task_current->thread->rsp0;
     Intr_Gate_setTSS(
+        SMP_getCPUInfoPkg(SMP_getCurCPUIndex())->tssTable,
         Task_current->tss->rsp0, Task_current->tss->rsp1, Task_current->tss->rsp2, Task_current->tss->ist1, Task_current->tss->ist2,
 		Task_current->tss->ist3, Task_current->tss->ist4, Task_current->tss->ist5, Task_current->tss->ist6, Task_current->tss->ist7);
 	IO_sti();
@@ -94,6 +96,7 @@ void Task_switchToUsr(u64 (*entry)(u64), u64 arg) {
     Task_current->thread->rsp = Task_current->thread->rsp3 = Task_userStackEnd;
     Task_current->tss->rsp0 = Task_current->thread->rsp0;
     Intr_Gate_setTSS(
+        SMP_getCPUInfoPkg(SMP_getCurCPUIndex())->tssTable,
         Task_current->tss->rsp0, Task_current->tss->rsp1, Task_current->tss->rsp2, Task_current->tss->ist1, Task_current->tss->ist2,
 		Task_current->tss->ist3, Task_current->tss->ist4, Task_current->tss->ist5, Task_current->tss->ist6, Task_current->tss->ist7);
 	*(u64 *)(Task_current->thread->rsp0 + 0) = (1 << 9);

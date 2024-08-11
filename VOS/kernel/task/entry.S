@@ -5,7 +5,7 @@ ENTRY(Task_kernelThreadEntry)
 
 ENTRY(Syscall_entry)
     // switch to kernel stack
-    movq $0xffffffffff800000, %rbx
+    movq $0xffffffffffff8000, %rbx
     movq 0x18(%rbx), %rbx
     movq %rsp, 0x10(%rbx)
     movq 0x8(%rbx), %rsp
@@ -31,7 +31,7 @@ ENTRY(Syscall_exit)
     movq %rbx, %ds
     popq %rbx
     movq %rbx, %es
-    movq $0xffffffffff800000, %rbx
+    movq $0xffffffffffff8000, %rbx
     movq 0x18(%rbx), %rbx
     movq %rsp, 0x8(%rbx)
     movq 0x10(%rbx), %rsp

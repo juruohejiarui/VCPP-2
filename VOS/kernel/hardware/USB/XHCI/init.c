@@ -82,7 +82,6 @@ static int _resetController(USB_XHCIController *ctrl) {
 		printk(RED, BLACK, "XHCI: %#018lx: reset failed: default value check failed\n", ctrl);
 		return 0;
 	}
-	printk(WHITE, BLACK, "XHCI: %#018lx: success to reset controller\n", ctrl);
 	return 1;
 }
 
@@ -124,7 +123,6 @@ static int _initPorts(USB_XHCIController *ctrl) {
 			ctrl->ports[j].pair = &ctrl->ports[i];
 		}
 	}
-	printk(WHITE, BLACK, "\n");
 	return 1;
 }
 
@@ -137,7 +135,6 @@ static int _initMem(USB_XHCIController *ctrl) {
 	ctrl->opRegs->devCtxBaseAddr = DMAS_virt2Phys(addr);
 	ctrl->devCtx = addr;
 	ctrl->devices = (USB_XHCI_Device **)HW_USB_XHCI_alloc(ctrl, sizeof(USB_XHCI_Device *));
-	printk(WHITE, BLACK, "XHCI: %#018lx: devCtxBaseAddr:%#018lx\n", ctrl, ctrl->opRegs->devCtxBaseAddr);
 	// allocate the Device Context Data Structure
 	for (int i = 1; i <= maxSlots(ctrl); i++) {
 		addr = HW_USB_XHCI_alloc(ctrl, 
@@ -153,7 +150,6 @@ static int _initMem(USB_XHCIController *ctrl) {
 		int mxS = maxScratchBufs(ctrl); u64 pageSize = (ctrl->opRegs->pageSize & 0xfffful) << 12;
 		if (mxS == 0) goto _allocScratchBuf_end;
 		u64 *array = HW_USB_XHCI_alloc(ctrl, max(64, mxS * sizeof(u64)));
-		printk(WHITE, BLACK, "XHCI: %#018lx: maxScratchBufs:%d array: %#018lx\n", ctrl, mxS, array);
 		for (int i = 0; i < mxS; i++) {
 			void *buf = HW_USB_XHCI_alloc(ctrl, pageSize);
 			array[i] = (u64)DMAS_virt2Phys(buf);
@@ -169,7 +165,6 @@ static int _initMem(USB_XHCIController *ctrl) {
 		ctrl->cmdRingFlag.cycleBit = 1;
 		ctrl->cmdRingFlag.segId = 0;
 		ctrl->cmdRingFlag.pos = 0;
-		printk(WHITE, BLACK, "XHCI: %#018lx: cmdRingCtrl:%#018lx\n", ctrl, cmdRing);
 		ctrl->cmdSrc = HW_USB_XHCI_alloc(ctrl, HW_USB_XHCI_RingEntryNum * sizeof(USB_XHCI_ReqBlock *));
 
 		// construct a link trb
@@ -226,7 +221,6 @@ int _restartController(USB_XHCIController *ctrl) {
 	}
 	ctrl->opRegs->cmdRingCtrl = DMAS_virt2Phys(ctrl->cmdRing) | 0x1;
 	_writeDoorbell(ctrl, 0, 0);
-	printk(WHITE, BLACK, "XCHI: cmdRingCtrl: %#018lx\n", ctrl->opRegs->cmdRingCtrl);
 	return 1;
 }
 

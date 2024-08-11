@@ -31,6 +31,7 @@ void startKernel() {
 	printk(WHITE, BLACK, "Init_stack: %#018lx\n", Init_stack);
     Intr_Gate_loadTR(10);
     Intr_Gate_setTSS(
+            tss64Table,
             (u64)(Init_stack + 32768), (u64)(Init_stack + 32768), (u64)(Init_stack + 32768), 0xffff800000007c00, 0xffff800000007c00,
             0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00);
 
@@ -42,11 +43,16 @@ void startKernel() {
     Log_enableBuf();
 
     Intr_init();
-    HW_init();
 
-    CMOSDateTime dateTime;
-    HW_Timer_CMOS_getDateTime(&dateTime);
-    printk(RED, BLACK, "Current time: %x-%x-%x %x:%x:%x\n", dateTime.year, dateTime.month, dateTime.day, dateTime.hour, dateTime.minute, dateTime.second);
+    u64 cr0 = IO_getCR(0), cr4 = IO_getCR(4), xcr0 = 0;
+    // set bit 18 of cr4 to enable xsave
+    IO_setCR(4, cr4 | (1ul << 18));
+    xcr0 = IO_getXCR(0);
+    IO_setXCR(0, xcr0 | (1ul << 1) | (1ul << 2));
+    xcr0 = IO_getXCR(0);
+    printk(WHITE, BLACK, "cr0:%#018lx cr4:%#018lx xcr0:%#018lx\n", cr0, cr4, xcr0);
+
+    HW_init();
     
     Task_Syscall_init();
     Task_init();

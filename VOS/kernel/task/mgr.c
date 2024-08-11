@@ -1,5 +1,6 @@
 #include "mgr.h"
 #include "../includes/log.h"
+#include "../includes/smp.h"
 
 extern void Task_kernelThreadEntry();
 extern void restoreAll();
@@ -63,9 +64,16 @@ TaskStruct Init_taskStruct = Task_initTask(NULL);
 TaskStruct *Init_tasks[Hardware_CPUNumber] = { &Init_taskStruct, 0 };
 
 void Task_switchTo_inner(TaskStruct *prev, TaskStruct *next) {
+    // set TS flag of cr0
+    {
+        u64 cr0 = IO_getCR(0);
+        IO_setCR(0, cr0 | (1ul << 3));
+    }
+    SMP_CPUInfoPkg *info = SMP_getCPUInfoPkg(SMP_getCurCPUIndex());
     next->tss->rsp0 = next->thread->rsp0;
     // printk(RED, BLACK, "From %#018lx, to %#018lx, rip: %#018lx\n", prev, next, next->thread->rip);
     Intr_Gate_setTSS(
+            info->tssTable,
             next->tss->rsp0, next->tss->rsp1, next->tss->rsp2, next->tss->ist1, next->tss->ist2,
 			next->tss->ist3, next->tss->ist4, next->tss->ist5, next->tss->ist6, next->tss->ist7);
     __asm__ volatile ( "movq %%fs, %0 \n\t" : "=a"(prev->thread->fs));
@@ -83,6 +91,7 @@ i64 _weight[50] = { 1, 2, 3, 4, 5, 6, [6 ... 49] = -1 };
 static struct CFS_rq {
     RBTree tree, killedTree;
 	SpinLock locker, killedTreeLocker;
+    // which task domain the SIMD registers of the specific CPU
 } _CFSstruct;
 
 static int _CFSTree_comparator(RBNode *a, RBNode *b) {
@@ -90,8 +99,12 @@ static int _CFSTree_comparator(RBNode *a, RBNode *b) {
 	return task1->vRunTime != task2->vRunTime ? (task1->vRunTime < task2->vRunTime) : (task1->pid < task2->pid);
 }
 
+TaskStruct *Task_currentDMAS() {
+	return (TaskStruct *)DMAS_phys2Virt(MM_PageTable_getPldEntry(getCR3(), (u64)Task_current) & ~0xfff);
+}
+
 void Task_initMgr() {
-    RBTree_init(&_CFSstruct.tree, _CFSTree_comparator);
+	RBTree_init(&_CFSstruct.tree, _CFSTree_comparator);
     RBTree_init(&_CFSstruct.killedTree, _CFSTree_comparator);
 	SpinLock_init(&_CFSstruct.locker);
     SpinLock_init(&_CFSstruct.killedTreeLocker);
@@ -129,8 +142,7 @@ void Task_schedule() {
     Intr_SoftIrq_Timer_addIrq(&Task_current->scheduleTimer);
 
 	// insert this task into the waiting tree
-    TaskStruct *dmasPtr = (TaskStruct *)DMAS_phys2Virt(MM_PageTable_getPldEntry(getCR3(), (u64)Task_current) & ~0xfff);
-    if (Task_current->priority != Task_Priority_Killed) RBTree_insNode(&_CFSstruct.tree, &dmasPtr->wNode);
+    if (Task_current->priority != Task_Priority_Killed) RBTree_insNode(&_CFSstruct.tree, &Task_currentDMAS()->wNode);
 	// get the task with least vRuntime
     RBNode *leftMost = RBTree_getMin(&_CFSstruct.tree);
 

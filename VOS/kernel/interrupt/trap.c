@@ -148,8 +148,11 @@ void doUndefinedOpcode(u64 rsp, u64 errorCode) {
 void doDevNotAvailable(u64 rsp, u64 errorCode) {
 	u64 *p = NULL;
 	p = (u64 *)(rsp + 0x98);
-	printk(RED,BLACK,"do_device_not_available(7),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",errorCode , rsp , *p);
-	while(1);
+	if (Global_state) {
+		Task_current->flags |= Task_Flag_UseFloat;
+	} else {
+		printk(RED,BLACK,"do_device_not_available(7),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",errorCode , rsp , *p);
+	}
 }
 
 void doDoubleFault(u64 rsp, u64 errorCode) {

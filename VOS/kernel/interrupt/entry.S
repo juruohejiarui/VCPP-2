@@ -70,7 +70,7 @@ ENTRY(Intr_retFromIntr)
 _softirqHandler:
     callq Intr_SoftIrq_dispatch
     // if (Task_current->state == Task_State_NeedSchedule)
-    movq $0xffffffffff800000, %rax
+    movq $0xffffffffffff8000, %rax
     movq 0x10(%rax), %rax
     testq $0x4, %rax
     jnz _reschedule

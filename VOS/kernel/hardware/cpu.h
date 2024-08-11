@@ -3,7 +3,7 @@
 
 #include "../includes/lib.h"
 
-#define Hardware_CPUNumber 8
+#define Hardware_CPUNumber 64
 
 void HW_CPU_getID(u32 mop, u32 sop, u32 *eax, u32 *ebx, u32 *ecx, u32 *edx);
 

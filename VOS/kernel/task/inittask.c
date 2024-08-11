@@ -72,8 +72,11 @@ void Task_setSignalHandler(u64 signal, Task_SignalHandler handler, u64 arg) {
 	Task_current->signalHandler[signal] = handler;
 }
 
-void Task_init()
-{
+void Task_init() {
+	{
+        u64 cr0 = IO_getCR(0);
+        IO_setCR(0, cr0 | (1 << 3));
+    }
 	printk(RED, BLACK, "Task_init()\n");
     Task_initMgr();
     Task_pidCounter = 0;

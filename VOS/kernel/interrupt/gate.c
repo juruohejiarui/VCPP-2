@@ -48,7 +48,7 @@ void Intr_Gate_setSysIntr(u64 idtIndex, u8 istIndex, void *codeAddr) {
 }
 
 void Intr_Gate_setTSS(
-        u64 rsp0, u64 rsp1, u64 rsp2, u64 ist1, u64 ist2, 
+        u32 *tss64Table, u64 rsp0, u64 rsp1, u64 rsp2, u64 ist1, u64 ist2, 
         u64 ist3, u64 ist4, u64 ist5, u64 ist6, u64 ist7) {
     *(u64 *)(tss64Table + 1) = rsp0;
     *(u64 *)(tss64Table + 3) = rsp1;
@@ -62,8 +62,9 @@ void Intr_Gate_setTSS(
     *(u64 *)(tss64Table + 21) = ist7;
 }
 
-void Intr_Gate_setTSSstruct(TSS *tssStruct) {
+void Intr_Gate_setTSSstruct(u32 *tss64Table, TSS *tssStruct) {
     Intr_Gate_setTSS(
+        tss64Table,
         tssStruct->rsp0, tssStruct->rsp1, tssStruct->rsp2, tssStruct->ist1, tssStruct->ist2,
         tssStruct->ist3, tssStruct->ist4, tssStruct->ist5, tssStruct->ist6, tssStruct->ist7);
 }

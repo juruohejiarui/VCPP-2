@@ -16,6 +16,7 @@ extern char* kallsyms_names __attribute__((weak));
 #define Task_Flag_Kernel	(1 << 1)  
 // this task use inner code of kernel
 #define Task_Flag_Inner		(1 << 2)
+#define Task_Flag_UseFloat  (1 << 3)
 
 #define Task_State_Uninterruptible  (1 << 0)
 #define Task_State_Running          (1 << 1)
@@ -24,9 +25,9 @@ extern char* kallsyms_names __attribute__((weak));
 
 #define Task_userStackEnd       0x00007ffffffffff0ul
 #define Task_kernelStackEnd     0xfffffffffffffff0ul
-#define Task_intrStackEnd	   	0xffffffffff800000ul
+#define Task_intrStackEnd	   	0xffffffffffff8000ul
 #define Task_userStackSize      0x0000000001000000ul // 32M
-#define Task_kernelStackSize    0x00000000007ffff0ul // 8M
+#define Task_kernelStackSize    0x0000000000007ff0ul // 32K
 #define Task_intrStackSize		0x0000000000008000ul // 32K
 #define Task_userBrkStart       0x0000000000100000ul
 #define Task_kernelBrkStart     0xffff800000000000ul
@@ -37,6 +38,12 @@ extern char* kallsyms_names __attribute__((weak));
 #define Task_Priority_Trapped   4
 #define Task_Priority_Killed    5
 
+typedef struct Task_KmallocUsage {
+	List listEle;
+	void *addr;
+	void (*desctrutor)(void *);
+} Task_KmallocUsage;
+
 typedef struct TaskMemStruct {
     PageTable *pgd;
     u64 pgdPhyAddr;
@@ -44,6 +51,7 @@ typedef struct TaskMemStruct {
     List pageUsage, kmallocUsage;
     Page *intrPage, *lstKerPage;
 } TaskMemStruct;
+
 typedef struct ThreadStruct {
     u64 rip;
     u64 rsp0, rsp3, rsp, rbp;
@@ -62,11 +70,9 @@ enum Task_Signal {
 	Task_Signal_Kill
 };
 
-typedef struct Task_KmallocUsage {
-	List listEle;
-	void *addr;
-	void (*desctrutor)(void *);
-} Task_KmallocUsage;
+typedef struct Task_SIMDContext {
+
+} Task_SIMDContext;
 
 typedef struct TaskStruct {
     List listEle;
@@ -84,6 +90,8 @@ typedef struct TaskStruct {
 
 	Task_SignalHandler signalHandler[Task_signalNum];
 	u64 signalHandlerArg[Task_signalNum];
+
+    Task_SIMDContext simd;
 } __attribute__((packed)) TaskStruct; 
 
 // set the signal handler of current task
