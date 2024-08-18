@@ -38,9 +38,6 @@ void startKernel() {
 
     Intr_Trap_setSysVec();
     MM_init();
-
-    SMP_init();
-
     Log_enableBuf();
 
     Intr_init();
@@ -48,6 +45,7 @@ void startKernel() {
     HW_init();
 
 	SIMD_init();
+    SMP_init();
     
     Task_Syscall_init();
     Task_init();

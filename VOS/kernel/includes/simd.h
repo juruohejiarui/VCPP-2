@@ -29,4 +29,5 @@ static __always_inline__ void SIMD_xrstor(SIMD_XsaveArea *area) {
 	__asm__ volatile ("xrstor %0" : "=m"(area) : : "memory");
 }
 
+void SIMD_switchToCur();
 #endif

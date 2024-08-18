@@ -2,6 +2,7 @@
 #include "../includes/hardware.h"
 #include "../includes/log.h"
 #include "../includes/memory.h"
+#include "../includes/smp.h"
 
 static u64 _xsaveAreaSize;
 static u32 _avxOffset;
@@ -41,6 +42,15 @@ void SIMD_init() {
 u64 SIMD_XsaveAreaSize() { return _xsaveAreaSize; }
 
 SIMD_XsaveArea *SIMD_allocXsaveArea(u64 kmallocArg, void (*destructor)(void *)) {
-	return kmalloc(_xsaveAreaSize, kmallocArg, destructor);
+	return kmalloc(_xsaveAreaSize, kmallocArg | Slab_kmalloc_arg_Clear, destructor);
+}
+
+// switch the SIMD registers of the current CPU to the current task
+void SIMD_switchToCur() {
+	SMP_CPUInfoPkg *info = SMP_getCPUInfoPkg(SMP_getCurCPUIndex());
+	SIMD_xsave(info->simdRegDomain->simdRegs);
+	info->simdRegDomain = Task_currentDMAS();
+	SIMD_xrstor(Task_current->simdRegs);
+	Task_current->flags |= Task_Flag_UseFloat;
 }
 

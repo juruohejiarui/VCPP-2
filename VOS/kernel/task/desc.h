@@ -4,6 +4,7 @@
 #include "../includes/lib.h"
 #include "../includes/memory.h"
 #include "../includes/interrupt.h"
+#include "../includes/simd.h"
 
 extern unsigned long kallsyms_addresses[] __attribute__((weak));
 extern long kallsyms_syms_num __attribute__((weak));
@@ -70,10 +71,6 @@ enum Task_Signal {
 	Task_Signal_Kill
 };
 
-typedef struct Task_SIMDContext {
-
-} Task_SIMDContext;
-
 typedef struct TaskStruct {
     List listEle;
     volatile i64 state;	
@@ -91,7 +88,7 @@ typedef struct TaskStruct {
 	Task_SignalHandler signalHandler[Task_signalNum];
 	u64 signalHandlerArg[Task_signalNum];
 
-    Task_SIMDContext simd;
+    SIMD_XsaveArea *simdRegs;
 } __attribute__((packed)) TaskStruct; 
 
 // set the signal handler of current task
