@@ -10,7 +10,7 @@
 static u32 lineLength[4096] = { [0 ... 4095] = 0 };
 
 static unsigned int *_bufAddr;
-static SpinLock _locker;
+static SpinLock _printLock, _bufLock;
 
 void Log_enableBuf() {
     u64 pixelSize = HW_UEFI_bootParamInfo->graphicsInfo.VerticalResolution * HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine * sizeof(u32);
@@ -22,7 +22,8 @@ void Log_enableBuf() {
 void Log_init() {
     _bufAddr = NULL;
     memset(lineLength, 0, sizeof(lineLength));
-	SpinLock_init(&_locker);
+	SpinLock_init(&_printLock);
+    SpinLock_init(&_bufLock);
 }
 
 #define isDigit(ch) ((ch) >= '0' && (ch) <= '9')
@@ -260,27 +261,28 @@ void printStr(unsigned int fcol, unsigned int bcol, const char *str, int len) {
     // close the interrupt if it is open now
 	u64 prevState = (IO_getRflags() >> 9) & 1;
 	if (prevState) IO_cli();
-	SpinLock_lock(&_locker);
+	SpinLock_lock(&_printLock);
     while (len--) putchar(fcol, bcol, *str++);
-	SpinLock_unlock(&_locker);
+	SpinLock_unlock(&_printLock);
     if (prevState) IO_sti();
 }
 
 void clearScreen() {
 	u64 prevState = (IO_getRflags() >> 9) & 1;
 	if (prevState) IO_cli();
-    SpinLock_lock(&_locker);
+    SpinLock_lock(&_printLock);
 	memset(position.FBAddr, 0, (position.YPosition + 1) * position.YCharSize * HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine * sizeof(u32));
    	if (_bufAddr != NULL)
 		memset(_bufAddr, 0, (position.YPosition + 1) * position.YCharSize * HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine * sizeof(u32));
 	memset(lineLength, 0, 4096 * sizeof(u32));
 	position.XPosition = 0, position.YPosition = 0;
-	SpinLock_unlock(&_locker);
+	SpinLock_unlock(&_printLock);
 	if (prevState) IO_sti();
 }
 
 void printk(unsigned int fcol, unsigned int bcol, const char *fmt, ...) {
-    char buf[2048] = {0};
+    SpinLock_lock(&_bufLock);
+    static char buf[2048] = {0};
     int len = 0, i;
     va_list args;
     va_start(args, fmt);
@@ -288,6 +290,7 @@ void printk(unsigned int fcol, unsigned int bcol, const char *fmt, ...) {
     va_end(args);
     if (Task_getRing() == 0) printStr(fcol, bcol, buf, len);
     else Task_Syscall_usrAPI(1, fcol, bcol, (u64)buf, len, 0, 0);
+    SpinLock_unlock(&_bufLock);
 }
 
 u64 Syscall_clearScreen(u64 _1, u64 _2, u64 _3, u64 _4, u64 _5) {

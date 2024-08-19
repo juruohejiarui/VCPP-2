@@ -87,8 +87,9 @@ void MM_PageTable_init() {
     // unmap the 0-th entry of pgd
     u64 cr3 = getCR3();
     u64 *pgd = (u64 *)DMAS_phys2Virt(cr3);
-    pgd[0] = 0;
-	flushTLB();
+
+    // pgd[0] = 0;
+	// flushTLB();
 
 	// map all the space not in zones
 	for (int i = 0; i <= memManageStruct.e820Length; i++) {

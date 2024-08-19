@@ -85,6 +85,7 @@ static void _printRegs(u64 rsp) {
 	printk(WHITE, BLACK, "registers: \n");
 	for (int i = 0; i < sizeof(PtReg) / sizeof(u64); i++)
 		printk(WHITE, BLACK, "%6s = %#018lx%c", _regName[i], *(u64 *)(rsp + i * 8), (i + 1) % 8 == 0 ? '\n' : ' ');
+	printk(WHITE, BLACK, "processor ID: %d\n", SMP_getCurCPUIndex());
 	if (Global_state == 1) _backtrace((PtReg *)rsp);
 }
 

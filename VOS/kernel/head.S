@@ -1,5 +1,8 @@
 #include "./includes/linkage.h"
 
+.globl SMP_cpuInfo
+.globl SMP_x2APICIdx
+
 .section .text
 
 ENTRY(_start)
@@ -25,9 +28,26 @@ ENTRY(_start)
     mov %ax, %fs
     mov %ax, %gs
     mov %ax, %ss
-    
-    movq stkPtr(%rip), %rsp
 
+    movq $0x1b, %rcx
+    rdmsr
+    bt $8, %rax
+    jnc setSmpTmpStk
+
+    movq stkPtr(%rip), %rsp
+    jmp setSmpTmpStkEnd
+
+setSmpTmpStk:
+    movq $0xb, %rax
+    xorq %rcx, %rcx
+    xorq %rdx, %rdx
+    cpuid
+    leaq SMP_cpuInfo(%rip), %rax
+    shlq $5, %rdx
+    movq 0x8(%rax, %rdx, 1), %rsi
+    addq $32768, %rsi
+    movq %rsi, %rsp
+setSmpTmpStkEnd:
     movq $0x101000, %rax
     movq %rax, %cr3
     movq switchSeg(%rip), %rax
@@ -45,6 +65,12 @@ entry64:
     movq %rax, %es
     movq %rax, %gs
     movq %rax, %ss
+
+    movq $0x1b, %rcx
+    rdmsr
+    bt $8, %rax
+    jnc SMPEntry
+
     movq stkPtr(%rip), %rsp
 
 setupIDT:
@@ -108,6 +134,17 @@ setupTSS64:
     pushq $0x08
     pushq %rax
     lretq
+
+SMPEntry:
+    movq %rsi, %rsp
+    movq goToSmpKernel(%rip), %rax
+    
+    pushq $0x08
+    pushq %rax
+    lretq
+
+goToSmpKernel:
+    .quad startSMP
 
 goToKernel:
     .quad startKernel

@@ -13,7 +13,7 @@ while True :
 			sys.exit(0)
 	lst += 1
 	if lst >= 20 :
-		text = input("Have been wait for 10 seconds, do you want to exit?\n[y(default)/n]")
+		text = input("Have been wait for 10 seconds, do you want to exit?\n[y/n(default)]")
 		if text == "n" or text == "" : 
 			lst = 0
 			print("keep waiting.")
@@ -22,5 +22,5 @@ while True :
 			print("Aborted.")
 			sys.exit(-1)
 		else:
-			print("Invalid input, exit")
+			print("exit")
 			sys.exit(-1)

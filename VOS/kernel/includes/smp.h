@@ -62,14 +62,18 @@ typedef struct MADTDescriptor {
 } MADTDescriptor;
 
 typedef struct SMP_CPUInfoPkg {
+	u32 cpuId;
+	u32 trIdx;
+	u64 *initStk;
 	struct TaskStruct *simdRegDomain;
 	u32 *tssTable;
-	u32 trIdx;
-	u32 topoIdx;
-} SMP_CPUInfoPkg;
+} __attribute__ ((packed)) SMP_CPUInfoPkg;
 
 extern u8 SMP_APUBootStart[];
 extern u8 SMP_APUBootEnd[];
+
+extern SMP_CPUInfoPkg SMP_cpuInfo[Hardware_CPUNumber];
+
 
 void SMP_init();
 

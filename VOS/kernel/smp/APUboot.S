@@ -25,10 +25,10 @@ SMP_APUBootBase = .
 	shll 	$4, %esi
 
 	leal (SMP_APUCode32 - SMP_APUBootBase)(%esi), %eax
-	movl %eax, (SMP_APUCode32Vector - SMP_APUBootBase)
+	movl %eax, SMP_APUCode32Vector - SMP_APUBootBase
 	
 	leal (SMP_APUCode64 - SMP_APUBootBase)(%esi), %eax
-	movl %eax, (SMP_APUCode64Vector - SMP_APUBootBase)
+	movl %eax, SMP_APUCode64Vector - SMP_APUBootBase
 
 	leal (SMP_APUTmpGDT - SMP_APUBootBase)(%esi), %eax
 	movl %eax, (SMP_APUTmpGDT + 2 - SMP_APUBootBase)
@@ -56,19 +56,24 @@ SMP_APUCode32:
 	leal (SMP_APUBootTmpStkEnd - SMP_APUBootBase)(%esi), %eax
 	movl %eax, %esp
 
+	// enable PAE
 	movl %cr4, %eax
 	bts $5, %eax
 	movl %eax, %cr4
 
-	movl $0x90000, %eax
+	// set page table
+	movl $0x101000, %eax
 	movl %eax, %cr3
 
-	movl $0xC000080, %ecx
+
+	// enable long mode
+	movl $0xC0000080, %ecx
 	rdmsr
 
 	bts $8, %eax
 	wrmsr
 
+	// enable PE and paging
 	movl %cr0, %eax
 	bts $0, %eax
 	bts $31, %eax
@@ -85,6 +90,10 @@ SMP_APUCode64:
 	movq %rax, %fs
 	movq %rax, %gs
 	movq %rax, %ss
+
+	// jmp to head.S
+	movq $0x100000, %rax
+	jmpq *%rax
 
 	hlt
 
