@@ -4,6 +4,7 @@
 #include "../../includes/memory.h"
 #include "../../includes/interrupt.h"
 #include "../../includes/task.h"
+#include "../../includes/smp.h"
 
 static u32 _minTick = 0;
 
@@ -14,7 +15,6 @@ static APICRteDescriptor _intrDesc;
 static HPETDescriptor *_hpetDesc;
 static u64 _jiffies = 0;
 
-extern volatile int Global_state;
 
 static inline void _setTimerConfig(u32 id, u64 config) {
 	u64 readonlyPart = *(u64 *)(DMAS_phys2Virt(_hpetDesc->address.Address) + 0x100 + 0x20 * id) & 0x8030;
@@ -30,7 +30,7 @@ static __always_inline__ void _setTimerComparator(u32 id, u32 comparator) {
 IntrHandlerDeclare(HW_Timer_HPET_handler) {
 	// print the counter
 	_jiffies++;
-	if (Global_state) Intr_SoftIrq_Timer_updateState();
+	if (SMP_current->flags & SMP_CPUInfo_flag_InTaskLoop) Intr_SoftIrq_Timer_updateState();
 }
 
 void HW_Timer_HPET_init() {

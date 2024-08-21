@@ -5,8 +5,6 @@
 extern void Task_kernelThreadEntry();
 extern void restoreAll();
 
-extern volatile int Global_state;
-
 int Task_pidCounter;
 
 void Task_checkPtRegInStack(u64 rsp) {
@@ -243,7 +241,7 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntr
 	task->tss->ist3 = task->tss->ist4 = task->tss->ist5 = task->tss->ist6 = task->tss->ist7 = Task_intrStackEnd;
 	task->tss->rsp0 = task->tss->rsp1 = task->tss->rsp2 = Task_kernelStackEnd;
 
-	task->vRunTime = (Global_state ? Task_current->vRunTime : 0);
+	task->vRunTime = ((SMP_current->flags & SMP_CPUInfo_flag_InTaskLoop) ? Task_current->vRunTime : 0);
 
     *thread = Init_thread;
     thread->rip = (u64)Task_kernelThreadEntry;

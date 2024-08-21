@@ -55,11 +55,14 @@ typedef struct MADTDescriptor {
 				u16 reserved;
 				u32 x2apicID;
 				u32 flags;
-				u32 acpiID;
+				u32 apicID;
 			} __attribute__ ((packed)) type9;
 		} __attribute__ ((packed)) ct;
 	} __attribute__ ((packed)) entries[0];
 } MADTDescriptor;
+
+#define SMP_CPUInfo_flag_InTaskLoop (1 << 0)
+#define SMP_CPUINfo_flag_APUInited	(1 << 1)
 
 typedef struct SMP_CPUInfoPkg {
 	u32 cpuId;
@@ -67,7 +70,10 @@ typedef struct SMP_CPUInfoPkg {
 	u64 *initStk;
 	struct TaskStruct *simdRegDomain;
 	u32 *tssTable;
+	u64 flags;
 } __attribute__ ((packed)) SMP_CPUInfoPkg;
+
+#define SMP_current (SMP_getCPUInfoPkg(SMP_getCurCPUIndex()))
 
 extern u8 SMP_APUBootStart[];
 extern u8 SMP_APUBootEnd[];

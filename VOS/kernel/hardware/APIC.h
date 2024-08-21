@@ -28,6 +28,26 @@ typedef struct {
 
 } __attribute__ ((packed)) APICRteDescriptor;
 
+typedef struct APIC_ICRDescriptor {
+	u32 vector 			: 8;
+	u32 deliverMode 	: 3;
+	u32 destMode 		: 1;
+	u32 deliverStatus	: 1;
+	u32 reserved1		: 1;
+	u32 level			: 1;
+	u32 triggerMode		: 1;
+	u32 reserved2		: 2;
+	u32 DestShorthand	: 2;
+	u32 reserved3		: 12;
+	union {
+		struct {
+			u32 reserved : 24;
+			u8 dest : 8;
+		} __attribute__ ((packed)) apic;
+		u32 x2Apic;
+	} __attribute__ ((packed)) dest;
+} __attribute__ ((packed)) APIC_ICRDescriptor;
+
 // delivery mode
 #define HW_APIC_DeliveryMode_Fixed 			0x0
 #define HW_APIC_DeliveryMode_LowestPriority 0x1
@@ -50,10 +70,10 @@ typedef struct {
 #define HW_APIC_DeliveryStatus_Pending 	0x1
 
 // destination shorthand
-#define HW_APIC_DestDesc_Shorthand_None 			0x0
-#define HW_APIC_DestDesc_Shorthand_Self 			0x1
-#define HW_APIC_DestDesc_Shorthand_AllIncludingSelf 0x2
-#define HW_APIC_DestDesc_Shorthand_AllExcludingSelf 0x3
+#define HW_APIC_DestShorthand_None 			0x0
+#define HW_APIC_DestShorthand_Self 			0x1
+#define HW_APIC_DestShorthand_AllIncludingSelf 0x2
+#define HW_APIC_DestShorthand_AllExcludingSelf 0x3
 
 // destination mode
 #define HW_APIC_DestMode_Physical 	0x0
@@ -70,6 +90,7 @@ typedef struct {
 // pin polarity
 #define HW_APIC_PinPolarity_High 0x0
 #define HW_APIC_PinPolarity_Low  0x1
+
 
 u64 Hardware_APIC_getReg_IA32_APIC_BASE();
 void HW_APIC_setReg_IA32_APIC_BASE(u64 value);

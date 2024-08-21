@@ -68,3 +68,15 @@ void Intr_Gate_setTSSstruct(u32 *tss64Table, TSS *tssStruct) {
         tssStruct->rsp0, tssStruct->rsp1, tssStruct->rsp2, tssStruct->ist1, tssStruct->ist2,
         tssStruct->ist3, tssStruct->ist4, tssStruct->ist5, tssStruct->ist6, tssStruct->ist7);
 }
+
+void Intr_Gate_setTSSDesc(u64 idx, u32 *tssAddr) {
+    u64 lmt = 103;
+    *(u64 *)(gdtTable + idx) = 
+            (lmt & 0xffff)
+            | (((u64)tssAddr & 0xffff) << 16)
+            | (((u64)tssAddr >> 16 & 0xff) << 32)
+            | ((u64)0x89 << 40)
+            | ((lmt >> 16 & 0xf) << 48)
+            | (((u64)tssAddr >> 24 & 0xff) << 56);
+    *(u64 *)(gdtTable + idx + 1) = ((u64)tssAddr >> 32 & 0xffffffff) | 0;
+}

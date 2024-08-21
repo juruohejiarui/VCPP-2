@@ -2,12 +2,12 @@
 #include "DMAS.h"
 #include "../includes/log.h"
 #include "../includes/task.h"
+#include "../includes/smp.h"
 
 #define Buddy_maxOrder 15
 
 static SpinLock _BuddyLocker;
 
-extern volatile int Global_state;
 
 #define _orderField(page) ((page)->attr & (((1ul << 4) - 1) << 8))
 
@@ -18,7 +18,7 @@ __always_inline__ void MM_Buddy_setOrder(Page *page, int ord) {
     page->attr = (page->attr & (~(((1ul << 4) - 1) << 8))) | (ord << 8);
 }
 __always_inline__ int _recordUsage(u64 pageAttr) {
-    return Global_state == 1 && !(pageAttr & Page_Flag_KernelShare);
+    return (SMP_current->flags & SMP_CPUInfo_flag_InTaskLoop) && !(pageAttr & Page_Flag_KernelShare);
 }
 
 static struct BuddyManageStruct {

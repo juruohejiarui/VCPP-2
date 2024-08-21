@@ -23,4 +23,6 @@ void Intr_Gate_setTSS(
         u64 ist3, u64 ist4, u64 ist5, u64 ist6, u64 ist7);
 
 void Intr_Gate_setTSSstruct(u32 *tss64Table, TSS *tssStruct);
+
+void Intr_Gate_setTSSDesc(u64 idx, u32 *tssAddr);
 #endif

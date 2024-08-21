@@ -42,9 +42,10 @@ setSmpTmpStk:
     xorq %rcx, %rcx
     xorq %rdx, %rdx
     cpuid
-    leaq SMP_cpuInfo(%rip), %rax
-    shlq $5, %rdx
-    movq 0x8(%rax, %rdx, 1), %rsi
+    leaq SMP_cpuInfo(%rip), %rbx
+    movq $40, %rax
+    mul %rdx
+    movq 0x8(%rbx, %rax, 1), %rsi
     addq $32768, %rsi
     movq %rsi, %rsp
 setSmpTmpStkEnd:
@@ -259,7 +260,7 @@ ENTRY(gdtTable)
     .quad 0x0020fb0000000000    /* user code 64-bit */
     .quad 0x00cf9a000000ffff    /* kernel code 32-bit */
     .quad 0x00cf92000000ffff    /* kernel data 32-bit */
-    .fill 10, 8, 0				/* TSS (jmp one segment <9>) in long-mode 128-bit 50*/
+    .fill 100, 8, 0				/* TSS (jmp one segment <9>) in long-mode 128-bit 50*/
 gdtEnd:
 
 gdtPointer:

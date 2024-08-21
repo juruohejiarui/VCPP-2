@@ -32,6 +32,7 @@ ENTRY(Intr_Gate_loadTR)
     movw %di, %ax
     shlw $3, %ax
     ltr %ax
+    mfence
     xorw %ax, %ax
     retq
 

@@ -8,12 +8,10 @@
 #include "includes/smp.h"
 #include "includes/simd.h"
 
-volatile int Global_state;
 
 u8 Init_stack[32768] __attribute__((__section__ (".data.Init_stack") )) = { 0 };
 
 void startKernel() {
-    Global_state = 0;
     position.XResolution = HW_UEFI_bootParamInfo->graphicsInfo.HorizontalResolution & 0xffff;
 	position.YResolution = HW_UEFI_bootParamInfo->graphicsInfo.VerticalResolution & 0xffff;
     position.XCharSize = 8;
@@ -24,7 +22,6 @@ void startKernel() {
  
     Log_init();
 
-	printk(WHITE, BLACK, "GlobalState:%#018lx\n", &Global_state);
     printk(WHITE, BLACK, "FrameBufferBase: %#018lx, FrameBufferSize: %#018lx, HorizontalResolution: %#08lx, VerticalResolution: %#08x, PixelsPerScanLine: %#08x\n",
         HW_UEFI_bootParamInfo->graphicsInfo.FrameBufferBase, 		HW_UEFI_bootParamInfo->graphicsInfo.FrameBufferSize,
         HW_UEFI_bootParamInfo->graphicsInfo.HorizontalResolution, 	HW_UEFI_bootParamInfo->graphicsInfo.VerticalResolution,

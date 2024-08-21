@@ -110,8 +110,6 @@ void MM_PageTable_init() {
 	flushTLB();
 }
 
-extern int Global_state;
-
 /// @brief Map a memory block [pAddr, pAddr + 4K - 1]
 /// @param vAddr
 /// @param pAddr
@@ -140,23 +138,6 @@ u64 MM_PageTable_getPldEntry(u64 cr3, u64 vAddr) {
     if (*entry == 0) return 0;
 	if (*entry & 0x80) return *entry;
     entry = (u64 *)DMAS_phys2Virt(*entry & ~0xffful) + _getPldIndex(vAddr);
-    return *entry;
-}
-
-u64 MM_PageTable_getPldEntry_debug(u64 cr3, u64 vAddr) {
-    u64 *entry = (u64 *)DMAS_phys2Virt(cr3) + _getPgdIndex(vAddr);
-    printk(WHITE, BLACK, "MM_PageTable_getPldEntry_debug: cr3:%#018lx->%#018lx", cr3, *entry);
-    if (*entry == 0) return printk(WHITE, BLACK, "\n"), 0;
-    entry = (u64 *)DMAS_phys2Virt(*entry & ~0xffful) + _getPudIndex(vAddr);
-    printk(WHITE, BLACK, "->%#018lx", *entry);
-    if (*entry == 0) return printk(WHITE, BLACK, "\n"), 0;
-	if (*entry & 0x80) return printk(WHITE, BLACK, "\n"), *entry;
-    entry = (u64 *)DMAS_phys2Virt(*entry & ~0xffful) + _getPmdIndex(vAddr);
-    printk(WHITE, BLACK, "->%#018lx", *entry);
-    if (*entry == 0) return printk(WHITE, BLACK, "\n"), 0;
-	if (*entry & 0x80) return printk(WHITE, BLACK, "\n"), *entry;
-    entry = (u64 *)DMAS_phys2Virt(*entry & ~0xffful) + _getPldIndex(vAddr);
-    printk(WHITE, BLACK, "->%#018lx\n", *entry);
     return *entry;
 }
 

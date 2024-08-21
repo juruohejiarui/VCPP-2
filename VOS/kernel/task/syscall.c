@@ -20,11 +20,6 @@ u64 Syscall_enableIntr(u64 intrId) {
     return 0;
 }
 
-u64 Syscall_divZero(u64 intrId) {
-	int i = 1 / 0;
-	return 0;
-}
-
 u64 Syscall_abort(u64 intrId) {
     int t = 1000000000;
     while (t--) ;
@@ -44,9 +39,8 @@ typedef u64 (*Syscall)(u64, u64, u64, u64, u64, u64);
 Syscall Syscall_list[Syscall_num] = { 
     [0] = (Syscall)Syscall_abort,
     [1] = (Syscall)Syscall_printStr,
-	[2] = (Syscall)Syscall_divZero,
-	[3] = (Syscall)Syscall_mdelay,
-    [4 ... Syscall_num - 1] = Syscall_noSystemCall };
+	[2] = (Syscall)Syscall_mdelay,
+    [3 ... Syscall_num - 1] = Syscall_noSystemCall };
 
 u64 Syscall_handler(u64 index, PtReg *regs) {
     u64 arg1 = regs->rdi, arg2 = regs->rsi, arg3 = regs->rdx, arg4 = regs->rcx, arg5 = regs->r8, arg6 = regs->r9;
