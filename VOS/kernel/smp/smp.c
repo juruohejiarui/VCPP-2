@@ -34,7 +34,7 @@ u32 SMP_registerCPU(u32 topoIdx) {
     return cpuCnt;
 }
 
-static void _parseMADT() {
+static int _parseMADT() {
 	XSDTDescriptor *xsdt = HW_UEFI_getXSDT();
 	_madt = NULL;
 	for (int i = 0; i < (xsdt->header.length - sizeof(XSDTDescriptor)) / 8; i++) {
@@ -45,55 +45,45 @@ static void _parseMADT() {
 	}
 	if (_madt == NULL) {
 		printk(WHITE, BLACK, "SMP: no madt.\n");
-		return ;
+		return 0;
 	} else printk(WHITE, BLACK, "SMP: madt:%#018lx length:%ld\n", _madt, _madt->header.length);
 
-	{
-		for (u64 offset = sizeof(MADTDescriptor); offset < _madt->header.length; ) {
-			struct MADTEntry *entry = (struct MADTEntry *)((u64)_madt + offset);
-			switch (entry->type) {
-				case 0 :
-					printk(WHITE, BLACK, "Type0: processorID:%d apicId:%d\t", entry->ct.type0.processorID, entry->ct.type0.apicID);
-					offset += sizeof(u8) * 2 + sizeof(struct MADTEntry_Type0);
-					// register this processor
-					int idx = SMP_registerCPU(entry->ct.type0.apicID);
-					printk(WHITE, BLACK, "idx:%d cpuInfo:%#018lx stack: %#018lx\n", idx, &SMP_cpuInfo[entry->ct.type0.apicID], SMP_cpuInfo[entry->ct.type0.apicID].initStk);
-					break;
-				case 9 :
-					printk(WHITE, BLACK, "Type9: x2apic:%d apicId:%d\n", entry->ct.type9.x2apicID, entry->ct.type9.apicID);
-					offset += sizeof(u8) * 2 + sizeof(struct MADTEntry_Type9);
-					break;
-				#define skip(typeId) \
-				case typeId: \
-					offset += sizeof(u8) * 2 + sizeof(struct MADTEntry_Type##typeId); \
-					break;
-				skip(1)
-				skip(2)
-				skip(3)
-				skip(4)
-				skip(5)
-				#undef skip
-			}
+	for (u64 offset = sizeof(MADTDescriptor); offset < _madt->header.length; ) {
+		struct MADTEntry *entry = (struct MADTEntry *)((u64)_madt + offset);
+		switch (entry->type) {
+			case 0 :
+				printk(WHITE, BLACK, "Type0: processorID:%d apicId:%d\t", entry->ct.type0.processorID, entry->ct.type0.apicID);
+				offset += sizeof(u8) * 2 + sizeof(struct MADTEntry_Type0);
+				// register this processor
+				int idx = SMP_registerCPU(entry->ct.type0.apicID);
+				printk(WHITE, BLACK, "idx:%d cpuInfo:%#018lx stack: %#018lx\n", idx, &SMP_cpuInfo[entry->ct.type0.apicID], SMP_cpuInfo[entry->ct.type0.apicID].initStk);
+				break;
+			case 9 :
+				printk(WHITE, BLACK, "Type9: x2apic:%d apicId:%d\n", entry->ct.type9.x2apicID, entry->ct.type9.apicID);
+				offset += sizeof(u8) * 2 + sizeof(struct MADTEntry_Type9);
+				break;
+			#define skip(typeId) \
+			case typeId: \
+				offset += sizeof(u8) * 2 + sizeof(struct MADTEntry_Type##typeId); \
+				break;
+			skip(1)
+			skip(2)
+			skip(3)
+			skip(4)
+			skip(5)
+			#undef skip
 		}
 	}
+	return 1;
 }
 
 void SMP_init() {
-    for (int i = 0; ; i++) {
-        u32 a, b, c, d;
-        HW_CPU_cpuid(0xb, i, &a, &b, &c, &d);
-        if (((c >> 8) & 0xff) == 0) {
-            printk(WHITE, BLACK, "SMP: x2 APIC: level:%d current logical processor:%d\n", c & 0xff, d);
-            SMP_x2APICIdx = i;
-            break;
-        }
-        printk(WHITE, BLACK, "SMP: local APIC: type:%d width:%d logical processor:%d\n",
-            (c >> 8) & 0xff, a & 0x1f, b & 0xff);
-    }
+	printk(RED, BLACK, "SMP_init()\n");
 	memset(SMP_cpuInfo, 0, sizeof(SMP_cpuInfo));
     cpuCnt = 0, trIdxCnt = 12;
 	// find the local processor list and register each of them.
-	_parseMADT();
+	int res = _parseMADT();
+	if (!res) { printk(RED, BLACK, "SMP: unable to get the processor map.\n"); return ; }
 
     SpinLock_init(&_lock);
 

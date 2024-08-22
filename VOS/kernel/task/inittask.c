@@ -43,8 +43,8 @@ u64 task0(u64 (*usrEntry)(u64), u64 arg) {
 	// launch keyboard task
 	SMP_current->flags |= SMP_CPUInfo_flag_InTaskLoop;
 	TaskStruct *kbTask = Task_createTask(Task_keyboardEvent, NULL, 0, Task_Flag_Inner | Task_Flag_Kernel);
-	for (List *list = HW_USB_XHCI_mgrList.next; list != &HW_USB_XHCI_mgrList; list = list->next)
-		Task_createTask(HW_USB_XHCI_mainThread, NULL, (u64)container(list, USB_XHCIController, listEle), Task_Flag_Inner | Task_Flag_Kernel);
+	// for (List *list = HW_USB_XHCI_mgrList.next; list != &HW_USB_XHCI_mgrList; list = list->next)
+		// Task_createTask(HW_USB_XHCI_mainThread, NULL, (u64)container(list, USB_XHCIController, listEle), Task_Flag_Inner | Task_Flag_Kernel);
 	for (int i = 0; i < 5; i++) Task_createTask(task_empty, NULL, (u64)-1, Task_Flag_Inner | Task_Flag_Kernel);
 	while (1) IO_hlt();
 	Task_kernelThreadExit(0);
