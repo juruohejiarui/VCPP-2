@@ -1,7 +1,7 @@
 #include "./includes/linkage.h"
 
 .globl SMP_cpuInfo
-.globl SMP_x2APICIdx
+.globl startSMP
 
 .section .text
 
@@ -40,15 +40,19 @@ ENTRY(_start)
 setSmpTmpStk:
     movq $0xb, %rax
     xorq %rcx, %rcx
-    xorq %rdx, %rdx
     cpuid
-    leaq SMP_cpuInfo(%rip), %rbx
-    movq $40, %rax
-    mul %rdx
-    movq 0x8(%rbx, %rax, 1), %rsi
+    leaq SMP_cpuInfo(%rip), %rax
+setSmpTmpStk_LoopStart:
+    cmpl (%rax), %edx
+    jz setSmpTmpStk_LoopEnd
+    addq $40, %rax
+    jmp setSmpTmpStk_LoopStart
+setSmpTmpStk_LoopEnd:
+    movq 0x8(%rax), %rsi
     addq $32768, %rsi
     movq %rsi, %rsp
 setSmpTmpStkEnd:
+
     movq $0x101000, %rax
     movq %rax, %cr3
     movq switchSeg(%rip), %rax
@@ -138,8 +142,7 @@ setupTSS64:
 
 SMPEntry:
     movq %rsi, %rsp
-    movq goToSmpKernel(%rip), %rax
-    
+    leaq startSMP(%rip), %rax
     pushq $0x08
     pushq %rax
     lretq

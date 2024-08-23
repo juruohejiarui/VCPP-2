@@ -116,9 +116,6 @@ void Task_updateCurState(TimerIrq *timerIrq, void *data) {
 
 extern u8 Init_stack[32768];
 
-void Task_loadSIMDReg(TaskStruct *task) {
-} 
-
 void Task_defaultSignalHandler(u64 signal)
 {
 	printk(WHITE, BLACK, "Task %ld get signal %ld\r", Task_current->pid, signal);
@@ -134,6 +131,11 @@ void Task_defaultSignalHandler(u64 signal)
 }
 
 void Task_setSignal(TaskStruct *task, u64 signal) { task->signal = signal; }
+
+void Task_setSignalHandler(u64 signal, Task_SignalHandler handler, u64 arg) {
+	Task_current->signalHandlerArg[signal] = arg;
+	Task_current->signalHandler[signal] = handler;
+}
 
 void Task_schedule() {
     IO_cli();

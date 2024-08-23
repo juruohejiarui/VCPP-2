@@ -10,18 +10,28 @@ SMP_CPUInfoPkg SMP_cpuInfo[Hardware_CPUNumber];
 u32 _cpuApicId[Hardware_CPUNumber];
 
 SpinLock _lock;
-u32 cpuCnt, trIdxCnt;
+u32 SMP_cpuNum, trIdxCnt;
 
-static u32 _cvtId(u32 idx) { return idx; }
+static u32 _cvtId(u32 topoIdx) {
+	// SMP not enabled
+	if (!SMP_cpuNum) return 0;
+	int l = 0, r = SMP_cpuNum - 1;
+	while (l <= r) {
+		int mid = (l + r) >> 1, idx = SMP_cpuInfo[mid].cpuId;
+		if (idx == topoIdx) return mid;
+		if (idx < topoIdx) l = mid + 1;
+		else r = mid - 1;
+	}
+	return (u32)-1;
+}
 
 u32 SMP_registerCPU(u32 topoIdx) {
     SpinLock_lock(&_lock);
-	SMP_CPUInfoPkg *pkg = &SMP_cpuInfo[topoIdx];
-	pkg->cpuId = ++cpuCnt;
-	_cpuApicId[pkg->cpuId] = topoIdx;
+	SMP_CPUInfoPkg *pkg = &SMP_cpuInfo[SMP_cpuNum++];
+	pkg->cpuId = topoIdx;
     SpinLock_unlock(&_lock);
     // is BSP
-    if (!topoIdx)
+    if (SMP_cpuNum == 1)
         pkg->tssTable = tss64Table;
     else {
 		u32 trIdx = trIdxCnt;
@@ -31,7 +41,7 @@ u32 SMP_registerCPU(u32 topoIdx) {
 		pkg->initStk = kmalloc(Init_taskStackSize, 0, NULL);
 		Intr_Gate_setTSSDesc(pkg->trIdx, pkg->tssTable);
     }
-    return cpuCnt;
+    return SMP_cpuNum - 1;
 }
 
 static int _parseMADT() {
@@ -56,7 +66,7 @@ static int _parseMADT() {
 				offset += sizeof(u8) * 2 + sizeof(struct MADTEntry_Type0);
 				// register this processor
 				int idx = SMP_registerCPU(entry->ct.type0.apicID);
-				printk(WHITE, BLACK, "idx:%d cpuInfo:%#018lx stack: %#018lx\n", idx, &SMP_cpuInfo[entry->ct.type0.apicID], SMP_cpuInfo[entry->ct.type0.apicID].initStk);
+				printk(WHITE, BLACK, "idx:%d pkg:%#018lx cpuId:%#018lx stack: %#018lx\n", idx, &SMP_cpuInfo[idx], SMP_cpuInfo[idx].cpuId, SMP_cpuInfo[idx].initStk);
 				break;
 			case 9 :
 				printk(WHITE, BLACK, "Type9: x2apic:%d apicId:%d\n", entry->ct.type9.x2apicID, entry->ct.type9.apicID);
@@ -77,18 +87,22 @@ static int _parseMADT() {
 	return 1;
 }
 
+IntrHandlerDeclare(SMP_irq0xc8Handler) {
+
+}
+
 void SMP_init() {
 	printk(RED, BLACK, "SMP_init()\n");
-	memset(SMP_cpuInfo, 0, sizeof(SMP_cpuInfo));
-    cpuCnt = 0, trIdxCnt = 12;
+	SpinLock_init(&_lock);
+    trIdxCnt = 12;
 	// find the local processor list and register each of them.
 	int res = _parseMADT();
 	if (!res) { printk(RED, BLACK, "SMP: unable to get the processor map.\n"); return ; }
 
-    SpinLock_init(&_lock);
 
     printk(WHITE, BLACK, "SMP: copy byte:%#010lx\n", (u64)&SMP_APUBootEnd - (u64)&SMP_APUBootStart);
     memcpy(SMP_APUBootStart, DMAS_phys2Virt(0x20000), (u64)&SMP_APUBootEnd - (u64)&SMP_APUBootStart);
+
 	
 	APIC_ICRDescriptor icr;
 	*(u64 *)&icr = 0;
@@ -102,70 +116,43 @@ void SMP_init() {
 	icr.dest.x2Apic = 0;
 	IO_writeMSR(0x830, *(u64 *)&icr);
 
-	for (int i = 2; i <= cpuCnt; i++) {
+	for (int i = 1; i < SMP_cpuNum; i++) {
 		icr.vector = 0x20;
 		icr.deliverMode = HW_APIC_DeliveryMode_Startup;
 		icr.DestShorthand = HW_APIC_DestShorthand_None;
-		icr.dest.x2Apic = _cpuApicId[i];
+		icr.dest.x2Apic = SMP_cpuInfo[i].cpuId;
 		
 		IO_writeMSR(0x830, *(u64 *)&icr);
 		IO_writeMSR(0x830, *(u64 *)&icr);
-		while (!(SMP_cpuInfo[_cpuApicId[i]].flags & SMP_CPUINfo_flag_APUInited))
+		while (!(SMP_cpuInfo[i].flags & SMP_CPUInfo_flag_APUInited))
 			IO_hlt();
+	}
+
+	
+
+	for (int i = 1; i < SMP_cpuNum; i++) {
+		SMP_sendIPI(&SMP_cpuInfo[i], 0xc8);
 	}
 }
 
+void SMP_sendIPI(SMP_CPUInfoPkg *cpu, u32 vector) {
+	APIC_ICRDescriptor icr;
+	*(u64 *)&icr = 0;
+	icr.vector = vector;
+	icr.deliverMode = HW_APIC_DeliveryMode_Fixed;
+	icr.destMode = HW_APIC_DestMode_Physical;
+	icr.deliverMode = HW_APIC_DeliveryStatus_Idle;
+	icr.triggerMode = HW_APIC_TriggerMode_Edge;
+	icr.DestShorthand = HW_APIC_DestShorthand_None;
+	icr.dest.x2Apic = cpu->cpuId;
+	IO_writeMSR(0x830, *(u64 *)&icr);
+}
+
 u32 SMP_getCurCPUIndex() {
-    u32 a, b, c, d;
+	u32 a, b, c, d;
     HW_CPU_cpuid(0xb, 0, &a, &b, &c, &d);
     return _cvtId(d);
 }
 
 SMP_CPUInfoPkg *SMP_getCPUInfoPkg(u32 idx) { return &SMP_cpuInfo[idx]; }
 
-void startSMP() {
-	u64 rsp = 0;
-	SMP_CPUInfoPkg *pkg = SMP_getCPUInfoPkg(SMP_getCurCPUIndex());
-	rsp = (u64)pkg->initStk + Init_taskStackSize;	
-	u32 x, y;
-	__asm__ volatile (
-		"movq $0x1b, %%rcx		\n\t"
-		"rdmsr 					\n\t"
-		"bts $10, %%rax			\n\t"
-		"bts $11, %%rax			\n\t"
-		"wrmsr					\n\t"
-		"movq $0x1b, %%rcx		\n\t"
-		"rdmsr					\n\t"
-		: "=a"(x), "=d"(y)
-		:
-		: "memory", "rcx"
-	);
-
-	__asm__ volatile (
-		"movq $0x80f, %%rcx		\n\t"
-		"rdmsr					\n\t"
-		"bts $8, %%rax			\n\t"
-		"bts $12, %%rax			\n\t"
-		"wrmsr					\n\t"
-		"movq $0x80f, %%rcx		\n\t"
-		"rdmsr					\n\t"
-		: "=a"(x), "=d"(y)
-		:
-		: "memory", "rcx"
-	);
-	__asm__ volatile (
-		"movq $0x802, %%rcx		\n\t"
-		"rdmsr					\n\t"
-		: "=a"(x), "=d"(y)
-		:
-		: "memory"
-	);
-	// half of the initStk to be the trap stack
-	rsp -= 0x4000ul;
-	Intr_Gate_setTSS(pkg->tssTable, rsp + 0x4000ul, rsp + 0x4000ul, rsp + 0x4000ul, rsp, rsp, rsp, rsp, rsp, rsp, rsp);
-	Intr_Gate_loadTR(pkg->trIdx);
-	printk(WHITE, BLACK, "APU %d: tr:%d trap rsp:%#018lx\n", SMP_getCurCPUIndex(), pkg->trIdx, rsp);
-	SMP_current->flags |= SMP_CPUINfo_flag_APUInited;
-	x = 1 / 0;
-	IO_hlt();
-}

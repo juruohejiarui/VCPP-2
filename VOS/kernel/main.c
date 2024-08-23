@@ -11,7 +11,17 @@
 
 u8 Init_stack[32768] __attribute__((__section__ (".data.Init_stack") )) = { 0 };
 
+void tmpPrint(u64 *rsp) {
+    u64 cs = 0;
+    __asm__ volatile ("movq %%cs, %0\n\t" : "=a"(cs) : : "memory");
+    printk(WHITE, BLACK, "cs:%#018lx %#018lx %#018lx\n", cs, *rsp, *(rsp + 1));
+    while (1) IO_hlt();
+}
+
 void startKernel() {
+    SMP_cpuNum = 0;
+	memset(SMP_cpuInfo, 0, sizeof(SMP_cpuInfo));
+
     position.XResolution = HW_UEFI_bootParamInfo->graphicsInfo.HorizontalResolution & 0xffff;
 	position.YResolution = HW_UEFI_bootParamInfo->graphicsInfo.VerticalResolution & 0xffff;
     position.XCharSize = 8;
@@ -27,6 +37,7 @@ void startKernel() {
         HW_UEFI_bootParamInfo->graphicsInfo.HorizontalResolution, 	HW_UEFI_bootParamInfo->graphicsInfo.VerticalResolution,
         HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine);
 	printk(WHITE, BLACK, "Init_stack: %#018lx\n", Init_stack);
+
     Intr_Gate_loadTR(10);
     Intr_Gate_setTSS(
             tss64Table,
@@ -35,6 +46,7 @@ void startKernel() {
 
     Intr_Trap_setSysVec();
     MM_init();
+
     Log_enableBuf();
 
     Intr_init();

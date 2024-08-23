@@ -4,29 +4,6 @@
 #include "../includes/interrupt.h"
 #include "../includes/hardware.h"
 
-// #define Task_switch_init(prev, next) \
-//     do { \
-//         __asm__ volatile ( \
-//             "movq %%rbp, %2         \n\t" \
-//             "pushq %%rbp            \n\t" \
-//             "pushq %%rax            \n\t" \
-//             "movq %%rsp, %0         \n\t" \
-//             "movq %3, %%rsp         \n\t" \
-//             "movq 1f(%%rip), %%rax  \n\t" \
-//             "movq %%rax, %1         \n\t" \
-//             "movq %%rbx, %%cr3      \n\t" \
-//             "movq %5, %%rbp         \n\t" \
-//             "pushq %4               \n\t" \
-//             "jmp Task_switchTo_inner\n\t" \
-//             "1:                     \n\t" \
-//             "popq %%rax             \n\t" \
-//             "popq %%rbp             \n\t" \
-//             : "=m"((prev)->thread->rsp), "=m"((prev)->thread->rip), "=m"((prev)->thread->rbp) \
-//             : "m"((next)->thread->rsp), "m"((next)->thread->rip), "m"((next)->thread->rbp), "D"(prev), "S"(next)  \
-//             : "memory" \
-//         ); \
-//     } while (0)
-
 #define Task_switch_init(prev, next) \
 	do { \
 		__asm__ volatile ( \
@@ -81,12 +58,6 @@ void Task_updateCurState(TimerIrq *timerIrq, void *data);
 void Task_exit();
 
 void Task_schedule();
-
-// save the current status of simd registers to a specific task
-void Task_saveSIMDReg(TaskStruct *task);
-
-// load simd registers from a specific task
-void Task_loadSIMDReg(TaskStruct *task);
 
 void Task_defaultSignalHandler(u64 signal);
 

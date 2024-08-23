@@ -3,6 +3,7 @@
 #include "../includes/linkage.h"
 #include "../includes/log.h"
 #include "../includes/task.h"
+#include "../includes/smp.h"
 #include "interrupt.h"
 #include "softirq.h"
 
@@ -89,12 +90,34 @@ void (*intrList[24])(void) = {
     irq0x34Interrupt, irq0x35Interrupt, irq0x36Interrupt, irq0x37Interrupt
 };
 
+buildIrq(0xc8)
+buildIrq(0xc9)
+buildIrq(0xca)
+buildIrq(0xcb)
+buildIrq(0xcc)
+buildIrq(0xcd)
+buildIrq(0xce)
+buildIrq(0xcf)
+buildIrq(0xd0)
+buildIrq(0xd1)
+
+void (*smpIntrList[10])(void) = {
+    irq0xc8Interrupt, irq0xc9Interrupt,
+    irq0xcaInterrupt, irq0xcbInterrupt,
+    irq0xccInterrupt, irq0xcdInterrupt,
+    irq0xceInterrupt, irq0xcfInterrupt,
+    irq0xd0Interrupt, irq0xd1Interrupt  
+};
+
 IntrHandlerDeclare(Intr_noHandler) {
-	printk(RED, BLACK, "No handler for interrupt %d\n", arg);
+	printk(RED, BLACK, "No handler for interrupt %d processor:%d\n", arg, SMP_getCurCPUIndex());
 	return 0;
 }
 
 IntrDescriptor Intr_descriptor[Intr_Num];
+
+IntrDescriptor Intr_smpDescriptor[10];
+
 
 int Intr_register(u64 irqId, void *arg, IntrHandler handler, u64 param, IntrController *controller, char *irqName) {
 	IntrDescriptor *desc = &Intr_descriptor[irqId - 0x20];
@@ -121,23 +144,30 @@ void Intr_unregister(u64 irqId) {
 }
 
 u64 Intr_irqdispatch(u64 rsp, u64 irqId) {
-	IntrDescriptor *desc = &Intr_descriptor[irqId - 0x20];
-	u64 res = 0;
-	if (desc->handler != NULL)
-		res = desc->handler(desc->param, (PtReg *)rsp);
-	else res = Intr_noHandler(irqId, (PtReg *)rsp);
-	if (desc->controller != NULL && desc->controller->ack != NULL) desc->controller->ack(irqId);
+    u64 res = 0;
+    switch (irqId & 0x80) {
+        case 0x00 : {
+            IntrDescriptor *desc = &Intr_descriptor[irqId - 0x20];
+            if (desc->handler != NULL)
+                res = desc->handler(desc->param, (PtReg *)rsp);
+            else res = Intr_noHandler(irqId, (PtReg *)rsp);
+        	if (desc->controller != NULL && desc->controller->ack != NULL) desc->controller->ack(irqId);
+            break;
+        }
+        case 0x80 : {
+            printk(WHITE, BLACK, "SMP IPI: %d processor:%d\n", irqId, SMP_getCurCPUIndex());
+            HW_APIC_edgeAck(irqId);
+            break;
+        }
+    }
+	
 	return res;
 }
 
 void Intr_init() {
 	for (int i = 32; i < 56; i++) Intr_Gate_setIntr(i, 0, intrList[i - 32]);
+    for (int i = 200; i < 210; i++) Intr_Gate_setIntr(i, 0, smpIntrList[i - 200]);
 	memset(Intr_descriptor, 0, sizeof(Intr_descriptor));
+    memset(Intr_smpDescriptor, 0, sizeof(Intr_smpDescriptor));
 	Intr_SoftIrq_init();
-}
-
-void Intr_setIstIndex(int ist) {
-	IO_maskIntrPreffix
-	for (int i = 32; i < 56; i++) Intr_Gate_setIntr(i, ist, intrList[i - 32]);
-	IO_maskIntrSuffix
 }

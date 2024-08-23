@@ -63,14 +63,9 @@ u64 usrInit(u64 arg) {
     printk(WHITE, BLACK, "syscall, res: %ld\n", res);
     while (1) {
 		Task_Syscall_usrAPI(2, 1000, 0, 0, 0, 0, 0);
-		// Task_Syscall_usrAPI(1, BLACK, WHITE, (u64)"User Task[doge]\n", 16, 0, 0);
+		Task_Syscall_usrAPI(1, BLACK, WHITE, (u64)"User Task[doge]\n", 16, 0, 0);
 		// IO_hlt();
 	}
-}
-
-void Task_setSignalHandler(u64 signal, Task_SignalHandler handler, u64 arg) {
-	Task_current->signalHandlerArg[signal] = arg;
-	Task_current->signalHandler[signal] = handler;
 }
 
 void Task_init() {
