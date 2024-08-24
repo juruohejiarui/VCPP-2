@@ -45,5 +45,22 @@ void startSMP() {
 	printk(WHITE, BLACK, "APU %d: tr:%d trap rsp:%#018lx\n", SMP_getCurCPUIndex(), pkg->trIdx, rsp);
 	IO_sti();
 	SMP_current->flags |= SMP_CPUInfo_flag_APUInited;
+
+	// wait for the first task, and then jump to it
+	int idx = SMP_getCurCPUIndex();
+	TaskStruct *task;
+	while (1) {
+		SpinLock_lock(&Task_cfsStruct.lock[idx]);
+		RBNode *leftMost = RBTree_getMin(&Task_cfsStruct.tree[idx]);
+		if (leftMost) {
+			task = container(leftMost, TaskStruct, wNode);
+			RBTree_delNode(&Task_cfsStruct.tree[idx], leftMost);
+			break;
+		}
+		SpinLock_unlock(&Task_cfsStruct.lock[idx]);
+	}
+	SpinLock_unlock(&Task_cfsStruct.lock[idx]);
+	
+	Task_switch_init(NULL, task);
 	while (1) IO_hlt();
 }

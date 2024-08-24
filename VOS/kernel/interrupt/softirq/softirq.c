@@ -2,15 +2,16 @@
 #include "timer.h"
 #include "../../includes/log.h"
 #include "../../includes/task.h"
+#include "../../includes/smp.h"
 
-u64 Intr_SoftIrq_state = 0;
+u64 Intr_SoftIrq_state[Hardware_CPUNumber];
 SoftIrq softIrqs[64] = {};
 
-u64 Intr_SoftIrq_getState() { return Intr_SoftIrq_state; }
-void Intr_SoftIrq_setState(u64 state) { Intr_SoftIrq_state |= state; }
+u64 Intr_SoftIrq_getState() { return Intr_SoftIrq_state[SMP_getCurCPUIndex()]; }
+void Intr_SoftIrq_setState(int cpuId, u64 state) { Intr_SoftIrq_state[cpuId] |= state; }
 
 void Intr_SoftIrq_init() {
-	Intr_SoftIrq_state = 0;
+	memset(Intr_SoftIrq_state, 0, sizeof(Intr_SoftIrq_state));
 	memset(softIrqs, 0, sizeof(softIrqs));
 
 	Intr_SoftIrq_Timer_init();
@@ -27,22 +28,23 @@ void Intr_SoftIrq_unregister(u8 irq) {
 }
 
 void Intr_SoftIrq_dispatch() {
-	u64 state = Intr_SoftIrq_state;
-	Intr_SoftIrq_state = 0;
-	IO_sti();
 	{
 		u64 signal = Task_current->signal;
-		if (signal) {
-			Task_current->signal = 0;
-			// when the task handle the signal by the custom handler, then this signal is treated as "handled"
-			if (Task_current->signalHandler[signal])
-				Task_current->signalHandler[signal](signal, Task_current->signalHandlerArg[signal]);
-			// using the default signal handler means this signal is "not handled"
-			else Task_defaultSignalHandler(signal);
-		}
+		Task_current->signal = 0;
+		IO_sti();
+		for (int i = 0; i < Task_signalNum; i++)
+			if (signal & (1 << i)) {
+				// when the task handle the signal by the custom handler, then this signal is treated as "handled"
+				if (Task_current->signalHandler[i])
+					Task_current->signalHandler[i](i, Task_current->signalHandlerArg[i]);
+				// using the default signal handler means this signal is "not handled"
+				else Task_defaultSignalHandler(i);
+			}
 	}
+	u64 *state = &Intr_SoftIrq_state[SMP_getCurCPUIndex()];
 	for (int i = 0; i < 64; i++)
-		if ((state & (1 << i)) && softIrqs[i].handler != NULL)
-			softIrqs[i].handler(softIrqs[i].data);
+		if ((*state & (1 << i)) && softIrqs[i].handler != NULL)
+			softIrqs[i].handler(softIrqs[i].data),
+			*state &= ~(1ul << i);
 	IO_cli();
 }

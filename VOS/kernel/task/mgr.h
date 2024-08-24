@@ -8,12 +8,15 @@
 	do { \
 		__asm__ volatile ( \
 			/* save state of the prev task */ \
+			"cmpq $0, %%rdi			\n\t" \
+			"je 2f					\n\t" \
 			"pushq %%rbp		 	\n\t" \
 			"movq 0x18(%%rdi), %%r8	\n\t" \
 			"movq %%rsp, 0x18(%%r8)	\n\t" \
 			"leaq 1f(%%rip), %%rax	\n\t" \
 			"movq %%rax, 0x0(%%r8)	\n\t" \
 			"pushfq					\n\t" \
+			"2:						\n\t" \
 			/* load the state of the next task */ \
 			"popq 0x50(%%r8)		\n\t" \
 			"movq 0x18(%%rsi), %%r8	\n\t" \
@@ -39,6 +42,15 @@
 
 void Task_checkPtRegInStack(u64 rsp);
 
+struct CFS_rq {
+    RBTree tree[Hardware_CPUNumber], killedTree;
+	SpinLock lock[Hardware_CPUNumber], killedTreeLock;
+    // which task domain the SIMD registers of the specific CPU
+};
+extern struct CFS_rq Task_cfsStruct;
+
+void Task_updateCurState();
+
 extern TSS Init_TSS[Hardware_CPUNumber];
 extern TaskStruct Init_taskStruct;
 
@@ -52,8 +64,6 @@ void Task_switch(TaskStruct *next);
 TaskStruct *Task_currentDMAS();
 
 void Task_initMgr();
-
-void Task_updateCurState(TimerIrq *timerIrq, void *data);
 
 void Task_exit();
 
@@ -73,11 +83,7 @@ int Task_sleep();
 
 void Task_stopSleep();
 
-static __always_inline__ void Task_kernelEntryHeader() {
-	Intr_SoftIrq_Timer_initIrq(&Task_current->scheduleTimer, 1, Task_updateCurState, NULL);
-    Intr_SoftIrq_Timer_addIrq(&Task_current->scheduleTimer);
-	Task_current->state = Task_State_Running;
-}
+void Task_kernelEntryHeader();
 
 static __always_inline__ void Task_kernelThreadExit(int retVal) {
 	__asm__ volatile(

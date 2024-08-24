@@ -4,7 +4,8 @@
 
 #include "./softirq/timer.h"
 
-#define Intr_SoftIrq_State_Timer (1 << 0)
+#define Intr_SoftIrq_State_Timer		(1 << 0)
+#define Intr_SoftIrq_State_TestSchedule	(1 << 1)
 
 typedef void (*SoftIrqHandler)(void *data);
 
@@ -17,8 +18,9 @@ typedef struct {
 /// @return the state
 u64 Intr_SoftIrq_getState();
 /// @brief enable some states of enablers
+/// @param cpuId
 /// @param state 
-void Intr_SoftIrq_setState(u64 state);
+void Intr_SoftIrq_setState(int cpuId, u64 state);
 
 void Intr_SoftIrq_init();
 

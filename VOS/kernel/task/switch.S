@@ -35,8 +35,12 @@ ENTRY(Task_switch)
 	// set up cr3, rsp and then rip
 	movq TaskStruct_mem(%rsi), %rbx
 	movq TaskMemStruct_pgdPhyAddr(%rbx), %rax
+	movq %cr3, %rbx
+	cmpq %rbx, %rax
+	je TaskMemStruct_switchCR3_end
 	movq %rax, %cr3
 	mfence
+TaskMemStruct_switchCR3_end:
 	movq $0xffffffffffff8000, %rcx
 	movq $0x2, %rax
 	movq %rax, TaskStruct_state(%rcx)

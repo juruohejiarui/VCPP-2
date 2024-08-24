@@ -6,6 +6,9 @@
 
 static u64 _timerIdCnt;
 
+static RBTree _timerTree;
+static SpinLock _lock;
+
 void Intr_SoftIrq_Timer_initIrq(TimerIrq *irq, u64 expireJiffies, void (*func)(TimerIrq *irq, void *data), void *data) {
 	irq->data = data;
 	irq->expireJiffies = HW_Timer_HPET_jiffies() + expireJiffies;
@@ -15,14 +18,17 @@ void Intr_SoftIrq_Timer_initIrq(TimerIrq *irq, u64 expireJiffies, void (*func)(T
 
 void Intr_SoftIrq_Timer_addIrq(TimerIrq *irq) {
 	IO_maskIntrPreffix
-	RBTree_insNode(&Task_current->timerTree, &irq->rbNode);
+	SpinLock_init(&_lock);
+	RBTree_insNode(&_timerTree, &irq->rbNode);
 	IO_maskIntrSuffix
 }
 
 void Intr_SoftIrq_Timer_updateState() {
-	RBNode *minNode = RBTree_getMin(&Task_current->timerTree);
-	if (minNode != NULL && container(minNode, TimerIrq, rbNode)->expireJiffies <= HW_Timer_HPET_jiffies())
-		Intr_SoftIrq_setState(Intr_SoftIrq_State_Timer);
+	SpinLock_lock(&_lock);
+	RBNode *minNode = RBTree_getMin(&_timerTree);
+	if (minNode && container(minNode, TimerIrq, rbNode)->expireJiffies <= HW_Timer_HPET_jiffies())
+		Intr_SoftIrq_setState(0, Intr_SoftIrq_State_Timer);
+	SpinLock_unlock(&_lock);
 }
 
 // the most simple one
@@ -40,16 +46,17 @@ int Intr_SoftIrq_Timer_comparator(RBNode *a, RBNode *b) {
 void _doTimer(void *data) {
 	// printk(BLACK, WHITE, "Timer (%ld)\t", HW_Timer_HPET_jiffies());
 	IO_maskIntrPreffix
-	RBNode *minNode = RBTree_getMin(&Task_current->timerTree);
+	RBNode *minNode = RBTree_getMin(&_timerTree);
 	TimerIrq *irq;
 	u64 jiffies = HW_Timer_HPET_jiffies();
 	while (minNode != NULL && (irq = container(minNode, TimerIrq, rbNode))->expireJiffies <= jiffies) {
+		RBNode *nxt = RBTree_getNext(&_timerTree, minNode);
+		RBTree_delNode(&_timerTree, minNode);
 		// execute the function
 		if (__prevFlag) IO_sti();
 		irq->func(irq, irq->data);
 		if (__prevFlag) IO_cli();
-		RBNode *nxt = RBTree_getNext(&Task_current->timerTree, minNode);
-		RBTree_delNode(&Task_current->timerTree, minNode);
+		
 		minNode = nxt;
 	}
 	IO_maskIntrSuffix
@@ -57,5 +64,6 @@ void _doTimer(void *data) {
 
 void Intr_SoftIrq_Timer_init() {
 	_timerIdCnt = 0;
+	RBTree_init(&_timerTree, Intr_SoftIrq_Timer_comparator);
 	Intr_SoftIrq_register(0, _doTimer, NULL);
 }

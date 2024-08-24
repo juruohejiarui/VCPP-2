@@ -1,6 +1,7 @@
 #include "mgr.h"
 #include "../includes/log.h"
 #include "../includes/smp.h"
+#include "desc.h"
 
 extern void Task_kernelThreadEntry();
 extern void restoreAll();
@@ -67,30 +68,39 @@ void Task_switchTo_inner(TaskStruct *prev, TaskStruct *next) {
         u64 cr0 = IO_getCR(0);
         IO_setCR(0, cr0 | (1ul << 3));
     }
-    SMP_CPUInfoPkg *info = SMP_getCPUInfoPkg(SMP_getCurCPUIndex());
+    SMP_CPUInfoPkg *info = SMP_current;
     next->tss->rsp0 = next->thread->rsp0;
     // printk(RED, BLACK, "From %#018lx, to %#018lx, rip: %#018lx\n", prev, next, next->thread->rip);
     Intr_Gate_setTSS(
             info->tssTable,
             next->tss->rsp0, next->tss->rsp1, next->tss->rsp2, next->tss->ist1, next->tss->ist2,
 			next->tss->ist3, next->tss->ist4, next->tss->ist5, next->tss->ist6, next->tss->ist7);
-    __asm__ volatile ( "movq %%fs, %0 \n\t" : "=a"(prev->thread->fs));
-    __asm__ volatile ( "movq %%gs, %0 \n\t" : "=a"(prev->thread->gs));
+	if (prev) {
+		__asm__ volatile ( "movq %%fs, %0 \n\t" : "=a"(prev->thread->fs));
+    	__asm__ volatile ( "movq %%gs, %0 \n\t" : "=a"(prev->thread->gs));
+	}
     __asm__ volatile ( "movq %0, %%fs \n\t" : : "a"(next->thread->fs));
     __asm__ volatile ( "movq %0, %%gs \n\t" : : "a"(next->thread->gs));
 }
 
+#pragma region scheduler
+
 i64 _weight[50] = { 1, 2, 3, 4, 5, 6, [6 ... 49] = -1 };
 
-#define RecycleThread_State_Idle        0
-#define RecycleThread_State_Scanning    1
-#define RecycleThread_State_Running     2
+struct CFS_rq Task_cfsStruct;
 
-static struct CFS_rq {
-    RBTree tree, killedTree;
-	SpinLock locker, killedTreeLocker;
-    // which task domain the SIMD registers of the specific CPU
-} _CFSstruct;
+TimerIrq Task_scheduleTimerIrq;
+
+
+void Task_updateCurState() {
+	Task_current->vRunTime += _weight[Task_current->priority];
+	Task_current->state = Task_State_NeedSchedule;
+}
+
+void Task_scheduleTimerHandler(TimerIrq *timer, void *arg) {
+	// send message to all processor to test whether themselves needs schedule
+	SMP_sendIPI_all(SMP_IPI_Type_Schedule, NULL);
+}
 
 static int _CFSTree_comparator(RBNode *a, RBNode *b) {
 	TaskStruct *task1 = container(a, TaskStruct, wNode), *task2 = container(b, TaskStruct, wNode);
@@ -101,27 +111,62 @@ TaskStruct *Task_currentDMAS() {
 	return (TaskStruct *)DMAS_phys2Virt(MM_PageTable_getPldEntry(getCR3(), (u64)Task_current) & ~0xfff);
 }
 
-void Task_initMgr() {
-	RBTree_init(&_CFSstruct.tree, _CFSTree_comparator);
-    RBTree_init(&_CFSstruct.killedTree, _CFSTree_comparator);
-	SpinLock_init(&_CFSstruct.locker);
-    SpinLock_init(&_CFSstruct.killedTreeLocker);
+void Task_testSchedule() {
+	Task_current->vRunTime += _weight[Task_current->priority];
+	
 }
 
-void Task_updateCurState(TimerIrq *timerIrq, void *data) {
-    // update the vRunTime and then check if needs schedule
-    Task_current->vRunTime += _weight[Task_current->priority];
-    Task_current->state = Task_State_NeedSchedule;
+void Task_schedule() {
+    IO_cli();
+	SpinLock *lock;
+	RBTree *cfsTree; 
+	{
+		int cpuId = SMP_getCurCPUIndex();
+		lock = &Task_cfsStruct.lock[cpuId];
+		cfsTree = &Task_cfsStruct.tree[cpuId];
+		if (cpuId == 0) {
+			Intr_SoftIrq_Timer_initIrq(&Task_scheduleTimerIrq, 1, Task_scheduleTimerHandler, NULL);
+			Intr_SoftIrq_Timer_addIrq(&Task_scheduleTimerIrq);
+		}
+	}
+
+	SpinLock_lock(lock);
+	// insert this task into the waiting tree
+    if (Task_current->priority == Task_Priority_Killed)
+		Task_current->flags |= Task_Flag_InKillTree;
+	else RBTree_insNode(cfsTree, &Task_currentDMAS()->wNode);
+	// get the task with least vRuntime
+    RBNode *leftMost = RBTree_getMin(cfsTree);
+
+    if (leftMost == NULL) {
+		// stay in the loop and wait for a task
+		SpinLock_unlock(lock);
+		while (1) {
+			SpinLock_lock(lock);
+			leftMost = RBTree_getMin(cfsTree);
+			if (leftMost) break;
+			SpinLock_unlock(lock);
+		}
+	}
+    TaskStruct *next = container(leftMost, TaskStruct, wNode);
+    RBTree_delNode(cfsTree, leftMost);
+
+	SpinLock_unlock(lock);
+    Task_switch(next);
 }
+
+#pragma endregion
 
 extern u8 Init_stack[32768];
 
-void Task_defaultSignalHandler(u64 signal)
-{
+#pragma region Signal
+
+void Task_defaultSignalHandler(u64 signal) {
 	printk(WHITE, BLACK, "Task %ld get signal %ld\r", Task_current->pid, signal);
 	switch (signal) {
 		case Task_Signal_Kill :
 		case Task_Signal_Int :
+		case Task_Signal_FloatError :
 			Task_kernelThreadExit(-1);
 			break;
 		default :
@@ -130,88 +175,74 @@ void Task_defaultSignalHandler(u64 signal)
 	}
 }
 
-void Task_setSignal(TaskStruct *task, u64 signal) { task->signal = signal; }
+void Task_setSignal(TaskStruct *task, u64 signal) { task->signal |= (1 << signal); }
 
 void Task_setSignalHandler(u64 signal, Task_SignalHandler handler, u64 arg) {
 	Task_current->signalHandlerArg[signal] = arg;
 	Task_current->signalHandler[signal] = handler;
 }
 
-void Task_schedule() {
-    IO_cli();
-	SpinLock_lock(&_CFSstruct.locker);
-	
-	// add back the sceduleTimer
-	Intr_SoftIrq_Timer_initIrq(&Task_current->scheduleTimer, 1, Task_updateCurState, NULL);
-    Intr_SoftIrq_Timer_addIrq(&Task_current->scheduleTimer);
-
-	// insert this task into the waiting tree
-    if (Task_current->priority != Task_Priority_Killed) RBTree_insNode(&_CFSstruct.tree, &Task_currentDMAS()->wNode);
-	// get the task with least vRuntime
-    RBNode *leftMost = RBTree_getMin(&_CFSstruct.tree);
-
-    if (leftMost == NULL) { printk(WHITE, RED, "[ERROR]"), printk(WHITE, BLACK, " No task to switch to."); while (1) IO_hlt(); }
-
-    TaskStruct *next = container(leftMost, TaskStruct, wNode);
-    RBTree_delNode(&_CFSstruct.tree, leftMost);
-
-	SpinLock_unlock(&_CFSstruct.locker);
-    Task_switch(next);
+void Task_SysSignal_Timer(u64 signal, TaskStruct *task) {
+	while (1) {
+		SpinLock_lock(&task->timerTreeLock);
+		RBNode *nd = RBTree_getMin(&task->timerTree);
+		Task_Timer *timer;
+		if (!nd || !((timer = container(nd, Task_Timer, wNode))->flags & Task_Timer_Flag_Expire))
+			break;
+		RBTree_delNode(&task->timerTree, nd);
+		timer->flags &= ~Task_Timer_Flag_InQueue;
+		SpinLock_unlock(&task->timerTreeLock);
+		timer->func(timer->data);
+		timer->flags |= Task_Timer_Flag_Enabled;
+	}
+	SpinLock_unlock(&task->timerTreeLock);
 }
+
+void Task_setSysSignalHandler(TaskStruct *task) {
+	Task_setSignalHandler(Task_Signal_Timer, (Task_SignalHandler)Task_SysSignal_Timer, (u64)task);
+}
+
+#pragma endregion
 
 void Task_saveSIMDReg(TaskStruct *task) {
-
+	SIMD_xsave(task->simdRegs);
 }
 
-/// @brief when the task is finished, this function will be executed to recycle the resource that this task used. (e.g. memory, ports)
-void Task_exit() {
-    for (List *pageList = Task_current->mem->pageUsage.next, *nxt = NULL; pageList != &Task_current->mem->pageUsage; pageList = nxt) {
-        nxt = pageList->next;
-        List_del(pageList);
-        MM_Buddy_free(container(pageList, Page, listEle));
-    }
-	for (List *kmallocList = Task_current->mem->kmallocUsage.next, *nxt = NULL; kmallocList != &Task_current->mem->kmallocUsage; kmallocList = nxt) {
-		nxt = kmallocList->next;
-		printk(WHITE, BLACK, "Task_exit(): recycle SLAB memory %#018lx\n", container(kmallocList, Task_KmallocUsage, listEle)->addr);
-		kfree(container(kmallocList, Task_KmallocUsage, listEle)->addr, Slab_kmalloc_arg_Private);
-	}
-    if (Task_current->mem->totUsage > 0) {
-        printk(RED, BLACK, "Task_exit(): task %ld: failed to recycle all the page frame, remain %ld pages.\n", Task_current->pid, Task_current->mem->totUsage);
-        while (1) IO_hlt();
-    }
-    SpinLock_lock(&_CFSstruct.killedTreeLocker);
-	IO_maskIntrPreffix
-    TaskStruct *dmasPtr = (TaskStruct *)DMAS_phys2Virt(MM_PageTable_getPldEntry(getCR3(), (u64)Task_current) & ~0xfff);
-    RBTree_insNode(&_CFSstruct.killedTree, &dmasPtr->wNode);
-	Task_current->priority = Task_Priority_Killed;
-	IO_maskIntrSuffix
-    SpinLock_unlock(&_CFSstruct.killedTreeLocker);
+#pragma region Task Timer
 
-
-    while (1) IO_hlt();
+void Task_Timer_irqFunc(TimerIrq *irq, TaskStruct *tsk) {
+	Task_Timer *tskTimer = container(irq, Task_Timer, irq);
+	tskTimer->flags |= Task_Timer_Flag_Expire;
+	Task_setSignal(tsk, Task_Signal_Timer);
 }
 
-u64 Task_recycleThread(u64 (*usrEntry)(u64), u64 arg) {
-    Task_kernelEntryHeader();
-    while (1) {
-        SpinLock_lock(&_CFSstruct.killedTreeLocker);
-        RBNode *rMost = RBTree_getMax(&_CFSstruct.killedTree);
-        if (rMost != NULL) {
-            RBTree_delNode(&_CFSstruct.killedTree, rMost);
-            SpinLock_unlock(&_CFSstruct.killedTreeLocker);
-            TaskStruct *tsk = container(rMost, TaskStruct, wNode);
-            printk(BLACK, WHITE, "recycle task %d at %#018lx\n", tsk->pid, tsk);
-            MM_Buddy_free(tsk->mem->intrPage);
-            MM_Buddy_free(tsk->mem->lstKerPage);
-            MM_PageTable_cleanMap(tsk->mem->pgdPhyAddr);
-            // free the page of the task structure
-            Page *tskPage = memManageStruct.pages + (DMAS_virt2Phys(tsk) >> Page_4KShift);
-            MM_Buddy_free(tskPage);
-        } else
-            SpinLock_unlock(&_CFSstruct.killedTreeLocker);
-    }
-    Task_kernelThreadExit(0);
+void Task_Timer_init(Task_Timer *timer, u64 jiffies) {
+	memset(timer, 0, sizeof(Task_Timer));
+	Intr_SoftIrq_Timer_initIrq(&timer->irq, jiffies, (void *)Task_Timer_irqFunc, Task_currentDMAS);
 }
+
+int Task_Timer_modJiffies(Task_Timer *timer, u64 jiffies) {
+	int res = 0, fl = 0;
+	if (timer->flags & Task_Timer_Flag_InQueue) return -1;
+	if (timer->flags & Task_Timer_Flag_Enabled) res = 1;
+	Intr_SoftIrq_Timer_initIrq(&timer->irq, jiffies, (void *)Task_Timer_irqFunc, Task_currentDMAS);
+	return res;
+}
+// add a Task Timer
+int Task_Timer_add(Task_Timer *timer) {
+	if (timer->flags & Task_Timer_Flag_InQueue) return -1;
+	SpinLock_lock(&Task_current->timerTreeLock);
+	RBTree_insNode(&Task_current->timerTree, &timer->wNode);
+	SpinLock_unlock(&Task_current->timerTreeLock);
+	Intr_SoftIrq_Timer_addIrq(&timer->irq);
+}
+
+int Task_Timer_comparator(RBNode *a, RBNode *b) {
+	Task_Timer 	*ta = container(a, Task_Timer, wNode),
+				*tb = container(b, Task_Timer, wNode);
+	return (ta->irq.expireJiffies == tb->irq.expireJiffies ? (u64)ta < (u64)tb : ta->irq.expireJiffies < tb->irq.expireJiffies);
+}
+#pragma endregion
 
 TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntry)(u64), u64 arg, u64 flag) {
     u64 pgdPhyAddr = MM_PageTable_alloc(); Page *tskStructPage = MM_Buddy_alloc(0, Page_Flag_Active | Page_Flag_KernelShare);
@@ -310,14 +341,23 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntr
 	List_init(&task->mem->kmallocUsage);
 
 	// set the signal handler
+	Task_setSysSignalHandler(task);
 
-	RBTree_init(&task->timerTree, Intr_SoftIrq_Timer_comparator);
+	RBTree_init(&task->timerTree, Task_Timer_comparator);
+	SpinLock_init(&task->timerTreeLock);
+
+	task->simdRegs = SIMD_allocXsaveArea(0, NULL);
+
+	// choose a processor
+	task->cpuId = task->pid % SMP_cpuNum;
+
     if (task->pid > 0) {
-		IO_maskIntrPreffix
-		SpinLock_lock(&_CFSstruct.locker);
-		RBTree_insNode(&_CFSstruct.tree, &task->wNode);
-		SpinLock_unlock(&_CFSstruct.locker);
-		IO_maskIntrSuffix
+		int isCurCPU = (task->cpuId == SMP_getCurCPUIndex());
+		if (isCurCPU) IO_cli();
+		SpinLock_lock(&Task_cfsStruct.lock[task->cpuId]);
+		RBTree_insNode(&Task_cfsStruct.tree[task->cpuId], &task->wNode);
+		SpinLock_unlock(&Task_cfsStruct.lock[task->cpuId]);
+		if (isCurCPU) IO_sti();
 	}
 	// printk(WHITE, BLACK, "finish creating...\n");
     return task;
@@ -330,3 +370,81 @@ int Task_getRing() {
 }
 
 void Task_stopSleep() { Task_current->state = Task_State_Sleeping; }
+
+__always_inline__ void Task_kernelEntryHeader() {
+	SMP_current->flags |= SMP_CPUInfo_flag_InTaskLoop;
+	Task_current->state = Task_State_Running;
+	IO_sti();
+}
+
+#define RecycleThread_State_Idle        0
+#define RecycleThread_State_Scanning    1
+#define RecycleThread_State_Running     2
+
+/// @brief when the task is finished, this function will be executed to recycle the resource that this task used. (e.g. memory, ports)
+void Task_exit() {
+    for (List *pageList = Task_current->mem->pageUsage.next, *nxt = NULL; pageList != &Task_current->mem->pageUsage; pageList = nxt) {
+        nxt = pageList->next;
+        List_del(pageList);
+        MM_Buddy_free(container(pageList, Page, listEle));
+    }
+	for (List *kmallocList = Task_current->mem->kmallocUsage.next, *nxt = NULL; kmallocList != &Task_current->mem->kmallocUsage; kmallocList = nxt) {
+		nxt = kmallocList->next;
+		printk(WHITE, BLACK, "Task_exit(): recycle SLAB memory %#018lx\n", container(kmallocList, Task_KmallocUsage, listEle)->addr);
+		kfree(container(kmallocList, Task_KmallocUsage, listEle)->addr, Slab_kmalloc_arg_Private);
+	}
+    if (Task_current->mem->totUsage > 0) {
+        printk(RED, BLACK, "Task_exit(): task %ld: failed to recycle all the page frame, remain %ld pages.\n", Task_current->pid, Task_current->mem->totUsage);
+        while (1) IO_hlt();
+    }
+    SpinLock_lock(&Task_cfsStruct.killedTreeLock);
+	IO_maskIntrPreffix
+    TaskStruct *dmasPtr = (TaskStruct *)DMAS_phys2Virt(MM_PageTable_getPldEntry(getCR3(), (u64)Task_current) & ~0xfff);
+    RBTree_insNode(&Task_cfsStruct.killedTree, &dmasPtr->wNode);
+	Task_current->priority = Task_Priority_Killed;
+	IO_maskIntrSuffix
+    SpinLock_unlock(&Task_cfsStruct.killedTreeLock);
+
+
+    while (1) IO_hlt();
+}
+
+u64 Task_recycleThread(u64 (*usrEntry)(u64), u64 arg) {
+    Task_kernelEntryHeader();
+    while (1) {
+        SpinLock_lock(&Task_cfsStruct.killedTreeLock);
+        RBNode *rMost = RBTree_getMax(&Task_cfsStruct.killedTree);
+        if (rMost != NULL) {
+			TaskStruct *tsk = container(rMost, TaskStruct, wNode);
+			if (!(tsk->flags & Task_Flag_InKillTree)) {
+				SpinLock_unlock(&Task_cfsStruct.killedTreeLock);
+				continue;
+			}
+            RBTree_delNode(&Task_cfsStruct.killedTree, rMost);
+            SpinLock_unlock(&Task_cfsStruct.killedTreeLock);
+            printk(BLACK, WHITE, "recycle task %d at %#018lx\n", tsk->pid, tsk);
+            MM_Buddy_free(tsk->mem->intrPage);
+            MM_Buddy_free(tsk->mem->lstKerPage);
+            MM_PageTable_cleanMap(tsk->mem->pgdPhyAddr);
+			kfree(tsk->simdRegs, 0); 
+            // free the page of the task structure
+            Page *tskPage = memManageStruct.pages + (DMAS_virt2Phys(tsk) >> Page_4KShift);
+            MM_Buddy_free(tskPage);
+        } else
+            SpinLock_unlock(&Task_cfsStruct.killedTreeLock);
+    }
+    Task_kernelThreadExit(0);
+}
+
+void Task_initMgr() {
+	for (int i = 0; i < SMP_cpuNum; i++) {
+		RBTree_init(&Task_cfsStruct.tree[i], _CFSTree_comparator);
+		SpinLock_init(&Task_cfsStruct.lock[i]);
+	}
+    RBTree_init(&Task_cfsStruct.killedTree, _CFSTree_comparator);
+    SpinLock_init(&Task_cfsStruct.killedTreeLock);
+
+	// register the soft interrupt for schedule
+	Intr_SoftIrq_Timer_initIrq(&Task_scheduleTimerIrq, 1, Task_scheduleTimerHandler, NULL);
+	Intr_SoftIrq_Timer_addIrq(&Task_scheduleTimerIrq);
+}

@@ -13,11 +13,13 @@ extern char* kallsyms_names __attribute__((weak));
 
 #define Init_taskStackSize 32768
 
-#define Task_Flag_Slaver	(1 << 0)
-#define Task_Flag_Kernel	(1 << 1)  
+#define Task_Flag_Slaver		(1 << 0)
+#define Task_Flag_Kernel		(1 << 1)  
 // this task use inner code of kernel
-#define Task_Flag_Inner		(1 << 2)
-#define Task_Flag_UseFloat  (1 << 3)
+#define Task_Flag_Inner			(1 << 2)
+#define Task_Flag_UseFloat  	(1 << 3)
+#define Task_Flag_InKillTree	(1 << 4)
+
 
 #define Task_State_Uninterruptible  (1 << 0)
 #define Task_State_Running          (1 << 1)
@@ -64,12 +66,30 @@ typedef struct ThreadStruct {
 } ThreadStruct;
 
 typedef void (*Task_SignalHandler)(u64 signal, u64 arg);
-#define Task_signalNum 32
+
+#define Task_signalNum 64
 enum Task_Signal {
-	Task_Signal_Int			= 1,
-	Task_Signal_FloatError,
-	Task_Signal_Kill
+	Task_Signal_Int			= 0,
+	Task_Signal_Kill,
+	Task_Signal_FloatError	= 32,
+	Task_Signal_Timer,
 };
+
+#define Task_Timer_Flag_Enabled		(1 << 0)
+#define Task_Timer_Flag_Expire		(1 << 1)
+#define Task_Timer_Flag_InQueue		(1 << 2)
+
+typedef struct Task_Timer {
+	void (*func)(u64);
+	u64 data;
+	u64 flags;
+	TimerIrq irq;
+	RBNode wNode;
+} Task_Timer;
+
+void Task_Timer_init(Task_Timer *timer, u64 jiffies);
+int Task_Timer_modJiffies(Task_Timer *timer, u64 jiffies);
+int Task_Timer_add(Task_Timer *timer);
 
 typedef struct TaskStruct {
     List listEle;
@@ -78,10 +98,13 @@ typedef struct TaskStruct {
     TaskMemStruct *mem;
 	TSS *tss;
     u64 flags;
-    RBTree timerTree;
     i64 pid, vRunTime;
+	i64 cpuId;
 	u64 signal, priority;
-    TimerIrq scheduleTimer;
+
+	RBTree timerTree;
+	SpinLock timerTreeLock;
+
 	// the rb node for CFStree
 	RBNode wNode;
 

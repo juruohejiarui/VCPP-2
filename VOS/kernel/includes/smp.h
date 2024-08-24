@@ -72,9 +72,13 @@ typedef struct SMP_CPUInfoPkg {
 	struct TaskStruct *simdRegDomain;
 	u32 *tssTable;
 	u64 flags;
+	SpinLock ipiLock;
+	void *ipiMsg;
 } __attribute__ ((packed)) SMP_CPUInfoPkg;
 
 #define SMP_current (SMP_getCPUInfoPkg(SMP_getCurCPUIndex()))
+
+#define SMP_IPI_Type_Schedule	0xc8
 
 IntrHandlerDeclare(SMP_irq0xc8Handler);
 
@@ -86,7 +90,10 @@ extern u32 SMP_cpuNum;
 
 void SMP_init();
 
-void SMP_sendIPI(SMP_CPUInfoPkg *cpu, u32 vector);
+void SMP_sendIPI(int cpuId, u32 vector, void *msg);
+void SMP_sendIPI_all(u32 vector, void *msg);
+void SMP_sendIPI_self(u32 vector, void *msg);
+void SMP_sendIPI_allButSelf(u32 vector, void *msg);
 
 void startSMP();
 

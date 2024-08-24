@@ -30,6 +30,7 @@ u32 SMP_registerCPU(u32 topoIdx) {
 	SMP_CPUInfoPkg *pkg = &SMP_cpuInfo[SMP_cpuNum++];
 	pkg->cpuId = topoIdx;
     SpinLock_unlock(&_lock);
+	SpinLock_init(&pkg->ipiLock);
     // is BSP
     if (SMP_cpuNum == 1)
         pkg->tssTable = tss64Table;
@@ -87,8 +88,10 @@ static int _parseMADT() {
 	return 1;
 }
 
+// schedule interrupt
 IntrHandlerDeclare(SMP_irq0xc8Handler) {
-
+	if (SMP_current->flags & SMP_CPUInfo_flag_InTaskLoop) Task_updateCurState();
+	SpinLock_unlock(&SMP_current->ipiLock);
 }
 
 void SMP_init() {
@@ -127,15 +130,10 @@ void SMP_init() {
 		while (!(SMP_cpuInfo[i].flags & SMP_CPUInfo_flag_APUInited))
 			IO_hlt();
 	}
-
-	
-
-	for (int i = 1; i < SMP_cpuNum; i++) {
-		SMP_sendIPI(&SMP_cpuInfo[i], 0xc8);
-	}
 }
 
-void SMP_sendIPI(SMP_CPUInfoPkg *cpu, u32 vector) {
+void SMP_sendIPI(int cpuId, u32 vector, void *msg) {
+	SpinLock_lock(&SMP_cpuInfo[cpuId].ipiLock);
 	APIC_ICRDescriptor icr;
 	*(u64 *)&icr = 0;
 	icr.vector = vector;
@@ -144,11 +142,48 @@ void SMP_sendIPI(SMP_CPUInfoPkg *cpu, u32 vector) {
 	icr.deliverMode = HW_APIC_DeliveryStatus_Idle;
 	icr.triggerMode = HW_APIC_TriggerMode_Edge;
 	icr.DestShorthand = HW_APIC_DestShorthand_None;
-	icr.dest.x2Apic = cpu->cpuId;
+	icr.dest.x2Apic = SMP_cpuInfo[cpuId].cpuId;
 	IO_writeMSR(0x830, *(u64 *)&icr);
 }
 
-u32 SMP_getCurCPUIndex() {
+void SMP_sendIPI_all(u32 vector, void *msg) {
+	for (int i = 0; i < SMP_cpuNum; i++) {
+		SpinLock_lock(&SMP_cpuInfo[i].ipiLock);
+		SMP_cpuInfo[i].ipiMsg = msg;
+	}
+	APIC_ICRDescriptor icr;
+	*(u64 *)&icr = 0;
+	icr.vector = vector;
+	icr.deliverMode = HW_APIC_DeliveryMode_Fixed;
+	icr.destMode = HW_APIC_DestMode_Physical;
+	icr.deliverMode = HW_APIC_DeliveryStatus_Idle;
+	icr.triggerMode = HW_APIC_TriggerMode_Edge;
+	icr.DestShorthand = HW_APIC_DestShorthand_AllIncludingSelf;
+	IO_writeMSR(0x830, *(u64 *)&icr);
+}
+void SMP_sendIPI_self(u32 vector, void *msg) {
+	SMP_sendIPI(SMP_getCurCPUIndex(), vector, msg);
+}
+
+void SMP_sendIPI_allButSelf(u32 vector, void *msg) {
+	int self = SMP_getCurCPUIndex();
+	for (int i = 0; i < SMP_cpuNum; i++) if (i != self) {
+		SpinLock_lock(&SMP_cpuInfo[i].ipiLock);
+		SMP_cpuInfo[i].ipiMsg = msg;
+	}
+	APIC_ICRDescriptor icr;
+	*(u64 *)&icr = 0;
+	icr.vector = vector;
+	icr.deliverMode = HW_APIC_DeliveryMode_Fixed;
+	icr.destMode = HW_APIC_DestMode_Physical;
+	icr.deliverMode = HW_APIC_DeliveryStatus_Idle;
+	icr.triggerMode = HW_APIC_TriggerMode_Edge;
+	icr.DestShorthand = HW_APIC_DestShorthand_AllExcludingSelf;
+	IO_writeMSR(0x830, *(u64 *)&icr);
+}
+
+u32 SMP_getCurCPUIndex()
+{
 	u32 a, b, c, d;
     HW_CPU_cpuid(0xb, 0, &a, &b, &c, &d);
     return _cvtId(d);
