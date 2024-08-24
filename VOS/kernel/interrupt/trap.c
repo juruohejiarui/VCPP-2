@@ -49,7 +49,7 @@ static int _lookupKallsyms(u64 address, int level)
 			printk(RED,BLACK,"  ");
 		printk(RED,BLACK,"+---> ");
 
-		printk(YELLOW,BLACK,"address:%#018lx \t(+) %04d function:%s\n",address,address - kallsyms_addresses[index],&string[kallsyms_index[index]]);
+		printk(YELLOW,BLACK,"address:%#018lx    (+) %04d function:%s\n",address,address - kallsyms_addresses[index],&string[kallsyms_index[index]]);
 		return 0;
 	}
 	else
@@ -64,14 +64,14 @@ void _backtrace(PtReg *regs)
 
 	printk(RED,BLACK,"====================== Task Struct Information =====================\n");
 	printk(RED,BLACK,"regs->rsp:%#018lx,current->thread->rsp0:%#018lx,current:%#018lx\n",
-		regs->rsp, Task_current->thread->rsp0, Task_current);
+		regs->rsp, Task_current->thread->rsp, Task_current);
 	printk(RED,BLACK,"====================== Kernel Stack Backtrace ======================\n");
 
-	for(i = 0;i < 10;i++)
+	for(i = 0;i < 20;i++)
 	{
 		if (_lookupKallsyms(ret_address, i))
 			break; 
-		if ((u64)rbp < (u64)regs->rsp || (u64)rbp > Task_current->thread->rsp0)
+		if ((u64)rbp < (u64)regs->rsp || (u64)rbp > Task_current->thread->rsp)
 			break;
 
 		ret_address = *(rbp + 1);
@@ -256,6 +256,12 @@ void doGeneralProtection(u64 rsp, u64 errorCode) {
 	while(1) IO_hlt();
 }
 
+static int _isStkGrow(u64 vAddr, u64 rsp) {
+	if (vAddr <= Task_userStackEnd)
+		return vAddr >= min(rsp - 32, Task_userStackEnd - Page_4KSize + 0x10) && vAddr >= Task_userStackEnd - Task_userStackSize;
+	else return vAddr >= rsp - 32 && vAddr >= Task_kernelStackEnd - Task_kernelStackSize;
+}
+
 u64 doPageFault(u64 rsp, u64 errorCode) {
 	u64 *p = NULL;
 	u64 cr2 = 0;
@@ -266,9 +272,21 @@ u64 doPageFault(u64 rsp, u64 errorCode) {
 	if ((pldEntry & ~0xffful) == 0 && (pldEntry & 0xffful)) {
 		// map this virtual address without physics page
 		Page *page = MM_Buddy_alloc(0, Page_Flag_Active);
-		printk(BLACK, WHITE, "[Trap]");
-		printk(WHITE, BLACK, " Task %d allocate one premapped page %#018lx->%#018lx\n", Task_current->pid, page->phyAddr, cr2 & ~0xffful);
+		// printk(WHITE, BLACK, " Task %d allocate one page %#018lx->%#018lx\n", Task_current->pid, page->phyAddr, cr2 & ~0xffful);
 		MM_PageTable_map(getCR3(), cr2 & ~0xffful, page->phyAddr, pldEntry | MM_PageTable_Flag_Presented);
+	} else if (pldEntry & ~0xffful) {
+		// has been presented, fault because of the old TLB
+		// printk(BLACK, WHITE, "[Trap]");
+		// printk(WHITE, BLACK, "Task %d old TLB\n");
+		flushTLB();
+	} else if (_isStkGrow(cr2, ((PtReg *)rsp)->rsp)) {
+		Page *page = MM_Buddy_alloc(0, Page_Flag_Active);
+
+		// printk(BLACK, WHITE, "[Trap]");
+		// printk(WHITE, BLACK, "Task %d need one stack page %#018lx->%#018lx\n", Task_current->pid, page->phyAddr, cr2 & ~0xffful);
+
+		MM_PageTable_map(getCR3(), cr2 & ~0xffful, page->phyAddr, 
+			MM_PageTable_Flag_Presented | MM_PageTable_Flag_Writable | (cr2 <= Task_userStackEnd ? MM_PageTable_Flag_UserPage : 0));
 	} else {
 		printk(RED,BLACK,"do_page_fault(14),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx,CR2:%#018lx\t",errorCode , rsp , *p , cr2);
 		if (SMP_current->flags & SMP_CPUInfo_flag_InTaskLoop) printk(WHITE, BLACK, "pid = %ld\n", Task_current->pid);
@@ -333,25 +351,25 @@ void doVirtualizationError(u64 rsp, u64 errorCode) {
 }
 
 void Intr_Trap_setSysVec() {
-    Intr_Gate_setTrap(0, 1, divideError);
-	Intr_Gate_setTrap(1, 1, debug);
-	Intr_Gate_setIntr(2, 1, nmi);
-	Intr_Gate_setSystem(3, 1, int3);
-	Intr_Gate_setSystem(4, 1, overflow);
-	Intr_Gate_setSystem(5, 1, bounds);
-	Intr_Gate_setTrap(6, 1, undefinedOpcode);
-	Intr_Gate_setTrap(7, 1, devNotAvailable);
-	Intr_Gate_setTrap(8, 1, doubleFault);
-	Intr_Gate_setTrap(9, 1, coprocessorSegmentOverrun);
-	Intr_Gate_setTrap(10, 1, invalidTSS);
-	Intr_Gate_setTrap(11, 1, segmentNotPresent);
-	Intr_Gate_setTrap(12, 1, stackSegmentFault);
-	Intr_Gate_setTrap(13, 1, generalProtection);
-	Intr_Gate_setTrap(14, 1, pageFault);
+    Intr_Gate_setTrap(0, 2, divideError);
+	Intr_Gate_setTrap(1, 2, debug);
+	Intr_Gate_setIntr(2, 2, nmi);
+	Intr_Gate_setSystem(3, 2, int3);
+	Intr_Gate_setSystem(4, 2, overflow);
+	Intr_Gate_setSystem(5, 2, bounds);
+	Intr_Gate_setTrap(6, 2, undefinedOpcode);
+	Intr_Gate_setTrap(7, 2, devNotAvailable);
+	Intr_Gate_setTrap(8, 2, doubleFault);
+	Intr_Gate_setTrap(9, 2, coprocessorSegmentOverrun);
+	Intr_Gate_setTrap(10, 2, invalidTSS);
+	Intr_Gate_setTrap(11, 2, segmentNotPresent);
+	Intr_Gate_setTrap(12, 2, stackSegmentFault);
+	Intr_Gate_setTrap(13, 2, generalProtection);
+	Intr_Gate_setTrap(14, 2, pageFault);
 	// 15 reserved
-	Intr_Gate_setTrap(16, 1, x87FPUError);
-	Intr_Gate_setTrap(17, 1, alignmentCheck);
-	Intr_Gate_setTrap(18, 1, machineCheck);
-	Intr_Gate_setTrap(19, 1, simdError);
-	Intr_Gate_setTrap(20, 1, virtualizationError);
+	Intr_Gate_setTrap(16, 2, x87FPUError);
+	Intr_Gate_setTrap(17, 2, alignmentCheck);
+	Intr_Gate_setTrap(18, 2, machineCheck);
+	Intr_Gate_setTrap(19, 2, simdError);
+	Intr_Gate_setTrap(20, 2, virtualizationError);
 }

@@ -46,7 +46,6 @@ void Task_checkPtRegInStack(u64 rsp) {
 }
 
 ThreadStruct Init_thread = {
-    .rsp0   = (u64)(Task_kernelStackEnd),
     .rsp3   = (u64)(Task_userStackEnd),
     .rsp    = (u64)(Task_kernelStackEnd),
     .fs     = Segment_kernelData,
@@ -69,7 +68,7 @@ void Task_switchTo_inner(TaskStruct *prev, TaskStruct *next) {
         IO_setCR(0, cr0 | (1ul << 3));
     }
     SMP_CPUInfoPkg *info = SMP_current;
-    next->tss->rsp0 = next->thread->rsp0;
+    next->tss->rsp0 = (next->thread->rsp & 0xffff000000000000 ? next->thread->rsp : Task_kernelStackEnd);
     // printk(RED, BLACK, "From %#018lx, to %#018lx, rip: %#018lx\n", prev, next, next->thread->rip);
     Intr_Gate_setTSS(
             info->tssTable,
@@ -88,18 +87,21 @@ void Task_switchTo_inner(TaskStruct *prev, TaskStruct *next) {
 i64 _weight[50] = { 1, 2, 3, 4, 5, 6, [6 ... 49] = -1 };
 
 struct CFS_rq Task_cfsStruct;
-
 TimerIrq Task_scheduleTimerIrq;
-
 
 void Task_updateCurState() {
 	Task_current->vRunTime += _weight[Task_current->priority];
+	Intr_SoftIrq_setState(Task_current->cpuId, Intr_SoftIrq_State_TestSchedule);
+}
+
+void Task_SoftIrq_testSchedule() {
 	Task_current->state = Task_State_NeedSchedule;
 }
 
 void Task_scheduleTimerHandler(TimerIrq *timer, void *arg) {
 	// send message to all processor to test whether themselves needs schedule
-	SMP_sendIPI_all(SMP_IPI_Type_Schedule, NULL);
+	SMP_sendIPI_allButSelf(SMP_IPI_Type_Schedule, NULL);
+	Task_updateCurState();
 }
 
 static int _CFSTree_comparator(RBNode *a, RBNode *b) {
@@ -111,13 +113,9 @@ TaskStruct *Task_currentDMAS() {
 	return (TaskStruct *)DMAS_phys2Virt(MM_PageTable_getPldEntry(getCR3(), (u64)Task_current) & ~0xfff);
 }
 
-void Task_testSchedule() {
-	Task_current->vRunTime += _weight[Task_current->priority];
-	
-}
-
 void Task_schedule() {
     IO_cli();
+	// printk(BLACK, WHITE, "S");
 	SpinLock *lock;
 	RBTree *cfsTree; 
 	{
@@ -148,10 +146,10 @@ void Task_schedule() {
 			SpinLock_unlock(lock);
 		}
 	}
-    TaskStruct *next = container(leftMost, TaskStruct, wNode);
     RBTree_delNode(cfsTree, leftMost);
-
 	SpinLock_unlock(lock);
+    TaskStruct *next = container(leftMost, TaskStruct, wNode);
+
     Task_switch(next);
 }
 
@@ -177,29 +175,29 @@ void Task_defaultSignalHandler(u64 signal) {
 
 void Task_setSignal(TaskStruct *task, u64 signal) { task->signal |= (1 << signal); }
 
-void Task_setSignalHandler(u64 signal, Task_SignalHandler handler, u64 arg) {
-	Task_current->signalHandlerArg[signal] = arg;
-	Task_current->signalHandler[signal] = handler;
+void Task_setSignalHandler(TaskStruct *task, u64 signal, Task_SignalHandler handler, u64 arg) {
+	task->signalHandlerArg[signal] = arg;
+	task->signalHandler[signal] = handler;
 }
 
-void Task_SysSignal_Timer(u64 signal, TaskStruct *task) {
+void Task_SysSignal_Timer(u64 signal, void *arg) {
 	while (1) {
-		SpinLock_lock(&task->timerTreeLock);
-		RBNode *nd = RBTree_getMin(&task->timerTree);
+		SpinLock_lock(&Task_current->timerTreeLock);
+		RBNode *nd = RBTree_getMin(&Task_current->timerTree);
 		Task_Timer *timer;
 		if (!nd || !((timer = container(nd, Task_Timer, wNode))->flags & Task_Timer_Flag_Expire))
 			break;
-		RBTree_delNode(&task->timerTree, nd);
+		RBTree_delNode(&Task_current->timerTree, nd);
 		timer->flags &= ~Task_Timer_Flag_InQueue;
-		SpinLock_unlock(&task->timerTreeLock);
+		SpinLock_unlock(&Task_current->timerTreeLock);
 		timer->func(timer->data);
 		timer->flags |= Task_Timer_Flag_Enabled;
 	}
-	SpinLock_unlock(&task->timerTreeLock);
+	SpinLock_unlock(&Task_current->timerTreeLock);
 }
 
 void Task_setSysSignalHandler(TaskStruct *task) {
-	Task_setSignalHandler(Task_Signal_Timer, (Task_SignalHandler)Task_SysSignal_Timer, (u64)task);
+	Task_setSignalHandler(task, Task_Signal_Timer, (Task_SignalHandler)Task_SysSignal_Timer, 0);
 }
 
 #pragma endregion
@@ -279,7 +277,7 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntr
     *thread = Init_thread;
     thread->rip = (u64)Task_kernelThreadEntry;
     thread->rbp = Task_kernelStackEnd;
-    thread->rsp0 = thread->rsp = Task_kernelStackEnd - sizeof(PtReg);
+    thread->rsp = Task_kernelStackEnd - sizeof(PtReg);
     thread->rsp3 = Task_userStackEnd;
 	thread->fs = thread->gs = Segment_kernelData;
 
@@ -318,18 +316,12 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntr
 					vAddr, lstPage->phyAddr + vAddr - (Task_intrStackEnd - Task_intrStackSize), 
 					MM_PageTable_Flag_Presented | MM_PageTable_Flag_Writable | MM_PageTable_Flag_UserPage);
 
-		// map the user stack without present flag
-		if (!(flag & Task_Flag_Kernel)) {
-			for (u64 vAddr = Task_userStackEnd - Task_userStackSize + 0x10; vAddr < Task_userStackEnd; vAddr += Page_4KSize)
-				MM_PageTable_map(pgdPhyAddr, vAddr, 0, MM_PageTable_Flag_UserPage | MM_PageTable_Flag_Writable);
-		}
-
 		// map the kernel stack with one present page
 		lstPage = task->mem->lstKerPage = MM_Buddy_alloc(0, Page_Flag_Active | Page_Flag_KernelShare);
 
-		for (u64 vAddr = Task_kernelStackEnd - Task_kernelStackSize + Page_4KSize; vAddr != 0; vAddr += Page_4KSize)
+		for (u64 vAddr = Task_kernelStackEnd - 0xff0ul; vAddr > Task_kernelStackEnd - Task_kernelStackSize; vAddr -= Page_4KSize)
 			MM_PageTable_map(pgdPhyAddr,
-					vAddr, vAddr == Task_kernelStackEnd - 0xff0ul ? lstPage->phyAddr : 0, 
+					vAddr, (vAddr == Task_kernelStackEnd - 0xff0ul ? lstPage->phyAddr : 0), 
 					MM_PageTable_Flag_Writable | (vAddr == Task_kernelStackEnd - 0xff0ul ? MM_PageTable_Flag_Presented : 0));
 
 		// copy the data into the stack
@@ -398,13 +390,12 @@ void Task_exit() {
         while (1) IO_hlt();
     }
     SpinLock_lock(&Task_cfsStruct.killedTreeLock);
-	IO_maskIntrPreffix
     TaskStruct *dmasPtr = (TaskStruct *)DMAS_phys2Virt(MM_PageTable_getPldEntry(getCR3(), (u64)Task_current) & ~0xfff);
     RBTree_insNode(&Task_cfsStruct.killedTree, &dmasPtr->wNode);
-	Task_current->priority = Task_Priority_Killed;
-	IO_maskIntrSuffix
+	Atomic_inc(&Task_cfsStruct.killedTaskNum);
+	printk(WHITE, BLACK, "Task_exit(): %d\n", Task_current->pid);
     SpinLock_unlock(&Task_cfsStruct.killedTreeLock);
-
+	Task_current->priority = Task_Priority_Killed;
 
     while (1) IO_hlt();
 }
@@ -412,15 +403,18 @@ void Task_exit() {
 u64 Task_recycleThread(u64 (*usrEntry)(u64), u64 arg) {
     Task_kernelEntryHeader();
     while (1) {
+		while (Task_cfsStruct.killedTaskNum.value == 0) IO_hlt();
         SpinLock_lock(&Task_cfsStruct.killedTreeLock);
         RBNode *rMost = RBTree_getMax(&Task_cfsStruct.killedTree);
         if (rMost != NULL) {
 			TaskStruct *tsk = container(rMost, TaskStruct, wNode);
 			if (!(tsk->flags & Task_Flag_InKillTree)) {
 				SpinLock_unlock(&Task_cfsStruct.killedTreeLock);
+				IO_hlt();
 				continue;
 			}
             RBTree_delNode(&Task_cfsStruct.killedTree, rMost);
+			Atomic_dec(&Task_cfsStruct.killedTaskNum);
             SpinLock_unlock(&Task_cfsStruct.killedTreeLock);
             printk(BLACK, WHITE, "recycle task %d at %#018lx\n", tsk->pid, tsk);
             MM_Buddy_free(tsk->mem->intrPage);
@@ -430,8 +424,8 @@ u64 Task_recycleThread(u64 (*usrEntry)(u64), u64 arg) {
             // free the page of the task structure
             Page *tskPage = memManageStruct.pages + (DMAS_virt2Phys(tsk) >> Page_4KShift);
             MM_Buddy_free(tskPage);
-        } else
-            SpinLock_unlock(&Task_cfsStruct.killedTreeLock);
+        }
+		IO_hlt();
     }
     Task_kernelThreadExit(0);
 }
@@ -445,6 +439,8 @@ void Task_initMgr() {
     SpinLock_init(&Task_cfsStruct.killedTreeLock);
 
 	// register the soft interrupt for schedule
-	Intr_SoftIrq_Timer_initIrq(&Task_scheduleTimerIrq, 1, Task_scheduleTimerHandler, NULL);
-	Intr_SoftIrq_Timer_addIrq(&Task_scheduleTimerIrq);
+	Intr_SoftIrq_register(1, Task_SoftIrq_testSchedule, NULL);
+
+	Task_cfsStruct.flags = 1;
+	Task_cfsStruct.killedTaskNum.value = 0;
 }

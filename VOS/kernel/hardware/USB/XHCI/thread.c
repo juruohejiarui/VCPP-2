@@ -399,7 +399,7 @@ void _signalHandler_Int(u64 signal, u64 devAddr) {
 
 u64 HW_USB_XHCI_devThread(u64 (*_)(u64), u64 devAddr) {
 	Task_kernelEntryHeader();
-	Task_setSignalHandler(Task_Signal_Int, (Task_SignalHandler)_signalHandler_Int, devAddr);
+	Task_setSignalHandler(Task_current, Task_Signal_Int, (Task_SignalHandler)_signalHandler_Int, devAddr);
 
 	USB_XHCI_Device *dev = (USB_XHCI_Device *)devAddr;
 

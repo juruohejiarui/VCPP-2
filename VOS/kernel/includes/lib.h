@@ -6,5 +6,6 @@
 #include "../lib/io.h"
 #include "../lib/algorithm.h"
 #include "../lib/spinlock.h"
+#include "../lib/atomic.h"
 #include "../lib/rbtree.h"
 #endif

@@ -281,8 +281,8 @@ void clearScreen() {
 }
 
 void printk(unsigned int fcol, unsigned int bcol, const char *fmt, ...) {
-    SpinLock_lock(&_bufLock);
-    static char buf[2048] = {0};
+    // SpinLock_lock(&_bufLock);
+    char buf[2048] = {0};
     int len = 0, i;
     va_list args;
     va_start(args, fmt);
@@ -290,7 +290,7 @@ void printk(unsigned int fcol, unsigned int bcol, const char *fmt, ...) {
     va_end(args);
     if (Task_getRing() == 0) printStr(fcol, bcol, buf, len);
     else Task_Syscall_usrAPI(1, fcol, bcol, (u64)buf, len, 0, 0);
-    SpinLock_unlock(&_bufLock);
+    // SpinLock_unlock(&_bufLock);
 }
 
 u64 Syscall_clearScreen(u64 _1, u64 _2, u64 _3, u64 _4, u64 _5) {

@@ -21,6 +21,7 @@ void tmpPrint(u64 *rsp) {
 void startKernel() {
     SMP_cpuNum = 0;
 	memset(SMP_cpuInfo, 0, sizeof(SMP_cpuInfo));
+    Task_cfsStruct.flags = 0;
 
     position.XResolution = HW_UEFI_bootParamInfo->graphicsInfo.HorizontalResolution & 0xffff;
 	position.YResolution = HW_UEFI_bootParamInfo->graphicsInfo.VerticalResolution & 0xffff;

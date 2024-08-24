@@ -2,6 +2,7 @@
 #include "../includes/log.h"
 
 void startSMP() {
+	printk(WHITE, BLACK, "startSMP:%d\t", SMP_getCurCPUIndex());
 	u64 rsp = 0;
 	SMP_CPUInfoPkg *pkg = SMP_current;
 	rsp = (u64)pkg->initStk + Init_taskStackSize;	
@@ -45,6 +46,9 @@ void startSMP() {
 	printk(WHITE, BLACK, "APU %d: tr:%d trap rsp:%#018lx\n", SMP_getCurCPUIndex(), pkg->trIdx, rsp);
 	IO_sti();
 	SMP_current->flags |= SMP_CPUInfo_flag_APUInited;
+	Task_Syscall_init();
+
+	while (!Task_cfsStruct.flags) ;
 
 	// wait for the first task, and then jump to it
 	int idx = SMP_getCurCPUIndex();
@@ -60,7 +64,6 @@ void startSMP() {
 		SpinLock_unlock(&Task_cfsStruct.lock[idx]);
 	}
 	SpinLock_unlock(&Task_cfsStruct.lock[idx]);
-	
 	Task_switch_init(NULL, task);
 	while (1) IO_hlt();
 }

@@ -45,7 +45,7 @@ setSmpTmpStk:
 setSmpTmpStk_LoopStart:
     cmpl (%rax), %edx
     jz setSmpTmpStk_LoopEnd
-    addq $40, %rax
+    addq $56, %rax
     jmp setSmpTmpStk_LoopStart
 setSmpTmpStk_LoopEnd:
     movq 0x8(%rax), %rsi

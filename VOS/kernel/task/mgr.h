@@ -7,23 +7,11 @@
 #define Task_switch_init(prev, next) \
 	do { \
 		__asm__ volatile ( \
-			/* save state of the prev task */ \
-			"cmpq $0, %%rdi			\n\t" \
-			"je 2f					\n\t" \
-			"pushq %%rbp		 	\n\t" \
-			"movq 0x18(%%rdi), %%r8	\n\t" \
-			"movq %%rsp, 0x18(%%r8)	\n\t" \
-			"leaq 1f(%%rip), %%rax	\n\t" \
-			"movq %%rax, 0x0(%%r8)	\n\t" \
-			"pushfq					\n\t" \
-			"2:						\n\t" \
-			/* load the state of the next task */ \
-			"popq 0x50(%%r8)		\n\t" \
 			"movq 0x18(%%rsi), %%r8	\n\t" \
 			"movq 0x20(%%rsi), %%r9	\n\t" \
 			"movq 0x0(%%r8), %%rbx	\n\t" \
-			"movq 0x18(%%r8), %%rdx	\n\t" \
-			"movq 0x50(%%r8), %%rcx	\n\t" \
+			"movq 0x10(%%r8), %%rdx	\n\t" \
+			"movq 0x48(%%r8), %%rcx	\n\t" \
 			"movq 0x8(%%r9), %%rax 	\n\t" \
 			"movq %%rax, %%cr3		\n\t" \
 			"mfence					\n\t" \
@@ -32,8 +20,6 @@
 			"popfq					\n\t" \
 			"pushq %%rbx			\n\t" \
 			"jmp Task_switchTo_inner	\n\t" \
-			"1: 					\n\t" \
-			"popq %%rbp				\n\t" \
 			: \
 			: "D"(prev), "S"(next) \
 			: "memory" \
@@ -45,9 +31,11 @@ void Task_checkPtRegInStack(u64 rsp);
 struct CFS_rq {
     RBTree tree[Hardware_CPUNumber], killedTree;
 	SpinLock lock[Hardware_CPUNumber], killedTreeLock;
-    // which task domain the SIMD registers of the specific CPU
+	u64 flags;
+	Atomic killedTaskNum;
 };
 extern struct CFS_rq Task_cfsStruct;
+extern TimerIrq Task_scheduleTimerIrq;
 
 void Task_updateCurState();
 
@@ -63,9 +51,10 @@ void Task_switch(TaskStruct *next);
 
 TaskStruct *Task_currentDMAS();
 
-void Task_initMgr();
 
 void Task_exit();
+
+void Task_scheduleTimerHandler(TimerIrq *timer, void *arg);
 
 void Task_schedule();
 
@@ -97,5 +86,7 @@ static __always_inline__ void Task_kernelThreadExit(int retVal) {
 		: "rax", "rbx", "memory"
 	);
 }
+
+void Task_initMgr();
 
 #endif

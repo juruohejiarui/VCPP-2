@@ -7,9 +7,11 @@ TaskStruct_tss		= 0x28
 TaskStruct_vRunTime	= 0x40
 
 ThreadStruct_rip	= 0x00
-ThreadStruct_rsp0	= 0x08
-ThreadStruct_rsp3	= 0x10
-ThreadStruct_rsp	= 0x18
+ThreadStruct_rsp3	= 0x08
+ThreadStruct_rsp	= 0x10
+
+Task_kernelStackEnd = 0xfffffffffffffff0
+
 
 TaskMemStruct_pgdPhyAddr = 0x08
 /* Task_switch(TaskStruct *next) */
@@ -53,4 +55,43 @@ Task_switch_back:
 	popq %rax
 	popq %rbp
 	retq
+
+ENTRY(Task_kernelThreadEntry)
+    jmp restoreAll
+
+ENTRY(Syscall_entry)
+    // switch to kernel stack
+    movq $0xffffffffffff8000, %rbx
+    movq TaskStruct_thread(%rbx), %rbx
+    movq %rsp, ThreadStruct_rsp3(%rbx)
+    movq $0xfffffffffffffff0, %rsp
+    movq %rsp, ThreadStruct_rsp(%rbx)
+    // save the registers
+    movq %es, %rax
+    pushq %rax
+    movq %ds, %rax
+    pushq %rax
+    pushq %rcx
+    pushq %r11
+	movq $0x10, %rax
+	movq %rax, %ds
+	movq %rax, %es
+    callq Syscall_handler
+	jmp Syscall_exit
+
+ENTRY(Syscall_exit)
+    popq %r11
+    popq %rcx
+    popq %rbx
+    movq %rbx, %ds
+    popq %rbx
+    movq %rbx, %es
+
+	// switch back to user stack
+    movq $0xffffffffffff8000, %rbx
+    movq TaskStruct_thread(%rbx), %rbx
+	movq ThreadStruct_rsp3(%rbx), %rsp
+	movq %rsp, ThreadStruct_rsp(%rbx)
+    sysretq
+
 	

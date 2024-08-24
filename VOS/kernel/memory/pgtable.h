@@ -45,6 +45,9 @@
 	} while (0)
 
 typedef struct { u64 entry[512]; } PageTable;
+
+void MM_PageTable_cleanTmpMap();
+
 void MM_PageTable_init();
 // allocate a page table and return the physical address of the page table
 u64 MM_PageTable_alloc();
@@ -61,7 +64,6 @@ void MM_PageTable_map1G(u64 cr3, u64 vAddr, u64 pAddr, u64 flag);
 void MM_PageTable_unmap(u64 cr3, u64 vAddr);
 
 u64 MM_PageTable_getPldEntry(u64 cr3, u64 vAddr);
-u64 MM_PageTable_getPldEntry_debug(u64 cr3, u64 vAddr);
 
 // free the memory mapped on this page table and the entries of this page table
 // the space from 0xffff800000000000 to 0xffffC80000000000 will not be clean, which is the kernel share space.

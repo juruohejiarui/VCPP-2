@@ -46,14 +46,11 @@ __asm__ ( \
     "cli       			\n\t" \
     "pushq $0   		\n\t" \
     saveAll \
-    "movq %rsp, %rdi \n\t" \
-    "leaq "SYMBOL_NAME_STR(irq)#num"Interrupt_end(%rip), %rax	\n\t" \
-    "pushq %rax 		\n\t" \
-    "movq $"#num", %rsi \n\t" \
+    "movq %rsp, %rdi        \n\t" \
+    "movq $"#num", %rsi     \n\t" \
     "leaq Intr_irqdispatch(%rip), %rax 	\n\t" \
-	"jmp *%rax			\n\t" \
-	SYMBOL_NAME_STR(irq)#num"Interrupt_end: \n\t" \
-	"jmp Intr_retFromIntr \n\t" \
+	"callq *%rax			\n\t" \
+    "jmp Intr_retFromIntr   \n\t" \
 ); \
 
 buildIrq(0x20)
@@ -120,7 +117,7 @@ IntrDescriptor Intr_smpDescriptor[10];
 
 
 int Intr_register(u64 irqId, void *arg, IntrHandler handler, u64 param, IntrController *controller, char *irqName) {
-	IntrDescriptor *desc = &Intr_descriptor[irqId - 0x20];
+	IntrDescriptor *desc = (irqId & 0x80 ? &Intr_smpDescriptor[irqId - 0xc8] : &Intr_descriptor[irqId - 0x20]);
 	desc->controller = controller;
 	desc->irqName = irqName;
 	desc->param = param;
@@ -133,7 +130,7 @@ int Intr_register(u64 irqId, void *arg, IntrHandler handler, u64 param, IntrCont
 }
 
 void Intr_unregister(u64 irqId) {
-	IntrDescriptor *desc = &Intr_descriptor[irqId - 0x20];
+	IntrDescriptor *desc = (irqId & 0x80 ? &Intr_smpDescriptor[irqId - 0xc8] : &Intr_descriptor[irqId - 0x20]);
 	desc->controller->disable(irqId);
 	desc->controller->uninstall(irqId);
 
@@ -155,7 +152,9 @@ u64 Intr_irqdispatch(u64 rsp, u64 irqId) {
             break;
         }
         case 0x80 : {
-            printk(WHITE, BLACK, "SMP IPI: %d processor:%d\n", irqId, SMP_getCurCPUIndex());
+            IntrDescriptor *desc = &Intr_smpDescriptor[irqId - 0xc8];
+            if (desc->handler != NULL) res = desc->handler(desc->param, (PtReg *)rsp);
+            else res = Intr_noHandler(irqId, (PtReg *)rsp);
             HW_APIC_edgeAck(irqId);
             break;
         }

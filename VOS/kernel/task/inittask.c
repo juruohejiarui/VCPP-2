@@ -32,22 +32,9 @@ u64 Task_keyboardEvent(u64 (*usrEntry)(u64), u64 arg) {
 u64 task_empty(u64 (*usrEntry)(u64), u64 arg) {
 	Task_kernelEntryHeader();
 	Page *page = NULL;
-	for (int i = 0; i < Task_current->pid; i++)
+	for (int i = 0; i < Task_current->pid % 4; i++)
 		page = MM_Buddy_alloc(3, Page_Flag_Active);
 	Task_kernelThreadExit(1);
-}
-
-u64 task0(u64 (*usrEntry)(u64), u64 arg) {
-	Task_kernelEntryHeader();
-	printk(WHITE, BLACK, "task0 is running...\n");
-	// launch keyboard task
-	SMP_current->flags |= SMP_CPUInfo_flag_InTaskLoop;
-	TaskStruct *kbTask = Task_createTask(Task_keyboardEvent, NULL, 0, Task_Flag_Inner | Task_Flag_Kernel);
-	// for (List *list = HW_USB_XHCI_mgrList.next; list != &HW_USB_XHCI_mgrList; list = list->next)
-		// Task_createTask(HW_USB_XHCI_mainThread, NULL, (u64)container(list, USB_XHCIController, listEle), Task_Flag_Inner | Task_Flag_Kernel);
-	for (int i = 0; i < 5; i++) Task_createTask(task_empty, NULL, (u64)-1, Task_Flag_Inner | Task_Flag_Kernel);
-	while (1) IO_hlt();
-	Task_kernelThreadExit(0);
 }
 
 u64 init(u64 (*usrEntry)(u64), u64 arg) {
@@ -56,16 +43,36 @@ u64 init(u64 (*usrEntry)(u64), u64 arg) {
     Task_kernelThreadExit(0);
 }
 
+void recur(int dep) {
+	if (dep < Page_4KSize) recur(dep + 1);
+}
 u64 usrInit(u64 arg) {
 	arg >>= 32;
     printk(WHITE, BLACK, "User level task is running, arg = %ld\n", arg);
-    u64 res = Task_Syscall_usrAPI(arg, BLACK, WHITE, (u64)"Up Down Up Down baba", 20, 0, 0);
+    u64 res = Task_Syscall_usrAPI(1, BLACK, WHITE, (u64)"Up Down Up Down baba", 20, 0, 0);
     printk(WHITE, BLACK, "syscall, res: %ld\n", res);
     while (1) {
 		Task_Syscall_usrAPI(2, 1000, 0, 0, 0, 0, 0);
-		Task_Syscall_usrAPI(1, BLACK, WHITE, (u64)"User Task[doge]\n", 16, 0, 0);
+		if (arg % 5 == 0) recur(0);
+		else printk(WHITE, BLACK, "user task %2d\t", arg);
 		// IO_hlt();
 	}
+}
+
+u64 task0(u64 (*usrEntry)(u64), u64 arg) {
+	Task_kernelEntryHeader();
+	Intr_SoftIrq_Timer_initIrq(&Task_scheduleTimerIrq, 1, Task_scheduleTimerHandler, NULL);
+	Intr_SoftIrq_Timer_addIrq(&Task_scheduleTimerIrq);
+	printk(WHITE, BLACK, "task0 is running...\n");
+	// launch keyboard task
+	SMP_current->flags |= SMP_CPUInfo_flag_InTaskLoop;
+	TaskStruct *kbTask = Task_createTask(Task_keyboardEvent, NULL, 0, Task_Flag_Inner | Task_Flag_Kernel);
+	// for (List *list = HW_USB_XHCI_mgrList.next; list != &HW_USB_XHCI_mgrList; list = list->next)
+		// Task_createTask(HW_USB_XHCI_mainThread, NULL, (u64)container(list, USB_XHCIController, listEle), Task_Flag_Inner | Task_Flag_Kernel);
+	// for (int i = 0; i < 40; i++) Task_createTask(init, usrInit, i, Task_Flag_Inner);
+	for (int i = 0; i < 20; i++) Task_createTask(task_empty, NULL, 0, Task_Flag_Inner | Task_Flag_Kernel);
+	while (1) IO_hlt();
+	Task_kernelThreadExit(0);
 }
 
 void Task_init() {
@@ -77,15 +84,13 @@ void Task_init() {
     Task_initMgr();
     Task_pidCounter = 0;
 	// fake the task struction of the current task
-    Init_taskStruct.thread->rsp0 = Init_taskStruct.thread->rsp = (u64)Init_stack + Init_taskStackSize;
+    Init_taskStruct.thread->rsp = (u64)Init_stack + Init_taskStackSize;
     Init_taskStruct.thread->fs = Init_taskStruct.thread->gs = Segment_kernelData;
     List_init(&Init_taskStruct.listEle);
     
-    TaskStruct *initTask[3] = { NULL };
+    TaskStruct *initTask[2] = { NULL };
 	initTask[0] = Task_createTask(task0, NULL, 0, Task_Flag_Inner | Task_Flag_Kernel);
 	initTask[1] = Task_createTask(Task_recycleThread, NULL, 0, Task_Flag_Inner | Task_Flag_Kernel);
-    for (int i = 2; i < 3; i++)
-        initTask[i] = Task_createTask(init, usrInit, i, Task_Flag_Inner);
     List_del(&Init_taskStruct.listEle);
     Task_switch_init(&Init_taskStruct, initTask[0]);
 }

@@ -45,9 +45,9 @@ Syscall Syscall_list[Syscall_num] = {
 u64 Syscall_handler(u64 index, PtReg *regs) {
     u64 arg1 = regs->rdi, arg2 = regs->rsi, arg3 = regs->rdx, arg4 = regs->rcx, arg5 = regs->r8, arg6 = regs->r9;
     // switch stack and segment registers
-    Task_current->tss->rsp0 = Task_current->thread->rsp0;
+    Task_current->tss->rsp0 = Task_current->thread->rsp;
     Intr_Gate_setTSS(
-        SMP_getCPUInfoPkg(SMP_getCurCPUIndex())->tssTable,
+        SMP_cpuInfo[Task_current->cpuId].tssTable,
         Task_current->tss->rsp0, Task_current->tss->rsp1, Task_current->tss->rsp2, Task_current->tss->ist1, Task_current->tss->ist2,
 		Task_current->tss->ist3, Task_current->tss->ist4, Task_current->tss->ist5, Task_current->tss->ist6, Task_current->tss->ist7);
 	IO_sti();
@@ -66,42 +66,33 @@ u64 Task_Syscall_usrAPI(u64 index, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 a
     regs.r8 = arg5, regs.r9 = arg6;
     __asm__ volatile (
         "syscall        \n\t"
-        "movq %%rax, %1 \n\t"
+        "movq %%rax, %0 \n\t"
          : "=m"(res) 
          : "D"(index), "S"((u64)&regs)
-         : "memory", "rax");
+         : "memory");
     return res;
 }
 
 
 void Task_switchToUsr(u64 (*entry)(u64), u64 arg) {
 	IO_cli();
-    printk(RED, BLACK, "Task_switchToUsr: entry = %#018lx, arg = %#018lx\t", entry, arg);
-    printk(WHITE, BLACK, "pid = %ld\n", Task_current->pid);
-	__asm__ volatile ( 
-		"movq %%rsp, %%rax	\n\t"
-		"subq $0x20, %%rax	\n\t"
-		"movq %%rax, %0		\n\t"
-		: "=m"(Task_current->thread->rsp0)
-		:
-		: "memory", "rax"
-	);
-	printk(WHITE, BLACK, "rsp: %#018lx\n", Task_current->thread->rsp0);
-    Task_current->thread->rsp = Task_current->thread->rsp3 = Task_userStackEnd;
-    Task_current->tss->rsp0 = Task_current->thread->rsp0;
+    Task_current->thread->rsp3 = Task_userStackEnd;
+
+    Task_current->thread->rsp = Task_kernelStackEnd - 0x20;
+    Task_current->tss->rsp0 = Task_current->tss->rsp1 = Task_current->tss->rsp2 = Task_kernelStackEnd;
     Intr_Gate_setTSS(
-        SMP_getCPUInfoPkg(SMP_getCurCPUIndex())->tssTable,
+        SMP_current->tssTable,
         Task_current->tss->rsp0, Task_current->tss->rsp1, Task_current->tss->rsp2, Task_current->tss->ist1, Task_current->tss->ist2,
 		Task_current->tss->ist3, Task_current->tss->ist4, Task_current->tss->ist5, Task_current->tss->ist6, Task_current->tss->ist7);
-	*(u64 *)(Task_current->thread->rsp0 + 0) = (1 << 9);
-	*(u64 *)(Task_current->thread->rsp0 + 8) = (u64)entry;
-	*(u64 *)(Task_current->thread->rsp0 + 16) = Segment_userData;
-	*(u64 *)(Task_current->thread->rsp0 + 24) = Segment_userData;
+	*(u64 *)(Task_current->thread->rsp + 0) = (1 << 9);
+	*(u64 *)(Task_current->thread->rsp + 8) = (u64)entry;
+	*(u64 *)(Task_current->thread->rsp + 16) = Segment_userData;
+	*(u64 *)(Task_current->thread->rsp + 24) = Segment_userData;
     __asm__ volatile (
         "movq %0, %%rsp     \n\t"
         "jmp Syscall_exit	\n\t"
         :
-        : "m"(Task_current->thread->rsp0), "D"(arg)
+        : "m"(Task_current->thread->rsp), "D"(arg)
         : "memory"
     );
 }

@@ -234,8 +234,6 @@ void RBTree_delNode(RBTree *tree, RBNode *node) {
 		node->unionParCol = old->unionParCol;
 		node->left = old->left;
 		setParent(old->left, node);
-
-		if (old == tree->root) tree->root = NULL;
 		goto rebalance;
 	}
 	par = parent(node);

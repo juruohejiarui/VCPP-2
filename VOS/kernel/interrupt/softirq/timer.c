@@ -18,8 +18,10 @@ void Intr_SoftIrq_Timer_initIrq(TimerIrq *irq, u64 expireJiffies, void (*func)(T
 
 void Intr_SoftIrq_Timer_addIrq(TimerIrq *irq) {
 	IO_maskIntrPreffix
-	SpinLock_init(&_lock);
+	SpinLock_lock(&_lock);
+	// printk(BLACK, WHITE, "I");
 	RBTree_insNode(&_timerTree, &irq->rbNode);
+	SpinLock_unlock(&_lock);
 	IO_maskIntrSuffix
 }
 
@@ -44,26 +46,27 @@ int Intr_SoftIrq_Timer_comparator(RBNode *a, RBNode *b) {
 }
 
 void _doTimer(void *data) {
-	// printk(BLACK, WHITE, "Timer (%ld)\t", HW_Timer_HPET_jiffies());
-	IO_maskIntrPreffix
+	IO_cli();
+	SpinLock_lock(&_lock);
 	RBNode *minNode = RBTree_getMin(&_timerTree);
+	SpinLock_unlock(&_lock);
 	TimerIrq *irq;
 	u64 jiffies = HW_Timer_HPET_jiffies();
 	while (minNode != NULL && (irq = container(minNode, TimerIrq, rbNode))->expireJiffies <= jiffies) {
-		RBNode *nxt = RBTree_getNext(&_timerTree, minNode);
-		RBTree_delNode(&_timerTree, minNode);
 		// execute the function
-		if (__prevFlag) IO_sti();
+		RBTree_delNode(&_timerTree, minNode);
 		irq->func(irq, irq->data);
-		if (__prevFlag) IO_cli();
-		
-		minNode = nxt;
+		SpinLock_lock(&_lock);
+		minNode = RBTree_getMin(&_timerTree);
+		SpinLock_unlock(&_lock);
 	}
-	IO_maskIntrSuffix
+	SpinLock_unlock(&_lock);
+	IO_sti();
 }
 
 void Intr_SoftIrq_Timer_init() {
 	_timerIdCnt = 0;
 	RBTree_init(&_timerTree, Intr_SoftIrq_Timer_comparator);
+	SpinLock_init(&_lock);
 	Intr_SoftIrq_register(0, _doTimer, NULL);
 }

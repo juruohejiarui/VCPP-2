@@ -64,10 +64,9 @@ ENTRY(restoreAll)
 retFromException:
 ENTRY(Intr_retFromIntr)
 	callq SMP_getCurCPUIndex
-	movq %rax, %rbx
     movq $-1, %rcx
-    leaq Intr_SoftIrq_state(%rip), %rax
-	testq (%rax, %rbx, 8), %rcx
+    leaq Intr_SoftIrq_state(%rip), %rbx
+	testq (%rbx, %rax, 8), %rcx
     jnz _softirqHandler
     jmp restoreAll
 

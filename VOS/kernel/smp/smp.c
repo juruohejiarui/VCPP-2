@@ -130,10 +130,12 @@ void SMP_init() {
 		while (!(SMP_cpuInfo[i].flags & SMP_CPUInfo_flag_APUInited))
 			IO_hlt();
 	}
+	MM_PageTable_cleanTmpMap();
+	Intr_register(0xc8, NULL, SMP_irq0xc8Handler, 0, NULL, "SMP IPI 0xc8");
 }
 
 void SMP_sendIPI(int cpuId, u32 vector, void *msg) {
-	SpinLock_lock(&SMP_cpuInfo[cpuId].ipiLock);
+	if (vector != SMP_IPI_Type_Schedule) SpinLock_lock(&SMP_cpuInfo[cpuId].ipiLock);
 	APIC_ICRDescriptor icr;
 	*(u64 *)&icr = 0;
 	icr.vector = vector;
@@ -147,10 +149,11 @@ void SMP_sendIPI(int cpuId, u32 vector, void *msg) {
 }
 
 void SMP_sendIPI_all(u32 vector, void *msg) {
-	for (int i = 0; i < SMP_cpuNum; i++) {
-		SpinLock_lock(&SMP_cpuInfo[i].ipiLock);
-		SMP_cpuInfo[i].ipiMsg = msg;
-	}
+	if (vector != SMP_IPI_Type_Schedule) 
+		for (int i = 0; i < SMP_cpuNum; i++) {
+			SpinLock_lock(&SMP_cpuInfo[i].ipiLock);
+			SMP_cpuInfo[i].ipiMsg = msg;
+		}
 	APIC_ICRDescriptor icr;
 	*(u64 *)&icr = 0;
 	icr.vector = vector;
@@ -167,10 +170,10 @@ void SMP_sendIPI_self(u32 vector, void *msg) {
 
 void SMP_sendIPI_allButSelf(u32 vector, void *msg) {
 	int self = SMP_getCurCPUIndex();
-	for (int i = 0; i < SMP_cpuNum; i++) if (i != self) {
-		SpinLock_lock(&SMP_cpuInfo[i].ipiLock);
-		SMP_cpuInfo[i].ipiMsg = msg;
-	}
+		for (int i = 0; i < SMP_cpuNum; i++) if (i != self) {
+			SpinLock_lock(&SMP_cpuInfo[i].ipiLock);
+			SMP_cpuInfo[i].ipiMsg = msg;
+		}
 	APIC_ICRDescriptor icr;
 	*(u64 *)&icr = 0;
 	icr.vector = vector;
@@ -182,8 +185,7 @@ void SMP_sendIPI_allButSelf(u32 vector, void *msg) {
 	IO_writeMSR(0x830, *(u64 *)&icr);
 }
 
-u32 SMP_getCurCPUIndex()
-{
+u32 SMP_getCurCPUIndex() {
 	u32 a, b, c, d;
     HW_CPU_cpuid(0xb, 0, &a, &b, &c, &d);
     return _cvtId(d);

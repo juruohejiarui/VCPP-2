@@ -31,12 +31,12 @@ u64 MM_PageTable_alloc() {
     }
     cacheSize--;
     if (cacheSize < PGTable_minCacheSize) {
-        cachePool[cachePoolSize++] = MM_Buddy_alloc(12, Page_Flag_Active | Page_Flag_Kernel | Page_Flag_KernelShare);
+        cachePool[cachePoolSize++] = MM_Buddy_alloc(11, Page_Flag_Active | Page_Flag_Kernel | Page_Flag_KernelShare);
         if (cachePool[cachePoolSize - 1] == NULL) {
             printk(RED, BLACK, "MM_PageTable_alloc(): fail to allocate a page for page table\n");
             return (u64)NULL;
         }
-        cacheSize += 0x1000;
+        cacheSize += (1 << 11);
     }
 	SpinLock_unlock(&_PageTableLocker);
     IO_maskIntrSuffix
@@ -80,16 +80,20 @@ void MM_PageTable_map2M(u64 cr3, u64 vAddr, u64 pAddr, u64 flag) {
     flushTLB();
 }
 
+void MM_PageTable_cleanTmpMap() {
+    u64 cr3 = getCR3();
+    u64 *pgd = (u64 *)DMAS_phys2Virt(cr3);
+
+    pgd[0] = 0;
+	flushTLB();
+}
+
 void MM_PageTable_init() {
 	SpinLock_init(&_PageTableLocker);
     cachePool[0] = MM_Buddy_alloc(12, Page_Flag_Active | Page_Flag_Kernel | Page_Flag_KernelShare);
     cacheSize = 0x1000, cachePoolSize = 1;
     // unmap the 0-th entry of pgd
-    u64 cr3 = getCR3();
-    u64 *pgd = (u64 *)DMAS_phys2Virt(cr3);
-
-    // pgd[0] = 0;
-	// flushTLB();
+    
 
 	// map all the space not in zones
 	for (int i = 0; i <= memManageStruct.e820Length; i++) {
@@ -125,7 +129,6 @@ void MM_PageTable_map(u64 cr3, u64 vAddr, u64 pAddr, u64 flag) {
 	if (*entry & 0x80) return ;
     entry = (u64 *)DMAS_phys2Virt(*entry & ~0xffful) + _getPldIndex(vAddr);
     *entry = pAddr | flag;
-	flushTLB();
 }
 
 u64 MM_PageTable_getPldEntry(u64 cr3, u64 vAddr) {

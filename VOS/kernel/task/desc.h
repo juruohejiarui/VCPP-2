@@ -29,7 +29,7 @@ extern char* kallsyms_names __attribute__((weak));
 #define Task_userStackEnd       0x00007ffffffffff0ul
 #define Task_kernelStackEnd     0xfffffffffffffff0ul
 #define Task_intrStackEnd	   	0xffffffffffff8000ul
-#define Task_userStackSize      0x0000000001000000ul // 32M
+#define Task_userStackSize      0x0000000000fffff0ul // 32M
 #define Task_kernelStackSize    0x0000000000007ff0ul // 32K
 #define Task_intrStackSize		0x0000000000008000ul // 32K
 #define Task_userBrkStart       0x0000000000100000ul
@@ -57,7 +57,7 @@ typedef struct TaskMemStruct {
 
 typedef struct ThreadStruct {
     u64 rip;
-    u64 rsp0, rsp3, rsp, rbp;
+    u64 rsp3, rsp, rbp;
     u64 fs, gs;
     u64 cr2;
     u64 trapNum;
@@ -115,7 +115,7 @@ typedef struct TaskStruct {
 } __attribute__((packed)) TaskStruct; 
 
 // set the signal handler of current task
-void Task_setSignalHandler(u64 signal, Task_SignalHandler handler, u64 arg);
+void Task_setSignalHandler(TaskStruct *task, u64 signal, Task_SignalHandler handler, u64 arg);
 // set signal to TASK
 void Task_setSignal(TaskStruct *task, u64 signal);
 
