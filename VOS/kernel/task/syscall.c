@@ -98,17 +98,12 @@ void Task_switchToUsr(u64 (*entry)(u64), u64 arg) {
 }
 
 void Task_Syscall_init() {
-	printk(RED, BLACK, "Task_Syscall_init()\n");
     // set IA32_EFER.SCE
     IO_writeMSR(0xC0000080, IO_readMSR(0xC0000080) | 1);
-	printk(GREEN, BLACK, "write 0xC0000080 -> %lx\t", IO_readMSR(0xC0000080));
     // set IA32_STAR
     IO_writeMSR(0xC0000081, ((u64)(0x28 | 3) << 48) | ((u64)0x8 << 32));
-	printk(GREEN, BLACK, "write 0xC0000081 -> %lx\t", IO_readMSR(0xC0000081));
     // set IA32_LSTAR
     IO_writeMSR(0xC0000082, (u64)Syscall_entry);
-	printk(GREEN, BLACK, "write 0xC0000082 -> %lx\t", IO_readMSR(0xC0000082));
     // set IA32_SFMASK
     IO_writeMSR(0xC0000084, (1 << 9));
-	printk(GREEN, BLACK, "write 0xC0000084 -> %lx\n", IO_readMSR(0xC0000084));
 }

@@ -33,6 +33,7 @@ struct CFS_rq {
 	SpinLock lock[Hardware_CPUNumber], killedTreeLock;
 	u64 flags;
 	Atomic killedTaskNum;
+	Atomic recycTskState;
 };
 extern struct CFS_rq Task_cfsStruct;
 extern TimerIrq Task_scheduleTimerIrq;

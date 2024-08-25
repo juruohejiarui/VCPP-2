@@ -30,6 +30,7 @@ static __always_inline__ void _setTimerComparator(u32 id, u32 comparator) {
 IntrHandlerDeclare(HW_Timer_HPET_handler) {
 	// print the counter
 	_jiffies++;
+	// printk(BLACK, WHITE, "H");
 	if (SMP_current->flags & SMP_CPUInfo_flag_InTaskLoop) Intr_SoftIrq_Timer_updateState();
 }
 

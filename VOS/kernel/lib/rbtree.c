@@ -16,32 +16,34 @@ static __always_inline__ void setCol(RBNode *node, int col) {
 }
 
 static void _rotLeft(RBTree *tree, RBNode *node) {
-	RBNode *right = node->right, *par = parent(node);
+	RBNode *right = node->right;
 	if ((node->right = right->left) != NULL) setParent(right->left, node);
 	right->left = node;
-	setParent(right, par);
-	if (par != NULL) {
-		if (node == par->left) par->left = right;
-		else par->right = right;
+	setParent(right, parent(node));
+	if (parent(right) != NULL) {
+		if (node == parent(node)->left) parent(node)->left = right;
+		else parent(node)->right = right;
 	} else tree->root = right;
 	setParent(node, right);
 }
 
 static void _rotRight(RBTree *tree, RBNode *node) {
-	RBNode *left = node->left, *par = parent(node);
+	RBNode *left = node->left;
 	if ((node->left = left->right) != NULL) setParent(left->right, node);
 	left->right = node;
-	setParent(left, par);
-	if (par != NULL) {
-		if (node == par->right) par->right = left;
-		else par->left = left;
+	setParent(left, parent(node));
+	if (parent(node) != NULL) {
+		if (node == parent(node)->right) parent(node)->right = left;
+		else parent(node)->left = left;
 	} else tree->root = left;
 	setParent(node, left);
 }
 
-static void _linkNode(RBNode *node, RBNode *par) {
+static void _linkNode(RBNode **src, RBNode *node, RBNode *par) {
 	node->unionParCol = (u64)par;
+	setRed(node);
 	node->left = node->right = NULL;
+	*src = node;
 }
 
 static void _debug(RBNode *node, int dep) {
@@ -124,21 +126,14 @@ void RBTree_insNode(RBTree *tree, RBNode *node) {
 		SpinLock_unlock(&tree->lock);
 		return ;
 	}
-	RBNode *par = tree->root;
-	while (1) {
-		if (tree->comparator(par, node)) {
-			if (par->right == NULL) {
-				par->right = node;
-				break;
-			} else par = par->right;
-		} else {
-			if (par->left == NULL) {
-				par->left = node;
-				break;
-			} else par = par->left;
-		}
+	RBNode **src = &tree->root, *lst = NULL;
+	while (*src) {
+		lst = *src;
+		if (tree->comparator(node, lst))
+			src = &(*src)->left;
+		else src = &(*src)->right;
 	}
-	_linkNode(node, par);
+	_linkNode(src, node, lst);
 	// rebalance
 	_fixAfterIns(tree, node);
 	SpinLock_unlock(&tree->lock);
@@ -162,14 +157,15 @@ static void _fixAfterDel(RBTree *tree, RBNode *node, RBNode *par) {
 				par = parent(node);
 			} else {
 				if (other->right == NULL || isBlack(other->right)) {
-					setBlack(other->left);
+					register RBNode *o_left;
+					if ((o_left = other->left)) setBlack(o_left);
 					setRed(other);
 					_rotRight(tree, other);
 					other = par->right;
 				}
 				setCol(other, color(par));
 				setBlack(par);
-				setBlack(other->right);
+				if (other->right) setBlack(other->right);
 				_rotLeft(tree, par);
 				node = tree->root;
 				break;
@@ -189,14 +185,14 @@ static void _fixAfterDel(RBTree *tree, RBNode *node, RBNode *par) {
 				par = parent(node);
 			} else {
 				if (other->left == NULL || isBlack(other->left)) {
-					setBlack(other->right);
+					if (other->right) setBlack(other->right);
 					setRed(other);
 					_rotLeft(tree, other);
 					other = par->left;
 				}
 				setCol(other, color(par));
 				setBlack(par);
-				setBlack(other->left);
+				if (other->left) setBlack(other->left);
 				_rotRight(tree, par);
 				node = tree->root;
 				break;
@@ -217,23 +213,25 @@ void RBTree_delNode(RBTree *tree, RBNode *node) {
 		RBNode *old = node, *left;
 		node = node->right;
 		while ((left = node->left) != NULL) node = left;
-		if (parent(old) != NULL) {
-			if (parent(old)->left == old) parent(old)->left = node;
-			else parent(old)->right = node;
-		} else tree->root = node;
 		child = node->right;
 		par = parent(node);
 		col = color(node);
-		if (par == old) par = node;
-		else {
-			if (child != NULL) setParent(child, par);
-			par->left = child;
-			node->right = old->right;
-			setParent(old->right, node);
-		}
+		if (child) setParent(child, par);
+		if (par) {
+			if (par->left == node) par->left = child;
+			else par->right = child;
+		} else tree->root = child;
+		if (parent(node) == old) par = node;
 		node->unionParCol = old->unionParCol;
 		node->left = old->left;
+		node->right = old->right;
+		if (parent(old)) {
+			if (parent(old)->left == old)
+				parent(old)->left = node;
+			else parent(old)->right = node;
+		} else tree->root = node;
 		setParent(old->left, node);
+		if (old->right) setParent(old->right, node);
 		goto rebalance;
 	}
 	par = parent(node);

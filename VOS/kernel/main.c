@@ -54,8 +54,8 @@ void startKernel() {
 
     HW_init();
 
-	SIMD_init();
     SMP_init();
+	SIMD_init();
     
     Task_Syscall_init();
     Task_init();

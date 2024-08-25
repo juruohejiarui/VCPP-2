@@ -52,7 +52,7 @@ typedef struct TaskMemStruct {
     u64 pgdPhyAddr;
     u64 totUsage;
     List pageUsage, kmallocUsage;
-    Page *intrPage, *lstKerPage;
+    Page *intrPage;
 } TaskMemStruct;
 
 typedef struct ThreadStruct {

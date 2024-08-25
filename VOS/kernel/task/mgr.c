@@ -116,6 +116,7 @@ TaskStruct *Task_currentDMAS() {
 void Task_schedule() {
     IO_cli();
 	// printk(BLACK, WHITE, "S");
+	SIMD_setTS();
 	SpinLock *lock;
 	RBTree *cfsTree; 
 	{
@@ -130,21 +131,25 @@ void Task_schedule() {
 
 	SpinLock_lock(lock);
 	// insert this task into the waiting tree
-    if (Task_current->priority == Task_Priority_Killed)
+    if (Task_current->priority == Task_Priority_Killed && !Task_cfsStruct.recycTskState.value) {
+		RBTree_insNode(&Task_cfsStruct.killedTree, &Task_currentDMAS()->wNode);
+		Atomic_inc(&Task_cfsStruct.killedTaskNum);
 		Task_current->flags |= Task_Flag_InKillTree;
-	else RBTree_insNode(cfsTree, &Task_currentDMAS()->wNode);
+	} else RBTree_insNode(cfsTree, &Task_currentDMAS()->wNode);
 	// get the task with least vRuntime
     RBNode *leftMost = RBTree_getMin(cfsTree);
 
     if (leftMost == NULL) {
 		// stay in the loop and wait for a task
 		SpinLock_unlock(lock);
+		SMP_current->flags |= SMP_CPUInfo_flag_WaitTask;
 		while (1) {
 			SpinLock_lock(lock);
 			leftMost = RBTree_getMin(cfsTree);
 			if (leftMost) break;
 			SpinLock_unlock(lock);
 		}
+		SMP_current->flags &= ~SMP_CPUInfo_flag_WaitTask;
 	}
     RBTree_delNode(cfsTree, leftMost);
 	SpinLock_unlock(lock);
@@ -243,7 +248,7 @@ int Task_Timer_comparator(RBNode *a, RBNode *b) {
 #pragma endregion
 
 TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntry)(u64), u64 arg, u64 flag) {
-    u64 pgdPhyAddr = MM_PageTable_alloc(); Page *tskStructPage = MM_Buddy_alloc(0, Page_Flag_Active | Page_Flag_KernelShare);
+    u64 pgdPhyAddr = MM_PageTable_alloc(); Page *tskStructPage = MM_Buddy_alloc(5, Page_Flag_Active | Page_Flag_KernelShare);
     // printk(YELLOW, BLACK, "pgdPhyAddr: %#018lx, tskStructPage: %#018lx\t", pgdPhyAddr, tskStructPage->phyAddr);
 	// contruct basic structures
 	TaskStruct *task = (TaskStruct *)DMAS_phys2Virt(tskStructPage->phyAddr);
@@ -301,31 +306,23 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntr
 
 		memcpy(srcCR3 + 256, (u64 *)DMAS_phys2Virt(pgdPhyAddr) + 256, 255 * sizeof(u64));
         *((u64 *)DMAS_phys2Virt(pgdPhyAddr) + 255) = 0;
-		// set the Task_current
-		MM_PageTable_map(
-				pgdPhyAddr,
-				Task_kernelStackEnd - Task_kernelStackSize, 
-				tskStructPage->phyAddr,
-				MM_PageTable_Flag_Presented | MM_PageTable_Flag_Writable);
 
 		lstPage = task->mem->intrPage = MM_Buddy_alloc(5, Page_Flag_Active | Page_Flag_KernelShare);
 
 		// map the interrupt stack with full present pages
 		for (u64 vAddr = Task_intrStackEnd - Task_intrStackSize; vAddr < Task_intrStackEnd; vAddr += Page_4KSize)
 			MM_PageTable_map(pgdPhyAddr, 
-					vAddr, lstPage->phyAddr + vAddr - (Task_intrStackEnd - Task_intrStackSize), 
+					vAddr, lstPage->phyAddr + (vAddr - (Task_intrStackEnd - Task_intrStackSize)), 
 					MM_PageTable_Flag_Presented | MM_PageTable_Flag_Writable | MM_PageTable_Flag_UserPage);
 
-		// map the kernel stack with one present page
-		lstPage = task->mem->lstKerPage = MM_Buddy_alloc(0, Page_Flag_Active | Page_Flag_KernelShare);
-
-		for (u64 vAddr = Task_kernelStackEnd - 0xff0ul; vAddr > Task_kernelStackEnd - Task_kernelStackSize; vAddr -= Page_4KSize)
+		// map the kernel stack with full present pages
+		for (u64 vAddr = Task_kernelStackEnd - 0xff0ul; vAddr >= Task_kernelStackEnd - Task_kernelStackSize; vAddr -= Page_4KSize)
 			MM_PageTable_map(pgdPhyAddr,
-					vAddr, (vAddr == Task_kernelStackEnd - 0xff0ul ? lstPage->phyAddr : 0), 
-					MM_PageTable_Flag_Writable | (vAddr == Task_kernelStackEnd - 0xff0ul ? MM_PageTable_Flag_Presented : 0));
+					vAddr, tskStructPage->phyAddr + (vAddr - (Task_kernelStackEnd - Task_kernelStackSize)), 
+					MM_PageTable_Flag_Writable | MM_PageTable_Flag_Presented);
 
 		// copy the data into the stack
-		memcpy(&regs, (u64 *)DMAS_phys2Virt(lstPage->phyAddr + Page_4KSize - 16 - sizeof(PtReg)), sizeof(PtReg));
+		memcpy(&regs, (u64 *)DMAS_phys2Virt(tskStructPage->phyAddr + Task_kernelStackSize - sizeof(PtReg)), sizeof(PtReg));
 	}
 
     // initalize the usage information
@@ -338,7 +335,10 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntr
 	RBTree_init(&task->timerTree, Task_Timer_comparator);
 	SpinLock_init(&task->timerTreeLock);
 
-	task->simdRegs = SIMD_allocXsaveArea(0, NULL);
+	task->simdRegs = SIMD_allocXsaveArea(Slab_kmalloc_arg_Clear, NULL);
+	SIMD_kernelAreaStart;
+	SIMD_xsave(task->simdRegs);
+	SIMD_kernelAreaEnd;
 
 	// choose a processor
 	task->cpuId = task->pid % SMP_cpuNum;
@@ -389,12 +389,7 @@ void Task_exit() {
         printk(RED, BLACK, "Task_exit(): task %ld: failed to recycle all the page frame, remain %ld pages.\n", Task_current->pid, Task_current->mem->totUsage);
         while (1) IO_hlt();
     }
-    SpinLock_lock(&Task_cfsStruct.killedTreeLock);
-    TaskStruct *dmasPtr = (TaskStruct *)DMAS_phys2Virt(MM_PageTable_getPldEntry(getCR3(), (u64)Task_current) & ~0xfff);
-    RBTree_insNode(&Task_cfsStruct.killedTree, &dmasPtr->wNode);
-	Atomic_inc(&Task_cfsStruct.killedTaskNum);
-	printk(WHITE, BLACK, "Task_exit(): %d\n", Task_current->pid);
-    SpinLock_unlock(&Task_cfsStruct.killedTreeLock);
+	// printk(WHITE, BLACK, "Task_exit(): %d\n", Task_current->pid);
 	Task_current->priority = Task_Priority_Killed;
 
     while (1) IO_hlt();
@@ -404,27 +399,26 @@ u64 Task_recycleThread(u64 (*usrEntry)(u64), u64 arg) {
     Task_kernelEntryHeader();
     while (1) {
 		while (Task_cfsStruct.killedTaskNum.value == 0) IO_hlt();
-        SpinLock_lock(&Task_cfsStruct.killedTreeLock);
+		Atomic_inc(&Task_cfsStruct.recycTskState);
         RBNode *rMost = RBTree_getMax(&Task_cfsStruct.killedTree);
         if (rMost != NULL) {
 			TaskStruct *tsk = container(rMost, TaskStruct, wNode);
 			if (!(tsk->flags & Task_Flag_InKillTree)) {
-				SpinLock_unlock(&Task_cfsStruct.killedTreeLock);
+				Atomic_dec(&Task_cfsStruct.recycTskState);
 				IO_hlt();
 				continue;
 			}
             RBTree_delNode(&Task_cfsStruct.killedTree, rMost);
 			Atomic_dec(&Task_cfsStruct.killedTaskNum);
-            SpinLock_unlock(&Task_cfsStruct.killedTreeLock);
+			Atomic_dec(&Task_cfsStruct.recycTskState);
             printk(BLACK, WHITE, "recycle task %d at %#018lx\n", tsk->pid, tsk);
             MM_Buddy_free(tsk->mem->intrPage);
-            MM_Buddy_free(tsk->mem->lstKerPage);
             MM_PageTable_cleanMap(tsk->mem->pgdPhyAddr);
 			kfree(tsk->simdRegs, 0); 
             // free the page of the task structure
             Page *tskPage = memManageStruct.pages + (DMAS_virt2Phys(tsk) >> Page_4KShift);
             MM_Buddy_free(tskPage);
-        }
+        } else Atomic_dec(&Task_cfsStruct.recycTskState);
 		IO_hlt();
     }
     Task_kernelThreadExit(0);
@@ -443,4 +437,5 @@ void Task_initMgr() {
 
 	Task_cfsStruct.flags = 1;
 	Task_cfsStruct.killedTaskNum.value = 0;
+	Task_cfsStruct.recycTskState.value = 0;
 }

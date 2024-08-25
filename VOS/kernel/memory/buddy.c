@@ -138,8 +138,8 @@ Page *MM_Buddy_alloc(u64 log2Size, u64 attr) {
 	SpinLock_lock(&_BuddyLocker);
     if (log2Size > Buddy_maxOrder) {
 		printk(RED, BLACK, "MM_Buddy_alloc: request too large(log2Size:%ld)\n", log2Size);
-		IO_maskIntrSuffix
 		SpinLock_unlock(&_BuddyLocker);
+		IO_maskIntrSuffix
 		return NULL;
 	}
     for (int ord = log2Size; ord <= Buddy_maxOrder; ord++) {

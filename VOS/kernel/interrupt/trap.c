@@ -142,6 +142,7 @@ void doUndefinedOpcode(u64 rsp, u64 errorCode) {
 	u64 *p = NULL;
 	p = (u64 *)(rsp + 0x98);
 	printk(RED,BLACK,"do_undefined_opcode(6),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",errorCode , rsp , *p);
+	printk(WHITE, BLACK, "processor : %d\n", SMP_getCurCPUIndex());
 	while(1);
 }
 
@@ -149,6 +150,8 @@ void doDevNotAvailable(u64 rsp, u64 errorCode) {
 	u64 *p = NULL;
 	p = (u64 *)(rsp + 0x98);
 	if (SMP_current->flags & SMP_CPUInfo_flag_InTaskLoop) {
+		// printk(RED,BLACK,"do_device_not_available(7),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",errorCode , rsp , *p);
+		SIMD_clrTS();
 		SIMD_switchToCur();
 	} else {
 		printk(RED,BLACK,"do_device_not_available(7),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",errorCode , rsp , *p);
@@ -274,6 +277,7 @@ u64 doPageFault(u64 rsp, u64 errorCode) {
 		Page *page = MM_Buddy_alloc(0, Page_Flag_Active);
 		// printk(WHITE, BLACK, " Task %d allocate one page %#018lx->%#018lx\n", Task_current->pid, page->phyAddr, cr2 & ~0xffful);
 		MM_PageTable_map(getCR3(), cr2 & ~0xffful, page->phyAddr, pldEntry | MM_PageTable_Flag_Presented);
+		
 	} else if (pldEntry & ~0xffful) {
 		// has been presented, fault because of the old TLB
 		// printk(BLACK, WHITE, "[Trap]");
@@ -340,7 +344,12 @@ void doSIMDError(u64 rsp, u64 errorCode) {
 	u64 *p = NULL;
 	p = (u64 *)(rsp + 0x98);
 	printk(RED,BLACK,"do_simd_error(19),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx\n",errorCode , rsp , *p);
-	while(1);
+	printk(WHITE, BLACK, "task %ld on processor %d\n", Task_current->pid, SMP_getCurCPUIndex());
+	u32 mxcsr = SIMD_getMXCSR();
+	printk(WHITE, BLACK, "mxcsr:%#010x\t", mxcsr);
+	mxcsr &= ~((1ul << 6) - 1);
+	SIMD_setMXCSR(mxcsr);
+	while(1) IO_hlt();
 }
 
 void doVirtualizationError(u64 rsp, u64 errorCode) {

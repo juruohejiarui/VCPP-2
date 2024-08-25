@@ -63,6 +63,7 @@ typedef struct MADTDescriptor {
 
 #define SMP_CPUInfo_flag_InTaskLoop (1 << 0)
 #define SMP_CPUInfo_flag_APUInited	(1 << 1)
+#define SMP_CPUInfo_flag_WaitTask	(1 << 2)
 
 typedef struct SMP_CPUInfoPkg {
 	// the topo index of this processor

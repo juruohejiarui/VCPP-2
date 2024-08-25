@@ -1,4 +1,5 @@
 #include "../includes/smp.h"
+#include "../includes/simd.h"
 #include "../includes/log.h"
 
 void startSMP() {
@@ -64,6 +65,8 @@ void startSMP() {
 		SpinLock_unlock(&Task_cfsStruct.lock[idx]);
 	}
 	SpinLock_unlock(&Task_cfsStruct.lock[idx]);
+	SIMD_enable();
+	SIMD_setTS();
 	Task_switch_init(NULL, task);
 	while (1) IO_hlt();
 }

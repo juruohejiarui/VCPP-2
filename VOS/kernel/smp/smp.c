@@ -135,6 +135,7 @@ void SMP_init() {
 }
 
 void SMP_sendIPI(int cpuId, u32 vector, void *msg) {
+	if (!(SMP_cpuInfo[cpuId].flags & SMP_CPUInfo_flag_WaitTask)) return ;
 	if (vector != SMP_IPI_Type_Schedule) SpinLock_lock(&SMP_cpuInfo[cpuId].ipiLock);
 	APIC_ICRDescriptor icr;
 	*(u64 *)&icr = 0;
@@ -150,7 +151,7 @@ void SMP_sendIPI(int cpuId, u32 vector, void *msg) {
 
 void SMP_sendIPI_all(u32 vector, void *msg) {
 	if (vector != SMP_IPI_Type_Schedule) 
-		for (int i = 0; i < SMP_cpuNum; i++) {
+		for (int i = 0; i < SMP_cpuNum; i++) if (!(SMP_cpuInfo[i].flags & SMP_CPUInfo_flag_WaitTask)) {
 			SpinLock_lock(&SMP_cpuInfo[i].ipiLock);
 			SMP_cpuInfo[i].ipiMsg = msg;
 		}
@@ -170,7 +171,7 @@ void SMP_sendIPI_self(u32 vector, void *msg) {
 
 void SMP_sendIPI_allButSelf(u32 vector, void *msg) {
 	int self = SMP_getCurCPUIndex();
-		for (int i = 0; i < SMP_cpuNum; i++) if (i != self) {
+		for (int i = 0; i < SMP_cpuNum; i++) if (i != self && !(SMP_cpuInfo[i].flags & SMP_CPUInfo_flag_WaitTask)) {
 			SpinLock_lock(&SMP_cpuInfo[i].ipiLock);
 			SMP_cpuInfo[i].ipiMsg = msg;
 		}
