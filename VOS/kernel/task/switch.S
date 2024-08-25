@@ -13,7 +13,7 @@ ThreadStruct_rsp	= 0x10
 Task_kernelStackEnd = 0xfffffffffffffff0
 
 
-TaskMemStruct_pgdPhyAddr = 0x08
+TaskMemStruct_pgdPhyAddr = 0x00
 /* Task_switch(TaskStruct *next) */
 ENTRY(Task_switch)
 	pushq %rbp
@@ -24,9 +24,7 @@ ENTRY(Task_switch)
 	movq %rsp, ThreadStruct_rsp(%rbx)
 	leaq Task_switch_back(%rip), %rax
 	movq %rax, ThreadStruct_rip(%rbx)
-	movq %cr3, %rax
 	movq TaskStruct_mem(%rcx), %rbx
-	movq %rax, TaskMemStruct_pgdPhyAddr(%rbx)
 	pushq %rcx
 	pushq %rdi
 	movq %rdi, %rsi

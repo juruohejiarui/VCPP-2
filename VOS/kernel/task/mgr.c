@@ -3,16 +3,7 @@
 #include "../includes/smp.h"
 #include "desc.h"
 
-extern void Task_kernelThreadEntry();
-extern void restoreAll();
-
 int Task_pidCounter;
-
-void Task_checkPtRegInStack(u64 rsp) {
-    printk(WHITE, BLACK, "rsp: %#018lx, cr3 = %#018lx, rflags = %#018lx\n", rsp, getCR3(), IO_getRflags());
-    for (int i = 0; i < sizeof(PtReg) / sizeof(u64); i++)
-        printk(WHITE, BLACK, "rsp+%#04x: %#018lx%c", i * 8, *(u64 *)(rsp + i * 8), (i + 1) % 8 == 0 ? '\n' : ' ');
-}
 
 #define Task_initTask(task) \
 { \
@@ -58,8 +49,17 @@ ThreadStruct Init_thread = {
 TSS Init_TSS[Hardware_CPUNumber] = { [0 ... Hardware_CPUNumber - 1] = Task_initTSS(0xffff800000007c00) };
 TaskMemStruct Init_mm = {0};
 
+extern u8 Init_stack[32768];
+
 TaskStruct Init_taskStruct = Task_initTask(NULL);
 TaskStruct *Init_tasks[Hardware_CPUNumber] = { &Init_taskStruct, 0 };
+
+#pragma region scheduler
+
+i64 _weight[50] = { 1, 2, 3, 4, 5, 6, [6 ... 49] = -1 };
+
+struct CFS_rq Task_cfsStruct;
+TimerIrq Task_scheduleTimerIrq;
 
 void Task_switchTo_inner(TaskStruct *prev, TaskStruct *next) {
     // set TS flag of cr0
@@ -81,13 +81,6 @@ void Task_switchTo_inner(TaskStruct *prev, TaskStruct *next) {
     __asm__ volatile ( "movq %0, %%fs \n\t" : : "a"(next->thread->fs));
     __asm__ volatile ( "movq %0, %%gs \n\t" : : "a"(next->thread->gs));
 }
-
-#pragma region scheduler
-
-i64 _weight[50] = { 1, 2, 3, 4, 5, 6, [6 ... 49] = -1 };
-
-struct CFS_rq Task_cfsStruct;
-TimerIrq Task_scheduleTimerIrq;
 
 void Task_updateCurState() {
 	Task_current->vRunTime += _weight[Task_current->priority];
@@ -160,8 +153,6 @@ void Task_schedule() {
 
 #pragma endregion
 
-extern u8 Init_stack[32768];
-
 #pragma region Signal
 
 void Task_defaultSignalHandler(u64 signal) {
@@ -180,8 +171,7 @@ void Task_defaultSignalHandler(u64 signal) {
 
 void Task_setSignal(TaskStruct *task, u64 signal) { task->signal |= (1 << signal); }
 
-void Task_setSignalHandler(TaskStruct *task, u64 signal, Task_SignalHandler handler, u64 arg) {
-	task->signalHandlerArg[signal] = arg;
+void Task_setSignalHandler(TaskStruct *task, u64 signal, Task_SignalHandler handler) {
 	task->signalHandler[signal] = handler;
 }
 
@@ -202,14 +192,10 @@ void Task_SysSignal_Timer(u64 signal, void *arg) {
 }
 
 void Task_setSysSignalHandler(TaskStruct *task) {
-	Task_setSignalHandler(task, Task_Signal_Timer, (Task_SignalHandler)Task_SysSignal_Timer, 0);
+	Task_setSignalHandler(task, Task_Signal_Timer, (Task_SignalHandler)Task_SysSignal_Timer);
 }
 
 #pragma endregion
-
-void Task_saveSIMDReg(TaskStruct *task) {
-	SIMD_xsave(task->simdRegs);
-}
 
 #pragma region Task Timer
 
@@ -247,7 +233,16 @@ int Task_Timer_comparator(RBNode *a, RBNode *b) {
 }
 #pragma endregion
 
-TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntry)(u64), u64 arg, u64 flag) {
+extern void init(u64 (*usrEntry)(void *, u64 arg), void *argPtr);
+
+static void *_argWrap(void *arg1, u64 arg2) {
+	u64 *argPkg = kmalloc(sizeof(u64) * 2, 0, NULL);
+	argPkg[0] = (u64)arg1;
+	argPkg[1] = arg2;
+	return argPkg;
+}
+
+TaskStruct *Task_createTask(Task_Entry entry, void *arg1, u64 arg2, u64 flag) {
     u64 pgdPhyAddr = MM_PageTable_alloc(); Page *tskStructPage = MM_Buddy_alloc(5, Page_Flag_Active | Page_Flag_KernelShare);
     // printk(YELLOW, BLACK, "pgdPhyAddr: %#018lx, tskStructPage: %#018lx\t", pgdPhyAddr, tskStructPage->phyAddr);
 	// contruct basic structures
@@ -265,7 +260,6 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntr
     task->vRunTime = 0;
     task->pid = Task_pidCounter++;
 	// printk(WHITE, BLACK, "pid:%ld ", task->pid);
-    task->mem->pgd = DMAS_phys2Virt(pgdPhyAddr);
     task->mem->pgdPhyAddr = pgdPhyAddr;
 	task->state = Task_State_Uninterruptible;
 
@@ -286,17 +280,25 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntr
     thread->rsp3 = Task_userStackEnd;
 	thread->fs = thread->gs = Segment_kernelData;
 
+	// prepare the first 
     PtReg regs;
     memset(&regs, 0, sizeof(PtReg));
     regs.rflags = (1 << 9);
-    regs.rdi = (u64)usrEntry;
-	regs.rsi = arg;
     regs.cs = Segment_kernelCode;
     regs.ds = Segment_kernelData;
 	regs.es = Segment_kernelData;
 	regs.ss = Segment_kernelData;
-	regs.rip = (u64)kernelEntry;
 	regs.rsp = Task_kernelStackEnd;
+
+	if (flag & Task_Flag_Kernel) {
+		regs.rip = (u64)entry;
+		regs.rdi = (u64)arg1;
+		regs.rsi = arg2;
+	} else {
+		regs.rip = (u64)init;
+		regs.rdi = (u64)entry;
+		regs.rsi = (u64)_argWrap(arg1, arg2);
+	}
 
 	// construct page table and stack
     {
@@ -332,9 +334,11 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntr
 	// set the signal handler
 	Task_setSysSignalHandler(task);
 
+	// set the timer tree
 	RBTree_init(&task->timerTree, Task_Timer_comparator);
 	SpinLock_init(&task->timerTreeLock);
 
+	// initialize the simd structure
 	task->simdRegs = SIMD_allocXsaveArea(Slab_kmalloc_arg_Clear, NULL);
 	SIMD_kernelAreaStart;
 	SIMD_xsave(task->simdRegs);
@@ -343,6 +347,7 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntr
 	// choose a processor
 	task->cpuId = task->pid % SMP_cpuNum;
 
+	// insert the task into the cfs struct
     if (task->pid > 0) {
 		int isCurCPU = (task->cpuId == SMP_getCurCPUIndex());
 		if (isCurCPU) IO_cli();
@@ -351,7 +356,6 @@ TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntr
 		SpinLock_unlock(&Task_cfsStruct.lock[task->cpuId]);
 		if (isCurCPU) IO_sti();
 	}
-	// printk(WHITE, BLACK, "finish creating...\n");
     return task;
 }
 
@@ -360,8 +364,6 @@ int Task_getRing() {
     __asm__ volatile ("movq %%cs, %0" : "=a"(cs));
     return cs & 3;
 }
-
-void Task_stopSleep() { Task_current->state = Task_State_Sleeping; }
 
 __always_inline__ void Task_kernelEntryHeader() {
 	SMP_current->flags |= SMP_CPUInfo_flag_InTaskLoop;
@@ -395,7 +397,7 @@ void Task_exit() {
     while (1) IO_hlt();
 }
 
-u64 Task_recycleThread(u64 (*usrEntry)(u64), u64 arg) {
+void Task_recycleThread(void *arg1, u64 arg2) {
     Task_kernelEntryHeader();
     while (1) {
 		while (Task_cfsStruct.killedTaskNum.value == 0) IO_hlt();

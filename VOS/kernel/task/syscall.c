@@ -74,7 +74,7 @@ u64 Task_Syscall_usrAPI(u64 index, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 a
 }
 
 
-void Task_switchToUsr(u64 (*entry)(u64), u64 arg) {
+void Task_switchToUsr(u64 (*entry)(void *, u64), void *arg1, u64 arg2) {
 	IO_cli();
     Task_current->thread->rsp3 = Task_userStackEnd;
 
@@ -92,7 +92,7 @@ void Task_switchToUsr(u64 (*entry)(u64), u64 arg) {
         "movq %0, %%rsp     \n\t"
         "jmp Syscall_exit	\n\t"
         :
-        : "m"(Task_current->thread->rsp), "D"(arg)
+        : "m"(Task_current->thread->rsp), "D"(arg1), "S"(arg2)
         : "memory"
     );
 }

@@ -35,7 +35,7 @@ void Intr_SoftIrq_dispatch() {
 			if (*signal & (1ul << i)) {
 				// when the task handle the signal by the custom handler, then this signal is treated as "handled"
 				if (Task_current->signalHandler[i])
-					Task_current->signalHandler[i](i, Task_current->signalHandlerArg[i]);
+					Task_current->signalHandler[i](i);
 				// using the default signal handler means this signal is "not handled"
 				else Task_defaultSignalHandler(i);
 				*signal &= ~(1ul << i);

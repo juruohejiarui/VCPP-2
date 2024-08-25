@@ -3,6 +3,7 @@
 
 #include "lib.h"
 #include "hardware.h"
+#include "task.h"
 
 typedef struct MADTDescriptor {
 	ACPIHeader header;
@@ -70,7 +71,7 @@ typedef struct SMP_CPUInfoPkg {
 	u32 cpuId;
 	u32 trIdx;
 	u64 *initStk;
-	struct TaskStruct *simdRegDomain;
+	TaskStruct *simdRegDomain;
 	u32 *tssTable;
 	u64 flags;
 	SpinLock ipiLock;

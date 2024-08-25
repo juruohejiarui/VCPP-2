@@ -48,7 +48,6 @@ typedef struct Task_KmallocUsage {
 } Task_KmallocUsage;
 
 typedef struct TaskMemStruct {
-    PageTable *pgd;
     u64 pgdPhyAddr;
     u64 totUsage;
     List pageUsage, kmallocUsage;
@@ -65,7 +64,7 @@ typedef struct ThreadStruct {
     u64 rflags;
 } ThreadStruct;
 
-typedef void (*Task_SignalHandler)(u64 signal, u64 arg);
+typedef void (*Task_SignalHandler)(u64 signal);
 
 #define Task_signalNum 64
 enum Task_Signal {
@@ -87,10 +86,6 @@ typedef struct Task_Timer {
 	RBNode wNode;
 } Task_Timer;
 
-void Task_Timer_init(Task_Timer *timer, u64 jiffies);
-int Task_Timer_modJiffies(Task_Timer *timer, u64 jiffies);
-int Task_Timer_add(Task_Timer *timer);
-
 typedef struct TaskStruct {
     List listEle;
     volatile i64 state;	
@@ -109,21 +104,14 @@ typedef struct TaskStruct {
 	RBNode wNode;
 
 	Task_SignalHandler signalHandler[Task_signalNum];
-	u64 signalHandlerArg[Task_signalNum];
 
     SIMD_XsaveArea *simdRegs;
 } __attribute__((packed)) TaskStruct; 
-
-// set the signal handler of current task
-void Task_setSignalHandler(TaskStruct *task, u64 signal, Task_SignalHandler handler, u64 arg);
-// set signal to TASK
-void Task_setSignal(TaskStruct *task, u64 signal);
 
 union TaskUnion {
     TaskStruct task;
     u64 stk[Init_taskStackSize / sizeof(u64)];
 } __attribute__((aligned (8)));
 
-void Task_init();
-
+typedef void (*Task_Entry)(void *arg1, u64 arg2);
 #endif

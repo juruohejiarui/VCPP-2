@@ -4,6 +4,29 @@
 #include "../includes/interrupt.h"
 #include "../includes/hardware.h"
 
+struct CFS_rq {
+    RBTree tree[Hardware_CPUNumber], killedTree;
+	SpinLock lock[Hardware_CPUNumber], killedTreeLock;
+	u64 flags;
+	Atomic killedTaskNum;
+	Atomic recycTskState;
+};
+extern struct CFS_rq Task_cfsStruct;
+
+extern TSS Init_TSS[Hardware_CPUNumber];
+extern TaskStruct Init_taskStruct;
+
+extern int Task_pidCounter;
+
+#pragma region scheduler
+extern TimerIrq Task_scheduleTimerIrq;
+
+void Task_updateCurState();
+
+void Task_scheduleTimerHandler(TimerIrq *timer, void *arg);
+
+void Task_schedule();
+
 #define Task_switch_init(prev, next) \
 	do { \
 		__asm__ volatile ( \
@@ -12,7 +35,7 @@
 			"movq 0x0(%%r8), %%rbx	\n\t" \
 			"movq 0x10(%%r8), %%rdx	\n\t" \
 			"movq 0x48(%%r8), %%rcx	\n\t" \
-			"movq 0x8(%%r9), %%rax 	\n\t" \
+			"movq 0x0(%%r9), %%rax 	\n\t" \
 			"movq %%rax, %%cr3		\n\t" \
 			"mfence					\n\t" \
 			"movq %%rdx, %%rsp		\n\t" \
@@ -26,25 +49,6 @@
 		); \
 	} while (0)
 
-void Task_checkPtRegInStack(u64 rsp);
-
-struct CFS_rq {
-    RBTree tree[Hardware_CPUNumber], killedTree;
-	SpinLock lock[Hardware_CPUNumber], killedTreeLock;
-	u64 flags;
-	Atomic killedTaskNum;
-	Atomic recycTskState;
-};
-extern struct CFS_rq Task_cfsStruct;
-extern TimerIrq Task_scheduleTimerIrq;
-
-void Task_updateCurState();
-
-extern TSS Init_TSS[Hardware_CPUNumber];
-extern TaskStruct Init_taskStruct;
-
-extern int Task_pidCounter;
-
 void Task_switch(TaskStruct *next);
 
 // the current task
@@ -52,29 +56,48 @@ void Task_switch(TaskStruct *next);
 
 TaskStruct *Task_currentDMAS();
 
-
 void Task_exit();
 
-void Task_scheduleTimerHandler(TimerIrq *timer, void *arg);
+TaskStruct *Task_createTask(Task_Entry entry, void *arg1, u64 arg2, u64 flag);
 
-void Task_schedule();
+void Task_recycleThread(void *arg1, u64 arg2);
 
+#pragma region Signal
+/// @brief the default signal handler for all types of signal
 void Task_defaultSignalHandler(u64 signal);
 
-u64 Task_recycleThread(u64 (*usrEntry)(u64), u64 arg);
+/// @brief set the signal handler of current task
+void Task_setSignalHandler(TaskStruct *task, u64 signal, Task_SignalHandler handler);
+/// @brief set signal to TASK
+void Task_setSignal(TaskStruct *task, u64 signal);
 
-TaskStruct *Task_createTask(u64 (*kernelEntry)(u64 (*)(u64), u64), u64 (*usrEntry)(u64), u64 arg, u64 flag);
+#pragma endregion
 
-#define Task_countDown() ((--Task_current->counter) == 0)
+#pragma region Task Timer
+// initialize a timer with JIFFIES
+void Task_Timer_init(Task_Timer *timer, u64 jiffies);
+/// @brief modify the timer with JIFFIES
+/// @return 0: normal and modify successfully
+/// @return 1: this timer has been enabled; 
+/// @return -1: this timer is in timer queue and can't be modified
+int Task_Timer_modJiffies(Task_Timer *timer, u64 jiffies);
+/// @brief add the timer into the timer queue
+/// @return 0: successfully
+/// @return -1: this timer is already in timer queue and can't be added twice 
+int Task_Timer_add(Task_Timer *timer);
+#pragma endregion
 
 int Task_getRing();
 
-int Task_sleep();
+/// @brief the general entry for every task
+extern void Task_kernelThreadEntry();
 
-void Task_stopSleep();
-
+/// @brief the header for all the kernel entries
 void Task_kernelEntryHeader();
 
+/// @brief jmp to Task_exit() and wait for being recycling with a return value
+/// @param retVal the return val
+/// @return
 static __always_inline__ void Task_kernelThreadExit(int retVal) {
 	__asm__ volatile(
 		// switch task to intr Task
@@ -89,5 +112,6 @@ static __always_inline__ void Task_kernelThreadExit(int retVal) {
 }
 
 void Task_initMgr();
+void Task_init();
 
 #endif

@@ -1,5 +1,4 @@
 #include "desc.h"
-#include "syscall.h"
 #include "mgr.h"
 #include "../includes/hardware.h"
 #include "../includes/interrupt.h"
@@ -11,7 +10,7 @@ extern void Intr_retFromIntr();
 
 extern u8 Init_stack[32768] __attribute__((__section__ (".data.Init_stack") ));
 
-u64 Task_keyboardEvent(u64 (*usrEntry)(u64), u64 arg) {
+void Task_keyboardEvent(void *arg1, u64 arg2) {
 	Task_kernelEntryHeader();
 	printk(WHITE, BLACK, "Keyboard Event monitor is running...\n");
 	for (KeyboardEvent *kpEvent; ; ) {
@@ -29,7 +28,7 @@ u64 Task_keyboardEvent(u64 (*usrEntry)(u64), u64 arg) {
 	Task_kernelThreadExit(0);
 }
 
-u64 task_empty(u64 (*usrEntry)(u64), u64 arg) {
+void task_empty(void *arg1, u64 arg2) {
 	Task_kernelEntryHeader();
 	Page *page = NULL;
 	for (int i = 0; i < Task_current->pid % 4; i++)
@@ -37,28 +36,30 @@ u64 task_empty(u64 (*usrEntry)(u64), u64 arg) {
 	Task_kernelThreadExit(1);
 }
 
-u64 init(u64 (*usrEntry)(u64), u64 arg) {
+void init(u64 (*usrEntry)(void *, u64), u64 *argPtr) {
 	Task_kernelEntryHeader();
-    Task_switchToUsr(usrEntry, Task_current->pid << 32 | arg);
+	void *arg1 = (void *)argPtr[0];
+	u64 arg2 = argPtr[1];
+	kfree(argPtr, 0);
+    Task_switchToUsr(usrEntry, arg1, arg2);
     Task_kernelThreadExit(0);
 }
 
 void recur(int dep) {
 	if (dep < Page_4KSize) recur(dep + 1);
 }
-u64 usrInit(u64 arg) {
-	arg >>= 32;
+void usrInit(void *arg1, u64 arg2) {
     // printk(WHITE, BLACK, "User level task is running, arg = %ld\n", arg);
     while (1) {
 		Task_Syscall_usrAPI(2, 1000, 0, 0, 0, 0, 0);
-		if (arg % 5 == 0) recur(0);
-		else printk(WHITE, BLACK, "user task %2d\t", arg);
-		float i = arg / 17.0;
+		if (arg2 % 5 == 0) recur(0);
+		else printk(WHITE, BLACK, "user task %2d\t", arg2);
+		float i = arg2 / 17.0;
 		// IO_hlt();
 	}
 }
 
-u64 task0(u64 (*usrEntry)(u64), u64 arg) {
+void task0(void *arg1, u64 arg2) {
 	Task_kernelEntryHeader();
 	Intr_SoftIrq_Timer_initIrq(&Task_scheduleTimerIrq, 1, Task_scheduleTimerHandler, NULL);
 	Intr_SoftIrq_Timer_addIrq(&Task_scheduleTimerIrq);
@@ -68,7 +69,7 @@ u64 task0(u64 (*usrEntry)(u64), u64 arg) {
 	TaskStruct *kbTask = Task_createTask(Task_keyboardEvent, NULL, 0, Task_Flag_Inner | Task_Flag_Kernel);
 	// for (List *list = HW_USB_XHCI_mgrList.next; list != &HW_USB_XHCI_mgrList; list = list->next)
 		// Task_createTask(HW_USB_XHCI_mainThread, NULL, (u64)container(list, USB_XHCIController, listEle), Task_Flag_Inner | Task_Flag_Kernel);
-	for (int i = 0; i < 40; i++) Task_createTask(init, usrInit, i, Task_Flag_Inner);
+	for (int i = 0; i < 40; i++) Task_createTask(usrInit, NULL, i, Task_Flag_Inner);
 	for (int i = 0; i < 20; i++) Task_createTask(task_empty, NULL, 0, Task_Flag_Inner | Task_Flag_Kernel);
 	while (1) IO_hlt();
 	Task_kernelThreadExit(0);
