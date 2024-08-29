@@ -73,6 +73,11 @@ typedef struct SMP_CPUInfoPkg {
 	u64 *initStk;
 	TaskStruct *simdRegDomain;
 	u32 *tssTable;
+	u16 reserved;
+	u16 idtTblSize;
+	IDTItem *idtTable;
+	u64 intrMsk[4];
+	IntrDescriptor *intrDesc[0x40];
 	u64 flags;
 	SpinLock ipiLock;
 	void *ipiMsg;
@@ -102,4 +107,14 @@ void startSMP();
 u32 SMP_getCurCPUIndex();
 
 SMP_CPUInfoPkg *SMP_getCPUInfoPkg(u32 idx);
+
+void SMP_maskIntr(int cpuId, u8 vecSt, u8 vecNum);
+
+/// @brief test whether the vector in range [vecSt, vecSt + vecNum - 1] are all unmasked
+/// @return -1: if all the vectors are unmasked, return the first maksed vector otherwise.
+int SMP_testIntr(int cpuId, u8 vecSt, u8 vecNum);
+
+// Select a CPU and assign consecutive NUM interrupt vectors
+// if there is not enough vector, then this allocation will be canceled and *cpuId == -1
+void SMP_allocIntrVec(int num, int *cpuId, u8 *vecSt);
 #endif

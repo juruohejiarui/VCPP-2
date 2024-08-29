@@ -21,4 +21,5 @@ system_tmp: $(ALLOBJS)
 	gcc -c ../Tools/kallsyms.S -o ../Tools/kallsyms.o
 
 clear:
-	rm -R ./*.s ./*/*.s $(ALLOBJS) system kernel.bin
+	rm -R system system_tmp kernel.bin
+	python3 clear.py

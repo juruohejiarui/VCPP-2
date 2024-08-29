@@ -12,17 +12,17 @@ void HW_USB_init() {
     List *pcieListHeader = HW_PCIe_getMgrList();
     for (List *pcieListEle = pcieListHeader->next; pcieListEle != pcieListHeader; pcieListEle = pcieListEle->next) {
         PCIeManager *mgrStruct = container(pcieListEle, PCIeManager, listEle);
-        if (mgrStruct->device->classCode != 0x0c || mgrStruct->device->subclass != 0x03)
+        if (mgrStruct->cfg->classCode != 0x0c || mgrStruct->cfg->subclass != 0x03)
             continue;
-        switch (mgrStruct->device->progIF) {
+        switch (mgrStruct->cfg->progIF) {
             case 0x20:
-                HW_USB_EHCI_init(mgrStruct->device);
+                HW_USB_EHCI_init(mgrStruct->cfg);
                 break;
             case 0x30:
-                HW_USB_XHCI_init(mgrStruct->device);
+                HW_USB_XHCI_init(mgrStruct);
                 break;
             default:
-                HW_USB_UHCI_init(mgrStruct->device);
+                HW_USB_UHCI_init(mgrStruct->cfg);
                 break;
         }
     }

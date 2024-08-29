@@ -9,49 +9,7 @@
 
 extern void restoreAll();
 
-#define saveAll \
-    "pushq %rax     \n\t" \
-    "pushq %rax     \n\t" \
-    "movq %es, %rax \n\t" \
-    "pushq %rax     \n\t" \
-    "movq %ds, %rax \n\t" \
-    "pushq %rax     \n\t" \
-    "xorq %rax, %rax\n\t" \
-    "pushq %rbp     \n\t" \
-    "pushq %rdi     \n\t" \
-    "pushq %rsi     \n\t" \
-    "pushq %rdx     \n\t" \
-    "pushq %rcx     \n\t" \
-    "pushq %rbx     \n\t" \
-    "pushq %r8      \n\t" \
-    "pushq %r9      \n\t" \
-    "pushq %r10     \n\t" \
-    "pushq %r11     \n\t" \
-    "pushq %r12     \n\t" \
-    "pushq %r13     \n\t" \
-    "pushq %r14     \n\t" \
-    "pushq %r15     \n\t" \
-    "movq $0x10, %rdx\n\t" \
-    "movq %rdx, %ss \n\t" \
-    "movq %rdx, %ds \n\t" \
-    "movq %rdx, %es \n\t" \
-
-#define irqName2(num) num##Interrupt(void)
-#define irqName(num) irqName2(irq##num)
-
-#define buildIrq(num)   \
-void irqName(num);      \
-__asm__ ( \
-    SYMBOL_NAME_STR(irq)#num"Interrupt: \n\t" \
-    "cli       			\n\t" \
-    "pushq $0   		\n\t" \
-    saveAll \
-    "movq %rsp, %rdi        \n\t" \
-    "movq $"#num", %rsi     \n\t" \
-    "leaq Intr_irqdispatch(%rip), %rax 	\n\t" \
-	"callq *%rax			\n\t" \
-    "jmp Intr_retFromIntr   \n\t" \
-); \
+#define buildIrq(x) Intr_buildIrq(irq, x, Intr_irqdispatch)
 
 buildIrq(0x20)
 buildIrq(0x21)
@@ -103,7 +61,7 @@ void (*smpIntrList[10])(void) = {
     irq0xcaInterrupt, irq0xcbInterrupt,
     irq0xccInterrupt, irq0xcdInterrupt,
     irq0xceInterrupt, irq0xcfInterrupt,
-    irq0xd0Interrupt, irq0xd1Interrupt  
+    irq0xd0Interrupt, irq0xd1Interrupt
 };
 
 IntrHandlerDeclare(Intr_noHandler) {

@@ -35,6 +35,10 @@ void Intr_SoftIrq_Timer_updateState() {
 
 // the most simple one
 void Intr_SoftIrq_Timer_mdelay(u64 msec) {
+	if (!(IO_getRflags() & (1 << 9))) {
+		printk(WHITE, BLACK, "HPET: interrupt is masked, can not execute mdelay()\n.");
+		return ;
+	}
 	u64 stJiffies = HW_Timer_HPET_jiffies();
 	while (HW_Timer_HPET_jiffies() - stJiffies < msec) IO_hlt();
 }

@@ -14,5 +14,8 @@ void HW_init() {
     HW_APIC_init();
     HW_Timer_init();
     HW_Keyboard_init();
-    // HW_USB_init();
+}
+
+void HW_initAdvance() {
+	HW_USB_init();
 }

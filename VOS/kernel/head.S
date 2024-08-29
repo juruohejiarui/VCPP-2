@@ -18,8 +18,6 @@ ENTRY(_start)
     movq %rax, %cr3
 
     lgdt gdtPointer(%rip)
-    
-    lidt idtPointer(%rip)
 
     // set all the segment register to kernel data 64-bit
     mov $0x10, %ax
@@ -32,23 +30,26 @@ ENTRY(_start)
     movq $0x1b, %rcx
     rdmsr
     bt $8, %rax
-    jnc setSmpTmpStk
+    jnc setSMPInfo
 
     movq stkPtr(%rip), %rsp
+	lidt idtPointer(%rip)
     jmp setSmpTmpStkEnd
 
-setSmpTmpStk:
+setSMPInfo:
     movq $0xb, %rax
     xorq %rcx, %rcx
     cpuid
     leaq SMP_cpuInfo(%rip), %rax
-setSmpTmpStk_LoopStart:
+setSMPInfo_LoopStart:
     cmpl (%rax), %edx
-    jz setSmpTmpStk_LoopEnd
-    addq $56, %rax
-    jmp setSmpTmpStk_LoopStart
-setSmpTmpStk_LoopEnd:
+    jz setSMPInfo_LoopEnd
+    addq $612, %rax
+    jmp setSMPInfo_LoopStart
+setSMPInfo_LoopEnd:
     movq 0x8(%rax), %rsi
+	// set idt pointer
+	lidt 0x22(%rax)
     addq $32768, %rsi
     movq %rsi, %rsp
 setSmpTmpStkEnd:

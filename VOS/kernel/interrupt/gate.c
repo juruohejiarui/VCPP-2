@@ -1,4 +1,5 @@
 #include "gate.h"
+#include "../includes/smp.h"
 
 #define setGate(idtAddr, attr, istIndex, codeAddr) \
     do { \
@@ -33,6 +34,10 @@
 
 void Intr_Gate_setIntr(u64 idtIndex, u8 istIndex, void *codeAddr) {
     setGate(idtTable + idtIndex, 0x8E, istIndex, codeAddr);
+}
+
+void Intr_Gate_setSMPIntr(int cpuId, u64 idtIndex, u8 istIndex, void *codeAddr) {
+	setGate(SMP_getCPUInfoPkg(cpuId)->idtTable + idtIndex, 0x8E, istIndex, codeAddr);
 }
 
 void Intr_Gate_setTrap(u64 idtIndex, u8 istIndex, void *codeAddr) {

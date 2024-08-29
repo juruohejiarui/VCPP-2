@@ -26,22 +26,34 @@ static u32 _cvtId(u32 topoIdx) {
 }
 
 u32 SMP_registerCPU(u32 topoIdx) {
+	if (SMP_cpuNum > 0 && !topoIdx) return (u32)-1;
     SpinLock_lock(&_lock);
 	SMP_CPUInfoPkg *pkg = &SMP_cpuInfo[SMP_cpuNum++];
 	pkg->cpuId = topoIdx;
     SpinLock_unlock(&_lock);
 	SpinLock_init(&pkg->ipiLock);
     // is BSP
-    if (SMP_cpuNum == 1)
+    if (SMP_cpuNum == 1) {
         pkg->tssTable = tss64Table;
-    else {
+		pkg->idtTblSize = 512;
+		pkg->idtTable = idtTable;
+		// mask the traps and interrupts
+		SMP_maskIntr(0, 0, 0x40);
+		SMP_maskIntr(0, 0xC0, 0x40);
+		// for each processor, there are 64 spare vectors for pci and other purposes. from 0x40 to 0x7f
+		
+    } else {
 		u32 trIdx = trIdxCnt;
 		trIdxCnt += 2;
         pkg->tssTable = kmalloc(128, Slab_kmalloc_arg_Clear, NULL);
         pkg->trIdx = trIdx;
 		pkg->initStk = kmalloc(Init_taskStackSize, 0, NULL);
+		pkg->idtTblSize = 512 * 8;
+		pkg->idtTable = kmalloc(512 * 8, Slab_kmalloc_arg_Clear, NULL);
+		memcpy(idtTable, pkg->idtTable, 512 * 8);
+		memcpy(SMP_cpuInfo[0].intrMsk, pkg->intrMsk, sizeof(u64) * 4);
 		Intr_Gate_setTSSDesc(pkg->trIdx, pkg->tssTable);
-    }
+    } 
     return SMP_cpuNum - 1;
 }
 
@@ -67,7 +79,9 @@ static int _parseMADT() {
 				offset += sizeof(u8) * 2 + sizeof(struct MADTEntry_Type0);
 				// register this processor
 				int idx = SMP_registerCPU(entry->ct.type0.apicID);
-				printk(WHITE, BLACK, "idx:%d pkg:%#018lx cpuId:%#018lx stack: %#018lx\n", idx, &SMP_cpuInfo[idx], SMP_cpuInfo[idx].cpuId, SMP_cpuInfo[idx].initStk);
+				if (idx != -1) {
+					printk(WHITE, BLACK, "idx:%d pkg:%#018lx cpuId:%#018lx stack: %#018lx\n", idx, &SMP_cpuInfo[idx], SMP_cpuInfo[idx].cpuId, SMP_cpuInfo[idx].initStk);
+				}
 				break;
 			case 9 :
 				printk(WHITE, BLACK, "Type9: x2apic:%d apicId:%d\n", entry->ct.type9.x2apicID, entry->ct.type9.apicID);
@@ -194,3 +208,32 @@ u32 SMP_getCurCPUIndex() {
 
 SMP_CPUInfoPkg *SMP_getCPUInfoPkg(u32 idx) { return &SMP_cpuInfo[idx]; }
 
+void SMP_maskIntr(int cpuId, u8 vecSt, u8 vecNum) {
+	u64 *mask = SMP_cpuInfo[cpuId].intrMsk;
+	for (int i = vecSt; i < vecSt + vecNum; i++)
+		mask[i / 64] |= (1ul << (i % 64));
+}
+
+int SMP_testIntr(int cpuId, u8 vecSt, u8 vecNum) {
+	u64 *mask = SMP_cpuInfo[cpuId].intrMsk;
+	for (int i = vecSt; i < vecSt + vecNum; i++)
+		if (mask[i / 64] & (1ul << (i % 64))) return i; 
+	return -1;
+}
+
+void SMP_allocIntrVec(int num, int *cpuId, u8 *vecSt) {
+	for (int i = 0; i < SMP_cpuNum; i++) {
+		for (int st = 0, err; st + num - 1 <= 0xff; st++)
+			if ((err = SMP_testIntr(i, st, num)) == -1) {
+				SMP_maskIntr(i, st, num);
+				*cpuId = i, *vecSt = st;
+				return ;
+			} else st = err;
+	}
+	*cpuId = -1;
+}
+
+void SMP_freeIntrVec(int cpuId, int vecSt, int vecNum) {
+	u64 *mask = SMP_cpuInfo[cpuId].intrMsk;
+	for (int i = vecSt; i < vecSt + vecNum; i++) mask[i / 64] &= ~(1ul << (i % 64));
+}

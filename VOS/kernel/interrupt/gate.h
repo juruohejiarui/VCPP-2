@@ -13,6 +13,7 @@ extern u32 tss64Table[26];
 void Intr_Gate_loadTR(u16 n);
 
 void Intr_Gate_setIntr(u64 idtIndex, u8 istIndex, void *codeAddr);
+void Intr_Gate_setSMPIntr(int cpuId, u64 idtIndex, u8 istIndex, void *codeAddr);
 void Intr_Gate_setTrap(u64 idtIndex, u8 istIndex, void *codeAddr);
 void Intr_Gate_setSystem(u64 idtIndex, u8 istIndex, void *codeAddr);
 void Intr_Gate_setSysIntr(u64 idtIndex, u8 istIndex, void *codeAddr);

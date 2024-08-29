@@ -9,5 +9,6 @@
 #include "../hardware/USB.h"
 
 void HW_init();
+void HW_initAdvance();
 
 #endif
