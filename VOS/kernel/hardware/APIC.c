@@ -192,6 +192,7 @@ void HW_APIC_uninstall(u8 intrId) {
 }
 
 void HW_APIC_edgeAck(u8 irqId) {
+	// write the EOI register to annouce that the interrupt has been handled
     __asm__ volatile (
         "movq $0x00, %%rdx  	\n\t" \
         "movq $0x00, %%rax  	\n\t" \

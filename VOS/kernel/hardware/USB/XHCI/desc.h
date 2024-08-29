@@ -59,7 +59,7 @@ typedef struct XHCI_EveRing {
 	u32 cycBit;
 } XHCI_EveRing;
 
-#define XHCI_Ring_maxSize (Page_4KSize / sizeof(XHCI_GenerTRB))
+#define XHCI_Ring_maxSize (Page_4KSize * 16 / sizeof(XHCI_GenerTRB))
 
 #define XHCI_Request_Flag_IsCommand	(1 << 0)
 #define XHCI_Request_Flag_IsInRing	(1 << 1)
@@ -107,6 +107,8 @@ typedef struct XHCI_Host {
 	PCIe_MSI_Descriptor *msiDesc;
 
 	XHCI_DevCtx **devCtx;
+
+	
 } XHCI_Host;
 
 #define XHCI_CapReg_capLen 0x0

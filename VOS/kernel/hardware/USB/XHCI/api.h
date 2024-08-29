@@ -72,6 +72,9 @@ static __always_inline__ void HW_USB_XHCI_writeOpReg(XHCI_Host *host, u32 offset
 static __always_inline__ u32 HW_USB_XHCI_readOpReg(XHCI_Host *host, u32 offset) {
 	return HW_USB_XHCI_readDword(host->opRegAddr + offset);
 }
+static __always_inline__ void HW_USB_XHCI_writeOpRegQuad(XHCI_Host *host, u32 offset, u64 val) {
+	HW_USB_XHCI_writeQuad(host->opRegAddr + offset, val);
+}
 
 // set the device context base address array pointer of the operation register set
 static __always_inline__ void HW_USB_XHCI_writeDCBAAP(XHCI_Host *host, u64 addr) {
@@ -93,10 +96,14 @@ static __always_inline__ void HW_USB_XHCI_writeIntrDword(XHCI_Host *host, u32 in
 	HW_USB_XHCI_writeDword(host->rtRegAddr + 0x20 + intrId * 0x20 + offset, val);
 }
 static __always_inline__ u64 HW_USB_XHCI_readIntrQuad(XHCI_Host *host, u32 intrId, u32 offset) {
-	return HW_USB_XHCI_readQuad(host->rtRegAddr + 0x20 + (intrId) * 0x20 + offset);
+	return HW_USB_XHCI_readQuad(host->rtRegAddr + 0x20 + intrId * 0x20 + offset);
 }
 static __always_inline__ void HW_USB_XHCI_writeIntrQuad(XHCI_Host *host, u32 intrId, u32 offset, u64 val) {
 	HW_USB_XHCI_writeQuad(host->rtRegAddr + 0x20 + intrId * 0x20 + offset, val);
+}
+
+static __always_inline__ void HW_USB_XCHI_writeDbReg(XHCI_Host *host, u32 slotId, u32 epId, u32 taskId) {
+	HW_USB_XHCI_writeDword(host->dbRegAddr + slotId * 0x4, epId | (taskId << 16));
 }
 
 #define HW_USB_XHCI_CapReg_hcsParam(host, id) \
@@ -121,8 +128,6 @@ int HW_USB_XHCI_reset(XHCI_Host *host);
 
 void HW_USB_XHCI_waiForHostIsReady(XHCI_Host *host);
 
-void HW_USB_XHCI_init(PCIeManager *pci);
-
 // allocate a ring (transfer ring/command ring) with SIZE trbs
 XHCI_Ring *HW_USB_XHCI_allocRing(u64 size);
 
@@ -141,6 +146,15 @@ void HW_USB_XHCI_freeReq(XHCI_Request *req);
 /// @return 1: success 0: failed because the ring is full
 int HW_USB_XHCI_Ring_tryInsReq(XHCI_Ring *ring, XHCI_Request *req);
 
+int HW_USB_XHCI_EveRing_getNxt(XHCI_EveRing *ring, XHCI_GenerTRB **trb);
+
 IntrHandlerDeclare(HW_USB_XHCI_msiHandler);
+
+void HW_USB_XHCI_init(PCIeManager *pci);
+
+void HW_USB_XHCI_evehandleTask(XHCI_Host *host, u64 intrId) {
+
+}
+void HW_USB_XHCI_test(XHCI_Host *host);
 
 #endif

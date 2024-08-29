@@ -6,10 +6,6 @@
 
 List HW_USB_XHCI_hostList;
 
-IntrHandlerDeclare(XHCI_intrHandler) {
-
-}
-
 void HW_USB_XHCI_init(PCIeManager *pci) {
 	// check the capability list
 	if (!(pci->cfg->status & (1 << 4))) {
@@ -37,9 +33,23 @@ void HW_USB_XHCI_init(PCIeManager *pci) {
 	host->dbRegAddr = host->capRegAddr + HW_USB_XHCI_CapReg_dbOffset(host);
 	printk(WHITE, BLACK, "XHCI: %#018lx: maxSlot:%d maxIntr:%d maxPort:%d maxScrSz:%d\n", 
 		host, HW_USB_XHCI_maxSlot(host), HW_USB_XHCI_maxIntr(host), HW_USB_XHCI_maxPort(host), HW_USB_XHCI_maxScrSz(host));
+	printk(WHITE, BLACK, "\tcapReg:%#018lx opReg:%#018lx rtReg:%#018lx dbReg:%#018lx\n", 
+		host->capRegAddr, host->opRegAddr, host->rtRegAddr, host->dbRegAddr);
 	if (!(HW_USB_XHCI_readOpReg(host, XHCI_OpReg_pgSize) & 0x1)) {
 		printk(RED, BLACK, "XHCI: %#018lx: no support for 4K page\n", host);
 		kfree(host, 0);
+		return ;
+	}
+	// stop the host
+	HW_USB_XHCI_writeOpReg(host, XHCI_OpReg_cmd, HW_USB_XHCI_readOpReg(host, XHCI_OpReg_cmd) & ~1u);
+	int timeout = 30;
+	do {
+		if (HW_USB_XHCI_readOpReg(host, XHCI_OpReg_status) & (1 << 0)) break;
+		Intr_SoftIrq_Timer_mdelay(1);
+		timeout--;
+	} while (timeout > 0);
+	if (!(HW_USB_XHCI_readOpReg(host, XHCI_OpReg_status) & (1 << 0))) {
+		printk(RED, BLACK, "XHCI: %#018lx: failed to stop.\n", host);
 		return ;
 	}
 	// reset the host
@@ -51,22 +61,24 @@ void HW_USB_XHCI_init(PCIeManager *pci) {
 	HW_USB_XHCI_waiForHostIsReady(host);
 
 	// set max slot field of config register
-	HW_USB_XHCI_writeOpReg(host, XHCI_OpReg_cfg, HW_USB_XHCI_readOpReg(host, XHCI_OpReg_cfg) | HW_USB_XHCI_maxSlot(host));
+	HW_USB_XHCI_writeOpReg(host, XHCI_OpReg_cfg, 
+		(HW_USB_XHCI_readOpReg(host, XHCI_OpReg_cfg) & ((1ul << 10) - 1)) | (1ul << 8) | HW_USB_XHCI_maxSlot(host));
 
 	// allocate the device context base address array
-	u64 *dcbaa = kmalloc(0x1000, Slab_kmalloc_arg_Clear, NULL);
+	u64 *dcbaa = kmalloc(2048, Slab_kmalloc_arg_Clear, NULL);
 	HW_USB_XHCI_writeDCBAAP(host, DMAS_virt2Phys(dcbaa));
 
 	// allocate the scratchpad array and items
 	{
-		int maxScrSz = HW_USB_XHCI_maxScrSz(host);
-		u64 *scrArray = kmalloc(sizeof(u64) * maxScrSz, Slab_kmalloc_arg_Clear, NULL);
+		int maxScrSz = max(64, HW_USB_XHCI_maxScrSz(host));
+		u64 *scrArray = kmalloc(0x1000, Slab_kmalloc_arg_Clear, NULL);
 		for (int i = 0; i < maxScrSz; i++)
 			scrArray[i] = DMAS_virt2Phys(kmalloc(0x1000, 0, NULL));
 		dcbaa[0] = DMAS_virt2Phys(scrArray);
 	}
 	// allocate device context and set dcbaa items
 	host->devCtx = kmalloc(sizeof(XHCI_DevCtx *) * (HW_USB_XHCI_maxSlot(host) + 1), Slab_kmalloc_arg_Clear, NULL);
+	host->devCtx[0] = (XHCI_DevCtx *)DMAS_phys2Virt(dcbaa[0]);
 	for (int i = HW_USB_XHCI_maxSlot(host); i > 0; i--) {
 		host->devCtx[i] = kmalloc(0x1000, Slab_kmalloc_arg_Clear, NULL);
 		dcbaa[i] = DMAS_virt2Phys(host->devCtx[i]);
@@ -119,6 +131,9 @@ void HW_USB_XHCI_init(PCIeManager *pci) {
 			}
 		}
 	}
+	// configure the ports
+	for (int i = HW_USB_XHCI_maxPort(host); i > 0; i--)
+		HW_USB_XHCI_writePortReg(host, i, XHCI_PortReg_sc, (1 << 9) | (1 << 25) | (1 << 26) | (1 << 27));
 
 	// allocate a command ring
 	host->cmdRing = HW_USB_XHCI_allocRing(XHCI_Ring_maxSize);
@@ -129,28 +144,23 @@ void HW_USB_XHCI_init(PCIeManager *pci) {
 		HW_USB_XHCI_TRB_setToggle(trb, 1);
 		HW_USB_XHCI_TRB_setData(trb, DMAS_virt2Phys(host->cmdRing));
 	}
-	// set the CRCR register
-	HW_USB_XHCI_writeOpReg(host, XHCI_OpReg_crCtrl, DMAS_virt2Phys(host->cmdRing->ring) | 1);
-	printk(WHITE, BLACK, "XHCI: %#018lx: command ring control: %#018lx\n", host, DMAS_virt2Phys(host->cmdRing->ring) | 1);
-	HW_USB_XHCI_writeOpReg(host, XHCI_OpReg_dnCtrl, (1 << 1));
+	// set the device notification register
+	HW_USB_XHCI_writeOpReg(host, XHCI_OpReg_dnCtrl, (1 << 1) | (HW_USB_XHCI_readOpReg(host, XHCI_OpReg_dnCtrl) & ~0xffffu));
 
 	// allocate a event ring array
 	host->eveRing = HW_USB_XHCI_allocEveRing(4, XHCI_Ring_maxSize);
-	// make the event ring table, be
-	u64 *eveRingTbl = kmalloc(sizeof(u64 *) * 8, Slab_kmalloc_arg_Clear, NULL);
+	// make the event ring table
+	u64 *eveRingTbl = kmalloc(max(64, sizeof(u64 *) * 8), Slab_kmalloc_arg_Clear, NULL);
 	for (int i = 0; i < 4; i++)
 		eveRingTbl[(i << 1) + 0] = DMAS_virt2Phys(host->eveRing->rings[i]),
 		eveRingTbl[(i << 1) + 1] = XHCI_Ring_maxSize;
-	HW_USB_XHCI_writeIntrDword(host, 0, XHCI_IntrReg_IMan, (1 << 1) | (1 << 0));
-	HW_USB_XHCI_writeIntrDword(host, 0, XHCI_IntrReg_IMod, 0);
-	HW_USB_XHCI_writeIntrDword(host, 0, XHCI_IntrReg_TblSize, 4);
-	HW_USB_XHCI_writeIntrDword(host, 0, XHCI_IntrReg_DeqPtr, 
+	HW_USB_XHCI_writeIntrDword(host, 0, XHCI_IntrReg_IMan, (1 << 1) | (1 << 0) | (HW_USB_XHCI_readIntrDword(host, 0, XHCI_IntrReg_IMan) | ~0x3u));
+	HW_USB_XHCI_writeIntrDword(host, 0, XHCI_IntrReg_IMod, 4);
+	HW_USB_XHCI_writeIntrDword(host, 0, XHCI_IntrReg_TblSize, 4 | (HW_USB_XHCI_readIntrDword(host, 0, XHCI_IntrReg_TblSize) & ~0xffffu));
+	HW_USB_XHCI_writeIntrQuad(host, 0, XHCI_IntrReg_DeqPtr, 
 		DMAS_virt2Phys(&host->eveRing->rings[host->eveRing->curRingId][host->eveRing->curPos]) | (1ul << 3));
-	HW_USB_XHCI_writeIntrDword(host, 0, XHCI_IntrReg_TblAddr, DMAS_virt2Phys(eveRingTbl));
+	HW_USB_XHCI_writeIntrQuad(host, 0, XHCI_IntrReg_TblAddr, DMAS_virt2Phys(eveRingTbl) | (HW_USB_XHCI_readIntrQuad(host, 0, XHCI_IntrReg_TblAddr) & 0x3f));
 
-	// configure the ports
-	for (int i = HW_USB_XHCI_maxPort(host); i > 0; i--)
-		HW_USB_XHCI_writePortReg(host, i, XHCI_PortReg_sc, (1 << 9) | (1 << 25) | (1 << 26) | (1 << 27));
 	// register MSI register
 	int cpuId; u8 vecSt;
 	int vecNum = (1 << ((host->msiCapDesc->msgCtrl >> 1) & 0x7));
@@ -161,7 +171,7 @@ void HW_USB_XHCI_init(PCIeManager *pci) {
 	}
 	printk(WHITE, BLACK, "XHCI: %#018lx: msiCtrl:%#06x -> get interrupt vector: %#04x~%#04x on processor %d\n", host, host->msiCapDesc->msgCtrl, vecSt, vecSt + vecNum - 1, cpuId);
 	HW_PCIe_MSI_setMsgAddr(host->msiCapDesc, SMP_getCPUInfoPkg(cpuId)->cpuId, 0, HW_APIC_DestMode_Physical);
-	HW_PCIe_MSI_setMsgData(host->msiCapDesc, vecSt, HW_APIC_DeliveryMode_Fixed, HW_APIC_Level_Deassert, HW_APIC_TriggerMode_Edge);
+	HW_PCIe_MSI_setMsgData(host->msiCapDesc, vecSt, HW_APIC_DeliveryMode_Fixed, HW_APIC_Level_Assert, HW_APIC_TriggerMode_Edge);
 	// allocate the MSI interrupt descriptor
 	host->msiDesc = kmalloc(sizeof(PCIe_MSI_Descriptor) * vecNum, Slab_kmalloc_arg_Clear, NULL);
 	for (int i = 0; i < vecNum; i++) {
@@ -170,9 +180,43 @@ void HW_USB_XHCI_init(PCIeManager *pci) {
 		HW_PCIe_MSI_initDesc(&host->msiDesc[i], cpuId, vecSt + i, HW_USB_XHCI_msiHandler, (u64)host | i);
 		HW_PCIe_MSI_setIntr(&host->msiDesc[i]);
 	}
+	// disable the INTx
+	pci->cfg->command |= (1 << 10);
+	// disable mask
+	if (host->msiCapDesc->msgCtrl & (1 << 8)) host->msiCapDesc->mask = 0;
 	// enable the interrupt
 	host->msiCapDesc->msgCtrl |= (1 << 0);
+	// set crcr registers
+	HW_USB_XHCI_writeOpRegQuad(host, XHCI_OpReg_crCtrl, DMAS_virt2Phys(host->cmdRing->ring) | 1);
 	// restart the host
-	HW_USB_XHCI_writeOpReg(host, XHCI_OpReg_cmd, (1 << 0));
-	printk(WHITE, BLACK, "XHCI: %#018lx: finish initialization.\n", host);
+	HW_USB_XHCI_writeOpReg(host, XHCI_OpReg_cmd, (1 << 0) | (1 << 2) | (1 << 3));
+
+	printk(WHITE, BLACK, "XHCI: %#018lx: command ring control: %#018lx\n", host, DMAS_virt2Phys(host->cmdRing->ring) | 1);
+
+	printk(WHITE, BLACK, "XHCI: %#018lx: finish initialization. host cmd:%#010x\n", host, HW_USB_XHCI_readOpReg(host, XHCI_OpReg_cmd));
+}
+
+IntrHandlerDeclare(HW_USB_XHCI_msiHandler) {
+	XHCI_Host *host = (XHCI_Host *)(arg & ~0x40);
+	int intrId = arg & 0x40;
+	printk(WHITE, BLACK, "XHCI: %#018lx: interrupt %d\n", host, intrId);
+	HW_USB_XHCI_writeOpReg(host, XHCI_OpReg_status, (1 << 3));
+	for (int i = HW_USB_XHCI_maxIntr(host) - 1; i >= 0; i--) {
+		// check if this interrupt is enabled
+		if (!(HW_USB_XHCI_readIntrDword(host, i, XHCI_IntrReg_IMan) & 2)) continue;
+		// check if the event handler busy bit of DepPtr is set
+		if (!(HW_USB_XHCI_readIntrQuad(host, i, XHCI_IntrReg_DeqPtr) & (1 << 3))) continue;
+		// clear the busy bit
+		printk(WHITE, BLACK, "interrupt %d busy\n", i);
+		XHCI_GenerTRB *trb;
+		while (HW_USB_XHCI_EveRing_getNxt(host->eveRing, &trb)) {
+			printk(WHITE, BLACK, "\tEvent %#018lx: data:%#018lx status:%#010x ctrl:%#010x\n", trb, *(u64 *)&trb->data1, trb->status, trb->ctrl);
+		}
+		// write the dequeue pointer
+		HW_USB_XHCI_writeIntrQuad(host, i, XHCI_IntrReg_DeqPtr, DMAS_virt2Phys(trb) | (1 << 3));
+		printk(WHITE, BLACK, "\tdepPtr:%#018lx", HW_USB_XHCI_readIntrQuad(host, i, XHCI_IntrReg_DeqPtr));
+	}
+}
+
+void HW_USB_XHCI_test(XHCI_Host *host) {
 }

@@ -29,6 +29,7 @@ u32 SMP_registerCPU(u32 topoIdx) {
 	if (SMP_cpuNum > 0 && !topoIdx) return (u32)-1;
     SpinLock_lock(&_lock);
 	SMP_CPUInfoPkg *pkg = &SMP_cpuInfo[SMP_cpuNum++];
+	memset(pkg, 0, sizeof(SMP_CPUInfoPkg));
 	pkg->cpuId = topoIdx;
     SpinLock_unlock(&_lock);
 	SpinLock_init(&pkg->ipiLock);
@@ -39,7 +40,7 @@ u32 SMP_registerCPU(u32 topoIdx) {
 		pkg->idtTable = idtTable;
 		// mask the traps and interrupts
 		SMP_maskIntr(0, 0, 0x40);
-		SMP_maskIntr(0, 0xC0, 0x40);
+		SMP_maskIntr(0, 0x80, 0x80);
 		// for each processor, there are 64 spare vectors for pci and other purposes. from 0x40 to 0x7f
 		
     } else {

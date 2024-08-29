@@ -10,7 +10,17 @@ u64 HW_USB_XHCI_readQuad(u64 addr) {
 	return HW_USB_XHCI_readDword(addr) | (((u64)HW_USB_XHCI_readDword(addr + 0x4)) << 32);
 }
 
-u32 HW_USB_XHCI_readDword(u64 addr) { return *(u32 *)addr; }
+u32 HW_USB_XHCI_readDword(u64 addr) { 
+	u32 val;
+	__asm__ volatile (
+		"movl (%1), %0	\n\t"
+		"mfence			\n\t"
+		: "=b"(val)
+		: "a"(addr)
+		: "memory"
+	);
+	return val;
+ }
 
 u16 HW_USB_XHCI_readWord(u64 addr) {
 	u32 data = HW_USB_XHCI_readDword(addr & ~0x3);
@@ -24,11 +34,17 @@ u8 HW_USB_XHCI_readByte(u64 addr) {
 
 void HW_USB_XHCI_writeQuad(u64 addr, u64 val) {
 	HW_USB_XHCI_writeDword(addr, val & ((1ul << 32) - 1));
-	HW_USB_XHCI_writeDword(addr, (val >> 32) & ((1ul << 32) - 1));
+	HW_USB_XHCI_writeDword(addr + 0x4, (val >> 32) & ((1ul << 32) - 1));
 }
 
 void HW_USB_XHCI_writeDword(u64 addr, u32 val) {
-	*(u32 *)addr = val;
+	__asm__ volatile (
+		"movl %0, (%1)		\n\t"
+		"mfence				\n\t"
+		:
+		: "a"(val), "b"(addr)
+		: "memory"
+	);
 }
 
 void HW_USB_XHCI_writeWord(u64 addr, u16 val) {
@@ -158,14 +174,23 @@ int HW_USB_XHCI_Ring_tryInsReq(XHCI_Ring *ring, XHCI_Request *req) {
 			ring->reqSrc[pos[i]] = req;
 			reqP++;
 		}
-		HW_USB_XHCI_TRB_setCycBit(trb, cyc[pos[i]]);
+		HW_USB_XHCI_TRB_setCycBit(trb, cyc[i]);
+		printk(ORANGE, BLACK, "%#018lx cyc:%d\n", trb, cyc[i]);
 	}
 	SpinLock_unlock(&ring->lock);
 	return 1;
 }
 
-IntrHandlerDeclare(HW_USB_XHCI_msiHandler) {
-	XHCI_Host *host = (XHCI_Host *)(arg & ~0x40);
-	int intrId = arg & 0x40;
-	printk(WHITE, BLACK, "XHCI: %#018lx: interrupt %d\n", host, intrId);
+int HW_USB_XHCI_EveRing_getNxt(XHCI_EveRing *ring, XHCI_GenerTRB **trb) {
+	XHCI_GenerTRB *tmp = &ring->rings[ring->curRingId][ring->curPos];
+	if (HW_USB_XHCI_TRB_getCycBit(tmp) != ring->cycBit) return 0;
+	*trb = tmp;
+	if ((++ring->curPos) == ring->ringSize) {
+		if ((++ring->curRingId) == ring->ringNum) {
+			ring->curRingId = 0;
+			ring->cycBit ^= 1;
+		}
+		ring->curPos = 0;
+	}
+	return 1;
 }

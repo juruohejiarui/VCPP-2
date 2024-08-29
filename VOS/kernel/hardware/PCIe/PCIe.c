@@ -86,11 +86,13 @@ void HW_PCIe_init() {
             _chkBus(_desc->structs[i].address, bus);
         
     }
+	memset(&_MSI_defaultController, 0, sizeof(IntrController));
 	_MSI_defaultController.ack = HW_APIC_edgeAck;
 }
 
 void HW_PCIe_MSI_dispatcher(u64 rsp, u64 irqId) {
 	SMP_CPUInfoPkg *pkg = SMP_current;
+	printk(WHITE, BLACK, "MSI interrupt:%d\n", irqId);
 	if (!pkg->intrDesc[irqId - 0x40]) { printk(WHITE, BLACK, "No handler for pci irq %#04x\n", irqId); return ; }
 	PCIe_MSI_Descriptor *desc = container(pkg->intrDesc[irqId - 0x40], PCIe_MSI_Descriptor, intrDesc);
 	desc->intrDesc.handler(desc->intrDesc.param, (PtReg *)rsp);
@@ -143,9 +145,9 @@ void HW_PCIe_MSI_setIntr(PCIe_MSI_Descriptor *desc) {
 }
 
 void HW_PCIe_MSI_setMsgAddr(PCIe_MSICapability *msi, u32 apicId, int redirect, int destMode) {
-	msi->msgAddr = 0xfee00000 | (apicId << 12) | (redirect << 3) | (destMode << 1);
+	msi->msgAddr = 0xfee00000u | (apicId << 12) | (redirect << 3) | (destMode << 1);
 }
 
-void HW_PCIe_MSI_setMsgData(PCIe_MSICapability *msi, int vec, int deliverMode, int level, int triggerMode) {
-	msi->msgCtrl = vec | (deliverMode << 8) | (level << 14) | (triggerMode << 15);
+void HW_PCIe_MSI_setMsgData(PCIe_MSICapability *msi, u32 vec, u32 deliverMode, u32 level, u32 triggerMode) {
+	msi->msgData = vec | (deliverMode << 8) | (level << 14) | (triggerMode << 15);
 }
