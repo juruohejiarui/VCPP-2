@@ -128,6 +128,8 @@ void HW_PCIe_init();
 
 void HW_PCIe_MSI_initDesc(PCIe_MSI_Descriptor *desc, int cpuId, int irqId, IntrHandler handler, u64 param);
 void HW_PCIe_MSI_setIntr(PCIe_MSI_Descriptor *desc);
+void HW_PCIe_MSI_maskIntr(PCIe_MSICapability *cap, int intrId);
+void HW_PCIe_MSI_unmaskIntr(PCIe_MSICapability *cap, int intrId);
 
 void HW_PCIe_MSI_setMsgAddr(PCIe_MSICapability *msi, u32 apicId, int redirect, int destMode);
 void HW_PCIe_MSI_setMsgData(PCIe_MSICapability *msi, u32 vec, u32 deliverMode, u32 level, u32 triggerMode);

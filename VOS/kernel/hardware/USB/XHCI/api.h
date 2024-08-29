@@ -64,7 +64,6 @@ static __always_inline__ u32 HW_USB_XHCI_CapReg_dbOffset(XHCI_Host *host) {
 	return HW_USB_XHCI_readDword(host->capRegAddr + XHCI_CapReg_dbOff) & ~0x03u;
 }
 
-
 static __always_inline__ void HW_USB_XHCI_writeOpReg(XHCI_Host *host, u32 offset, u32 val) {
 	HW_USB_XHCI_writeDword(host->opRegAddr + offset, val);
 }
@@ -89,6 +88,10 @@ static __always_inline__ void HW_USB_XHCI_writePortReg(XHCI_Host *host, int port
 static __always_inline__ u32 HW_USB_XHCI_readPortReg(XHCI_Host *host, int portId, u32 offset) {
 	return HW_USB_XHCI_readDword(host->opRegAddr + 0x400 + (portId - 1) * 0x10 + offset);
 }
+
+void HW_USB_XHCI_portConnect(XHCI_Host *host, int portId);
+void HW_USB_XHCI_portDisConnect(XHCI_Host *host, int portId);
+
 static __always_inline__ u32 HW_USB_XHCI_readIntrDword(XHCI_Host *host, u32 intrId, u32 offset) {
 	return HW_USB_XHCI_readDword(host->rtRegAddr + 0x20 + (intrId) * 0x20 + offset);
 }
@@ -152,9 +155,8 @@ IntrHandlerDeclare(HW_USB_XHCI_msiHandler);
 
 void HW_USB_XHCI_init(PCIeManager *pci);
 
-void HW_USB_XHCI_evehandleTask(XHCI_Host *host, u64 intrId) {
+void HW_USB_XHCI_evehandleTask(XHCI_Host *host, u64 intrId);
 
-}
 void HW_USB_XHCI_test(XHCI_Host *host);
 
 #endif

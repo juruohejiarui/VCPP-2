@@ -6,6 +6,12 @@
 
 List HW_USB_XHCI_hostList;
 
+void HW_USB_XHCI_portConnect(XHCI_Host *host, int portId) {
+
+}
+void HW_USB_XHCI_portConnect(XHCI_Host *host, int portId) {
+}
+
 void HW_USB_XHCI_init(PCIeManager *pci) {
 	// check the capability list
 	if (!(pci->cfg->status & (1 << 4))) {
@@ -155,7 +161,7 @@ void HW_USB_XHCI_init(PCIeManager *pci) {
 		eveRingTbl[(i << 1) + 0] = DMAS_virt2Phys(host->eveRing->rings[i]),
 		eveRingTbl[(i << 1) + 1] = XHCI_Ring_maxSize;
 	HW_USB_XHCI_writeIntrDword(host, 0, XHCI_IntrReg_IMan, (1 << 1) | (1 << 0) | (HW_USB_XHCI_readIntrDword(host, 0, XHCI_IntrReg_IMan) | ~0x3u));
-	HW_USB_XHCI_writeIntrDword(host, 0, XHCI_IntrReg_IMod, 4);
+	HW_USB_XHCI_writeIntrDword(host, 0, XHCI_IntrReg_IMod, 0);
 	HW_USB_XHCI_writeIntrDword(host, 0, XHCI_IntrReg_TblSize, 4 | (HW_USB_XHCI_readIntrDword(host, 0, XHCI_IntrReg_TblSize) & ~0xffffu));
 	HW_USB_XHCI_writeIntrQuad(host, 0, XHCI_IntrReg_DeqPtr, 
 		DMAS_virt2Phys(&host->eveRing->rings[host->eveRing->curRingId][host->eveRing->curPos]) | (1ul << 3));
@@ -180,6 +186,20 @@ void HW_USB_XHCI_init(PCIeManager *pci) {
 		HW_PCIe_MSI_initDesc(&host->msiDesc[i], cpuId, vecSt + i, HW_USB_XHCI_msiHandler, (u64)host | i);
 		HW_PCIe_MSI_setIntr(&host->msiDesc[i]);
 	}
+	// initialize the evering handle task
+
+	host->eveHandlerTask = kmalloc(sizeof(TaskStruct *) * XHCI_EveHandleTaskNum, Slab_kmalloc_arg_Clear, NULL);
+	host->eveList = kmalloc(sizeof(List) * HW_USB_XHCI_maxIntr(host), Slab_kmalloc_arg_Clear, NULL);
+	host->eveLock = kmalloc(sizeof(SpinLock) * HW_USB_XHCI_maxIntr(host), Slab_kmalloc_arg_Clear, NULL);
+	for (int i = HW_USB_XHCI_maxIntr(host) - 1; i >= 0; i--) {
+		List_init(&host->eveList[i]);
+		SpinLock_init(&host->eveLock[i]);
+	}
+	int evePreTask = HW_USB_XHCI_maxIntr(host) / XHCI_EveHandleTaskNum;
+	for (int i = 0; i < XHCI_EveHandleTaskNum; i++)
+		host->eveHandlerTask[i] = Task_createTask((Task_Entry)HW_USB_XHCI_evehandleTask, 
+			host, ((1ul << evePreTask) - 1) << (evePreTask * i), Task_Flag_Kernel | Task_Flag_Inner);
+
 	// disable the INTx
 	pci->cfg->command |= (1 << 10);
 	// disable mask
@@ -210,11 +230,53 @@ IntrHandlerDeclare(HW_USB_XHCI_msiHandler) {
 		printk(WHITE, BLACK, "interrupt %d busy\n", i);
 		XHCI_GenerTRB *trb;
 		while (HW_USB_XHCI_EveRing_getNxt(host->eveRing, &trb)) {
-			printk(WHITE, BLACK, "\tEvent %#018lx: data:%#018lx status:%#010x ctrl:%#010x\n", trb, *(u64 *)&trb->data1, trb->status, trb->ctrl);
+			XHCI_Event *eve = kmalloc(sizeof(XHCI_Event), Slab_kmalloc_arg_Clear, NULL);
+			HW_USB_XHCI_TRB_copy(trb, &eve->trb);
+			List_init(&eve->list);
+			SpinLock_lock(&host->eveLock[i]);
+			List_insBefore(&eve->list, &host->eveList[i]);
+			SpinLock_unlock(&host->eveLock[i]);
 		}
+		
 		// write the dequeue pointer
 		HW_USB_XHCI_writeIntrQuad(host, i, XHCI_IntrReg_DeqPtr, DMAS_virt2Phys(trb) | (1 << 3));
-		printk(WHITE, BLACK, "\tdepPtr:%#018lx", HW_USB_XHCI_readIntrQuad(host, i, XHCI_IntrReg_DeqPtr));
+		printk(WHITE, BLACK, "\tdepPtr:%#018lx\n", HW_USB_XHCI_readIntrQuad(host, i, XHCI_IntrReg_DeqPtr));
+	}
+}
+
+void HW_USB_XHCI_evehandleTask(XHCI_Host *host, u64 intrMap) {
+	while (1) {
+		List penList;
+		for (int i = 0; i < HW_USB_XHCI_maxIntr(host); i++) {
+			if (!(intrMap & (1ul << i))) continue;
+			List_init(&penList);
+			IO_cli();
+			SpinLock_lock(&host->eveLock[i]);
+			for (List *eveList = host->eveList[i].next; eveList != &host->eveList[i]; eveList = host->eveList[i].next) {
+				List_del(eveList);
+				List_insBefore(eveList, &penList);
+			}
+			SpinLock_unlock(&host->eveLock[i]);
+			IO_sti();
+			HW_PCIe_MSI_unmaskIntr(host->msiCapDesc, -1);
+			for (List *eveList = penList.next; eveList != &penList; eveList = penList.next) {
+				XHCI_Event *eve = container(eveList, XHCI_Event, list);
+				printk(WHITE, BLACK, "\tEvent: data:%#018lx status:%#010x ctrl:%#010x\n", *(u64 *)&eve->trb.data1, eve->trb.status, eve->trb.ctrl);
+				switch (HW_USB_XHCI_TRB_getType(&eve->trb)) {
+					case XHCI_TRB_Type_PortStChg : {
+						int portId = eve->trb.data1 >> 24;
+						HW_USB_XHCI_writePortReg(host, portId, XHCI_PortReg_sc, (1 << 17) | (1 << 9) | (1 << 25) | (1 << 26) | (1 << 27));
+						if (HW_USB_XHCI_readPortReg(host, portId, XHCI_PortReg_sc) & 1)
+							HW_USB_XHCI_portConnect(host, portId);
+						else HW_USB_XHCI_portDisConnect(host, portId);
+						break;
+					}
+				}
+				List_del(eveList);
+				kfree(eve, 0);
+			}
+			IO_hlt();
+		}
 	}
 }
 

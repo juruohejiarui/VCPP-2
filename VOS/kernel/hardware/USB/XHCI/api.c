@@ -3,7 +3,7 @@
 
 void HW_USB_XHCI_TRB_copy(XHCI_GenerTRB *src, XHCI_GenerTRB *dst) {
 	HW_USB_XHCI_writeQuad((u64)dst, *(u64 *)src);
-	HW_USB_XHCI_writeQuad((u64)dst + 0x10, *(u64 *)&src->status);
+	HW_USB_XHCI_writeQuad((u64)dst + 0x8, *(u64 *)&src->status);
 }
 
 u64 HW_USB_XHCI_readQuad(u64 addr) {
@@ -134,7 +134,6 @@ XHCI_Request *HW_USB_XHCI_allocReq(u64 trbCnt) {
 	req->trb = kmalloc(sizeof(XHCI_GenerTRB) * trbCnt, Slab_kmalloc_arg_Clear, NULL);
 	req->target = kmalloc(sizeof(XHCI_Request *) * trbCnt, Slab_kmalloc_arg_Clear, NULL);
 	req->trbCnt = trbCnt;
-	List_init(&req->list);
 	return req;
 }
 
@@ -183,8 +182,8 @@ int HW_USB_XHCI_Ring_tryInsReq(XHCI_Ring *ring, XHCI_Request *req) {
 
 int HW_USB_XHCI_EveRing_getNxt(XHCI_EveRing *ring, XHCI_GenerTRB **trb) {
 	XHCI_GenerTRB *tmp = &ring->rings[ring->curRingId][ring->curPos];
-	if (HW_USB_XHCI_TRB_getCycBit(tmp) != ring->cycBit) return 0;
 	*trb = tmp;
+	if (HW_USB_XHCI_TRB_getCycBit(tmp) != ring->cycBit) return 0;
 	if ((++ring->curPos) == ring->ringSize) {
 		if ((++ring->curRingId) == ring->ringNum) {
 			ring->curRingId = 0;

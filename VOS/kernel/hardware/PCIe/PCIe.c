@@ -144,6 +144,14 @@ void HW_PCIe_MSI_setIntr(PCIe_MSI_Descriptor *desc) {
 	Intr_Gate_setSMPIntr(desc->cpuId, desc->vec, 0, HW_PCIe_MSI_intrList[desc->vec - 0x40]);
 }
 
+void HW_PCIe_MSI_maskIntr(PCIe_MSICapability *cap, int intrId) {
+    if (intrId != -1) cap->mask |= (1u << intrId);
+    else cap->mask = 0xffffffffu;
+}
+void HW_PCIe_MSI_unmaskIntr(PCIe_MSICapability *cap, int intrId) {
+    if (intrId != -1) cap->mask &= ~(1u << intrId);
+    else cap->mask = 0;
+}
 void HW_PCIe_MSI_setMsgAddr(PCIe_MSICapability *msi, u32 apicId, int redirect, int destMode) {
 	msi->msgAddr = 0xfee00000u | (apicId << 12) | (redirect << 3) | (destMode << 1);
 }

@@ -2,6 +2,7 @@
 #define __HW_USB_XHCI_DESC_H__
 
 #include "../../../includes/lib.h"
+#include "../../../includes/task.h"
 #include "../../PCIe.h"
 
 typedef struct XHCI_GenerTRB {
@@ -41,7 +42,6 @@ typedef struct XHCI_Request {
 	XHCI_GenerTRB res;
 	XHCI_GenerTRB *trb;
 	struct XHCI_Request ***target;
-	List list;
 } __attribute__ ((packed)) XHCI_Request;
 
 typedef struct XHCI_Ring {
@@ -58,6 +58,11 @@ typedef struct XHCI_EveRing {
 	u32 ringNum, ringSize;
 	u32 cycBit;
 } XHCI_EveRing;
+
+typedef struct XHCI_Event {
+	XHCI_GenerTRB trb;
+	List list;
+} XHCI_Event;
 
 #define XHCI_Ring_maxSize (Page_4KSize * 16 / sizeof(XHCI_GenerTRB))
 
@@ -89,6 +94,8 @@ typedef struct XHCI_DevCtx {
 	XHCI_EpCtx ep[31];
 } __attribute__ ((packed)) XHCI_DevCtx;
 
+#define XHCI_EveHandleTaskNum	0x1
+
 typedef struct XHCI_Host {
 	List listEle;
 	PCIeManager *pci;
@@ -107,8 +114,10 @@ typedef struct XHCI_Host {
 	PCIe_MSI_Descriptor *msiDesc;
 
 	XHCI_DevCtx **devCtx;
-
 	
+	TaskStruct **eveHandlerTask;
+	List *eveList;
+	SpinLock *eveLock;
 } XHCI_Host;
 
 #define XHCI_CapReg_capLen 0x0

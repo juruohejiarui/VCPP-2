@@ -227,8 +227,6 @@ void kfree(void *addr, u64 arg) {
 	if (arg & Slab_kmalloc_arg_Private) _delUsage(addr);
     IO_maskIntrPreffix
     if (!(arg & Slab_kmalloc_arg_Inner)) SpinLock_lock(&_SlabLocker);
-
-
     int id = 0, flag = 0;
     Slab *slab = NULL;
     for (id = 0; id < 16; id++) {
