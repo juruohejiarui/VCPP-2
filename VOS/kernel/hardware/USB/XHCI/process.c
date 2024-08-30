@@ -9,7 +9,9 @@ List HW_USB_XHCI_hostList;
 void HW_USB_XHCI_portConnect(XHCI_Host *host, int portId) {
 
 }
-void HW_USB_XHCI_portConnect(XHCI_Host *host, int portId) {
+void HW_USB_XHCI_portDisconnect(XHCI_Host *host, int portId) {
+	// reset this port
+
 }
 
 void HW_USB_XHCI_init(PCIeManager *pci) {
@@ -93,11 +95,12 @@ void HW_USB_XHCI_init(PCIeManager *pci) {
 	// release this host from BIOS
 	for (void *ecp = HW_USB_XHCI_getNxtECP(host, NULL); ecp; ecp = HW_USB_XHCI_getNxtECP(host, ecp)) {
 		if (HW_USB_XHCI_ECP_id(ecp) == XHCI_Ext_Id_Legacy) {
+			printk(WHITE, BLACK, "XHCI: %#018lx: legacy support previous value: %#010x\n", HW_USB_XHCI_readDword((u64)ecp));
 			HW_USB_XHCI_writeDword((u64)ecp, HW_USB_XHCI_readDword((u64)ecp) | (1u << 24));
 			int timeout = 10;
 			while (timeout--) {
 				u32 cur = HW_USB_XHCI_readDword((u64)ecp) & ((1u << 24) | (1u << 16));
-				if (cur == (1u << 24)) break;
+				if (cur == (1u << 24)) break; 
 				Intr_SoftIrq_Timer_mdelay(1);
 			}
 			break;
@@ -139,7 +142,7 @@ void HW_USB_XHCI_init(PCIeManager *pci) {
 	}
 	// configure the ports
 	for (int i = HW_USB_XHCI_maxPort(host); i > 0; i--)
-		HW_USB_XHCI_writePortReg(host, i, XHCI_PortReg_sc, (1 << 9) | (1 << 25) | (1 << 26) | (1 << 27));
+		HW_USB_XHCI_writePortReg(host, i, XHCI_PortReg_sc, XHCI_PortReg_sc_Power | XHCI_PortReg_sc_AllEve);
 
 	// allocate a command ring
 	host->cmdRing = HW_USB_XHCI_allocRing(XHCI_Ring_maxSize);
@@ -227,7 +230,6 @@ IntrHandlerDeclare(HW_USB_XHCI_msiHandler) {
 		// check if the event handler busy bit of DepPtr is set
 		if (!(HW_USB_XHCI_readIntrQuad(host, i, XHCI_IntrReg_DeqPtr) & (1 << 3))) continue;
 		// clear the busy bit
-		printk(WHITE, BLACK, "interrupt %d busy\n", i);
 		XHCI_GenerTRB *trb;
 		while (HW_USB_XHCI_EveRing_getNxt(host->eveRing, &trb)) {
 			XHCI_Event *eve = kmalloc(sizeof(XHCI_Event), Slab_kmalloc_arg_Clear, NULL);
@@ -240,7 +242,7 @@ IntrHandlerDeclare(HW_USB_XHCI_msiHandler) {
 		
 		// write the dequeue pointer
 		HW_USB_XHCI_writeIntrQuad(host, i, XHCI_IntrReg_DeqPtr, DMAS_virt2Phys(trb) | (1 << 3));
-		printk(WHITE, BLACK, "\tdepPtr:%#018lx\n", HW_USB_XHCI_readIntrQuad(host, i, XHCI_IntrReg_DeqPtr));
+		printk(WHITE, BLACK, "\tintr %d depPtr:%#018lx\n", i, HW_USB_XHCI_readIntrQuad(host, i, XHCI_IntrReg_DeqPtr));
 	}
 }
 
@@ -250,25 +252,26 @@ void HW_USB_XHCI_evehandleTask(XHCI_Host *host, u64 intrMap) {
 		for (int i = 0; i < HW_USB_XHCI_maxIntr(host); i++) {
 			if (!(intrMap & (1ul << i))) continue;
 			List_init(&penList);
-			IO_cli();
+			if (host->msiDesc[0].cpuId == Task_current->cpuId) IO_cli();
 			SpinLock_lock(&host->eveLock[i]);
 			for (List *eveList = host->eveList[i].next; eveList != &host->eveList[i]; eveList = host->eveList[i].next) {
 				List_del(eveList);
 				List_insBefore(eveList, &penList);
 			}
 			SpinLock_unlock(&host->eveLock[i]);
-			IO_sti();
-			HW_PCIe_MSI_unmaskIntr(host->msiCapDesc, -1);
+			if (host->msiDesc[0].cpuId == Task_current->cpuId) IO_sti();
 			for (List *eveList = penList.next; eveList != &penList; eveList = penList.next) {
 				XHCI_Event *eve = container(eveList, XHCI_Event, list);
 				printk(WHITE, BLACK, "\tEvent: data:%#018lx status:%#010x ctrl:%#010x\n", *(u64 *)&eve->trb.data1, eve->trb.status, eve->trb.ctrl);
 				switch (HW_USB_XHCI_TRB_getType(&eve->trb)) {
 					case XHCI_TRB_Type_PortStChg : {
 						int portId = eve->trb.data1 >> 24;
-						HW_USB_XHCI_writePortReg(host, portId, XHCI_PortReg_sc, (1 << 17) | (1 << 9) | (1 << 25) | (1 << 26) | (1 << 27));
+						printk(WHITE, BLACK, "\tport %d status:%#010x\n", portId, HW_USB_XHCI_readPortReg(host, portId, XHCI_PortReg_sc));
+						HW_USB_XHCI_writePortReg(host, portId, XHCI_PortReg_sc, XHCI_PortReg_sc_Power | XHCI_PortReg_sc_AllChg | XHCI_PortReg_sc_AllEve);
+						HW_USB_XHCI_writeOpReg(host, XHCI_OpReg_status, (1 << 4));
 						if (HW_USB_XHCI_readPortReg(host, portId, XHCI_PortReg_sc) & 1)
 							HW_USB_XHCI_portConnect(host, portId);
-						else HW_USB_XHCI_portDisConnect(host, portId);
+						else HW_USB_XHCI_portDisconnect(host, portId);
 						break;
 					}
 				}

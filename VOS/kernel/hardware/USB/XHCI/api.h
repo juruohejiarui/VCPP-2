@@ -90,7 +90,7 @@ static __always_inline__ u32 HW_USB_XHCI_readPortReg(XHCI_Host *host, int portId
 }
 
 void HW_USB_XHCI_portConnect(XHCI_Host *host, int portId);
-void HW_USB_XHCI_portDisConnect(XHCI_Host *host, int portId);
+void HW_USB_XHCI_portDisconnect(XHCI_Host *host, int portId);
 
 static __always_inline__ u32 HW_USB_XHCI_readIntrDword(XHCI_Host *host, u32 intrId, u32 offset) {
 	return HW_USB_XHCI_readDword(host->rtRegAddr + 0x20 + (intrId) * 0x20 + offset);

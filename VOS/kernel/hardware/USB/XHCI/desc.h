@@ -148,6 +148,9 @@ typedef struct XHCI_Host {
 #define XHCI_PortReg_offset	0x10
 // port status and control
 #define XHCI_PortReg_sc		0x00
+#define XHCI_PortReg_sc_AllEve		(0xe000000u)
+#define XHCI_PortReg_sc_AllChg		(0xfe0000u)
+#define XHCI_PortReg_sc_Power		(1u << 9)
 // port power management staatus and control
 #define XHCI_PortReg_pwsc	0x04
 // port link info
