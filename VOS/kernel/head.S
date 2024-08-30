@@ -44,7 +44,7 @@ setSMPInfo:
 setSMPInfo_LoopStart:
     cmpl (%rax), %edx
     jz setSMPInfo_LoopEnd
-    addq $612, %rax
+    addq $604, %rax
     jmp setSMPInfo_LoopStart
 setSMPInfo_LoopEnd:
     movq 0x8(%rax), %rsi

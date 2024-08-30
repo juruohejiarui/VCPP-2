@@ -19,11 +19,8 @@ extern TaskStruct Init_taskStruct;
 extern int Task_pidCounter;
 
 #pragma region scheduler
-extern TimerIrq Task_scheduleTimerIrq;
-
 void Task_updateCurState();
-
-void Task_scheduleTimerHandler(TimerIrq *timer, void *arg);
+void Task_updateAllProcessorState();
 
 void Task_schedule();
 
@@ -33,8 +30,8 @@ void Task_schedule();
 			"movq 0x18(%%rsi), %%r8	\n\t" \
 			"movq 0x20(%%rsi), %%r9	\n\t" \
 			"movq 0x0(%%r8), %%rbx	\n\t" \
-			"movq 0x10(%%r8), %%rdx	\n\t" \
-			"movq 0x48(%%r8), %%rcx	\n\t" \
+			"movq 0x8(%%r8), %%rdx	\n\t" \
+			"movq 0x38(%%r8), %%rcx	\n\t" \
 			"movq 0x0(%%r9), %%rax 	\n\t" \
 			"movq %%rax, %%cr3		\n\t" \
 			"mfence					\n\t" \
@@ -67,7 +64,7 @@ void Task_recycleThread(void *arg1, u64 arg2);
 void Task_defaultSignalHandler(u64 signal);
 
 /// @brief set the signal handler of current task
-void Task_setSignalHandler(TaskStruct *task, u64 signal, Task_SignalHandler handler);
+void Task_setSignalHandler(TaskStruct *task, u64 signal, Task_SignalHandler handler, u64 param);
 /// @brief set signal to TASK
 void Task_setSignal(TaskStruct *task, u64 signal);
 
@@ -100,14 +97,12 @@ void Task_kernelEntryHeader();
 /// @return
 static __always_inline__ void Task_kernelThreadExit(int retVal) {
 	__asm__ volatile(
-		// switch task to intr Task
-		"movq $0xffffffffffff8000, %%rsp	\n\t"
-		"movq %0, %%rax						\n\t"
-		"leaq Task_exit(%%rip), %%rbx		\n\t"
-		"callq *%%rbx						\n\t"
-		: "=m"(retVal)
+		// switch task to the top of kernel stack
+		"leaq Task_exit(%%rip), %%rax		\n\t"
+		"callq *%%rax						\n\t"
 		:
-		: "rax", "rbx", "memory"
+		: "D"(retVal)
+		: "rax", "memory"
 	);
 }
 

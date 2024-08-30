@@ -37,7 +37,6 @@ int Task_pidCounter;
 }
 
 ThreadStruct Init_thread = {
-    .rsp3   = (u64)(Task_userStackEnd),
     .rsp    = (u64)(Task_kernelStackEnd),
     .fs     = Segment_kernelData,
     .gs     = Segment_kernelData,
@@ -59,16 +58,9 @@ TaskStruct *Init_tasks[Hardware_CPUNumber] = { &Init_taskStruct, 0 };
 i64 _weight[50] = { 1, 2, 3, 4, 5, 6, [6 ... 49] = -1 };
 
 struct CFS_rq Task_cfsStruct;
-TimerIrq Task_scheduleTimerIrq;
 
 void Task_switchTo_inner(TaskStruct *prev, TaskStruct *next) {
-    // set TS flag of cr0
-    {
-        u64 cr0 = IO_getCR(0);
-        IO_setCR(0, cr0 | (1ul << 3));
-    }
     SMP_CPUInfoPkg *info = SMP_current;
-    next->tss->rsp0 = (next->thread->rsp & 0xffff000000000000 ? next->thread->rsp : Task_kernelStackEnd);
     // printk(RED, BLACK, "From %#018lx, to %#018lx, rip: %#018lx\n", prev, next, next->thread->rip);
     Intr_Gate_setTSS(
             info->tssTable,
@@ -84,15 +76,11 @@ void Task_switchTo_inner(TaskStruct *prev, TaskStruct *next) {
 
 void Task_updateCurState() {
 	Task_current->vRunTime += _weight[Task_current->priority];
-	Intr_SoftIrq_setState(Task_current->cpuId, Intr_SoftIrq_State_TestSchedule);
-}
-
-void Task_SoftIrq_testSchedule() {
 	Task_current->state = Task_State_NeedSchedule;
 }
 
-void Task_scheduleTimerHandler(TimerIrq *timer, void *arg) {
-	// send message to all processor to test whether themselves needs schedule
+void Task_updateAllProcessorState() {
+	if (!(SMP_current->flags & SMP_CPUInfo_flag_InTaskLoop)) return ;
 	SMP_sendIPI_allButSelf(SMP_IPI_Type_Schedule, NULL);
 	Task_updateCurState();
 }
@@ -107,19 +95,29 @@ TaskStruct *Task_currentDMAS() {
 }
 
 void Task_schedule() {
-    IO_cli();
-	// printk(BLACK, WHITE, "S");
+	if (!(SMP_current->flags & SMP_CPUInfo_flag_InTaskLoop) || Task_current->state != Task_State_NeedSchedule) return ;
+	if (Task_current->signal) {
+		IO_sti();
+		u64 *signal = &Task_current->signal;
+		for (int i = 0; i < Task_signalNum; i++)
+			if (*signal & (1ul << i)) {
+				*signal &= ~(1ul << i);
+				// when the task handle the signal by the custom handler, then this signal is treated as "handled"
+				if (Task_current->signalHandler[i])
+					Task_current->signalHandler[i](i, Task_current->signalHandlerParam[i]);
+				// using the default signal handler means this signal is "not handled"
+				else Task_defaultSignalHandler(i);
+			}
+		IO_cli();
+		return ;
+	}
 	SIMD_setTS();
 	SpinLock *lock;
 	RBTree *cfsTree; 
 	{
-		int cpuId = SMP_getCurCPUIndex();
+		int cpuId = Task_current->cpuId;
 		lock = &Task_cfsStruct.lock[cpuId];
 		cfsTree = &Task_cfsStruct.tree[cpuId];
-		if (cpuId == 0) {
-			Intr_SoftIrq_Timer_initIrq(&Task_scheduleTimerIrq, 1, Task_scheduleTimerHandler, NULL);
-			Intr_SoftIrq_Timer_addIrq(&Task_scheduleTimerIrq);
-		}
 	}
 
 	SpinLock_lock(lock);
@@ -147,7 +145,7 @@ void Task_schedule() {
     RBTree_delNode(cfsTree, leftMost);
 	SpinLock_unlock(lock);
     TaskStruct *next = container(leftMost, TaskStruct, wNode);
-
+	// printk(BLACK, WHITE, "[%d]%ld.%ld ", Task_current->cpuId, Task_current->pid, next->pid);
     Task_switch(next);
 }
 
@@ -171,7 +169,8 @@ void Task_defaultSignalHandler(u64 signal) {
 
 void Task_setSignal(TaskStruct *task, u64 signal) { task->signal |= (1 << signal); }
 
-void Task_setSignalHandler(TaskStruct *task, u64 signal, Task_SignalHandler handler) {
+void Task_setSignalHandler(TaskStruct *task, u64 signal, Task_SignalHandler handler, u64 param) {
+	if (signal < 32) task->signalHandlerParam[signal] = param;
 	task->signalHandler[signal] = handler;
 }
 
@@ -192,7 +191,7 @@ void Task_SysSignal_Timer(u64 signal, void *arg) {
 }
 
 void Task_setSysSignalHandler(TaskStruct *task) {
-	Task_setSignalHandler(task, Task_Signal_Timer, (Task_SignalHandler)Task_SysSignal_Timer);
+	Task_setSignalHandler(task, Task_Signal_Timer, (Task_SignalHandler)Task_SysSignal_Timer, 0);
 }
 
 #pragma endregion
@@ -233,7 +232,7 @@ int Task_Timer_comparator(RBNode *a, RBNode *b) {
 }
 #pragma endregion
 
-extern void init(u64 (*usrEntry)(void *, u64 arg), void *argPtr);
+extern void init(u64 (*usrEntry)(void *, u64), u64 *argPtr);
 
 static void *_argWrap(void *arg1, u64 arg2) {
 	u64 *argPkg = kmalloc(sizeof(u64) * 2, 0, NULL);
@@ -275,9 +274,7 @@ TaskStruct *Task_createTask(Task_Entry entry, void *arg1, u64 arg2, u64 flag) {
 
     *thread = Init_thread;
     thread->rip = (u64)Task_kernelThreadEntry;
-    thread->rbp = Task_kernelStackEnd;
     thread->rsp = Task_kernelStackEnd - sizeof(PtReg);
-    thread->rsp3 = Task_userStackEnd;
 	thread->fs = thread->gs = Segment_kernelData;
 
 	// prepare the first 
@@ -346,15 +343,14 @@ TaskStruct *Task_createTask(Task_Entry entry, void *arg1, u64 arg2, u64 flag) {
 
 	// choose a processor
 	task->cpuId = task->pid % SMP_cpuNum;
-
+	printk(YELLOW, BLACK, "task %ld on processor %d\n", task->pid, task->cpuId);
 	// insert the task into the cfs struct
     if (task->pid > 0) {
-		int isCurCPU = (task->cpuId == SMP_getCurCPUIndex());
-		if (isCurCPU) IO_cli();
+		IO_cli();
 		SpinLock_lock(&Task_cfsStruct.lock[task->cpuId]);
 		RBTree_insNode(&Task_cfsStruct.tree[task->cpuId], &task->wNode);
 		SpinLock_unlock(&Task_cfsStruct.lock[task->cpuId]);
-		if (isCurCPU) IO_sti();
+		IO_sti();
 	}
     return task;
 }
@@ -368,31 +364,27 @@ int Task_getRing() {
 __always_inline__ void Task_kernelEntryHeader() {
 	SMP_current->flags |= SMP_CPUInfo_flag_InTaskLoop;
 	Task_current->state = Task_State_Running;
+	SIMD_setTS();
 	IO_sti();
 }
 
-#define RecycleThread_State_Idle        0
-#define RecycleThread_State_Scanning    1
-#define RecycleThread_State_Running     2
-
 /// @brief when the task is finished, this function will be executed to recycle the resource that this task used. (e.g. memory, ports)
-void Task_exit() {
-    for (List *pageList = Task_current->mem->pageUsage.next, *nxt = NULL; pageList != &Task_current->mem->pageUsage; pageList = nxt) {
-        nxt = pageList->next;
-        List_del(pageList);
+void Task_exit(int retVal) {
+	for (List *pageList = Task_current->mem->pageUsage.next, *nxt = NULL; pageList != &Task_current->mem->pageUsage; pageList = Task_current->mem->pageUsage.next) {
         MM_Buddy_free(container(pageList, Page, listEle));
     }
-	for (List *kmallocList = Task_current->mem->kmallocUsage.next, *nxt = NULL; kmallocList != &Task_current->mem->kmallocUsage; kmallocList = nxt) {
-		nxt = kmallocList->next;
-		printk(WHITE, BLACK, "Task_exit(): recycle SLAB memory %#018lx\n", container(kmallocList, Task_KmallocUsage, listEle)->addr);
-		kfree(container(kmallocList, Task_KmallocUsage, listEle)->addr, Slab_kmalloc_arg_Private);
+	for (List *kmallocList = Task_current->mem->kmallocUsage.next; kmallocList != &Task_current->mem->kmallocUsage; kmallocList = Task_current->mem->kmallocUsage.next) {
+		Task_KmallocUsage *usage = container(kmallocList, Task_KmallocUsage, listEle);
+		kfree(usage->addr, Slab_kmalloc_arg_Private);
 	}
+	
     if (Task_current->mem->totUsage > 0) {
         printk(RED, BLACK, "Task_exit(): task %ld: failed to recycle all the page frame, remain %ld pages.\n", Task_current->pid, Task_current->mem->totUsage);
         while (1) IO_hlt();
     }
-	// printk(WHITE, BLACK, "Task_exit(): %d\n", Task_current->pid);
+	IO_cli();
 	Task_current->priority = Task_Priority_Killed;
+	IO_sti();
 
     while (1) IO_hlt();
 }
@@ -433,9 +425,6 @@ void Task_initMgr() {
 	}
     RBTree_init(&Task_cfsStruct.killedTree, _CFSTree_comparator);
     SpinLock_init(&Task_cfsStruct.killedTreeLock);
-
-	// register the soft interrupt for schedule
-	Intr_SoftIrq_register(1, Task_SoftIrq_testSchedule, NULL);
 
 	Task_cfsStruct.flags = 1;
 	Task_cfsStruct.killedTaskNum.value = 0;

@@ -40,9 +40,9 @@ __asm__ ( \
     saveAll \
     "movq %rsp, %rdi        \n\t" \
     "movq $"#num", %rsi     \n\t" \
-    "leaq "#dispatcher"(%rip), %rax 	\n\t" \
-	"callq *%rax			\n\t" \
-    "jmp Intr_retFromIntr   \n\t" \
+    "leaq Intr_retFromIntr(%rip), %rax 	\n\t" \
+	"pushq %rax			\n\t" \
+    "jmp "#dispatcher"   \n\t" \
 ); \
 
 typedef struct {

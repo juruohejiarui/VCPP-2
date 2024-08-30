@@ -27,17 +27,24 @@ static __always_inline__ void _setTimerComparator(u32 id, u32 comparator) {
 	IO_mfence();
 }
 
+static int _mode;
+
 IntrHandlerDeclare(HW_Timer_HPET_handler) {
 	// print the counter
-	_jiffies++;
+	if (_mode & 1) {
+		_jiffies++;
+		if (SMP_current->flags & SMP_CPUInfo_flag_InTaskLoop) Intr_SoftIrq_Timer_updateState();
+	} else {
+		Task_updateAllProcessorState();
+	}
+	_mode ^= 1;
 	// printk(BLACK, WHITE, "H");
-	if (SMP_current->flags & SMP_CPUInfo_flag_InTaskLoop) Intr_SoftIrq_Timer_updateState();
 }
 
 void HW_Timer_HPET_init() {
 	printk(RED, BLACK, "HW_Timer_HPET_init()\n");
 	// initializ the data structure
-	_jiffies = 0;
+	_jiffies = _mode = 0;
 	// get XSDT address
 	XSDTDescriptor *xsdt = HW_UEFI_getXSDT();
 	// find HPET in XSDT
@@ -102,7 +109,7 @@ void HW_Timer_HPET_init() {
 	printk(WHITE, BLACK, "\n");
 	_setTimerConfig(0, 0x40000004c);
 	// set it to 1 ms
-	_setTimerComparator(0, (u32)(1.0 / _minTick * 1e12 + 1));
+	_setTimerComparator(0, (u32)(0.5 * 1e12 / _minTick + 1));
 	*(u64 *)(DMAS_phys2Virt(_hpetDesc->address.Address) + 0xf0) = 0x0;
 	IO_mfence();
 	*(u64 *)(DMAS_phys2Virt(_hpetDesc->address.Address) + 0x20) = 0;

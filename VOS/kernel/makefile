@@ -16,9 +16,9 @@ system_tmp: $(ALLOBJS)
 	ld -b elf64-x86-64 -z muldefs -o system_tmp $(ALLOBJS) -T Kernel.lds 
 
 ../Tools/kallsyms.o: ../Tools/kallsyms.c system_tmp
-	gcc -o ../Tools/kallsyms ../Tools/kallsyms.c
+	$(CC) -o ../Tools/kallsyms ../Tools/kallsyms.c
 	nm -n system_tmp | ../Tools/kallsyms > ../Tools/kallsyms.S
-	gcc -c ../Tools/kallsyms.S -o ../Tools/kallsyms.o
+	$(CC) -c ../Tools/kallsyms.S -o ../Tools/kallsyms.o
 
 clear:
 	rm -R system system_tmp kernel.bin

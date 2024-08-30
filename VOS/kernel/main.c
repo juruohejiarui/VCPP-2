@@ -19,6 +19,14 @@ void tmpPrint(u64 *rsp) {
 }
 
 void startKernel() {
+	Intr_Gate_loadTR(10);
+    Intr_Gate_setTSS(
+            tss64Table,
+            (u64)(Init_stack + 32768), (u64)(Init_stack + 32768), (u64)(Init_stack + 32768), 0xffff800000007c00, 0xffff800000007c00,
+            0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00);
+
+    Intr_Trap_setSysVec();
+	
     SMP_cpuNum = 0;
 	memset(SMP_cpuInfo, 0, sizeof(SMP_cpuInfo));
     Task_cfsStruct.flags = 0;
@@ -39,13 +47,6 @@ void startKernel() {
         HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine);
 	printk(WHITE, BLACK, "Init_stack: %#018lx\n", Init_stack);
 
-    Intr_Gate_loadTR(10);
-    Intr_Gate_setTSS(
-            tss64Table,
-            (u64)(Init_stack + 32768), (u64)(Init_stack + 32768), (u64)(Init_stack + 32768), 0xffff800000007c00, 0xffff800000007c00,
-            0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00);
-
-    Intr_Trap_setSysVec();
     MM_init();
 
     Log_enableBuf();

@@ -63,7 +63,7 @@ void _backtrace(PtReg *regs)
 	int i = 0;
 
 	printk(RED,BLACK,"====================== Task Struct Information =====================\n");
-	printk(RED,BLACK,"regs->rsp:%#018lx,current->thread->rsp0:%#018lx,current:%#018lx\n",
+	printk(RED,BLACK,"regs->rsp:%#018lx,current->thread->rsp:%#018lx,current:%#018lx\n",
 		regs->rsp, Task_current->thread->rsp, Task_current);
 	printk(RED,BLACK,"====================== Kernel Stack Backtrace ======================\n");
 
@@ -79,7 +79,7 @@ void _backtrace(PtReg *regs)
 	}
 }
 
-static void _printRegs(u64 rsp) {
+void Intr_Trap_printRegs(u64 rsp) {
 	printk(WHITE, BLACK, "registers: \n");
 	for (int i = 0; i < sizeof(PtReg) / sizeof(u64); i++)
 		printk(WHITE, BLACK, "%6s=%#018lx%c", _regName[i], *(u64 *)(rsp + i * 8), (i + 1) % 8 == 0 ? '\n' : ' ');
@@ -96,7 +96,7 @@ void doDivideError(u64 rsp, u64 errorCode) {
 		Task_current->priority = Task_Priority_Trapped;
 	} else {
 		printk(WHITE, BLACK, "\n");
-		_printRegs(rsp);
+		Intr_Trap_printRegs(rsp);
 		while (1) IO_hlt();
 	}
 	IO_sti();
@@ -255,17 +255,17 @@ void doGeneralProtection(u64 rsp, u64 errorCode) {
 			printk(RED,BLACK,"Refers to a descriptor in the GDT;\n");
 	}
 	printk(RED,BLACK,"Segment Selector Index:%#018lx\n",errorCode & 0xfff8);
-	_printRegs(rsp);
+	Intr_Trap_printRegs(rsp);
 	while(1) IO_hlt();
 }
 
 static int _isStkGrow(u64 vAddr, u64 rsp) {
 	if (vAddr <= Task_userStackEnd)
 		return vAddr >= min(rsp - 32, Task_userStackEnd - Page_4KSize + 0x10) && vAddr >= Task_userStackEnd - Task_userStackSize;
-	else return vAddr >= rsp - 32 && vAddr >= Task_kernelStackEnd - Task_kernelStackSize;
+	else return 0;
 }
 
-u64 doPageFault(u64 rsp, u64 errorCode) {
+void doPageFault(u64 rsp, u64 errorCode) {
 	u64 *p = NULL;
 	u64 cr2 = 0;
 	__asm__ volatile("movq %%cr2, %0":"=r"(cr2)::"memory");
@@ -286,17 +286,16 @@ u64 doPageFault(u64 rsp, u64 errorCode) {
 	} else if (_isStkGrow(cr2, ((PtReg *)rsp)->rsp)) {
 		Page *page = MM_Buddy_alloc(0, Page_Flag_Active);
 
-		// printk(BLACK, WHITE, "[Trap]");
-		// printk(WHITE, BLACK, "Task %d need one stack page %#018lx->%#018lx\n", Task_current->pid, page->phyAddr, cr2 & ~0xffful);
+		// printk(BLACK, WHITE, "[Trap] Task %d need one stack page %#018lx->%#018lx\n", Task_current->pid, page->phyAddr, cr2 & ~0xffful);
 
 		MM_PageTable_map(getCR3(), cr2 & ~0xffful, page->phyAddr, 
-			MM_PageTable_Flag_Presented | MM_PageTable_Flag_Writable | (cr2 <= Task_userStackEnd ? MM_PageTable_Flag_UserPage : 0));
+			MM_PageTable_Flag_Presented | MM_PageTable_Flag_Writable | MM_PageTable_Flag_UserPage);
 	} else {
 		printk(RED,BLACK,"do_page_fault(14),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx,CR2:%#018lx\t",errorCode , rsp , *p , cr2);
 		if (SMP_current->flags & SMP_CPUInfo_flag_InTaskLoop) printk(WHITE, BLACK, "pid = %ld\n", Task_current->pid);
 		else printk(WHITE, BLACK, "\n");
 		// blank pldEntry means the page is not mapped
-		_printRegs(rsp);
+		Intr_Trap_printRegs(rsp);
 		printk(RED, BLACK, "Invalid entry : %#018lx\n", pldEntry);
 		if (errorCode & 0x01)
 			printk(RED,BLACK,"The page fault was caused by a non-present page.\n");
@@ -316,7 +315,6 @@ u64 doPageFault(u64 rsp, u64 errorCode) {
 			printk(RED,BLACK,"The page fault was caused by an instruction fetch.\n");
 		while(1) IO_hlt();
 	}
-	return 0;
 }
 
 void doX87FPUError(u64 rsp, u64 errorCode) {

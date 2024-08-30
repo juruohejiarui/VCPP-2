@@ -45,14 +45,16 @@ void init(u64 (*usrEntry)(void *, u64), u64 *argPtr) {
     Task_kernelThreadExit(0);
 }
 
-void recur(int dep) {
-	if (dep < Page_4KSize) recur(dep + 1);
+void recur(u64 arg, int dep) {
+	int stk[1024];
+	if (dep < 50) recur(arg, dep + 1);
+	else printk(WHITE, BLACK, "user task %2d\t", arg);
 }
 void usrInit(void *arg1, u64 arg2) {
     // printk(WHITE, BLACK, "User level task is running, arg = %ld\n", arg);
     while (1) {
-		Task_Syscall_usrAPI(2, 1000, 0, 0, 0, 0, 0);
-		if (arg2 % 5 == 0) recur(0);
+		Task_Syscall_usrAPI(2, 2000, 0, 0, 0, 0, 0);
+		if (arg2 % 5 == 0) recur(arg2, 0);
 		else printk(WHITE, BLACK, "user task %2d\t", arg2);
 		float i = arg2 / 17.0;
 		// IO_hlt();
@@ -61,14 +63,11 @@ void usrInit(void *arg1, u64 arg2) {
 
 void task0(void *arg1, u64 arg2) {
 	Task_kernelEntryHeader();
-	Intr_SoftIrq_Timer_initIrq(&Task_scheduleTimerIrq, 1, Task_scheduleTimerHandler, NULL);
-	Intr_SoftIrq_Timer_addIrq(&Task_scheduleTimerIrq);
 	printk(WHITE, BLACK, "task0 is running...\n");
 	// launch keyboard task
-	SMP_current->flags |= SMP_CPUInfo_flag_InTaskLoop;
 	TaskStruct *kbTask = Task_createTask(Task_keyboardEvent, NULL, 0, Task_Flag_Inner | Task_Flag_Kernel);
 	HW_initAdvance();
-	// for (int i = 0; i < 40; i++) Task_createTask(usrInit, NULL, i, Task_Flag_Inner);
+	for (int i = 0; i < 20; i++) Task_createTask(usrInit, NULL, i, Task_Flag_Inner);
 	// for (int i = 0; i < 20; i++) Task_createTask(task_empty, NULL, 0, Task_Flag_Inner | Task_Flag_Kernel);
 	while (1) IO_hlt();
 	Task_kernelThreadExit(0);

@@ -69,30 +69,36 @@ u64 Task_Syscall_usrAPI(u64 index, u64 arg1, u64 arg2, u64 arg3, u64 arg4, u64 a
         "movq %%rax, %0 \n\t"
          : "=m"(res) 
          : "D"(index), "S"((u64)&regs)
-         : "memory");
+         : "memory", "rax");
     return res;
 }
 
 
 void Task_switchToUsr(u64 (*entry)(void *, u64), void *arg1, u64 arg2) {
 	IO_cli();
-    Task_current->thread->rsp3 = Task_userStackEnd;
-
-    Task_current->thread->rsp = Task_kernelStackEnd - 0x20;
-    Task_current->tss->rsp0 = Task_current->tss->rsp1 = Task_current->tss->rsp2 = Task_kernelStackEnd;
+	u64 rsp = 0;
+	__asm__ volatile (
+		"movq %%rsp, %0		\n\t"
+		: "=m"(rsp)
+		:
+		: "memory"
+	);
+	rsp -= 0x30;
     Intr_Gate_setTSS(
         SMP_current->tssTable,
         Task_current->tss->rsp0, Task_current->tss->rsp1, Task_current->tss->rsp2, Task_current->tss->ist1, Task_current->tss->ist2,
 		Task_current->tss->ist3, Task_current->tss->ist4, Task_current->tss->ist5, Task_current->tss->ist6, Task_current->tss->ist7);
-	*(u64 *)(Task_current->thread->rsp + 0) = (1 << 9);
-	*(u64 *)(Task_current->thread->rsp + 8) = (u64)entry;
-	*(u64 *)(Task_current->thread->rsp + 16) = Segment_userData;
-	*(u64 *)(Task_current->thread->rsp + 24) = Segment_userData;
+	*(u64 *)(rsp + 0x00) = Task_userStackEnd;
+	*(u64 *)(rsp + 0x08) = Task_userStackEnd;
+	*(u64 *)(rsp + 0x10) = (1 << 9);
+	*(u64 *)(rsp + 0x18) = (u64)entry;
+	*(u64 *)(rsp + 0x20) = Segment_userData;
+	*(u64 *)(rsp + 0x28) = Segment_userData;
     __asm__ volatile (
-        "movq %0, %%rsp     \n\t"
+		"movq %0, %%rsp		\n\t"
         "jmp Syscall_exit	\n\t"
         :
-        : "m"(Task_current->thread->rsp), "D"(arg1), "S"(arg2)
+        : "a"(rsp), "D"(arg1), "S"(arg2)
         : "memory"
     );
 }

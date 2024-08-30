@@ -20,7 +20,7 @@ static __always_inline__ u32 HW_USB_XHCI_TRB_getType(XHCI_GenerTRB *trb) {
 	return (HW_USB_XHCI_readDword((u64)&trb->ctrl) >> 10) & ((1 << 6) - 1);
 }
 static __always_inline__ void HW_USB_XHCI_TRB_setType(XHCI_GenerTRB *trb, u32 type) {
-	HW_USB_XHCI_writeDword((u64)&trb->ctrl, (HW_USB_XHCI_readDword((u64)&trb->ctrl) & (0xffff04ffu)) | (type << 10));
+	HW_USB_XHCI_writeDword((u64)&trb->ctrl, (HW_USB_XHCI_readDword((u64)&trb->ctrl) & (0xffff03ffu)) | (type << 10));
 }
 static __always_inline__ u32 HW_USB_XHCI_TRB_getCmplCode(XHCI_GenerTRB *trb) {
 	return (HW_USB_XHCI_readDword((u64)&trb->status) >> 24) & 0xff;
@@ -42,6 +42,12 @@ static __always_inline__ u64 HW_USB_XHCI_TRB_getData(XHCI_GenerTRB *trb) {
 }
 static __always_inline__ void HW_USB_XHCI_TRB_setData(XHCI_GenerTRB *trb, u64 data) {
 	HW_USB_XHCI_writeQuad((u64)&trb->data1, data);
+}
+static __always_inline__ u32 HW_USB_XHCI_TRB_getSlot(XHCI_GenerTRB *trb) {
+	return HW_USB_XHCI_readDword((u64)&trb->ctrl) >> 24;
+}
+static __always_inline__ u32 HW_USB_XHCI_TRB_setSlot(XHCI_GenerTRB *trb, u32 val) {
+	HW_USB_XHCI_writeDword((u64)&trb->ctrl, (HW_USB_XHCI_readDword((u64)&trb->ctrl) & 0xffffffu) | (val << 24));
 }
 static __always_inline__ int HW_USB_XHCI_TRB_getPos(XHCI_GenerTRB *trb) {
 	return ((u64)trb - ((u64)trb & ~0xfff)) / sizeof(XHCI_GenerTRB);
@@ -105,7 +111,7 @@ static __always_inline__ void HW_USB_XHCI_writeIntrQuad(XHCI_Host *host, u32 int
 	HW_USB_XHCI_writeQuad(host->rtRegAddr + 0x20 + intrId * 0x20 + offset, val);
 }
 
-static __always_inline__ void HW_USB_XCHI_writeDbReg(XHCI_Host *host, u32 slotId, u32 epId, u32 taskId) {
+static __always_inline__ void HW_USB_XHCI_writeDbReg(XHCI_Host *host, u32 slotId, u32 epId, u32 taskId) {
 	HW_USB_XHCI_writeDword(host->dbRegAddr + slotId * 0x4, epId | (taskId << 16));
 }
 
@@ -131,31 +137,40 @@ int HW_USB_XHCI_reset(XHCI_Host *host);
 
 void HW_USB_XHCI_waiForHostIsReady(XHCI_Host *host);
 
-// allocate a ring (transfer ring/command ring) with SIZE trbs
+// allocate a ring (transfer ring/command ring) with SIZE trbs with parameter SLAB_Kmalloc_arg_Private
 XHCI_Ring *HW_USB_XHCI_allocRing(u64 size);
 
 void HW_USB_XHCI_freeRing(XHCI_Ring *ring);
-
-// allocate a event ring array with NUM * SIZE TRBS
-XHCI_EveRing *HW_USB_XHCI_allocEveRing(u32 num, u32 size);
-
-void HW_USB_XHCI_freeEveRing(XHCI_EveRing *ring);
-
-XHCI_Request *HW_USB_XHCI_allocReq(u64 trbCnt);
-
-void HW_USB_XHCI_freeReq(XHCI_Request *req);
 
 /// @brief try to insert the request into the specific ring
 /// @return 1: success 0: failed because the ring is full
 int HW_USB_XHCI_Ring_tryInsReq(XHCI_Ring *ring, XHCI_Request *req);
 
+// try to insert the request into the ring until successful.
+void HW_USB_XHCI_Ring_insReq(XHCI_Ring *ring, XHCI_Request *req);
+
+// allocate a event ring array with NUM * SIZE TRBS with parameter SLAB_Kmalloc_arg_Private
+XHCI_EveRing *HW_USB_XHCI_allocEveRing(u32 num, u32 size);
+
+void HW_USB_XHCI_freeEveRing(XHCI_EveRing *ring);
+
 int HW_USB_XHCI_EveRing_getNxt(XHCI_EveRing *ring, XHCI_GenerTRB **trb);
+
+// allocate a request block with TRB_CNT trbs with parameter SLAB_Kmalloc_arg_Private
+XHCI_Request *HW_USB_XHCI_allocReq(u64 trbCnt);
+
+void HW_USB_XHCI_freeReq(XHCI_Request *req);
+
+// wait for the result of request and return the completion code
+int HW_USB_XHCI_Req_wait(XHCI_Request *req);
 
 IntrHandlerDeclare(HW_USB_XHCI_msiHandler);
 
 void HW_USB_XHCI_init(PCIeManager *pci);
 
 void HW_USB_XHCI_evehandleTask(XHCI_Host *host, u64 intrId);
+
+void HW_USB_XHCI_devMgrTask(XHCI_Device *dev, u64 rootPort);
 
 void HW_USB_XHCI_test(XHCI_Host *host);
 

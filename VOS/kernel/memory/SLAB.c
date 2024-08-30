@@ -28,18 +28,22 @@ SlabCache Slab_kmallocCache[16] = {
     {1048576,   0, 0, NULL, NULL, NULL} // 1MB
 };
 
-void _addUsage(void *addr, void (*desctrutor)(void *)) {
+void _addUsage(void *addr, void (*destructor)(void *), u64 size) {
 	Task_KmallocUsage *usage = kmalloc(sizeof(Task_KmallocUsage), 0, NULL);
+	List_init(&usage->listEle);
 	List_insBefore(&usage->listEle, &Task_current->mem->kmallocUsage);
 	usage->addr = addr;
-	usage->desctrutor = desctrutor;
+	usage->destructor = destructor;
+	usage->size = size;
+	Task_current->mem->totUsage += size;
 }
 
 void _delUsage(void *addr) {
 	for (List *usageList = Task_current->mem->kmallocUsage.next; usageList != &Task_current->mem->kmallocUsage; usageList = usageList->next) {
 		Task_KmallocUsage *usage = container(usageList, Task_KmallocUsage, listEle);
 		if (usage->addr != addr) continue;
-		usage->desctrutor(addr);
+		usage->destructor(addr);
+		Task_current->mem->totUsage -= usage->size;
 		List_del(usageList);
 		kfree(usage, 0);
 		return ;
@@ -159,14 +163,14 @@ void Slab_pushNewSlab(int id) {
 /// @param size the size of memory block
 /// @param arg the argument for this allocation, bit 0 : from inner code, will not acquire spin lock; bit 1 : privated memory block
 /// @return the pointer to the memory block
-void *kmalloc(u64 size, u64 arg, void (*desctrutor)(void *)) {
+void *kmalloc(u64 size, u64 arg, void (*destructor)(void *)) {
     IO_maskIntrPreffix
     // printk(BLACK, WHITE, "kmalloc %08d\t", size);
 	if (!(arg & Slab_kmalloc_arg_Inner)) SpinLock_lock(&_SlabLocker);
     int id = 0;
 
     if (size > MM_Slab_maxSize) {
-		if (!arg) SpinLock_unlock(&_SlabLocker);
+		if (!(arg & Slab_kmalloc_arg_Inner)) SpinLock_unlock(&_SlabLocker);
 		return NULL;
 	}
 
@@ -200,7 +204,7 @@ void *kmalloc(u64 size, u64 arg, void (*desctrutor)(void *)) {
 		if (!(arg & Slab_kmalloc_arg_Inner)) SpinLock_unlock(&_SlabLocker);
         IO_maskIntrSuffix
 		// record this memory block if it is private
-		if (arg & Slab_kmalloc_arg_Private) _addUsage((void *)addr, desctrutor); 
+		if (arg & Slab_kmalloc_arg_Private) _addUsage((void *)addr, destructor, Slab_kmallocCache[id].size); 
         return (void *)(addr);
     }
     printk(RED, BLACK, "kmalloc: invalid state\n");

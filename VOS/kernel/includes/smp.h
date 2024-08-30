@@ -79,7 +79,6 @@ typedef struct SMP_CPUInfoPkg {
 	u64 intrMsk[4];
 	IntrDescriptor *intrDesc[0x40];
 	u64 flags;
-	SpinLock ipiLock;
 	void *ipiMsg;
 } __attribute__ ((packed)) SMP_CPUInfoPkg;
 

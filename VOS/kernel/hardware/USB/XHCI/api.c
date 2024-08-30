@@ -92,11 +92,10 @@ void *HW_USB_XHCI_getNxtECP(XHCI_Host *host, void *cur) {
 void HW_USB_XHCI_freeRing(XHCI_Ring *ring) {
 	if (ring->ring) kfree(ring, 0);
 	if (ring->reqSrc) kfree(ring, 0);
-	kfree(ring, 0);
 }
 
 XHCI_Ring *HW_USB_XHCI_allocRing(u64 size) {
-	XHCI_Ring *ring = kmalloc(sizeof(XHCI_Ring), Slab_kmalloc_arg_Clear, NULL);
+	XHCI_Ring *ring = kmalloc(sizeof(XHCI_Ring), Slab_kmalloc_arg_Clear | Slab_kmalloc_arg_Private, (void *)HW_USB_XHCI_freeRing);
 	ring->ring = kmalloc(sizeof(XHCI_GenerTRB) * size, Slab_kmalloc_arg_Clear, NULL);
 	ring->reqSrc = kmalloc(sizeof(XHCI_Request *) * size, Slab_kmalloc_arg_Clear, NULL);
 	ring->cur = ring->ring;
@@ -105,41 +104,10 @@ XHCI_Ring *HW_USB_XHCI_allocRing(u64 size) {
 	return ring;
 }
 
-
-void HW_USB_XHCI_freeEveRing(XHCI_EveRing *ring) {
-	for (int i = 0; i < ring->ringNum; i++)
-		kfree(ring->rings[i], 0);
-	kfree(ring->rings, 0);
-	kfree(ring, 0);
-}
-
-XHCI_EveRing *HW_USB_XHCI_allocEveRing(u32 num, u32 size) {
-	XHCI_EveRing *ring = kmalloc(sizeof(XHCI_EveRing), Slab_kmalloc_arg_Clear, NULL);
-	ring->ringNum = num, ring->ringSize = size;
-	ring->cycBit = 1;
-	ring->curRingId = ring->curPos = 0;
-	ring->rings = kmalloc(sizeof(XHCI_GenerTRB *) * num, Slab_kmalloc_arg_Clear, NULL);
-	for (int i = 0; i < num; i++) ring->rings[i] = kmalloc(size * sizeof(XHCI_GenerTRB), Slab_kmalloc_arg_Clear, NULL);
-	return ring;
-}
-
-void HW_USB_XHCI_freeReq(XHCI_Request *req) {
-	if (req->trb) kfree(req->trb, 0);
-	if (req->target) kfree(req->target, 0);
-	kfree(req, 0);
-}
-
-XHCI_Request *HW_USB_XHCI_allocReq(u64 trbCnt) {
-	XHCI_Request *req = kmalloc(sizeof(XHCI_Request), Slab_kmalloc_arg_Clear, NULL);
-	req->trb = kmalloc(sizeof(XHCI_GenerTRB) * trbCnt, Slab_kmalloc_arg_Clear, NULL);
-	req->target = kmalloc(sizeof(XHCI_Request *) * trbCnt, Slab_kmalloc_arg_Clear, NULL);
-	req->trbCnt = trbCnt;
-	return req;
-}
-
 int HW_USB_XHCI_Ring_tryInsReq(XHCI_Ring *ring, XHCI_Request *req) {
+	printk(WHITE, BLACK, "waiting for inserting %#018lx into ring %#018lx\n", req, ring);
 	SpinLock_lock(&ring->lock);
-	static u64 pos[XHCI_Ring_maxSize], cyc[XHCI_Ring_maxSize];
+	u64 pos[16]; u8 cyc[16];
 	int trbC = 0, full = 0;
 	XHCI_GenerTRB *lstCur = ring->cur;
 	int lstPos = ring->curPos, lstCyc = ring->cycBit;
@@ -159,6 +127,7 @@ int HW_USB_XHCI_Ring_tryInsReq(XHCI_Ring *ring, XHCI_Request *req) {
 		}
 		ring->cur++;
 		pos[trbC] = ring->curPos, cyc[trbC++] = ring->cycBit;
+		ring->curPos++;
 	}
 	if (full) {
 		// restore and return fail code
@@ -171,6 +140,7 @@ int HW_USB_XHCI_Ring_tryInsReq(XHCI_Ring *ring, XHCI_Request *req) {
 		if (HW_USB_XHCI_TRB_getType(trb) != XHCI_TRB_Type_Link) {
 			HW_USB_XHCI_TRB_copy(&req->trb[reqP], trb);
 			ring->reqSrc[pos[i]] = req;
+			req->target[reqP] = &ring->reqSrc[pos[i]];
 			reqP++;
 		}
 		HW_USB_XHCI_TRB_setCycBit(trb, cyc[i]);
@@ -178,6 +148,28 @@ int HW_USB_XHCI_Ring_tryInsReq(XHCI_Ring *ring, XHCI_Request *req) {
 	}
 	SpinLock_unlock(&ring->lock);
 	return 1;
+}
+
+// try to insert the request into the ring until successful.
+void HW_USB_XHCI_Ring_insReq(XHCI_Ring *ring, XHCI_Request *req) {
+	while (!HW_USB_XHCI_Ring_tryInsReq(ring, req));
+}
+
+void HW_USB_XHCI_freeEveRing(XHCI_EveRing *ring) {
+	for (int i = 0; i < ring->ringNum; i++)
+		kfree(ring->rings[i], 0);
+	kfree(ring->rings, 0);
+	kfree(ring, 0);
+}
+
+XHCI_EveRing *HW_USB_XHCI_allocEveRing(u32 num, u32 size) {
+	XHCI_EveRing *ring = kmalloc(sizeof(XHCI_EveRing), Slab_kmalloc_arg_Clear | Slab_kmalloc_arg_Private, (void *)HW_USB_XHCI_freeEveRing);
+	ring->ringNum = num, ring->ringSize = size;
+	ring->cycBit = 1;
+	ring->curRingId = ring->curPos = 0;
+	ring->rings = kmalloc(sizeof(XHCI_GenerTRB *) * num, Slab_kmalloc_arg_Clear, NULL);
+	for (int i = 0; i < num; i++) ring->rings[i] = kmalloc(size * sizeof(XHCI_GenerTRB), Slab_kmalloc_arg_Clear, NULL);
+	return ring;
 }
 
 int HW_USB_XHCI_EveRing_getNxt(XHCI_EveRing *ring, XHCI_GenerTRB **trb) {
@@ -192,4 +184,24 @@ int HW_USB_XHCI_EveRing_getNxt(XHCI_EveRing *ring, XHCI_GenerTRB **trb) {
 		ring->curPos = 0;
 	}
 	return 1;
+}
+
+
+void HW_USB_XHCI_freeReq(XHCI_Request *req) {
+	if (req->trb) kfree(req->trb, 0);
+	if (req->target) kfree(req->target, 0);
+}
+
+XHCI_Request *HW_USB_XHCI_allocReq(u64 trbCnt) {
+	XHCI_Request *req = kmalloc(sizeof(XHCI_Request), Slab_kmalloc_arg_Clear | Slab_kmalloc_arg_Private, (void *)HW_USB_XHCI_freeReq);
+	req->trb = kmalloc(sizeof(XHCI_GenerTRB) * trbCnt, Slab_kmalloc_arg_Clear, NULL);
+	req->target = kmalloc(sizeof(XHCI_Request **) * trbCnt, Slab_kmalloc_arg_Clear, NULL);
+	req->trbCnt = trbCnt;
+	return req;
+}
+
+// wait for the result of request and return the completion code
+int HW_USB_XHCI_Req_wait(XHCI_Request *req) {
+	while (!(req->flags & XHCI_Request_Flag_Finished)) ;
+	return HW_USB_XHCI_TRB_getCmplCode(&req->res);
 }

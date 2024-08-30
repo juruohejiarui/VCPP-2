@@ -43,8 +43,9 @@ extern char* kallsyms_names __attribute__((weak));
 
 typedef struct Task_KmallocUsage {
 	List listEle;
+	u64 size;
 	void *addr;
-	void (*desctrutor)(void *);
+	void (*destructor)(void *);
 } Task_KmallocUsage;
 
 typedef struct TaskMemStruct {
@@ -56,7 +57,7 @@ typedef struct TaskMemStruct {
 
 typedef struct ThreadStruct {
     u64 rip;
-    u64 rsp3, rsp, rbp;
+    u64 rsp;
     u64 fs, gs;
     u64 cr2;
     u64 trapNum;
@@ -64,7 +65,7 @@ typedef struct ThreadStruct {
     u64 rflags;
 } ThreadStruct;
 
-typedef void (*Task_SignalHandler)(u64 signal);
+typedef void (*Task_SignalHandler)(u64 signal, u64 param);
 
 #define Task_signalNum 64
 enum Task_Signal {
@@ -104,6 +105,7 @@ typedef struct TaskStruct {
 	RBNode wNode;
 
 	Task_SignalHandler signalHandler[Task_signalNum];
+	u64 signalHandlerParam[Task_signalNum - 32];
 
     SIMD_XsaveArea *simdRegs;
 } __attribute__((packed)) TaskStruct; 

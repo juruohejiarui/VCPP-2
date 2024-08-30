@@ -44,6 +44,18 @@ typedef struct XHCI_Request {
 	struct XHCI_Request ***target;
 } __attribute__ ((packed)) XHCI_Request;
 
+typedef struct XHCI_SlotCtx {
+
+} __attribute__ ((packed)) XHCI_SlotCtx;
+typedef struct XHCI_EpCtx {
+
+} __attribute__ ((packed)) XHCI_EpCtx;
+
+typedef struct XHCI_DevCtx {
+	XHCI_SlotCtx slot;
+	XHCI_EpCtx ep[31];
+} __attribute__ ((packed)) XHCI_DevCtx;
+
 typedef struct XHCI_Ring {
 	SpinLock lock;
 	XHCI_GenerTRB *ring, *cur;
@@ -51,6 +63,14 @@ typedef struct XHCI_Ring {
 	u32 cycBit;
 	XHCI_Request **reqSrc;
 } XHCI_Ring;
+
+typedef struct XHCI_Device {
+	struct XHCI_Host *host;
+	int slotId;
+	TaskStruct *mgrTask;
+	XHCI_DevCtx *ctx;
+	XHCI_Ring *epRing[31];
+} XHCI_Device;
 
 typedef struct XHCI_EveRing {
 	XHCI_GenerTRB **rings;
@@ -80,19 +100,8 @@ typedef struct XHCI_PortInfo {
 	u8 pairOffset; // one based offset to the other speed port, zero means there is no pair
 	u8 offset; // one based offset in the specific protocol, zero means this port is invalid
 	u8 portId;
+	XHCI_Device *dev;
 } XHCI_PortInfo;
-
-typedef struct XHCI_SlotCtx {
-
-} __attribute__ ((packed)) XHCI_SlotCtx;
-typedef struct XHCI_EpCtx {
-
-} __attribute__ ((packed)) XHCI_EpCtx;
-
-typedef struct XHCI_DevCtx {
-	XHCI_SlotCtx slot;
-	XHCI_EpCtx ep[31];
-} __attribute__ ((packed)) XHCI_DevCtx;
 
 #define XHCI_EveHandleTaskNum	0x1
 

@@ -58,11 +58,13 @@ void _doTimer(void *data) {
 	u64 jiffies = HW_Timer_HPET_jiffies();
 	while (minNode != NULL && (irq = container(minNode, TimerIrq, rbNode))->expireJiffies <= jiffies) {
 		// execute the function
-		RBTree_delNode(&_timerTree, minNode);
-		irq->func(irq, irq->data);
 		SpinLock_lock(&_lock);
+		RBTree_delNode(&_timerTree, minNode);
 		minNode = RBTree_getMin(&_timerTree);
 		SpinLock_unlock(&_lock);
+		IO_sti();
+		irq->func(irq, irq->data);
+		IO_cli();
 	}
 	SpinLock_unlock(&_lock);
 	IO_sti();

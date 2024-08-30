@@ -63,6 +63,7 @@ ENTRY(restoreAll)
 
 retFromException:
 ENTRY(Intr_retFromIntr)
+    call Task_schedule
 	callq SMP_getCurCPUIndex
     movq $-1, %rcx
     leaq Intr_SoftIrq_state(%rip), %rbx
@@ -72,16 +73,9 @@ ENTRY(Intr_retFromIntr)
 
 _softirqHandler:
     callq Intr_SoftIrq_dispatch
-    // if (Task_current->state == Task_State_NeedSchedule)
-    movq $0xffffffffffff8000, %rax
-    movq 0x10(%rax), %rax
-    testq $0x4, %rax
-    jnz _reschedule
-    // restore the stack
     jmp restoreAll
 
 _reschedule:
-    call Task_schedule
     jmp restoreAll
 
 ENTRY(divideError)

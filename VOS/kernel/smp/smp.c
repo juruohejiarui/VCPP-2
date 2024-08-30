@@ -32,11 +32,10 @@ u32 SMP_registerCPU(u32 topoIdx) {
 	memset(pkg, 0, sizeof(SMP_CPUInfoPkg));
 	pkg->cpuId = topoIdx;
     SpinLock_unlock(&_lock);
-	SpinLock_init(&pkg->ipiLock);
     // is BSP
     if (SMP_cpuNum == 1) {
         pkg->tssTable = tss64Table;
-		pkg->idtTblSize = 512;
+		pkg->idtTblSize = 512 * 8;
 		pkg->idtTable = idtTable;
 		// mask the traps and interrupts
 		SMP_maskIntr(0, 0, 0x40);
@@ -50,7 +49,7 @@ u32 SMP_registerCPU(u32 topoIdx) {
         pkg->trIdx = trIdx;
 		pkg->initStk = kmalloc(Init_taskStackSize, 0, NULL);
 		pkg->idtTblSize = 512 * 8;
-		pkg->idtTable = kmalloc(512 * 8, Slab_kmalloc_arg_Clear, NULL);
+		pkg->idtTable = kmalloc(512 * 8, 0, NULL);
 		memcpy(idtTable, pkg->idtTable, 512 * 8);
 		memcpy(SMP_cpuInfo[0].intrMsk, pkg->intrMsk, sizeof(u64) * 4);
 		Intr_Gate_setTSSDesc(pkg->trIdx, pkg->tssTable);
@@ -106,7 +105,6 @@ static int _parseMADT() {
 // schedule interrupt
 IntrHandlerDeclare(SMP_irq0xc8Handler) {
 	if (SMP_current->flags & SMP_CPUInfo_flag_InTaskLoop) Task_updateCurState();
-	SpinLock_unlock(&SMP_current->ipiLock);
 }
 
 void SMP_init() {
@@ -150,14 +148,13 @@ void SMP_init() {
 }
 
 void SMP_sendIPI(int cpuId, u32 vector, void *msg) {
-	if (!(SMP_cpuInfo[cpuId].flags & SMP_CPUInfo_flag_WaitTask)) return ;
-	if (vector != SMP_IPI_Type_Schedule) SpinLock_lock(&SMP_cpuInfo[cpuId].ipiLock);
+	SMP_cpuInfo[cpuId].ipiMsg = msg;
 	APIC_ICRDescriptor icr;
 	*(u64 *)&icr = 0;
 	icr.vector = vector;
+	icr.level = HW_APIC_Level_Assert;
 	icr.deliverMode = HW_APIC_DeliveryMode_Fixed;
 	icr.destMode = HW_APIC_DestMode_Physical;
-	icr.deliverMode = HW_APIC_DeliveryStatus_Idle;
 	icr.triggerMode = HW_APIC_TriggerMode_Edge;
 	icr.DestShorthand = HW_APIC_DestShorthand_None;
 	icr.dest.x2Apic = SMP_cpuInfo[cpuId].cpuId;
@@ -165,17 +162,14 @@ void SMP_sendIPI(int cpuId, u32 vector, void *msg) {
 }
 
 void SMP_sendIPI_all(u32 vector, void *msg) {
-	if (vector != SMP_IPI_Type_Schedule) 
-		for (int i = 0; i < SMP_cpuNum; i++) if (!(SMP_cpuInfo[i].flags & SMP_CPUInfo_flag_WaitTask)) {
-			SpinLock_lock(&SMP_cpuInfo[i].ipiLock);
-			SMP_cpuInfo[i].ipiMsg = msg;
-		}
+	for (int i = 0; i < SMP_cpuNum; i++)
+		SMP_cpuInfo[i].ipiMsg = msg;
 	APIC_ICRDescriptor icr;
 	*(u64 *)&icr = 0;
 	icr.vector = vector;
+	icr.level = HW_APIC_Level_Assert;
 	icr.deliverMode = HW_APIC_DeliveryMode_Fixed;
 	icr.destMode = HW_APIC_DestMode_Physical;
-	icr.deliverMode = HW_APIC_DeliveryStatus_Idle;
 	icr.triggerMode = HW_APIC_TriggerMode_Edge;
 	icr.DestShorthand = HW_APIC_DestShorthand_AllIncludingSelf;
 	IO_writeMSR(0x830, *(u64 *)&icr);
@@ -186,16 +180,15 @@ void SMP_sendIPI_self(u32 vector, void *msg) {
 
 void SMP_sendIPI_allButSelf(u32 vector, void *msg) {
 	int self = SMP_getCurCPUIndex();
-		for (int i = 0; i < SMP_cpuNum; i++) if (i != self && !(SMP_cpuInfo[i].flags & SMP_CPUInfo_flag_WaitTask)) {
-			SpinLock_lock(&SMP_cpuInfo[i].ipiLock);
+	for (int i = 0; i < SMP_cpuNum; i++) 
+		if (i != self)
 			SMP_cpuInfo[i].ipiMsg = msg;
-		}
 	APIC_ICRDescriptor icr;
 	*(u64 *)&icr = 0;
 	icr.vector = vector;
+	icr.level = HW_APIC_Level_Assert;
 	icr.deliverMode = HW_APIC_DeliveryMode_Fixed;
 	icr.destMode = HW_APIC_DestMode_Physical;
-	icr.deliverMode = HW_APIC_DeliveryStatus_Idle;
 	icr.triggerMode = HW_APIC_TriggerMode_Edge;
 	icr.DestShorthand = HW_APIC_DestShorthand_AllExcludingSelf;
 	IO_writeMSR(0x830, *(u64 *)&icr);

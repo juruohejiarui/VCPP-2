@@ -7,8 +7,7 @@ TaskStruct_tss		= 0x28
 TaskStruct_vRunTime	= 0x40
 
 ThreadStruct_rip	= 0x00
-ThreadStruct_rsp3	= 0x08
-ThreadStruct_rsp	= 0x10
+ThreadStruct_rsp	= 0x08
 
 Task_kernelStackEnd = 0xfffffffffffffff0
 
@@ -39,7 +38,6 @@ ENTRY(Task_switch)
 	cmpq %rbx, %rax
 	je TaskMemStruct_switchCR3_end
 	movq %rax, %cr3
-	mfence
 TaskMemStruct_switchCR3_end:
 	movq $0xffffffffffff8000, %rcx
 	movq $0x2, %rax
@@ -47,7 +45,7 @@ TaskMemStruct_switchCR3_end:
 	movq TaskStruct_thread(%rcx), %rbx
 	movq ThreadStruct_rsp(%rbx), %rsp
 	movq ThreadStruct_rip(%rbx), %rax
-	jmp *%rax
+	jmpq *%rax
 Task_switch_back:
 	// restore rax and rbp
 	popq %rax
@@ -58,12 +56,10 @@ ENTRY(Task_kernelThreadEntry)
     jmp restoreAll
 
 ENTRY(Syscall_entry)
+	movq %rsp, %rdx
+	movq %rbp, %r9
     // switch to kernel stack
-    movq $0xffffffffffff8000, %rbx
-    movq TaskStruct_thread(%rbx), %rbx
-    movq %rsp, ThreadStruct_rsp3(%rbx)
     movq $0xfffffffffffffff0, %rsp
-    movq %rsp, ThreadStruct_rsp(%rbx)
     // save the registers
     movq %es, %rax
     pushq %rax
@@ -71,6 +67,8 @@ ENTRY(Syscall_entry)
     pushq %rax
     pushq %rcx
     pushq %r11
+	pushq %r9	// user rbp
+	pushq %rdx	// user rsp
 	movq $0x10, %rax
 	movq %rax, %ds
 	movq %rax, %es
@@ -78,6 +76,8 @@ ENTRY(Syscall_entry)
 	jmp Syscall_exit
 
 ENTRY(Syscall_exit)
+	popq %rdx	// user rsp
+	popq %r9	// user rbp
     popq %r11
     popq %rcx
     popq %rbx
@@ -86,10 +86,8 @@ ENTRY(Syscall_exit)
     movq %rbx, %es
 
 	// switch back to user stack
-    movq $0xffffffffffff8000, %rbx
-    movq TaskStruct_thread(%rbx), %rbx
-	movq ThreadStruct_rsp3(%rbx), %rsp
-	movq %rsp, ThreadStruct_rsp(%rbx)
+	movq %rdx, %rsp
+	movq %r9, %rbp
     sysretq
 
 	
