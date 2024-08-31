@@ -92,7 +92,6 @@ void HW_PCIe_init() {
 
 void HW_PCIe_MSI_dispatcher(u64 rsp, u64 irqId) {
 	SMP_CPUInfoPkg *pkg = SMP_current;
-	printk(WHITE, BLACK, "MSI interrupt:%d\n", irqId);
 	if (!pkg->intrDesc[irqId - 0x40]) { printk(WHITE, BLACK, "No handler for pci irq %#04x\n", irqId); return ; }
 	PCIe_MSI_Descriptor *desc = container(pkg->intrDesc[irqId - 0x40], PCIe_MSI_Descriptor, intrDesc);
 	desc->intrDesc.handler(desc->intrDesc.param, (PtReg *)rsp);

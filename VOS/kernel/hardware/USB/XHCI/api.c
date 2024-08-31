@@ -205,3 +205,35 @@ int HW_USB_XHCI_Req_wait(XHCI_Request *req) {
 	while (!(req->flags & XHCI_Request_Flag_Finished)) ;
 	return HW_USB_XHCI_TRB_getCmplCode(&req->res);
 }
+
+int HW_USB_XHCI_Req_ringDoorbellWait(XHCI_Host *host, u32 slotId, u32 epId, u32 taskId, XHCI_Request *req) {
+	HW_USB_XHCI_writeDbReg(host, slotId, epId, taskId);
+	return HW_USB_XHCI_Req_wait(req);
+}
+
+void HW_USB_XHCI_writeCtx(void *ctx, int dwId, u32 mask, u32 val) {
+	HW_USB_XHCI_writeDword((u64)ctx + dwId * sizeof(u32), (HW_USB_XHCI_readDword((u64)(ctx + dwId)) & ~mask) | (val << (Bit_ffs(mask) - 1)));
+}
+
+u32 HW_USB_XHCI_readCtx(void *ctx, int dwId, u32 mask) {
+	return (HW_USB_XHCI_readDword((u64)ctx + dwId * sizeof(u32)) & mask) >> (Bit_ffs(mask) - 1);
+}
+
+u32 HW_USB_XHCI_EpCtx_readMxESITPay(XHCI_EpCtx *ep) {
+	return (HW_USB_XHCI_readCtx(ep, 0, XHCI_EpCtx_mxESITPayH) << 16) | HW_USB_XHCI_readCtx(ep, 4, XHCI_EpCtx_mxESITPayL);
+}
+
+void HW_USB_XHCI_EpCtx_writeMxESITPay(XHCI_EpCtx *ep, u32 val) {
+	HW_USB_XHCI_writeCtx(ep, 0, XHCI_EpCtx_mxESITPayH, val >> 16);
+	HW_USB_XHCI_writeCtx(ep, 4, XHCI_EpCtx_mxESITPayL, val & 0xffffu);
+}
+
+u32 HW_USB_XHCI_EpCtx_getMxPackSize0(u32 speed) {
+	switch (speed) {
+		case XHCI_Port_Speed_Super :	return 512;
+		case XHCI_Port_Speed_Low : 		return 8;
+		case XHCI_Port_Speed_High : 
+		case XHCI_Port_Speed_Full :		return 64;
+	}
+	return 512;
+}

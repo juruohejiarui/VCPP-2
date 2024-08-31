@@ -42,7 +42,7 @@ void _delUsage(void *addr) {
 	for (List *usageList = Task_current->mem->kmallocUsage.next; usageList != &Task_current->mem->kmallocUsage; usageList = usageList->next) {
 		Task_KmallocUsage *usage = container(usageList, Task_KmallocUsage, listEle);
 		if (usage->addr != addr) continue;
-		usage->destructor(addr);
+		if (usage->destructor) usage->destructor(addr);
 		Task_current->mem->totUsage -= usage->size;
 		List_del(usageList);
 		kfree(usage, 0);

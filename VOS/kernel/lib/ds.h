@@ -52,6 +52,8 @@ __always_inline__ void Bit_rev(u64 *addr, u64 index) {
         : "memory"
     );
 }
+// return 1-based index
+u32 Bit_ffs(u64 val);
 
 
 #define memberOffset(type, member) ((u64)(&(((type *)0)->member)))

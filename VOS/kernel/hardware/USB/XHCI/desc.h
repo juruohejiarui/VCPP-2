@@ -44,17 +44,82 @@ typedef struct XHCI_Request {
 	struct XHCI_Request ***target;
 } __attribute__ ((packed)) XHCI_Request;
 
+// because of the limitation of that software can only accessing data in dword / quad style
+// all the fields description here in contexts will be provided by bit masking
+
+// XHCI Device Slot Context
 typedef struct XHCI_SlotCtx {
-
+	u32 dw0;
+	#define XHCI_SlotCtx_routeStr	0x000fffffu
+	#define XHCI_SlotCtx_speed		0x00f00000u
+	#define XHCI_SlotCtx_mtt		0x02000000u
+	#define XHCI_SlotCtx_hub		0x04000000u
+	#define XHCI_SlotCtx_ctxEntries	0xf8000000u
+	u32 dw1;
+	#define XHCI_SlotCtx_maxExitLatency	0x0000ffffu
+	#define XHCI_SlotCtx_rootPortNum	0x00ff0000u
+	#define XHCI_SlotCtx_numOfPorts		0xff000000u
+	u32 dw2;
+	#define XHCI_SlotCtx_ttHubSlotId	0x000000ffu
+	#define XHCI_SlotCtx_ttPortNum		0x0000ff00u
+	#define XHCI_SlotCtx_ttt			0x00030000u
+	#define XHCI_SlotCtx_interTarget	0xffC00000u
+	u32 dw3;
+	#define XHCI_SlotCtx_devAddr	0x000000ffu
+	#define XHCI_SlotCtx_slotState	0xff000000u
+	u32 reserved[4];
 } __attribute__ ((packed)) XHCI_SlotCtx;
-typedef struct XHCI_EpCtx {
 
+// XHCI Device Endpoint Context
+typedef struct XHCI_EpCtx {
+	u32 dw0;
+	#define XHCI_EpCtx_epState		0x00000007u
+	#define XHCI_EpCtx_multi		0x00000300u
+	#define XHCI_EpCtx_mxPStreams	0x00007C00u
+	#define XHCI_EpCtx_lsa			0x00008000u
+	#define XHCI_EpCtx_interal		0x00ff0000u
+	#define XHCI_EpCtx_mxESITPayH	0xff000000u
+	u32 dw1;
+	#define XHCI_EpCtx_CErr			0x00000006u
+	#define XHCI_EpCtx_epType		0x00000038u
+	#define XHIC_EpCtx_hid			0x00000080u
+	#define XHCI_EpCtx_mxBurstSize	0x0000ff00u
+	#define XHCI_EpCtx_mxPackSize	0xffff0000u
+	union {
+		u64 deqPtr;
+		u32 dw2;
+		u32 dw3;
+	};
+	#define XHCI_EpCtx_dcs	0x00000001u
+	u32 dw4;
+	#define XHCI_EpCtx_aveTrbLen	0x0000ffffu
+	#define XHCI_EpCtx_mxESITPayL	0xffff0000u
+	u32 reserved[3];
 } __attribute__ ((packed)) XHCI_EpCtx;
+
+#define XHCI_EpCtx_epType_IsochOut	1
+#define XHCI_EpCtx_epType_BulkOut	2
+#define XHCI_EpCtx_epType_IntrOut	3
+#define XHCI_EpCtx_epType_Control	4
+#define XHCI_EpCtx_epType_IsochIn	5
+#define XHCI_EpCtx_epType_BulkIn	6
+#define XHCI_EpCtx_epType_IntrIn	7
 
 typedef struct XHCI_DevCtx {
 	XHCI_SlotCtx slot;
 	XHCI_EpCtx ep[31];
 } __attribute__ ((packed)) XHCI_DevCtx;
+
+typedef struct XHCI_InputCtrlCtx {
+	u32 addFlags;
+	u32 dropFlags;
+} __attribute__ ((packed)) XHCI_InputCtrlCtx;
+
+typedef struct XHCI_InputCtx {
+	XHCI_InputCtrlCtx ctrl;
+	XHCI_SlotCtx slot;
+	XHCI_EpCtx ep[31];
+} __attribute__ ((packed)) XHCI_InputCtx;
 
 typedef struct XHCI_Ring {
 	SpinLock lock;
@@ -69,7 +134,9 @@ typedef struct XHCI_Device {
 	int slotId;
 	TaskStruct *mgrTask;
 	XHCI_DevCtx *ctx;
-	XHCI_Ring *epRing[31];
+	XHCI_InputCtx *inCtx;
+	// transfer ring for each endpoint
+	XHCI_Ring *trRing[31];
 } XHCI_Device;
 
 typedef struct XHCI_EveRing {
@@ -102,6 +169,11 @@ typedef struct XHCI_PortInfo {
 	u8 portId;
 	XHCI_Device *dev;
 } XHCI_PortInfo;
+
+#define XHCI_Port_Speed_Full	1 // USB 2.0
+#define XHCI_Port_Speed_Low		2 // USB 1.1
+#define XHCI_Port_Speed_High	3 // USB 2.0
+#define XHCI_Port_Speed_Super	4 // USB 3.0
 
 #define XHCI_EveHandleTaskNum	0x1
 

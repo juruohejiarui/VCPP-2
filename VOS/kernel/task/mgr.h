@@ -52,7 +52,9 @@ void Task_switch(TaskStruct *next);
 // the current task
 #define Task_current ((TaskStruct *)(Task_kernelStackEnd - Task_kernelStackSize))
 
-TaskStruct *Task_currentDMAS();
+static __always_inline__ TaskStruct *Task_currentDMAS() {
+	return (TaskStruct *)DMAS_phys2Virt(MM_PageTable_getPldEntry(getCR3(), (u64)Task_current) & ~0xfff);
+}
 
 void Task_exit();
 
@@ -67,8 +69,7 @@ void Task_defaultSignalHandler(u64 signal);
 /// @brief set the signal handler of current task
 void Task_setSignalHandler(TaskStruct *task, u64 signal, Task_SignalHandler handler, u64 param);
 /// @brief set signal to TASK
-void Task_setSignal(TaskStruct *task, u64 signal);
-
+static __always_inline__ void Task_setSignal(TaskStruct *task, u64 signal) { task->signal |= (1 << signal); }
 #pragma endregion
 
 #pragma region Task Timer

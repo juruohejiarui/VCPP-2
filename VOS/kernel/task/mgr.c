@@ -90,9 +90,7 @@ static int _CFSTree_comparator(RBNode *a, RBNode *b) {
 	return task1->vRunTime != task2->vRunTime ? (task1->vRunTime < task2->vRunTime) : (task1->pid < task2->pid);
 }
 
-TaskStruct *Task_currentDMAS() {
-	return (TaskStruct *)DMAS_phys2Virt(MM_PageTable_getPldEntry(getCR3(), (u64)Task_current) & ~0xfff);
-}
+
 
 void Task_schedule() {
 	if (!(SMP_current->flags & SMP_CPUInfo_flag_InTaskLoop) || Task_current->state != Task_State_NeedSchedule) return ;
@@ -151,7 +149,7 @@ void Task_defaultSignalHandler(u64 signal) {
 	}
 }
 
-void Task_setSignal(TaskStruct *task, u64 signal) { task->signal |= (1 << signal); }
+
 
 void Task_setSignalHandler(TaskStruct *task, u64 signal, Task_SignalHandler handler, u64 param) {
 	if (signal < 32) task->signalHandlerParam[signal] = param;

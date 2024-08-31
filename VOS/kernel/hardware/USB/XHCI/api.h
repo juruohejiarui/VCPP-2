@@ -164,6 +164,20 @@ void HW_USB_XHCI_freeReq(XHCI_Request *req);
 // wait for the result of request and return the completion code
 int HW_USB_XHCI_Req_wait(XHCI_Request *req);
 
+// ring the doorbell of HOST, wait for interrupt result and finally return the completion code
+int HW_USB_XHCI_Req_ringDoorbellWait(XHCI_Host *host, u32 slotId, u32 epId, u32 taskId, XHCI_Request *req);
+
+void HW_USB_XHCI_writeCtx(void *ctx, int dwId, u32 mask, u32 val);
+
+u32 HW_USB_XHCI_readCtx(void *ctx, int dwId, u32 mask);
+
+u32 HW_USB_XHCI_EpCtx_readMxESITPay(XHCI_EpCtx *ep);
+
+void HW_USB_XHCI_EpCtx_writeMxESITPay(XHCI_EpCtx *ep, u32 val);
+
+// get the max packet size for endpoint 0 (control endpoint)
+u32 HW_USB_XHCI_EpCtx_getMxPackSize0(u32 speed);
+
 IntrHandlerDeclare(HW_USB_XHCI_msiHandler);
 
 void HW_USB_XHCI_init(PCIeManager *pci);
