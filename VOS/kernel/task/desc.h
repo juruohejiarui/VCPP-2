@@ -105,7 +105,7 @@ typedef struct TaskStruct {
 	RBNode wNode;
 
 	Task_SignalHandler signalHandler[Task_signalNum];
-	u64 signalHandlerParam[Task_signalNum - 32];
+	u64 signalHandlerParam[Task_signalNum];
 
     SIMD_XsaveArea *simdRegs;
 } __attribute__((packed)) TaskStruct; 

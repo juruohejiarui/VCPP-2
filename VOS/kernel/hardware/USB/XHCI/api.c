@@ -144,7 +144,7 @@ int HW_USB_XHCI_Ring_tryInsReq(XHCI_Ring *ring, XHCI_Request *req) {
 			reqP++;
 		}
 		HW_USB_XHCI_TRB_setCycBit(trb, cyc[i]);
-		printk(ORANGE, BLACK, "%#018lx cyc:%d\n", trb, cyc[i]);
+		// printk(ORANGE, BLACK, "%#018lx cyc:%d\n", trb, cyc[i]);
 	}
 	SpinLock_unlock(&ring->lock);
 	return 1;

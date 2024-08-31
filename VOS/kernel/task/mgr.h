@@ -7,6 +7,7 @@
 struct CFS_rq {
     RBTree tree[Hardware_CPUNumber], killedTree;
 	SpinLock lock[Hardware_CPUNumber], killedTreeLock;
+	Atomic taskNum[Hardware_CPUNumber];
 	u64 flags;
 	Atomic killedTaskNum;
 	Atomic recycTskState;

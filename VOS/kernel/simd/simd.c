@@ -19,7 +19,7 @@ void SIMD_init() {
 }
 
 void SIMD_enable() {
-	printk(WHITE, BLACK, "enable SIMD on processor %d\n", SMP_getCurCPUIndex());
+	// printk(WHITE, BLACK, "enable SIMD on processor %d\n", SMP_getCurCPUIndex());
 	u32 a, b, c, d;
 	HW_CPU_cpuid(0x01, 0, &a, &b, &c, &d);
 	if (!(c & (1u << 26))) { printk(RED, BLACK, "SIMD: no xsave support.\n"); return ; }
@@ -40,8 +40,8 @@ void SIMD_enable() {
 	u32 enbl = (1ul << 1) | (1ul << 2);
 
 	HW_CPU_cpuid(0x07, 0x00, &a, &b, &c, &d);
-	if (!(b & (1u << 16))) printk(YELLOW, BLACK, "SIMD: no AVX-512 support.\n");
-	else enbl |= (1ul << 5) | (1ul << 6) | (1ul << 7);
+	if (b & (1u << 16)) enbl |= (1ul << 5) | (1ul << 6) | (1ul << 7);
+	// else printk(YELLOW, BLACK, "SIMD: no AVX-512 support.\n");
 	
 	xcr0 = IO_getXCR(0);
     IO_setXCR(0, xcr0 | enbl);

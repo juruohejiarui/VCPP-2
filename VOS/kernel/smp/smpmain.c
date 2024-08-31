@@ -53,18 +53,10 @@ void startSMP() {
 
 	// wait for the first task, and then jump to it
 	int idx = SMP_getCurCPUIndex();
-	TaskStruct *task;
-	while (1) {
-		SpinLock_lock(&Task_cfsStruct.lock[idx]);
-		RBNode *leftMost = RBTree_getMin(&Task_cfsStruct.tree[idx]);
-		if (leftMost) {
-			task = container(leftMost, TaskStruct, wNode);
-			RBTree_delNode(&Task_cfsStruct.tree[idx], leftMost);
-			break;
-		}
-		SpinLock_unlock(&Task_cfsStruct.lock[idx]);
-	}
-	SpinLock_unlock(&Task_cfsStruct.lock[idx]);
+	while (!Task_cfsStruct.taskNum[idx].value) ;
+	RBNode *node = RBTree_getMin(&Task_cfsStruct.tree[idx]);
+	RBTree_delNode(&Task_cfsStruct.tree[idx], node);
+	TaskStruct *task = container(node, TaskStruct, wNode);
 	SIMD_enable();
 	SIMD_setTS();
 	Task_switch_init(NULL, task);

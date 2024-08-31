@@ -30,9 +30,8 @@ void Task_keyboardEvent(void *arg1, u64 arg2) {
 
 void task_empty(void *arg1, u64 arg2) {
 	Task_kernelEntryHeader();
-	Page *page = NULL;
-	for (int i = 0; i < Task_current->pid % 4; i++)
-		page = MM_Buddy_alloc(3, Page_Flag_Active);
+	Task_current->priority = Task_Priority_Trapped;
+	while (1) IO_hlt();
 	Task_kernelThreadExit(1);
 }
 
@@ -65,9 +64,10 @@ void task0(void *arg1, u64 arg2) {
 	Task_kernelEntryHeader();
 	printk(WHITE, BLACK, "task0 is running...\n");
 	// launch keyboard task
-	TaskStruct *kbTask = Task_createTask(Task_keyboardEvent, NULL, 0, Task_Flag_Inner | Task_Flag_Kernel);
+	TaskStruct *kbTask = Task_createTask(Task_keyboardEvent, NULL, 0, Task_Flag_Inner | Task_Flag_Kernel),
+				*recycTask = Task_createTask(Task_recycleThread, NULL, 0, Task_Flag_Kernel | Task_Flag_Inner);
 	HW_initAdvance();
-	for (int i = 0; i < 20; i++) Task_createTask(usrInit, NULL, i, Task_Flag_Inner);
+	// for (int i = 0; i < 20; i++) Task_createTask(usrInit, NULL, i, Task_Flag_Inner);
 	// for (int i = 0; i < 20; i++) Task_createTask(task_empty, NULL, 0, Task_Flag_Inner | Task_Flag_Kernel);
 	while (1) IO_hlt();
 	Task_kernelThreadExit(0);
@@ -82,9 +82,9 @@ void Task_init() {
     Init_taskStruct.thread->fs = Init_taskStruct.thread->gs = Segment_kernelData;
     List_init(&Init_taskStruct.listEle);
     
-    TaskStruct *initTask[2] = { NULL };
+    TaskStruct **initTask = kmalloc(sizeof(TaskStruct *) * SMP_cpuNum, Slab_kmalloc_arg_Clear, NULL);
 	initTask[0] = Task_createTask(task0, NULL, 0, Task_Flag_Inner | Task_Flag_Kernel);
-	initTask[1] = Task_createTask(Task_recycleThread, NULL, 0, Task_Flag_Inner | Task_Flag_Kernel);
+	for (int i = 1; i < SMP_cpuNum; i++) initTask[i] = Task_createTask(task_empty, NULL, 0, Task_Flag_Inner | Task_Flag_Kernel);
     List_del(&Init_taskStruct.listEle);
 	SIMD_setTS();
     Task_switch_init(&Init_taskStruct, initTask[0]);

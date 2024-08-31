@@ -97,11 +97,13 @@ TaskStruct *Task_currentDMAS() {
 void Task_schedule() {
 	if (!(SMP_current->flags & SMP_CPUInfo_flag_InTaskLoop) || Task_current->state != Task_State_NeedSchedule) return ;
 	if (Task_current->signal) {
+		Task_current->state = Task_State_Running;
 		IO_sti();
 		u64 *signal = &Task_current->signal;
 		for (int i = 0; i < Task_signalNum; i++)
 			if (*signal & (1ul << i)) {
 				*signal &= ~(1ul << i);
+				printk(WHITE, BLACK, "Task %ld accept signal %d\n", Task_current->pid, i);
 				// when the task handle the signal by the custom handler, then this signal is treated as "handled"
 				if (Task_current->signalHandler[i])
 					Task_current->signalHandler[i](i, Task_current->signalHandlerParam[i]);
@@ -110,43 +112,25 @@ void Task_schedule() {
 			}
 		IO_cli();
 		return ;
-	}
-	SIMD_setTS();
-	SpinLock *lock;
-	RBTree *cfsTree; 
-	{
+	} else {
+		IO_cli();
+		SIMD_setTS();
 		int cpuId = Task_current->cpuId;
-		lock = &Task_cfsStruct.lock[cpuId];
-		cfsTree = &Task_cfsStruct.tree[cpuId];
-	}
-
-	SpinLock_lock(lock);
-	// insert this task into the waiting tree
-    if (Task_current->priority == Task_Priority_Killed && !Task_cfsStruct.recycTskState.value) {
-		RBTree_insNode(&Task_cfsStruct.killedTree, &Task_currentDMAS()->wNode);
-		Atomic_inc(&Task_cfsStruct.killedTaskNum);
-		Task_current->flags |= Task_Flag_InKillTree;
-	} else RBTree_insNode(cfsTree, &Task_currentDMAS()->wNode);
-	// get the task with least vRuntime
-    RBNode *leftMost = RBTree_getMin(cfsTree);
-
-    if (leftMost == NULL) {
-		// stay in the loop and wait for a task
-		SpinLock_unlock(lock);
-		SMP_current->flags |= SMP_CPUInfo_flag_WaitTask;
-		while (1) {
-			SpinLock_lock(lock);
-			leftMost = RBTree_getMin(cfsTree);
-			if (leftMost) break;
-			SpinLock_unlock(lock);
-		}
-		SMP_current->flags &= ~SMP_CPUInfo_flag_WaitTask;
-	}
-    RBTree_delNode(cfsTree, leftMost);
-	SpinLock_unlock(lock);
-    TaskStruct *next = container(leftMost, TaskStruct, wNode);
-	// printk(BLACK, WHITE, "[%d]%ld.%ld ", Task_current->cpuId, Task_current->pid, next->pid);
-    Task_switch(next);
+		SpinLock *lock = &Task_cfsStruct.lock[cpuId];
+		RBTree *cfsTree = &Task_cfsStruct.tree[cpuId]; 
+		// insert this task into the waiting tree
+		if (Task_current->priority == Task_Priority_Killed && !Task_cfsStruct.recycTskState.value) {
+			RBTree_insNode(&Task_cfsStruct.killedTree, &Task_currentDMAS()->wNode);
+			Atomic_inc(&Task_cfsStruct.killedTaskNum);
+			Task_current->flags |= Task_Flag_InKillTree;
+			Atomic_dec(&Task_cfsStruct.taskNum[cpuId]);
+		} else RBTree_insNode(cfsTree, &Task_currentDMAS()->wNode);
+		// get the task with least vRuntime
+		RBNode *leftMost = RBTree_getMin(cfsTree);
+		RBTree_delNode(cfsTree, leftMost);
+		// printk(BLACK, WHITE, "[%d]%ld.%ld ", Task_current->cpuId, Task_current->pid, next->pid);
+		Task_switch(container(leftMost, TaskStruct, wNode));
+	}	
 }
 
 #pragma endregion
@@ -343,14 +327,14 @@ TaskStruct *Task_createTask(Task_Entry entry, void *arg1, u64 arg2, u64 flag) {
 
 	// choose a processor
 	task->cpuId = task->pid % SMP_cpuNum;
-	printk(YELLOW, BLACK, "task %ld on processor %d\n", task->pid, task->cpuId);
 	// insert the task into the cfs struct
     if (task->pid > 0) {
 		IO_cli();
-		SpinLock_lock(&Task_cfsStruct.lock[task->cpuId]);
 		RBTree_insNode(&Task_cfsStruct.tree[task->cpuId], &task->wNode);
-		SpinLock_unlock(&Task_cfsStruct.lock[task->cpuId]);
+		Atomic_inc(&Task_cfsStruct.taskNum[task->cpuId]);
 		IO_sti();
+	} else {
+		Atomic_inc(&Task_cfsStruct.taskNum[0]);
 	}
     return task;
 }
@@ -423,6 +407,7 @@ void Task_initMgr() {
 		RBTree_init(&Task_cfsStruct.tree[i], _CFSTree_comparator);
 		SpinLock_init(&Task_cfsStruct.lock[i]);
 	}
+	memset(Task_cfsStruct.taskNum, 0, sizeof(Task_cfsStruct.taskNum));
     RBTree_init(&Task_cfsStruct.killedTree, _CFSTree_comparator);
     SpinLock_init(&Task_cfsStruct.killedTreeLock);
 
