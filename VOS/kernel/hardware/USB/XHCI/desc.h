@@ -63,7 +63,7 @@ typedef struct XHCI_SlotCtx {
 	#define XHCI_SlotCtx_ttHubSlotId	0x000000ffu
 	#define XHCI_SlotCtx_ttPortNum		0x0000ff00u
 	#define XHCI_SlotCtx_ttt			0x00030000u
-	#define XHCI_SlotCtx_interTarget	0xffC00000u
+	#define XHCI_SlotCtx_intrTarget		0xffc00000u
 	u32 dw3;
 	#define XHCI_SlotCtx_devAddr	0x000000ffu
 	#define XHCI_SlotCtx_slotState	0xff000000u
@@ -87,14 +87,16 @@ typedef struct XHCI_EpCtx {
 	#define XHCI_EpCtx_mxPackSize	0xffff0000u
 	union {
 		u64 deqPtr;
-		u32 dw2;
-		u32 dw3;
+		struct {
+			u32 dw2;
+			u32 dw3;
+		} __attribute__ ((packed)) dw2_3;
 	};
 	#define XHCI_EpCtx_dcs	0x00000001u
 	u32 dw4;
 	#define XHCI_EpCtx_aveTrbLen	0x0000ffffu
 	#define XHCI_EpCtx_mxESITPayL	0xffff0000u
-	u32 reserved[3];
+	u32 reserved[3]; 
 } __attribute__ ((packed)) XHCI_EpCtx;
 
 #define XHCI_EpCtx_epType_IsochOut	1
@@ -110,13 +112,18 @@ typedef struct XHCI_DevCtx {
 	XHCI_EpCtx ep[31];
 } __attribute__ ((packed)) XHCI_DevCtx;
 
-typedef struct XHCI_InputCtrlCtx {
-	u32 addFlags;
+typedef struct XHCI_InCtrlCtx {
 	u32 dropFlags;
-} __attribute__ ((packed)) XHCI_InputCtrlCtx;
+	u32 addFlags;
+	u32 reserved[5];
+	u32 dw7;
+	#define XHCI_InCtrlCtx_cfgVal	0x000000ffu
+	#define XHCI_InCtrlCtx_inteNum	0x0000ff00u
+	#define XHCI_InCtrlCtx_AlterSet	0x00ff0000u
+} __attribute__ ((packed)) XHCI_InCtrlCtx;
 
 typedef struct XHCI_InputCtx {
-	XHCI_InputCtrlCtx ctrl;
+	XHCI_InCtrlCtx ctrl;
 	XHCI_SlotCtx slot;
 	XHCI_EpCtx ep[31];
 } __attribute__ ((packed)) XHCI_InputCtx;

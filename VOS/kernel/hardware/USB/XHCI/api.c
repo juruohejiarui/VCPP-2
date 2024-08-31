@@ -212,7 +212,7 @@ int HW_USB_XHCI_Req_ringDoorbellWait(XHCI_Host *host, u32 slotId, u32 epId, u32 
 }
 
 void HW_USB_XHCI_writeCtx(void *ctx, int dwId, u32 mask, u32 val) {
-	HW_USB_XHCI_writeDword((u64)ctx + dwId * sizeof(u32), (HW_USB_XHCI_readDword((u64)(ctx + dwId)) & ~mask) | (val << (Bit_ffs(mask) - 1)));
+	HW_USB_XHCI_writeDword((u64)ctx + dwId * sizeof(u32), (HW_USB_XHCI_readDword((u64)ctx + dwId * sizeof(u32)) & ~mask) | (val << (Bit_ffs(mask) - 1)));
 }
 
 u32 HW_USB_XHCI_readCtx(void *ctx, int dwId, u32 mask) {

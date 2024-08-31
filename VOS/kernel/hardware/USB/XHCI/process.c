@@ -332,24 +332,25 @@ void HW_USB_XHCI_devMgrTask(XHCI_Device *dev, u64 rootPort) {
 	int speed = (HW_USB_XHCI_readPortReg(dev->host, rootPort, XHCI_PortReg_sc) >> 10) & ((1 << 4) - 1);
 	printk(YELLOW, BLACK, "dev:%#018lx port:%d speed:%d\n", dev, rootPort, speed);
 	// enable a slot for this device
-	XHCI_Request *req;
+	XHCI_Request *req0;
 	{
-		req = HW_USB_XHCI_allocReq(1);
-		HW_USB_XHCI_TRB_setType(&req->trb[0], XHCI_TRB_Type_EnblSlot);
-		HW_USB_XHCI_Ring_insReq(dev->host->cmdRing, req);
-		if (HW_USB_XHCI_Req_ringDoorbellWait(dev->host, 0, 0, 0, req) != XHCI_TRB_CmplCode_Succ) {
-			printk(RED, BLACK, "dev:%#018lx failed to allocate slot, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req->res));
+		req0 = HW_USB_XHCI_allocReq(1);
+		HW_USB_XHCI_TRB_setType(&req0->trb[0], XHCI_TRB_Type_EnblSlot);
+		HW_USB_XHCI_Ring_insReq(dev->host->cmdRing, req0);
+		if (HW_USB_XHCI_Req_ringDoorbellWait(dev->host, 0, 0, 0, req0) != XHCI_TRB_CmplCode_Succ) {
+			printk(RED, BLACK, "dev:%#018lx failed to allocate slot, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req0->res));
 			dev->mgrTask = NULL;
 			Task_setSignal(Task_current, Task_Signal_Int);
+			while (1) IO_hlt();
 		}
-		dev->slotId = HW_USB_XHCI_TRB_getSlot(&req->res);
+		dev->slotId = HW_USB_XHCI_TRB_getSlot(&req0->res);
 		printk(GREEN, BLACK, "dev %#018lx on slot %d\n", dev, dev->slotId);
 	}	 
 	// create input context structure
 	{
-		req->flags = 0;
-		HW_USB_XHCI_TRB_setToggle(&req->trb[0], XHCI_TRB_Type_AddrDev);
-		HW_USB_XHCI_TRB_setSlot(&req->trb[0], dev->slotId);
+		req0->flags = 0;
+		HW_USB_XHCI_TRB_setType(&req0->trb[0], XHCI_TRB_Type_AddrDev);
+		HW_USB_XHCI_TRB_setSlot(&req0->trb[0], dev->slotId);
 		
 		dev->inCtx = kmalloc(sizeof(XHCI_InputCtx), Slab_kmalloc_arg_Clear | Slab_kmalloc_arg_Private, NULL);
 		dev->inCtx->ctrl.addFlags |= (1 << 1) | (1 << 0);
@@ -361,23 +362,34 @@ void HW_USB_XHCI_devMgrTask(XHCI_Device *dev, u64 rootPort) {
 		}
 		{
 			XHCI_EpCtx *ep0 = &dev->inCtx->ep[0];
+			HW_USB_XHCI_writeCtx(ep0, 0, XHCI_EpCtx_lsa, 1);
 			HW_USB_XHCI_writeCtx(ep0, 1, XHCI_EpCtx_epType, XHCI_EpCtx_epType_Control);
 			HW_USB_XHCI_writeCtx(ep0, 1, XHCI_EpCtx_CErr, 3);
 			HW_USB_XHCI_writeCtx(ep0, 1, XHCI_EpCtx_mxPackSize, HW_USB_XHCI_EpCtx_getMxPackSize0(speed));
+
+
 			dev->trRing[0] = HW_USB_XHCI_allocRing(XHCI_Ring_maxSize);
+			XHCI_GenerTRB *lk = &dev->trRing[0]->ring[XHCI_Ring_maxSize - 1];
+			HW_USB_XHCI_TRB_setType(lk, XHCI_TRB_Type_Link);
+			HW_USB_XHCI_TRB_setToggle(lk, 1);
+			HW_USB_XHCI_TRB_setData(lk, DMAS_virt2Phys(&dev->trRing[0]->ring[0]));
+
 			HW_USB_XHCI_writeQuad((u64)&ep0->deqPtr, DMAS_virt2Phys(dev->trRing[0]->cur));
 			HW_USB_XHCI_writeCtx(ep0, 2, XHCI_EpCtx_dcs, 1);
 			HW_USB_XHCI_writeCtx(ep0, 4, XHCI_EpCtx_aveTrbLen, 8);
 		}
-		HW_USB_XHCI_TRB_setData(&req->trb[0], DMAS_virt2Phys(dev->inCtx));
-		HW_USB_XHCI_Ring_insReq(dev->host->cmdRing, req);
-		if (HW_USB_XHCI_Req_ringDoorbellWait(dev->host, 0, 0, 0, req) != XHCI_TRB_CmplCode_Succ) {
-			printk(RED, BLACK, "dev:%#018lx failed to address device, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req->res));
+		HW_USB_XHCI_TRB_setData(&req0->trb[0], DMAS_virt2Phys(dev->inCtx));
+		HW_USB_XHCI_Ring_insReq(dev->host->cmdRing, req0);
+		if (HW_USB_XHCI_Req_ringDoorbellWait(dev->host, 0, 0, 0, req0) != XHCI_TRB_CmplCode_Succ) {
+			printk(RED, BLACK, "dev:%#018lx failed to address device, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req0->res));
 			dev->mgrTask = NULL;
 			Task_setSignal(Task_current, Task_Signal_Int);
+			while (1) IO_hlt();
 		}
 		printk(GREEN, BLACK, "dev %#018lx address deivce successfully\n", dev);
 	}
+	// get the first 8 bytes of the device descriptor and modify the maxPacketSize0
+	
 	while (1) IO_hlt();
 	Task_kernelThreadExit(0);
 }
