@@ -44,4 +44,5 @@ void HW_USB_HID_process(XHCI_Device *dev) {
 	// Normally, there will be only one endpoint for one interface
 	// modify the endpoint using "Configure Endpoint Command"
 	// set SET_CONFIGURATION request to device
+	while (1) IO_hlt();
 } 
