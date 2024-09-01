@@ -37,11 +37,39 @@ static __always_inline__ void HW_USB_XHCI_TRB_setToggle(XHCI_GenerTRB *trb, u32 
 static __always_inline__ u32 HW_USB_XHCI_TRB_getToggle(XHCI_GenerTRB *trb) {
 	return (HW_USB_XHCI_readDword((u64)&trb->ctrl) >> 1) & 1;
 }
+static __always_inline__ void HW_USB_XHCI_TRB_setCtrlBit(XHCI_GenerTRB *trb, u32 val) {
+	HW_USB_XHCI_writeDword((u64)&trb->ctrl, val | (HW_USB_XHCI_readDword((u64)&trb->ctrl) & ~XHCI_TRB_Ctrl_allBit));
+}
+static __always_inline__ u32 HW_USB_XHCI_TRB_getCtrlBit(XHCI_GenerTRB *trb) {
+	return HW_USB_XHCI_readDword((u64)&trb->ctrl) & XHCI_TRB_Ctrl_allBit;
+}
+static __always_inline__ u32 HW_USB_XHCI_TRB_setTRT(XHCI_GenerTRB *trb, u32 val) {
+	HW_USB_XHCI_writeDword((u64)&trb->ctrl, (val << 16) | (HW_USB_XHCI_readDword((u64)&trb->ctrl) & 0xfffcffffu));
+}
+static __always_inline__ void HW_USB_XHCI_TRB_setDir(XHCI_GenerTRB *trb, u32 val) {
+	HW_USB_XHCI_TRB_setTRT(trb, val & 0x1);
+}
 static __always_inline__ u64 HW_USB_XHCI_TRB_getData(XHCI_GenerTRB *trb) {
 	return HW_USB_XHCI_readQuad((u64)&trb->data1);
 }
 static __always_inline__ void HW_USB_XHCI_TRB_setData(XHCI_GenerTRB *trb, u64 data) {
 	HW_USB_XHCI_writeQuad((u64)&trb->data1, data);
+}
+static __always_inline__ u32 HW_USB_XHCI_TRB_getIntrTarget(XHCI_GenerTRB *trb) {
+	// interrupt target and completion code are in the same field
+	return HW_USB_XHCI_TRB_getCmplCode(trb);
+}
+static __always_inline__ void HW_USB_XHCI_TRB_setIntrTarget(XHCI_GenerTRB *trb, u32 val) {
+	HW_USB_XHCI_writeDword((u64)&trb->status, (HW_USB_XHCI_readDword((u64)&trb->status) & 0xffffffu) | (val << 24));
+}
+static __always_inline__ u64 HW_USB_XHCI_TRB_setStatus(XHCI_GenerTRB *trb, u32 val) {
+	HW_USB_XHCI_writeDword((u64)&trb->status, val);
+}
+static __always_inline__ u64 HW_USB_XHCI_TRB_mkSetup(u8 bmReqT, u8 bReq, u16 wVal, u16 wIdx, u16 wLen) {
+	return (u64)bmReqT | (((u64)bReq) << 8) | (((u64)wVal) << 16) | (((u64)wIdx) << 32) | (((u64)wLen) << 48);
+}
+static __always_inline__ u32 HW_USB_XHCI_TRB_mkStatus(u32 trbTransLen, u32 tdSize, u32 intrTarget) {
+	return trbTransLen | (tdSize << 17) | (intrTarget << 22);
 }
 static __always_inline__ u32 HW_USB_XHCI_TRB_getSlot(XHCI_GenerTRB *trb) {
 	return HW_USB_XHCI_readDword((u64)&trb->ctrl) >> 24;

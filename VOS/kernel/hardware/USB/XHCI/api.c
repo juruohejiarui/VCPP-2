@@ -105,7 +105,9 @@ XHCI_Ring *HW_USB_XHCI_allocRing(u64 size) {
 }
 
 int HW_USB_XHCI_Ring_tryInsReq(XHCI_Ring *ring, XHCI_Request *req) {
-	printk(WHITE, BLACK, "waiting for inserting %#018lx into ring %#018lx\n", req, ring);
+	// printk(WHITE, BLACK, "waiting for inserting %#018lx into ring %#018lx\n", req, ring);
+	// software may use a request structure for multiple times
+	req->flags &= ~XHCI_Request_Flag_Finished;
 	SpinLock_lock(&ring->lock);
 	u64 pos[16]; u8 cyc[16];
 	int trbC = 0, full = 0;
@@ -144,7 +146,6 @@ int HW_USB_XHCI_Ring_tryInsReq(XHCI_Ring *ring, XHCI_Request *req) {
 			reqP++;
 		}
 		HW_USB_XHCI_TRB_setCycBit(trb, cyc[i]);
-		// printk(ORANGE, BLACK, "%#018lx cyc:%d\n", trb, cyc[i]);
 	}
 	SpinLock_unlock(&ring->lock);
 	return 1;

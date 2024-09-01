@@ -12,6 +12,28 @@ typedef struct XHCI_GenerTRB {
 	u32 ctrl;
 } __attribute__ ((packed)) XHCI_GenerTRB;
 
+// evaluate next TRB
+#define XHCI_TRB_Ctrl_ent		(1u << 1)
+// interrupt on short packet
+#define XHCI_TRB_Ctrl_isp		(1u << 2)
+// no snoop
+#define XHCI_TRB_Ctrl_noSnoop	(1u << 3)
+#define XHCI_TRB_Ctrl_chain		(1u << 4)
+// interrupt on completion
+#define XHCI_TRB_Ctrl_ioc		(1u << 5)
+// immediate data
+#define XHCI_TRB_Ctrl_idt		(1u << 6)
+// block event interrupt
+#define XHCI_TRB_Ctrl_bei		(1u << 9)
+
+#define XHCI_TRB_Ctrl_allBit		(0x0000027eu)
+
+#define XHCI_TRB_Ctrl_Dir_In		1
+#define XHCI_TRB_Ctrl_Dir_Out		0
+#define XHCI_TRB_TRT_No		0
+#define XHCI_TRB_TRT_Out	2
+#define XHCI_TRB_TRT_In		3
+
 enum XHCI_TRB_Type {
 	XHCI_TRB_Type_Normal = 1, 	XHCI_TRB_Type_SetupStage, 	XHCI_TRB_Type_DataStage,	XHCI_TRB_Type_StatusStage,
 	XHCI_TRB_Type_Isoch, 		XHCI_TRB_Type_Link, 		XHCI_TRB_Type_EventData,	XHCI_TRB_Type_NoOp,
@@ -38,7 +60,6 @@ enum XHCI_TRB_CmplCode {
 typedef struct XHCI_Request {
 	u64 flags;
 	u64 trbCnt;
-	u32 slot, ep;
 	XHCI_GenerTRB res;
 	XHCI_GenerTRB *trb;
 	struct XHCI_Request ***target;
@@ -136,6 +157,38 @@ typedef struct XHCI_Ring {
 	XHCI_Request **reqSrc;
 } XHCI_Ring;
 
+#pragma region Descriptors
+typedef struct XHCI_DescHdr {
+	u8 len;
+	u8 type;
+} __attribute__ ((packed)) XHCI_DescHdr;
+typedef struct XHCI_DevDesc {
+	XHCI_DescHdr hdr;
+	u16 bcdUsb;
+	u8 bDevClass;
+	u8 bDevSubClass;
+	u8 bDevProtocol;
+	u8 bMaxPackSz0;
+	u16 idVendor;
+	u16 idProduct;
+	u16 bcdDev;
+	u8 iManufacturer;
+	u8 iProduct;
+	u8 iSerialNum;
+	u8 bNumCfg;
+} __attribute__ ((packed)) XHCI_DevDesc;
+
+typedef struct XHCI_CfgDesc {
+	XHCI_DescHdr hdr;
+	u16 wtotLen;
+	u8 bnumInte;
+	u8 bCfgVal;
+	u8 iCfg;
+	u8 bmAttr;
+	u8 bMxPw;
+} __attribute__ ((packed)) XHCI_CfgDesc;
+#pragma endregion
+
 typedef struct XHCI_Device {
 	struct XHCI_Host *host;
 	int slotId;
@@ -144,6 +197,9 @@ typedef struct XHCI_Device {
 	XHCI_InputCtx *inCtx;
 	// transfer ring for each endpoint
 	XHCI_Ring *trRing[31];
+
+	XHCI_DevDesc *devDesc;
+	XHCI_CfgDesc **cfgDesc;
 } XHCI_Device;
 
 typedef struct XHCI_EveRing {
@@ -206,6 +262,8 @@ typedef struct XHCI_Host {
 	TaskStruct **eveHandlerTask;
 	List *eveList;
 	SpinLock *eveLock;
+
+	XHCI_Device **dev;
 } XHCI_Host;
 
 #define XHCI_CapReg_capLen 0x0
