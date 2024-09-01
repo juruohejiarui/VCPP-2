@@ -82,6 +82,8 @@ static __always_inline__ int HW_USB_XHCI_TRB_getPos(XHCI_GenerTRB *trb) {
 }
 void HW_USB_XHCI_TRB_copy(XHCI_GenerTRB *src, XHCI_GenerTRB *dst);
 
+XHCI_DescHdr *HW_USB_XHCI_Desc_nxtCfgItem(XHCI_CfgDesc *cfg, XHCI_DescHdr *cur);
+
 static __always_inline__ u8 HW_USB_XHCI_CapReg_capLen(XHCI_Host *host) {
 	return HW_USB_XHCI_readByte(host->capRegAddr + XHCI_CapReg_capLen);
 }

@@ -56,7 +56,7 @@ static __always_inline__ TaskStruct *Task_currentDMAS() {
 	return (TaskStruct *)DMAS_phys2Virt(MM_PageTable_getPldEntry(getCR3(), (u64)Task_current) & ~0xfff);
 }
 
-void Task_exit();
+void Task_exit(int retVal);
 
 TaskStruct *Task_createTask(Task_Entry entry, void *arg1, u64 arg2, u64 flag);
 

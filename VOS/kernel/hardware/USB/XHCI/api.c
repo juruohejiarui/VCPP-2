@@ -6,6 +6,11 @@ void HW_USB_XHCI_TRB_copy(XHCI_GenerTRB *src, XHCI_GenerTRB *dst) {
 	HW_USB_XHCI_writeQuad((u64)dst + 0x8, *(u64 *)&src->status);
 }
 
+XHCI_DescHdr *HW_USB_XHCI_Desc_nxtCfgItem(XHCI_CfgDesc *cfg, XHCI_DescHdr *cur) {
+	if ((u64)cur - (u64)cfg + cur->len > cfg->wtotLen) return NULL;
+	return (XHCI_DescHdr *)((u64)cur + cur->len);
+}
+
 u64 HW_USB_XHCI_readQuad(u64 addr) {
 	return HW_USB_XHCI_readDword(addr) | (((u64)HW_USB_XHCI_readDword(addr + 0x4)) << 32);
 }

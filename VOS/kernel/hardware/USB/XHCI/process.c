@@ -4,7 +4,8 @@
 #include "../../../includes/log.h"
 #include "../../../includes/interrupt.h"
 
-List HW_USB_XHCI_hostList;
+List HW_USB_XHCI_hostList, HW_USB_XHCI_DriverList;
+SpinLock HW_USB_XHCI_DriverListLock;
 
 void HW_USB_XHCI_init(PCIeManager *pci) {
 	// check the capability list
@@ -328,6 +329,10 @@ void HW_USB_XHCI_evehandleTask(XHCI_Host *host, u64 intrMap) {
 
 void HW_USB_XHCI_devMgrTask_int(u64 signal, XHCI_Device *dev) {
 	if (dev->slotId) {
+		if (dev->driver) {
+			if (dev->driver->disable) dev->driver->disable(dev);
+			if (dev->driver->uninstall) dev->driver->uninstall(dev);
+		}
 		XHCI_Request *req = HW_USB_XHCI_allocReq(1);
 		HW_USB_XHCI_TRB_setType(&req->trb[0], XHCI_TRB_Type_DisblSlot);
 		HW_USB_XHCI_TRB_setSlot(&req->trb[0], dev->slotId);
@@ -485,8 +490,29 @@ void HW_USB_XHCI_devMgrTask(XHCI_Device *dev, u64 rootPort) {
 		}
 		printk(GREEN, BLACK, "dev %#018lx: configuration descriptor #%ld: %#018lx\n", dev, i, *(u64 *)dev->cfgDesc[i]);
 	}
-
-	// search for a compatible driver
+	kfree(req0, Slab_kmalloc_arg_Private);
+	kfree(req1, Slab_kmalloc_arg_Private);
+	while (1) {
+		SpinLock_lock(&HW_USB_XHCI_DriverListLock);
+		// search for a compatible driver
+		for (List *drvList = HW_USB_XHCI_DriverList.next; drvList != &HW_USB_XHCI_DriverList; drvList = drvList->next) {
+			XHCI_Driver *driver = container(drvList, XHCI_Driver, list);
+			if (driver->check(dev)) {
+				SpinLock_unlock(&HW_USB_XHCI_DriverListLock);
+				dev->driver = driver;
+				// enable this device
+				if (driver->enable) driver->enable(dev);
+				dev->state = XHCI_Device_State_Enable;
+				// move to the specific process in the driver for this device
+				driver->process(dev);
+				dev->driver = NULL;
+				goto End;
+			}
+		}
+		SpinLock_unlock(&HW_USB_XHCI_DriverListLock);
+		IO_hlt();
+	}
+	End:
 	while (1) IO_hlt();
 	Task_kernelThreadExit(0);
 }

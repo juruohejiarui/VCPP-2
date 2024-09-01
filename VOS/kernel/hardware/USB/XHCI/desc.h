@@ -187,11 +187,40 @@ typedef struct XHCI_CfgDesc {
 	u8 bmAttr;
 	u8 bMxPw;
 } __attribute__ ((packed)) XHCI_CfgDesc;
+
+typedef struct XHCI_InterDesc {
+	XHCI_DescHdr hdr;
+	u8 bInterNum;
+	u8 bAlterSet;
+	u8 bNumEp;
+	u8 bInterClass;
+	u8 bInterSubClass;
+	u8 bInterProto;
+	u8 iInter;
+} __attribute__ ((packed)) XHCI_InterDesc;
+
+typedef struct XHCI_EpDesc {
+	XHCI_DescHdr hdr;
+	u8 bEpAddr;
+	u8 bmAttr;
+	u16 wMxPackSz;
+	u8 interval;
+} __attribute__ ((packed)) XHCI_EpDesc;
+
+#define XHCI_Descriptor_Type_Device		0x01
+#define XHCI_Descriptor_Type_Cfg		0x02
+#define XHCI_Descriptor_Type_Inter		0x04
+#define XHCI_Descriptor_Type_Endpoint	0x05
+#define XHCI_Descriptor_Type_HID		0x21
+
 #pragma endregion
 
 typedef struct XHCI_Device {
 	struct XHCI_Host *host;
 	int slotId;
+	int state;
+	#define XHCI_Device_State_Disable	0
+	#define XHCI_Device_State_Enable	1
 	TaskStruct *mgrTask;
 	XHCI_DevCtx *ctx;
 	XHCI_InputCtx *inCtx;
@@ -200,7 +229,29 @@ typedef struct XHCI_Device {
 
 	XHCI_DevDesc *devDesc;
 	XHCI_CfgDesc **cfgDesc;
+
+	// suitable driver for this device
+	struct XHCI_Driver *driver;
 } XHCI_Device;
+
+typedef struct XHCI_Driver {
+	// checking if this driver is valid for a specific device
+	int (*check)(XHCI_Device *);
+	// function called by device management task, as the main process of driver
+	void (*process)(XHCI_Device *);
+	// process when kernel or application disable this device and before this device gets into Disable status
+	void (*disable)(XHCI_Device *);
+	// process when kernel or application enable this device from Disable status and before move to Enabled status
+	void (*enable)(XHCI_Device *);
+	// process after the device is removed from the device
+	void (*uninstall)(XHCI_Device *);
+
+	char *name;
+	List list;
+} XHCI_Driver;
+
+extern SpinLock HW_USB_XHCI_DriverListLock;
+extern List HW_USB_XHCI_DriverList;
 
 typedef struct XHCI_EveRing {
 	XHCI_GenerTRB **rings;
