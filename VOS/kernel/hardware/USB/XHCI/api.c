@@ -7,7 +7,7 @@ void HW_USB_XHCI_TRB_copy(XHCI_GenerTRB *src, XHCI_GenerTRB *dst) {
 }
 
 XHCI_DescHdr *HW_USB_XHCI_Desc_nxtCfgItem(XHCI_CfgDesc *cfg, XHCI_DescHdr *cur) {
-	if ((u64)cur - (u64)cfg + cur->len > cfg->wtotLen) return NULL;
+	if ((u64)cur - (u64)cfg + cur->len >= cfg->wtotLen) return NULL;
 	return (XHCI_DescHdr *)((u64)cur + cur->len);
 }
 

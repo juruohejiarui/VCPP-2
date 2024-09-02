@@ -30,18 +30,61 @@ void HW_USB_HID_process(XHCI_Device *dev) {
 	// the interface with class=0x03 and subClass=0x00 is the best one
 	// the interface with class=0x03 and subClass=0x01 is the second best
 	XHCI_InterDesc *bstInter = NULL;
-	int bstRate = 0;
+	int bstRate = -1;
 	printk(BLUE, BLACK, "dev %#018lx accept HID Driver\n", dev);
 	for (XHCI_DescHdr *hdr = &dev->cfgDesc[0]->hdr; hdr; hdr = HW_USB_XHCI_Desc_nxtCfgItem(dev->cfgDesc[0], hdr))
 		if (hdr->type == XHCI_Descriptor_Type_Inter) {
 			XHCI_InterDesc *cur = container(hdr, XHCI_InterDesc, hdr);
-			int curRate = (cur->bInterClass == 0x03) + (cur->bInterSubClass == 0x00);
-			printk(WHITE, BLACK, "dev %#018lx: endpoint: class:%#04x subClass:%#04x\n", dev, cur->bInterClass, cur->bInterSubClass);
+			int curRate = (cur->bInterClass == 0x03 ? 1 : 0) + (cur->bInterSubClass == 0x00 ? 1 : 0);
+			printk(WHITE, BLACK, "dev %#018lx: interface: class:%#04x subClass:%#04x\n", dev, cur->bInterClass, cur->bInterSubClass);
 			if (curRate > bstRate) bstInter = cur, bstRate = curRate;
 		}
 	// get the report descriptor and parse it if subClass=0x00
 	// initialize the endpoint(s)
 	// Normally, there will be only one endpoint for one interface
+	XHCI_EpDesc *epDesc = NULL;
+	for (XHCI_DescHdr *hdr = &bstInter->hdr; hdr; hdr = HW_USB_XHCI_Desc_nxtCfgItem(dev->cfgDesc[0], hdr))
+		if (hdr->type == XHCI_Descriptor_Type_Endpoint) {
+			epDesc = container(hdr, XHCI_EpDesc, hdr);
+			break;
+		}
+	int epId = ((epDesc->bEpAddr & 0xf) << 1) + (epDesc->bEpAddr >> 7) - 1;
+	int epType = (epDesc->bmAttr & 0x3) | (epDesc->bEpAddr >> 5);
+	printk(WHITE, BLACK, "\tepId:%d epType:%d\n", epId, epType);
+	XHCI_EpCtx *ep = &dev->inCtx->ep[epId];
+
+	HW_USB_XHCI_writeCtx(ep, 0, XHCI_EpCtx_lsa, 		1);
+	HW_USB_XHCI_writeCtx(ep, 0, XHCI_EpCtx_interal,		epDesc->interval);
+	HW_USB_XHCI_writeCtx(ep, 1, XHCI_EpCtx_epType, 		epType);
+	HW_USB_XHCI_writeCtx(ep, 1, XHCI_EpCtx_CErr, 		1);
+	HW_USB_XHCI_writeCtx(ep, 1, XHCI_EpCtx_mxPackSize, 	epDesc->wMxPackSz & 0x07ff);
+	HW_USB_XHCI_writeCtx(ep, 1, XHCI_EpCtx_mxBurstSize,	(epDesc->wMxPackSz & 0x1800) >> 1);
+
+
+	dev->trRing[epId] = HW_USB_XHCI_allocRing(XHCI_Ring_maxSize);
+	XHCI_GenerTRB *lk = &dev->trRing[epId]->ring[XHCI_Ring_maxSize - 1];
+	HW_USB_XHCI_TRB_setData(lk, DMAS_virt2Phys(&dev->trRing[epId][0]));
+	HW_USB_XHCI_TRB_setType(lk, XHCI_TRB_Type_Link);
+	HW_USB_XHCI_TRB_setToggle(lk, 1);
+
+	ep->deqPtr = DMAS_virt2Phys(dev->trRing[epId]->cur) | 1;
+	HW_USB_XHCI_EpCtx_writeMxESITPay(ep, 
+		HW_USB_XHCI_readCtx(ep, 1, XHCI_EpCtx_mxPackSize) * (HW_USB_XHCI_readCtx(ep, 1, XHCI_EpCtx_mxBurstSize) + 1));
+
+	dev->inCtx->ctrl.addFlags = (1u << (epId + 1));
+
+	XHCI_Request *req0 = HW_USB_XHCI_allocReq(1);
+	HW_USB_XHCI_TRB_setData(&req0->trb[0], DMAS_virt2Phys(dev->inCtx));
+	HW_USB_XHCI_TRB_setSlot(&req0->trb[0], dev->slotId);
+	HW_USB_XHCI_TRB_setType(&req0->trb[0], XHCI_TRB_Type_CfgEp);
+
+	HW_USB_XHCI_Ring_insReq(dev->host->cmdRing, req0);
+	if (HW_USB_XHCI_Req_ringDoorbellWait(dev->host, 0, 0, 0, req0) != XHCI_TRB_CmplCode_Succ) {
+		printk(RED, BLACK, "dev %#018lx: failed to configure endpoint %d, code=%d\n", 
+			dev, epId, HW_USB_XHCI_TRB_getCmplCode(&req0->res));
+		while (1) IO_hlt();
+	}
+	printk(BLUE, BLACK, "dev %#018lx: configure endpoint %d\n", dev, epId);
 	// modify the endpoint using "Configure Endpoint Command"
 	// set SET_CONFIGURATION request to device
 	while (1) IO_hlt();

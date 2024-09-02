@@ -492,23 +492,27 @@ void HW_USB_XHCI_devMgrTask(XHCI_Device *dev, u64 rootPort) {
 	}
 	kfree(req0, Slab_kmalloc_arg_Private);
 	kfree(req1, Slab_kmalloc_arg_Private);
-	SpinLock_lock(&HW_USB_XHCI_DriverListLock);
-	// search for a compatible driver
-	for (List *drvList = HW_USB_XHCI_DriverList.next; drvList != &HW_USB_XHCI_DriverList; drvList = drvList->next) {
-		XHCI_Driver *driver = container(drvList, XHCI_Driver, list);
-		if (driver->check(dev)) {
-			SpinLock_unlock(&HW_USB_XHCI_DriverListLock);
-			dev->driver = driver;
-			// enable this device
-			if (driver->enable) driver->enable(dev);
-			dev->state = XHCI_Device_State_Enable;
-			// move to the specific process in the driver for this device
-			driver->process(dev);
-			dev->driver = NULL;
-			break;
+	printk(YELLOW, BLACK, "dev %#018lx: search for driver\n");
+	while (1) {
+		SpinLock_lock(&HW_USB_XHCI_DriverListLock);
+		// search for a compatible driver
+		for (List *drvList = HW_USB_XHCI_DriverList.next; drvList != &HW_USB_XHCI_DriverList; drvList = drvList->next) {
+			XHCI_Driver *driver = container(drvList, XHCI_Driver, list);
+			if (driver->check(dev)) {
+				SpinLock_unlock(&HW_USB_XHCI_DriverListLock);
+				dev->driver = driver;
+				// enable this device
+				if (driver->enable) driver->enable(dev);
+				dev->state = XHCI_Device_State_Enable;
+				// move to the specific process in the driver for this device
+				driver->process(dev);
+				dev->driver = NULL;
+				goto End;
+			}
 		}
+		SpinLock_unlock(&HW_USB_XHCI_DriverListLock);
+		IO_hlt();
 	}
-	SpinLock_unlock(&HW_USB_XHCI_DriverListLock);
 	End:
 	while (1) IO_hlt();
 	Task_kernelThreadExit(0);
