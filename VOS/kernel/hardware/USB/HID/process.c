@@ -73,6 +73,7 @@ void HW_USB_HID_process(XHCI_Device *dev) {
 
 	dev->inCtx->ctrl.addFlags = (1u << (epId + 1));
 
+	// modify the endpoint using "Configure Endpoint Command"
 	XHCI_Request *req0 = HW_USB_XHCI_allocReq(1);
 	HW_USB_XHCI_TRB_setData(&req0->trb[0], DMAS_virt2Phys(dev->inCtx));
 	HW_USB_XHCI_TRB_setSlot(&req0->trb[0], dev->slotId);
@@ -84,8 +85,26 @@ void HW_USB_HID_process(XHCI_Device *dev) {
 			dev, epId, HW_USB_XHCI_TRB_getCmplCode(&req0->res));
 		while (1) IO_hlt();
 	}
-	printk(BLUE, BLACK, "dev %#018lx: configure endpoint %d\n", dev, epId);
-	// modify the endpoint using "Configure Endpoint Command"
+	printk(BLUE, BLACK, "dev %#018lx: configure endpoint %d, status:%d\n", 
+		dev, epId, HW_USB_XHCI_readCtx(&dev->ctx->ep[epId], 0, XHCI_EpCtx_epState));
+
 	// set SET_CONFIGURATION request to device
+	XHCI_Request *req1 = HW_USB_XHCI_allocReq(2);
+	HW_USB_XHCI_TRB_setData(&req1->trb[0], HW_USB_XHCI_TRB_mkSetup(0x00, 0x09, dev->cfgDesc[0]->bCfgVal, 0, 0));
+	HW_USB_XHCI_TRB_setStatus(&req1->trb[0], HW_USB_XHCI_TRB_mkStatus(8, 0, 0));
+	HW_USB_XHCI_TRB_setType(&req1->trb[0], XHCI_TRB_Type_SetupStage);
+	HW_USB_XHCI_TRB_setCtrlBit(&req1->trb[0], XHCI_TRB_Ctrl_idt);
+
+	HW_USB_XHCI_TRB_setDir(&req1->trb[1], XHCI_TRB_Ctrl_Dir_In);
+	HW_USB_XHCI_TRB_setType(&req1->trb[1], XHCI_TRB_Type_StatusStage);
+	HW_USB_XHCI_TRB_setCtrlBit(&req1->trb[1], XHCI_TRB_Ctrl_ioc);
+
+	HW_USB_XHCI_Ring_insReq(dev->trRing[0], req1);
+	if (HW_USB_XHCI_Req_ringDoorbellWait(dev->host, dev->slotId, 1, 0, req1) != XHCI_TRB_CmplCode_Succ) {
+		printk(RED, BLACK, "dev %#018lx: failed to set configuration, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req1->res));
+		while (1) IO_hlt();
+	}
+	printk(BLUE, BLACK, "dev %#018lx: set configuration successfully\n");
+	// set SET_INTERFACE request to device
 	while (1) IO_hlt();
 } 

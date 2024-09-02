@@ -368,6 +368,7 @@ void HW_USB_XHCI_devMgrTask(XHCI_Device *dev, u64 rootPort) {
 		}
 		dev->slotId = HW_USB_XHCI_TRB_getSlot(&req0->res);
 		dev->host->dev[dev->slotId] = dev;
+		dev->ctx = dev->host->devCtx[dev->slotId];
 		printk(GREEN, BLACK, "dev %#018lx on slot %d\n", dev, dev->slotId);
 	}	 
 	// create input context structure
