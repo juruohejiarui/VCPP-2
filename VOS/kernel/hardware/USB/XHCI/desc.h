@@ -98,7 +98,7 @@ typedef struct XHCI_EpCtx {
 	#define XHCI_EpCtx_multi		0x00000300u
 	#define XHCI_EpCtx_mxPStreams	0x00007C00u
 	#define XHCI_EpCtx_lsa			0x00008000u
-	#define XHCI_EpCtx_interal		0x00ff0000u
+	#define XHCI_EpCtx_interval		0x00ff0000u
 	#define XHCI_EpCtx_mxESITPayH	0xff000000u
 	u32 dw1;
 	#define XHCI_EpCtx_CErr			0x00000006u

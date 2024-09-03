@@ -25,12 +25,17 @@ int HW_USB_HID_check(XHCI_Device *dev) {
 	return 0;
 }
 
+// make a parse helper from the hid report descriptor referred by a specific hid descriptor
+USB_HID_ReportParseHelper *HW_USB_HID_process(XHCI_Device *dev, USB_HidDesc *desc) {
+
+}
+
 void HW_USB_HID_process(XHCI_Device *dev) {
 	// get a correct interface 
 	// the interface with class=0x03 and subClass=0x00 is the best one
 	// the interface with class=0x03 and subClass=0x01 is the second best
 	XHCI_InterDesc *bstInter = NULL;
-	int bstRate = -1;
+	int bstRate = -1, epId, epType;
 	printk(BLUE, BLACK, "dev %#018lx accept HID Driver\n", dev);
 	for (XHCI_DescHdr *hdr = &dev->cfgDesc[0]->hdr; hdr; hdr = HW_USB_XHCI_Desc_nxtCfgItem(dev->cfgDesc[0], hdr))
 		if (hdr->type == XHCI_Descriptor_Type_Inter) {
@@ -39,39 +44,54 @@ void HW_USB_HID_process(XHCI_Device *dev) {
 			printk(WHITE, BLACK, "dev %#018lx: interface: class:%#04x subClass:%#04x\n", dev, cur->bInterClass, cur->bInterSubClass);
 			if (curRate > bstRate) bstInter = cur, bstRate = curRate;
 		}
-	// get the report descriptor and parse it if subClass=0x00
-	// initialize the endpoint(s)
 	// Normally, there will be only one endpoint for one interface
 	XHCI_EpDesc *epDesc = NULL;
-	for (XHCI_DescHdr *hdr = &bstInter->hdr; hdr; hdr = HW_USB_XHCI_Desc_nxtCfgItem(dev->cfgDesc[0], hdr))
-		if (hdr->type == XHCI_Descriptor_Type_Endpoint) {
-			epDesc = container(hdr, XHCI_EpDesc, hdr);
-			break;
+	USB_HidDesc *hidDesc = NULL;
+	for (XHCI_DescHdr *hdr = &bstInter->hdr; hdr; hdr = HW_USB_XHCI_Desc_nxtCfgItem(dev->cfgDesc[0], hdr)) {
+		switch (hdr->type) {
+			case XHCI_Descriptor_Type_Inter :
+				// has been moved to next interface descriptor
+				if (hdr != &bstInter->hdr) goto EndOfScanningDesc;
+				break;
+			case XHCI_Descriptor_Type_Endpoint :
+				epDesc = container(hdr, XHCI_EpDesc, hdr);
+				break;
+			case XHCI_Descriptor_Type_HID :
+				hidDesc = container(hdr, USB_HidDesc, hdr);
+				break;
 		}
-	int epId = ((epDesc->bEpAddr & 0xf) << 1) + (epDesc->bEpAddr >> 7) - 1;
-	int epType = (epDesc->bmAttr & 0x3) | (epDesc->bEpAddr >> 5);
-	printk(WHITE, BLACK, "\tepId:%d epType:%d\n", epId, epType);
+	}
+	// get the report descriptor of hidDesc exists
+	EndOfScanningDesc:
+	epId = ((epDesc->bEpAddr & 0xf) << 1) + (epDesc->bEpAddr >> 7) - 1;
+	epType = (epDesc->bmAttr & 0x3) | ((epDesc->bEpAddr >> 5) & 0x4);
 	XHCI_EpCtx *ep = &dev->inCtx->ep[epId];
+	memset(ep, 0, sizeof(XHCI_EpCtx));
 
-	HW_USB_XHCI_writeCtx(ep, 0, XHCI_EpCtx_lsa, 		1);
-	HW_USB_XHCI_writeCtx(ep, 0, XHCI_EpCtx_interal,		epDesc->interval);
+	printk(WHITE, BLACK, "\tepId:%d epType:%d mxPackSz:%d mxBurstSize:%d interval:%d\n", 
+	epId, epType, epDesc->wMxPackSz & 0x07ff, (epDesc->wMxPackSz & 0x1800) >> 11, epDesc->interval);
+
+	HW_USB_XHCI_writeCtx(&dev->inCtx->slot, 0, XHCI_SlotCtx_ctxEntries, epId + 1);
+
+	HW_USB_XHCI_writeCtx(ep, 0, XHCI_EpCtx_interval,	epDesc->interval);
 	HW_USB_XHCI_writeCtx(ep, 1, XHCI_EpCtx_epType, 		epType);
-	HW_USB_XHCI_writeCtx(ep, 1, XHCI_EpCtx_CErr, 		1);
+	HW_USB_XHCI_writeCtx(ep, 1, XHCI_EpCtx_CErr, 		3);
 	HW_USB_XHCI_writeCtx(ep, 1, XHCI_EpCtx_mxPackSize, 	epDesc->wMxPackSz & 0x07ff);
-	HW_USB_XHCI_writeCtx(ep, 1, XHCI_EpCtx_mxBurstSize,	(epDesc->wMxPackSz & 0x1800) >> 1);
-
+	HW_USB_XHCI_writeCtx(ep, 1, XHCI_EpCtx_mxBurstSize,	(epDesc->wMxPackSz & 0x1800) >> 11);
 
 	dev->trRing[epId] = HW_USB_XHCI_allocRing(XHCI_Ring_maxSize);
 	XHCI_GenerTRB *lk = &dev->trRing[epId]->ring[XHCI_Ring_maxSize - 1];
 	HW_USB_XHCI_TRB_setData(lk, DMAS_virt2Phys(&dev->trRing[epId][0]));
 	HW_USB_XHCI_TRB_setType(lk, XHCI_TRB_Type_Link);
 	HW_USB_XHCI_TRB_setToggle(lk, 1);
-
 	ep->deqPtr = DMAS_virt2Phys(dev->trRing[epId]->cur) | 1;
+
+	HW_USB_XHCI_writeCtx(ep, 4, XHCI_EpCtx_aveTrbLen, (1 << 10));
+
 	HW_USB_XHCI_EpCtx_writeMxESITPay(ep, 
 		HW_USB_XHCI_readCtx(ep, 1, XHCI_EpCtx_mxPackSize) * (HW_USB_XHCI_readCtx(ep, 1, XHCI_EpCtx_mxBurstSize) + 1));
 
-	dev->inCtx->ctrl.addFlags = (1u << (epId + 1));
+	dev->inCtx->ctrl.addFlags = 1 | (1u << (epId + 1));
 
 	// modify the endpoint using "Configure Endpoint Command"
 	XHCI_Request *req0 = HW_USB_XHCI_allocReq(1);
@@ -104,7 +124,15 @@ void HW_USB_HID_process(XHCI_Device *dev) {
 		printk(RED, BLACK, "dev %#018lx: failed to set configuration, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req1->res));
 		while (1) IO_hlt();
 	}
-	printk(BLUE, BLACK, "dev %#018lx: set configuration successfully\n");
+	printk(BLUE, BLACK, "dev %#018lx: set configuration successfully\n", dev);
 	// set SET_INTERFACE request to device
+	HW_USB_XHCI_TRB_setData(&req1->trb[0], HW_USB_XHCI_TRB_mkSetup(0x01, 0x0b, bstInter->bAlterSet, bstInter->bInterNum, 0));
+	HW_USB_XHCI_Ring_insReq(dev->trRing[0], req1);
+	if (HW_USB_XHCI_Req_ringDoorbellWait(dev->host, dev->slotId, 1, 0, req1) != XHCI_TRB_CmplCode_Succ) {
+		printk(RED, BLACK, "dev %#018lx: failed to set interface, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req1->res));
+		while (1) IO_hlt();
+	}
+	
+	printk(BLUE, BLACK, "dev %#018lx: set interface successfully\n", dev);
 	while (1) IO_hlt();
 } 

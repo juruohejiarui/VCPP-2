@@ -230,7 +230,7 @@ u32 HW_USB_XHCI_EpCtx_readMxESITPay(XHCI_EpCtx *ep) {
 }
 
 void HW_USB_XHCI_EpCtx_writeMxESITPay(XHCI_EpCtx *ep, u32 val) {
-	HW_USB_XHCI_writeCtx(ep, 0, XHCI_EpCtx_mxESITPayH, val >> 16);
+	HW_USB_XHCI_writeCtx(ep, 0, XHCI_EpCtx_mxESITPayH, (val >> 16) & 0xffu);
 	HW_USB_XHCI_writeCtx(ep, 4, XHCI_EpCtx_mxESITPayL, val & 0xffffu);
 }
 

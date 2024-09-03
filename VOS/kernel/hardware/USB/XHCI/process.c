@@ -387,7 +387,6 @@ void HW_USB_XHCI_devMgrTask(XHCI_Device *dev, u64 rootPort) {
 		}
 		{
 			XHCI_EpCtx *ep0 = &dev->inCtx->ep[0];
-			HW_USB_XHCI_writeCtx(ep0, 0, XHCI_EpCtx_lsa, 1);
 			HW_USB_XHCI_writeCtx(ep0, 1, XHCI_EpCtx_epType, XHCI_EpCtx_epType_Control);
 			HW_USB_XHCI_writeCtx(ep0, 1, XHCI_EpCtx_CErr, 3);
 			HW_USB_XHCI_writeCtx(ep0, 1, XHCI_EpCtx_mxPackSize, HW_USB_XHCI_EpCtx_getMxPackSize0(speed));
@@ -512,7 +511,7 @@ void HW_USB_XHCI_devMgrTask(XHCI_Device *dev, u64 rootPort) {
 			}
 		}
 		SpinLock_unlock(&HW_USB_XHCI_DriverListLock);
-		IO_hlt();
+		Intr_SoftIrq_Timer_mdelay(dev->slotId * 10);
 	}
 	End:
 	while (1) IO_hlt();
