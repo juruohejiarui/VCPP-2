@@ -425,7 +425,7 @@ void HW_USB_XHCI_devMgrTask(XHCI_Device *dev, u64 rootPort) {
 	{
 		XHCI_GenerTRB *data = &req1->trb[1];
 		dev->devDesc = kmalloc(0xff, Slab_kmalloc_arg_Private, NULL);
-		memset(dev->devDesc, 1, 0xff);
+		memset(dev->devDesc, 0, 0xff);
 		HW_USB_XHCI_TRB_setData(data,	DMAS_virt2Phys(dev->devDesc));
 		HW_USB_XHCI_TRB_setStatus(data, HW_USB_XHCI_TRB_mkStatus(8, 0, 0));
 		HW_USB_XHCI_TRB_setType(data, 	XHCI_TRB_Type_DataStage);

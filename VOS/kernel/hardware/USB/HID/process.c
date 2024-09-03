@@ -26,7 +26,7 @@ int HW_USB_HID_check(XHCI_Device *dev) {
 }
 
 // make a parse helper from the hid report descriptor referred by a specific hid descriptor
-USB_HID_ReportParseHelper *HW_USB_HID_process(XHCI_Device *dev, USB_HidDesc *desc) {
+USB_HID_ReportParseHelper *HW_USB_HID_mkParseHelper(XHCI_Device *dev, USB_HidDesc *desc) {
 
 }
 
@@ -71,6 +71,8 @@ void HW_USB_HID_process(XHCI_Device *dev) {
 	printk(WHITE, BLACK, "\tepId:%d epType:%d mxPackSz:%d mxBurstSize:%d interval:%d\n", 
 	epId, epType, epDesc->wMxPackSz & 0x07ff, (epDesc->wMxPackSz & 0x1800) >> 11, epDesc->interval);
 
+	if (!(epType & 0x4)) { printk(WHITE, BLACK, "This HID is not an input device\n"); while (1) IO_hlt(); }
+
 	HW_USB_XHCI_writeCtx(&dev->inCtx->slot, 0, XHCI_SlotCtx_ctxEntries, epId + 1);
 
 	HW_USB_XHCI_writeCtx(ep, 0, XHCI_EpCtx_interval,	epDesc->interval);
@@ -114,6 +116,7 @@ void HW_USB_HID_process(XHCI_Device *dev) {
 	HW_USB_XHCI_TRB_setStatus(&req1->trb[0], HW_USB_XHCI_TRB_mkStatus(8, 0, 0));
 	HW_USB_XHCI_TRB_setType(&req1->trb[0], XHCI_TRB_Type_SetupStage);
 	HW_USB_XHCI_TRB_setCtrlBit(&req1->trb[0], XHCI_TRB_Ctrl_idt);
+	HW_USB_XHCI_TRB_setTRT(&req1->trb[0], XHCI_TRB_TRT_In);
 
 	HW_USB_XHCI_TRB_setDir(&req1->trb[1], XHCI_TRB_Ctrl_Dir_In);
 	HW_USB_XHCI_TRB_setType(&req1->trb[1], XHCI_TRB_Type_StatusStage);
@@ -132,7 +135,34 @@ void HW_USB_HID_process(XHCI_Device *dev) {
 		printk(RED, BLACK, "dev %#018lx: failed to set interface, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req1->res));
 		while (1) IO_hlt();
 	}
-	
+	HW_USB_XHCI_TRB_setData(&req1->trb[0], HW_USB_XHCI_TRB_mkSetup(0x21, 0x0a, 0xff00, 0, 0));
+	HW_USB_XHCI_Ring_insReq(dev->trRing[0], req1);
+	if (HW_USB_XHCI_Req_ringDoorbellWait(dev->host, dev->slotId, 1, 0, req1) != XHCI_TRB_CmplCode_Succ) {
+		printk(RED, BLACK, "dev %#018lx: failed to set idle, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req1->res));
+		while (1) IO_hlt();
+	}
+	kfree(req0, Slab_kmalloc_arg_Private);
+	kfree(req1, Slab_kmalloc_arg_Private);
+	req1 = HW_USB_XHCI_allocReq(1);
+
+	u8 *report = kmalloc(0xff, Slab_kmalloc_arg_Private | Slab_kmalloc_arg_Clear, NULL);
+	printk(WHITE, BLACK, "create report on %#018lx\n", report);
+	HW_USB_XHCI_TRB_setData(&req1->trb[0], DMAS_virt2Phys(report));
+	HW_USB_XHCI_TRB_setStatus(&req1->trb[0], HW_USB_XHCI_TRB_mkStatus(0xa0, 0x0, 0));
+	HW_USB_XHCI_TRB_setType(&req1->trb[0], XHCI_TRB_Type_Normal);
+	HW_USB_XHCI_TRB_setCtrlBit(&req1->trb[0], XHCI_TRB_Ctrl_ioc | XHCI_TRB_Ctrl_isp);
+	// start to get report from the endpoint
+	while (1) {	
+		HW_USB_XHCI_Ring_insReq(dev->trRing[epId], req1);
+		register int res = HW_USB_XHCI_Req_ringDoorbellWait(dev->host, dev->slotId, epId + 1, 0, req1);
+		if (res != XHCI_TRB_CmplCode_Succ && res != XHCI_TRB_CmplCode_ShortPkg) {
+			printk(RED, BLACK, "dev %#018lx: get report failed, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req1->res));
+			while (1) IO_hlt(); 
+		}
+		for (int i = 0; i < 32; i++) printk(WHITE, BLACK, "%02x ", report[i]);
+		printk(WHITE, BLACK, "\n");
+		// Intr_SoftIrq_Timer_mdelay(max(1, epDesc->interval - 2));
+	}
 	printk(BLUE, BLACK, "dev %#018lx: set interface successfully\n", dev);
 	while (1) IO_hlt();
 } 

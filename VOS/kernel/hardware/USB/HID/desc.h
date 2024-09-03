@@ -23,6 +23,7 @@ typedef struct USB_HID_ReportItem {
 
 typedef struct USB_HID_ReportParseHelper {
 	int type;
+	int protoId;
 	#define USB_HID_ReportParseHelper_Type_Mouse 0
 	union {
 		struct {
