@@ -21,7 +21,7 @@ typedef struct USB_HID_ReportItem {
 	// offset == -1 means this item does not exist in a report
 } USB_HID_ReportItem;
 
-typedef struct USB_HID_ReportParseHelper {
+typedef struct USB_HID_ReportHelper {
 	int type;
 	int protoId;
 	#define USB_HID_ReportParseHelper_Type_Mouse 0
@@ -30,10 +30,10 @@ typedef struct USB_HID_ReportParseHelper {
 			USB_HID_ReportItem btn, mvX, mvY, mxZ;
 		} mouse;
 	};
-} __attribute__ ((packed)) USB_HID_ReportParseHelper;
+} __attribute__ ((packed)) USB_HID_ReportHelper;
 struct USB_HID_Report {
 	u8 *raw; // raw data directly returned from device or which should be sent to device
-	USB_HID_ReportParseHelper *parseHelper;
+	USB_HID_ReportHelper *parseHelper;
 	
 } USB_HID_Report;
 extern struct USB_HID_Driver HW_USB_HID_driver;

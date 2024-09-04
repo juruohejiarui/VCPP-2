@@ -26,8 +26,37 @@ int HW_USB_HID_check(XHCI_Device *dev) {
 }
 
 // make a parse helper from the hid report descriptor referred by a specific hid descriptor
-USB_HID_ReportParseHelper *HW_USB_HID_mkParseHelper(XHCI_Device *dev, USB_HidDesc *desc) {
-
+USB_HID_ReportHelper *HW_USB_HID_mkParseHelper(XHCI_Device *dev, XHCI_InterDesc *inter, USB_HidDesc *desc) {
+	XHCI_Request *req = HW_USB_XHCI_allocReq(3);
+	u8 *reportDesc = kmalloc(0xff, Slab_kmalloc_arg_Clear | Slab_kmalloc_arg_Private, NULL);
+	{
+		XHCI_GenerTRB *setup = &req->trb[0];
+		HW_USB_XHCI_TRB_setData(setup, 		HW_USB_XHCI_TRB_mkSetup(0x81, 0x6, 0x2200 | 0, inter->bInterNum, 0xff));
+		HW_USB_XHCI_TRB_setStatus(setup, 	HW_USB_XHCI_TRB_mkStatus(8, 0, 0));
+		HW_USB_XHCI_TRB_setType(setup, 		XHCI_TRB_Type_SetupStage);
+		HW_USB_XHCI_TRB_setCtrlBit(setup, 	XHCI_TRB_Ctrl_idt);
+		HW_USB_XHCI_TRB_setTRT(setup, 		XHCI_TRB_TRT_In);
+	}
+	{
+		XHCI_GenerTRB *data = &req->trb[1];
+		HW_USB_XHCI_TRB_setData(data,	DMAS_virt2Phys(reportDesc));
+		HW_USB_XHCI_TRB_setStatus(data, HW_USB_XHCI_TRB_mkStatus(0xff, 0, 0));
+		HW_USB_XHCI_TRB_setType(data, 	XHCI_TRB_Type_DataStage);
+		HW_USB_XHCI_TRB_setDir(data, 	XHCI_TRB_Ctrl_Dir_In);
+	}
+	{
+		XHCI_GenerTRB *status = &req->trb[2];
+		HW_USB_XHCI_TRB_setType(status, 	XHCI_TRB_Type_StatusStage);
+		HW_USB_XHCI_TRB_setCtrlBit(status,	XHCI_TRB_Ctrl_ioc);
+	}
+	HW_USB_XHCI_Ring_insReq(dev->trRing[0], req);
+	if (HW_USB_XHCI_Req_ringDoorbellWait(dev->host, dev->slotId, 1, 0, req) != XHCI_TRB_CmplCode_Succ) {
+		printk(RED, BLACK, "dev %#018lx: failed to get report descriptor, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req->res));
+		while (1) IO_hlt();
+	}
+	for (int i = 0; i < desc->wDescLen; i++) printk(WHITE, BLACK, "%02x ", reportDesc[i]);
+	printk(WHITE, BLACK, "\n");
+	kfree(req, Slab_kmalloc_arg_Private);
 }
 
 void HW_USB_HID_process(XHCI_Device *dev) {
@@ -41,12 +70,14 @@ void HW_USB_HID_process(XHCI_Device *dev) {
 		if (hdr->type == XHCI_Descriptor_Type_Inter) {
 			XHCI_InterDesc *cur = container(hdr, XHCI_InterDesc, hdr);
 			int curRate = (cur->bInterClass == 0x03 ? 1 : 0) + (cur->bInterSubClass == 0x00 ? 1 : 0);
-			printk(WHITE, BLACK, "dev %#018lx: interface: class:%#04x subClass:%#04x\n", dev, cur->bInterClass, cur->bInterSubClass);
+			printk(WHITE, BLACK, "dev %#018lx: interface: class:%#04x subClass:%#04x proto\n", 
+				dev, cur->bInterClass, cur->bInterSubClass, cur->bInterProto);
 			if (curRate > bstRate) bstInter = cur, bstRate = curRate;
 		}
 	// Normally, there will be only one endpoint for one interface
 	XHCI_EpDesc *epDesc = NULL;
 	USB_HidDesc *hidDesc = NULL;
+	USB_HID_ReportHelper *repHelper = NULL;
 	for (XHCI_DescHdr *hdr = &bstInter->hdr; hdr; hdr = HW_USB_XHCI_Desc_nxtCfgItem(dev->cfgDesc[0], hdr)) {
 		switch (hdr->type) {
 			case XHCI_Descriptor_Type_Inter :
@@ -63,6 +94,7 @@ void HW_USB_HID_process(XHCI_Device *dev) {
 	}
 	// get the report descriptor of hidDesc exists
 	EndOfScanningDesc:
+	if (hidDesc) repHelper = HW_USB_HID_mkParseHelper(dev, bstInter, hidDesc);
 	epId = ((epDesc->bEpAddr & 0xf) << 1) + (epDesc->bEpAddr >> 7) - 1;
 	epType = (epDesc->bmAttr & 0x3) | ((epDesc->bEpAddr >> 5) & 0x4);
 	XHCI_EpCtx *ep = &dev->inCtx->ep[epId];
