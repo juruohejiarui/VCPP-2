@@ -22,13 +22,18 @@ typedef struct USB_HID_ReportItem {
 } USB_HID_ReportItem;
 
 typedef struct USB_HID_ReportHelper {
-	int type;
+	int type, totSz;
+	#define USB_HID_ReportHelper_Type_Mouse 1
+	#define USB_HID_ReportHelper_Type_Keyboard 2
 	int protoId;
 	#define USB_HID_ReportParseHelper_Type_Mouse 0
 	union {
 		struct {
 			USB_HID_ReportItem btn, mvX, mvY, mxZ;
 		} mouse;
+		union {
+			USB_HID_ReportItem spK, k1, k2, k3, k4, k5, k6;
+		} keyboard;
 	};
 } __attribute__ ((packed)) USB_HID_ReportHelper;
 struct USB_HID_Report {

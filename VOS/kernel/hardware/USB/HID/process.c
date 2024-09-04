@@ -57,6 +57,8 @@ USB_HID_ReportHelper *HW_USB_HID_mkParseHelper(XHCI_Device *dev, XHCI_InterDesc 
 	for (int i = 0; i < desc->wDescLen; i++) printk(WHITE, BLACK, "%02x ", reportDesc[i]);
 	printk(WHITE, BLACK, "\n");
 	kfree(req, Slab_kmalloc_arg_Private);
+	
+	
 }
 
 void HW_USB_HID_process(XHCI_Device *dev) {
@@ -68,9 +70,9 @@ void HW_USB_HID_process(XHCI_Device *dev) {
 	printk(BLUE, BLACK, "dev %#018lx accept HID Driver\n", dev);
 	for (XHCI_DescHdr *hdr = &dev->cfgDesc[0]->hdr; hdr; hdr = HW_USB_XHCI_Desc_nxtCfgItem(dev->cfgDesc[0], hdr))
 		if (hdr->type == XHCI_Descriptor_Type_Inter) {
-			XHCI_InterDesc *cur = container(hdr, XHCI_InterDesc, hdr);
+			XHCI_InterDesc *cur = container(hdr, XHCI_InterDesc, hdr); 
 			int curRate = (cur->bInterClass == 0x03 ? 1 : 0) + (cur->bInterSubClass == 0x00 ? 1 : 0);
-			printk(WHITE, BLACK, "dev %#018lx: interface: class:%#04x subClass:%#04x proto\n", 
+			printk(WHITE, BLACK, "dev %#018lx: interface: class:%#04x subClass:%#04x proto:%#04x\n", 
 				dev, cur->bInterClass, cur->bInterSubClass, cur->bInterProto);
 			if (curRate > bstRate) bstInter = cur, bstRate = curRate;
 		}
@@ -95,6 +97,12 @@ void HW_USB_HID_process(XHCI_Device *dev) {
 	// get the report descriptor of hidDesc exists
 	EndOfScanningDesc:
 	if (hidDesc) repHelper = HW_USB_HID_mkParseHelper(dev, bstInter, hidDesc);
+	
+	if (repHelper == NULL || !repHelper->type) {
+		printk(RED, BLACK, "dev %#018lx: unsupported HID device\n", dev);
+		Task_setSignal(Task_current, Task_Signal_Int);
+		while (1) IO_hlt();
+	}
 	epId = ((epDesc->bEpAddr & 0xf) << 1) + (epDesc->bEpAddr >> 7) - 1;
 	epType = (epDesc->bmAttr & 0x3) | ((epDesc->bEpAddr >> 5) & 0x4);
 	XHCI_EpCtx *ep = &dev->inCtx->ep[epId];
@@ -102,8 +110,6 @@ void HW_USB_HID_process(XHCI_Device *dev) {
 
 	printk(WHITE, BLACK, "\tepId:%d epType:%d mxPackSz:%d mxBurstSize:%d interval:%d\n", 
 	epId, epType, epDesc->wMxPackSz & 0x07ff, (epDesc->wMxPackSz & 0x1800) >> 11, epDesc->interval);
-
-	if (!(epType & 0x4)) { printk(WHITE, BLACK, "This HID is not an input device\n"); while (1) IO_hlt(); }
 
 	HW_USB_XHCI_writeCtx(&dev->inCtx->slot, 0, XHCI_SlotCtx_ctxEntries, epId + 1);
 
@@ -180,7 +186,7 @@ void HW_USB_HID_process(XHCI_Device *dev) {
 	u8 *report = kmalloc(0xff, Slab_kmalloc_arg_Private | Slab_kmalloc_arg_Clear, NULL);
 	printk(WHITE, BLACK, "create report on %#018lx\n", report);
 	HW_USB_XHCI_TRB_setData(&req1->trb[0], DMAS_virt2Phys(report));
-	HW_USB_XHCI_TRB_setStatus(&req1->trb[0], HW_USB_XHCI_TRB_mkStatus(0xa0, 0x0, 0));
+	HW_USB_XHCI_TRB_setStatus(&req1->trb[0], HW_USB_XHCI_TRB_mkStatus(0x5, 0x0, 0));
 	HW_USB_XHCI_TRB_setType(&req1->trb[0], XHCI_TRB_Type_Normal);
 	HW_USB_XHCI_TRB_setCtrlBit(&req1->trb[0], XHCI_TRB_Ctrl_ioc | XHCI_TRB_Ctrl_isp);
 	// start to get report from the endpoint
