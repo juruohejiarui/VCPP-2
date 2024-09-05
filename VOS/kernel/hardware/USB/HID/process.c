@@ -57,12 +57,12 @@ USB_HID_ReportHelper *HW_USB_HID_mkParseHelper(XHCI_Device *dev, XHCI_InterDesc 
 	for (int i = 0; i < desc->wDescLen; i++) printk(WHITE, BLACK, "%02x ", reportDesc[i]);
 	printk(WHITE, BLACK, "\n");
 	kfree(req, Slab_kmalloc_arg_Private);
-	
-	
+
+	HW_USB_HID_genParseHelper(reportDesc, desc->wDescLen);
 }
 
 void HW_USB_HID_process(XHCI_Device *dev) {
-	// get a correct interface 
+	// get a correct interface
 	// the interface with class=0x03 and subClass=0x00 is the best one
 	// the interface with class=0x03 and subClass=0x01 is the second best
 	XHCI_InterDesc *bstInter = NULL;
