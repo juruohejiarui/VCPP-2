@@ -145,7 +145,7 @@ void HW_USB_XHCI_init(PCIeManager *pci) {
 		XHCI_GenerTRB *trb = &host->cmdRing->ring[XHCI_Ring_maxSize - 1];
 		HW_USB_XHCI_TRB_setType(trb, XHCI_TRB_Type_Link);
 		HW_USB_XHCI_TRB_setToggle(trb, 1);
-		HW_USB_XHCI_TRB_setData(trb, DMAS_virt2Phys(host->cmdRing));
+		HW_USB_XHCI_TRB_setData(trb, DMAS_virt2Phys(&host->cmdRing->ring[0]));
 	}
 	// set the device notification register
 	HW_USB_XHCI_writeOpReg(host, XHCI_OpReg_dnCtrl, (1 << 1) | (HW_USB_XHCI_readOpReg(host, XHCI_OpReg_dnCtrl) & ~0xffffu));
@@ -213,8 +213,7 @@ void HW_USB_XHCI_init(PCIeManager *pci) {
 	printk(WHITE, BLACK, "XHCI: %#018lx: finish initialization. host cmd:%#010x\n", host, HW_USB_XHCI_readOpReg(host, XHCI_OpReg_cmd));
 }
 
-IntrHandlerDeclare(HW_USB_XHCI_msiHandler)
-{
+IntrHandlerDeclare(HW_USB_XHCI_msiHandler) {
 	XHCI_Host *host = (XHCI_Host *)(arg & ~0x40);
 	int intrId = arg & 0x40;
 	HW_USB_XHCI_writeOpReg(host, XHCI_OpReg_status, (1 << 3));
@@ -236,7 +235,7 @@ IntrHandlerDeclare(HW_USB_XHCI_msiHandler)
 		
 		// write the dequeue pointer
 		HW_USB_XHCI_writeIntrQuad(host, i, XHCI_IntrReg_DeqPtr, DMAS_virt2Phys(trb) | (1 << 3));
-		printk(WHITE, BLACK, "\tintr %d depPtr:%#018lx\n", i, HW_USB_XHCI_readIntrQuad(host, i, XHCI_IntrReg_DeqPtr));
+		// printk(WHITE, BLACK, "\tintr %d depPtr:%#018lx\n", i, HW_USB_XHCI_readIntrQuad(host, i, XHCI_IntrReg_DeqPtr));
 	}
 }
 
@@ -273,11 +272,10 @@ void HW_USB_XHCI_evehandleTask(XHCI_Host *host, u64 intrMap) {
 			if (host->msiDesc[0].cpuId == Task_current->cpuId) IO_sti();
 			for (List *eveList = penList.next; eveList != &penList; eveList = penList.next) {
 				XHCI_Event *eve = container(eveList, XHCI_Event, list);
-				printk(YELLOW, BLACK, "\tEvent: data:%#018lx status:%#010x ctrl:%#010x\n", *(u64 *)&eve->trb.data1, eve->trb.status, eve->trb.ctrl);
 				switch (HW_USB_XHCI_TRB_getType(&eve->trb)) {
 					case XHCI_TRB_Type_PortStChg : {
 						int portId = eve->trb.data1 >> 24;
-						printk(WHITE, BLACK, "\tport %d status:%#010x\n", portId, HW_USB_XHCI_readPortReg(host, portId, XHCI_PortReg_sc));
+						// printk(WHITE, BLACK, "\tport %d status:%#010x\n", portId, HW_USB_XHCI_readPortReg(host, portId, XHCI_PortReg_sc));
 						HW_USB_XHCI_writePortReg(host, portId, XHCI_PortReg_sc, XHCI_PortReg_sc_Power | XHCI_PortReg_sc_AllChg | XHCI_PortReg_sc_AllEve);
 						HW_USB_XHCI_writeOpReg(host, XHCI_OpReg_status, (1 << 4));
 						u32 sc = HW_USB_XHCI_readPortReg(host, portId, XHCI_PortReg_sc);
@@ -292,6 +290,7 @@ void HW_USB_XHCI_evehandleTask(XHCI_Host *host, u64 intrMap) {
 					case XHCI_TRB_Type_CmdCmpl : {
 						XHCI_GenerTRB *cmd = DMAS_phys2Virt(*(u64 *)&eve->trb.data1);
 						int pos = HW_USB_XHCI_TRB_getPos(cmd);
+						// printk(YELLOW, BLACK, "\t\t\t\tEvent: data:%#018lx status:%#010x ctrl:%#010x pos:%d\r", *(u64 *)&eve->trb.data1, eve->trb.status, eve->trb.ctrl, pos);
 						// clear the reqSrc
 						SpinLock_lock(&host->cmdRing->lock);
 						XHCI_Request *req = host->cmdRing->reqSrc[pos];
@@ -306,7 +305,8 @@ void HW_USB_XHCI_evehandleTask(XHCI_Host *host, u64 intrMap) {
 					case XHCI_TRB_Type_TransEve : {
 						XHCI_GenerTRB *tr = DMAS_phys2Virt(*(u64 *)&eve->trb.data1);
 						int pos = HW_USB_XHCI_TRB_getPos(tr), slot = HW_USB_XHCI_TRB_getSlot(&eve->trb), 
-							ep = (HW_USB_XHCI_readDword((u64)&eve->trb.ctrl) >> 16) & 0xf;
+							ep = (HW_USB_XHCI_readDword((u64)&eve->trb.ctrl) >> 16) & 0x1f;
+						// printk(YELLOW, BLACK, "\t\t\t\tEvent: data:%#018lx status:%#010x ctrl:%#010x pos:%d\r", *(u64 *)&eve->trb.data1, eve->trb.status, eve->trb.ctrl, pos);
 						XHCI_Device *dev = host->dev[slot];
 						XHCI_Ring *trRing = dev->trRing[ep - 1];
 						SpinLock_lock(&trRing->lock);

@@ -110,14 +110,12 @@ static int _parseMain(USB_HID_ReportHelper *helper, u8 *rep, struct DataState *s
 			state->usageNum[state->locTop] = 0;
 			break;
 		case HID_RepItem_Tag_EndColl:
-			printk(WHITE, BLACK, "End Collection\n");
 			state->locTop--;
 			break;
 		case HID_RepItem_Tag_Feature:
 			// no support for this tag;
 			break;
 		case HID_RepItem_Tag_Coll:
-			printk(WHITE, BLACK, "Collection\n");
 			state->locTop++;
 			break;
 		default:
@@ -177,7 +175,6 @@ USB_HID_ReportHelper *HW_USB_HID_genParseHelper(u8 *rep, u64 len) {
 	memset(&curDtState, 0, sizeof(struct DataState));
 	while (idx < len) {
 		int itemLen = _getItemSize((rep + idx));
-		printk(YELLOW, BLACK, "idx:%d ", idx);
 		switch (_getPrefixField(*(rep + idx), HID_RepItem_Type)) {
 			case HID_RepItem_Type_Main:
 				res = _parseMain(helper, rep + idx, &curDtState);

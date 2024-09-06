@@ -122,7 +122,7 @@ void HW_USB_HID_process(XHCI_Device *dev) {
 
 	dev->trRing[epId] = HW_USB_XHCI_allocRing(XHCI_Ring_maxSize);
 	XHCI_GenerTRB *lk = &dev->trRing[epId]->ring[XHCI_Ring_maxSize - 1];
-	HW_USB_XHCI_TRB_setData(lk, DMAS_virt2Phys(&dev->trRing[epId][0]));
+	HW_USB_XHCI_TRB_setData(lk, DMAS_virt2Phys(&dev->trRing[epId]->ring[0]));
 	HW_USB_XHCI_TRB_setType(lk, XHCI_TRB_Type_Link);
 	HW_USB_XHCI_TRB_setToggle(lk, 1);
 	ep->deqPtr = DMAS_virt2Phys(dev->trRing[epId]->cur) | 1;

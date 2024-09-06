@@ -119,8 +119,8 @@ int HW_USB_XHCI_Ring_tryInsReq(XHCI_Ring *ring, XHCI_Request *req) {
 	XHCI_GenerTRB *lstCur = ring->cur;
 	int lstPos = ring->curPos, lstCyc = ring->cycBit;
 	for (int i = 0; i < req->trbCnt; i++) {
+		pos[trbC] = ring->curPos, cyc[trbC++] = ring->cycBit;
 		if (HW_USB_XHCI_TRB_getType(ring->cur) == XHCI_TRB_Type_Link) {
-			pos[trbC] = ring->curPos, cyc[trbC++] = ring->cycBit;
 			if (HW_USB_XHCI_TRB_getToggle(ring->cur)) ring->cycBit ^= 1;
 			ring->cur = DMAS_phys2Virt(HW_USB_XHCI_TRB_getData(ring->cur));
 			ring->curPos = HW_USB_XHCI_TRB_getPos(ring->cur);
@@ -133,13 +133,13 @@ int HW_USB_XHCI_Ring_tryInsReq(XHCI_Ring *ring, XHCI_Request *req) {
 			break;
 		}
 		ring->cur++;
-		pos[trbC] = ring->curPos, cyc[trbC++] = ring->cycBit;
 		ring->curPos++;
 	}
 	if (full) {
 		// restore and return fail code
 		ring->cur = lstCur, ring->curPos = lstPos, ring->cycBit = lstCyc;
 		SpinLock_unlock(&ring->lock);
+		printk(RED, BLACK, "ring %#018lx full\n", ring);
 		return 0;
 	}
 	for (int i = 0, reqP = 0; i < trbC; i++) {

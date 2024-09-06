@@ -78,7 +78,7 @@ static __always_inline__ u32 HW_USB_XHCI_TRB_setSlot(XHCI_GenerTRB *trb, u32 val
 	HW_USB_XHCI_writeDword((u64)&trb->ctrl, (HW_USB_XHCI_readDword((u64)&trb->ctrl) & 0xffffffu) | (val << 24));
 }
 static __always_inline__ int HW_USB_XHCI_TRB_getPos(XHCI_GenerTRB *trb) {
-	return ((u64)trb - ((u64)trb & ~0xfff)) / sizeof(XHCI_GenerTRB);
+	return ((u64)trb - ((u64)trb & ~0xfffful)) / sizeof(XHCI_GenerTRB);
 }
 void HW_USB_XHCI_TRB_copy(XHCI_GenerTRB *src, XHCI_GenerTRB *dst);
 
@@ -142,6 +142,7 @@ static __always_inline__ void HW_USB_XHCI_writeIntrQuad(XHCI_Host *host, u32 int
 }
 
 static __always_inline__ void HW_USB_XHCI_writeDbReg(XHCI_Host *host, u32 slotId, u32 epId, u32 taskId) {
+	__asm__ volatile ( "mfence \n\t" : : : "memory");
 	HW_USB_XHCI_writeDword(host->dbRegAddr + slotId * 0x4, epId | (taskId << 16));
 }
 
