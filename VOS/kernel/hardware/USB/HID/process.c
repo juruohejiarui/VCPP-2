@@ -12,6 +12,7 @@ void HW_USB_HID_init() {
 	SpinLock_lock(&HW_USB_XHCI_DriverListLock);
 	List_insBefore(&HW_USB_HID_driver.driver.list, &HW_USB_XHCI_DriverList);
 	SpinLock_unlock(&HW_USB_XHCI_DriverListLock);
+	HW_USB_HID_initParse();
 }
 
 int HW_USB_HID_check(XHCI_Device *dev) {
@@ -58,7 +59,7 @@ USB_HID_ReportHelper *HW_USB_HID_mkParseHelper(XHCI_Device *dev, XHCI_InterDesc 
 	printk(WHITE, BLACK, "\n");
 	kfree(req, Slab_kmalloc_arg_Private);
 
-	HW_USB_HID_genParseHelper(reportDesc, desc->wDescLen);
+	return HW_USB_HID_genParseHelper(reportDesc, desc->wDescLen);
 }
 
 void HW_USB_HID_process(XHCI_Device *dev) {
@@ -173,7 +174,8 @@ void HW_USB_HID_process(XHCI_Device *dev) {
 		printk(RED, BLACK, "dev %#018lx: failed to set interface, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req1->res));
 		while (1) IO_hlt();
 	}
-	HW_USB_XHCI_TRB_setData(&req1->trb[0], HW_USB_XHCI_TRB_mkSetup(0x21, 0x0a, 0xff00, 0, 0));
+	// set Idle
+	HW_USB_XHCI_TRB_setData(&req1->trb[0], HW_USB_XHCI_TRB_mkSetup(0x21, 0x0a, (repHelper->type == USB_HID_ReportHelper_Type_Mouse ? 0xff00 : 0x100), 0, 0));
 	HW_USB_XHCI_Ring_insReq(dev->trRing[0], req1);
 	if (HW_USB_XHCI_Req_ringDoorbellWait(dev->host, dev->slotId, 1, 0, req1) != XHCI_TRB_CmplCode_Succ) {
 		printk(RED, BLACK, "dev %#018lx: failed to set idle, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req1->res));
@@ -186,7 +188,7 @@ void HW_USB_HID_process(XHCI_Device *dev) {
 	u8 *report = kmalloc(0xff, Slab_kmalloc_arg_Private | Slab_kmalloc_arg_Clear, NULL);
 	printk(WHITE, BLACK, "create report on %#018lx\n", report);
 	HW_USB_XHCI_TRB_setData(&req1->trb[0], DMAS_virt2Phys(report));
-	HW_USB_XHCI_TRB_setStatus(&req1->trb[0], HW_USB_XHCI_TRB_mkStatus(0x5, 0x0, 0));
+	HW_USB_XHCI_TRB_setStatus(&req1->trb[0], HW_USB_XHCI_TRB_mkStatus(repHelper->inSz / 8, 0x0, 0));
 	HW_USB_XHCI_TRB_setType(&req1->trb[0], XHCI_TRB_Type_Normal);
 	HW_USB_XHCI_TRB_setCtrlBit(&req1->trb[0], XHCI_TRB_Ctrl_ioc | XHCI_TRB_Ctrl_isp);
 	// start to get report from the endpoint
@@ -197,7 +199,7 @@ void HW_USB_HID_process(XHCI_Device *dev) {
 			printk(RED, BLACK, "dev %#018lx: get report failed, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req1->res));
 			while (1) IO_hlt(); 
 		}
-		for (int i = 0; i < 32; i++) printk(WHITE, BLACK, "%02x ", report[i]);
+		for (int i = 0; i < repHelper->inSz / 8; i++) printk(WHITE, BLACK, "%02x ", report[i]);
 		printk(WHITE, BLACK, "\n");
 		// Intr_SoftIrq_Timer_mdelay(max(1, epDesc->interval - 2));
 	}

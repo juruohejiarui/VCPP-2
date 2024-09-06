@@ -27,11 +27,24 @@ struct USB_HID_Driver {
 
 #define HID_RepItem_Tag		(0xf0)
 
+// tags for main items
 #define HID_RepItem_Tag_Input	0x08
 #define HID_RepItem_Tag_Output	0x09
 #define HID_RepItem_Tag_Coll	0x0a
 #define HID_RepItem_Tag_Feature	0x0b
 #define HID_RepItem_Tag_EndColl	0x0c
+
+// tags for local items
+#define HID_RepItem_Tag_Usage		0x00
+#define HID_RepItem_Tag_UsageMin	0x01
+#define HID_RepItem_Tag_UsageMax	0x02
+
+// tags for global items
+#define HID_RepItem_Tag_UsagePage	0x00
+#define HID_RepItem_Tag_LogicalMin	0x01
+#define HID_RepItem_Tag_LogicalMax	0x02
+#define HID_RepItem_Tag_ReportSize	0x07
+#define HID_RepItem_Tag_ReportCnt	0x09
 
 #define HID_RepItem_DataType_Const 		(1 << 0)
 #define HID_RepItem_DataType_Vari		(1 << 1)
@@ -42,7 +55,8 @@ struct USB_HID_Driver {
 #define HID_RepItem_DataType_NullState	(1 << 6)
 
 #define HID_UsagePage_GenerDeskCtrl		(0x01)
-#define HID_UsagePage_Buttn				(0x09)
+#define HID_UsagePage_Button			(0x09)
+
 
 #define HID_Usage_Pointer	(0x01)
 #define HID_Usage_Mouse		(0x02)
@@ -69,7 +83,7 @@ typedef struct USB_HID_ReportHelper {
 	#define USB_HID_ReportParseHelper_Type_Mouse 0
 	union {
 		struct {
-			USB_HID_ReportItem btn[3], mvX, mvY, mvZ;
+			USB_HID_ReportItem btn, x, y, wheel;
 		} mouse;
 		union {
 			USB_HID_ReportItem spK, k1, k2, k3, k4, k5, k6;

@@ -3,6 +3,7 @@
 
 #include "desc.h"
 
+void HW_USB_HID_initParse();
 void HW_USB_HID_init();
 
 USB_HID_ReportHelper *HW_USB_HID_genParseHelper(u8 *report, u64 len);

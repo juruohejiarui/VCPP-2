@@ -9,7 +9,7 @@ typedef unsigned char u8;
 typedef long long i64;
 typedef int i32;
 typedef short i16;
-typedef char i8;
+typedef signed char i8;
 
 typedef struct List {
     struct List *next, *prev;
