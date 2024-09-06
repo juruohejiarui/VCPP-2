@@ -41,6 +41,16 @@ struct USB_HID_Driver {
 #define HID_RepItem_DataType_NoPrefered	(1 << 5)
 #define HID_RepItem_DataType_NullState	(1 << 6)
 
+#define HID_UsagePage_GenerDeskCtrl		(0x01)
+#define HID_UsagePage_Buttn				(0x09)
+
+#define HID_Usage_Pointer	(0x01)
+#define HID_Usage_Mouse		(0x02)
+#define HID_Usage_X			(0x30)
+#define HID_Usage_Y			(0x31)
+#define HID_Usage_Z			(0x32)
+#define HID_Usage_Wheel		(0x38)
+
 #pragma endregion
 
 typedef struct USB_HID_ReportItem {

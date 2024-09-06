@@ -8,12 +8,20 @@ static __always_inline__ int _getItemSize(u8 *rep) {
 }
 
 struct DataState {
+	// some states from global items
     int lgMn, lgMx, phyMn, phyMx;
     int cnt, sz;
-    u8 usageLs[16], usageLsL;  
+	u8 usagePg;
+	// some states from local items
+    u64 usage[16][4], usageTop;  
 };
 
-static void (*_helperModifier[0x100])(struct DataState *, u8, USB_HID_ReportHelper *helper);
+static __always_inline__ int _usage(u64 usage[4], int Id) { return (usage[Id / 64] >> (Id % 64)) & 1; }
+
+static int (*_modifierChk[0x200])(struct DataState *);
+static void (*_modifier[0x200])(struct DataState *, u8 flags, USB_HID_ReportHelper *helper);
+
+static int _modifierNum;
 
 static void _applyItem(struct DataState *state, u8 flags, int isIn, USB_HID_ReportHelper *helper, USB_HID_ReportItem *item) {
     item->flags = flags;
@@ -23,45 +31,29 @@ static void _applyItem(struct DataState *state, u8 flags, int isIn, USB_HID_Repo
     else item->off = helper->outSz, helper->outSz += state->sz;
 }
 
-static void _helperModifier_X(struct DataState *state, u8 flags, USB_HID_ReportHelper *helper) {
-    if (helper->type != USB_HID_ReportHelper_Type_Mouse) return ;
-    _applyItem(state, flags, 1, helper, &helper->items.mouse.mvX);
-}
-static void _helperModifier_Y(struct DataState *state, u8 flags, USB_HID_ReportHelper *helper) {
-    if (helper->type != USB_HID_ReportHelper_Type_Mouse) return ;
-    _applyItem(state, flags, 1, helper, &helper->items.mouse.mvY);
-}
-static void _helperModifier_Z(struct DataState *state, u8 flags, USB_HID_ReportHelper *helper) {
-    if (helper->type != USB_HID_ReportHelper_Type_Mouse) return ;
-    _applyItem(state, flags, 1, helper, &helper->items.mouse.mvZ);
-}
-static void _helperModifer_btn(struct DataState *state, u8 flags, USB_HID_ReportHelper *helper) {
-    if (helper->type == USB_HID_ReportHelper_Type_Mouse) {
-        for (int i = 0; i < 3; i++) if (!helper->items.mouse.btn[i].size) {
-            _applyItem(state, flags, 1, helper, &helper->items.mouse.btn[i]);
-            break;
-        }
-    }
+static void _tryModify(struct DataState *state, u8 flags, USB_HID_ReportHelper *helper) {
+	for (int i = 0; i < _modifierNum; i++) if (_modifierChk[i] && _modifierChk[i](state)) {
+		_modifier[i](state, flags, helper);
+		break;
+	}
 }
 
-void _applyHelper(USB_HID_ReportHelper *helper, u8 flags, struct DataState *state) {
-    
-}
-
-int *_parseMain(USB_HID_ReportHelper *helper, u8 *rep, struct DataState *state) {
+int _parseMain(USB_HID_ReportHelper *helper, u8 *rep, struct DataState *state) {
     switch (_getPrefixField(*rep, HID_RepItem_Tag)) {
         case HID_RepItem_Tag_Input:
         case HID_RepItem_Tag_Output:
-            _createHelper(helper, *(rep + 1), state);
+            _tryModify(*(rep + 1), state, helper);
+		case HID_RepItem_Tag_EndColl:
+			memset(&state->usage[--state->usageTop], 0, sizeof(u64) * 4);
             break;
         case HID_RepItem_Tag_Feature:
             // no support for this tag;
             break;
-        case HID_RepItem_Tag_Coll:
-        
-        case HID_RepItem_Tag_EndColl:
-
+		case HID_RepItem_Tag_Coll:
+			state->usageTop++;
+			break;
     }
+	return 0;
 }
 
 USB_HID_ReportHelper *HW_USB_HID_genParseHelper(u8 *rep, u64 len) {
