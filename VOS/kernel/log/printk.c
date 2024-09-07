@@ -156,7 +156,7 @@ int sprintf(char *buf, const char *fmt, va_list args) {
                     while (len < fld_w--) *(str++) = ' ';
                     break;
                 case 'o':
-                    str = _number(str, qlf == 'L' ? va_arg(args, unsigned long) : va_arg(args, unsigned int), 8, fld_w, prec, flags);
+                    str = _number(str, qlf == 'L' ? va_arg(args, u64) : va_arg(args, u32), 8, fld_w, prec, flags);
                     break;
                 case 'p':
                     if (fld_w == -1) {
@@ -167,13 +167,15 @@ int sprintf(char *buf, const char *fmt, va_list args) {
                     break;
                 case 'x':
                 case 'X':
-                    str = _number(str, qlf == 'L' ? va_arg(args, unsigned long) : va_arg(args, unsigned int), 16, fld_w, prec, flags);
+                    str = _number(str, qlf == 'L' ? va_arg(args, u64) : va_arg(args, u32), 16, fld_w, prec, flags);
                     break;
                 case 'd':
                 case 'i':
                     flags |= flag_sign;
+                    str = _number(str, qlf == 'L' ? va_arg(args, i64) : va_arg(args, i32), 10, fld_w, prec, flags);
+					break;
                 case 'u':
-                    str = _number(str, qlf == 'L' ? va_arg(args, unsigned long) : va_arg(args, unsigned int), 10, fld_w, prec, flags);
+                    str = _number(str, qlf == 'L' ? va_arg(args, u64) : va_arg(args, u32), 10, fld_w, prec, flags);
                     break;
                 default:
                     *(str++) = '%';
@@ -282,7 +284,7 @@ void clearScreen() {
 
 void printk(unsigned int fcol, unsigned int bcol, const char *fmt, ...) {
     // SpinLock_lock(&_bufLock);
-    char buf[2048] = {0};
+    char buf[1024] = {0};
     int len = 0, i;
     va_list args;
     va_start(args, fmt);

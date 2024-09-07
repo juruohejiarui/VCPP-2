@@ -44,6 +44,7 @@ struct USB_HID_Driver {
 #define HID_RepItem_Tag_LogicalMin	0x01
 #define HID_RepItem_Tag_LogicalMax	0x02
 #define HID_RepItem_Tag_ReportSize	0x07
+#define HID_RepItem_Tag_ReportId	0x08
 #define HID_RepItem_Tag_ReportCnt	0x09
 
 #define HID_RepItem_DataType_Const 		(1 << 0)
@@ -55,21 +56,27 @@ struct USB_HID_Driver {
 #define HID_RepItem_DataType_NullState	(1 << 6)
 
 #define HID_UsagePage_GenerDeskCtrl		(0x01)
+#define HID_UsagePage_Keyboard			(0x07)
 #define HID_UsagePage_Button			(0x09)
 
 
 #define HID_Usage_Pointer	(0x01)
 #define HID_Usage_Mouse		(0x02)
+#define HID_Usage_Keyboard	(0x06)
+#define HID_Usage_Keypad	(0x07)
 #define HID_Usage_X			(0x30)
 #define HID_Usage_Y			(0x31)
 #define HID_Usage_Z			(0x32)
 #define HID_Usage_Wheel		(0x38)
 
+#define HID_RepItem_Main_isConst(flag)	((flag) & 1)
+#define HID_RepItem_Main_isRel(flag)	(((flag) >> 2) & 1)
+
 #pragma endregion
 
 typedef struct USB_HID_ReportItem {
-	int rgMn, rgMx, off;
-	u8 flags, size;
+	int rgMn, rgMx;
+	u8 flags, size, off;
 	// offset == -1 means this item does not exist in a report
 } USB_HID_ReportItem;
 
@@ -79,18 +86,27 @@ typedef struct USB_HID_ReportHelper {
 	u8 *raw;
 	#define USB_HID_ReportHelper_Type_Mouse 1
 	#define USB_HID_ReportHelper_Type_Keyboard 2
-	int protoId;
-	#define USB_HID_ReportParseHelper_Type_Mouse 0
 	union {
 		struct {
 			USB_HID_ReportItem btn, x, y, wheel;
 		} mouse;
 		union {
-			USB_HID_ReportItem spK, k1, k2, k3, k4, k5, k6;
+			USB_HID_ReportItem spK, key[6];
 			USB_HID_ReportItem leds;
 		} keyboard;
 	} items;
 } __attribute__ ((packed)) USB_HID_ReportHelper;
+
+// the report after parsing
+typedef struct USB_HID_Report {
+	// the report type which is the same as that of parse helper applied to this report
+	int type;
+	union {
+		struct { int btn, x, y, wheel; } mouse;
+		struct { int spK, key[6]; } keyboard;
+	} items;
+} USB_HID_Report;
+
 extern struct USB_HID_Driver HW_USB_HID_driver;
 
 #endif

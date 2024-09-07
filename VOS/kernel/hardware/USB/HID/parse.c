@@ -24,7 +24,7 @@ static __always_inline__ int _getItemData(u8 *rep) {
 
 struct DataState {
 	// some states from global items
-	int lgMn, lgMx, cnt, sz;
+	int lgMn, lgMx, id, cnt, sz;
 	u8 usagePg;
 	// some states from local items
 	int usage[8][0x10], phyMn[8], phyMx[8], locTop, usageNum[8];  
@@ -38,8 +38,8 @@ static int _countUsage(struct DataState *state, int rgSt, int usage) {
 	return 0;
 }
 
-static int (*modiChk[0x200])(struct DataState *, int isIn);
-static void (*_modi[0x200])(struct DataState *, int isIn, u8 flags, USB_HID_ReportHelper *helper);
+static int (*modiChk[0x200])(struct DataState *, int, u8);
+static int (*_modi[0x200])(struct DataState *, int isIn, u8 flags, USB_HID_ReportHelper *helper);
 
 #define regModifer(modifier) \
 	(modiChk[_modiNum] = (_modiChk_##modifier), _modi[_modiNum] = (_modi_##modifier), ++_modiNum)
@@ -51,58 +51,111 @@ static void _applyItem(struct DataState *state, u8 flags, int isIn, USB_HID_Repo
 	item->rgMn = state->lgMn;
 	item->rgMx = state->lgMx;
 	item->off = (isIn ? helper->inSz : helper->outSz);
+	item->size = state->sz;
 }
 
 #pragma region Modifiers
-static int _modiChk_mouseX(struct DataState *state, int isIn) {
-	return isIn && _countUsage(state, 0, HID_Usage_Mouse) && _countUsage(state, -1, HID_Usage_X);
+static int _modiChk_mouseX(struct DataState *state, int isIn, u8 flags) {
+	return isIn && _countUsage(state, 0, HID_Usage_Mouse)
+				&& _countUsage(state, -1, HID_Usage_X)
+				&& !HID_RepItem_Main_isConst(flags);
 }
-static void _modi_mouseX(struct DataState *state, int isIn, u8 flags, USB_HID_ReportHelper *helper) {
+static int _modi_mouseX(struct DataState *state, int isIn, u8 flags, USB_HID_ReportHelper *helper) {
 	helper->type = USB_HID_ReportHelper_Type_Mouse;
+	printk(WHITE, BLACK, "mouseX off:%d\n", helper->inSz);
 	_applyItem(state, flags, 1, helper, &helper->items.mouse.x);
+	return 1;
 }
-static int _modiChk_mouseY(struct DataState *state, int isIn) {
-	return isIn && _countUsage(state, 0, HID_Usage_Mouse) && _countUsage(state, -1, HID_Usage_Y);
+static int _modiChk_mouseY(struct DataState *state, int isIn, u8 flags) {
+	return isIn && _countUsage(state, 0, HID_Usage_Mouse)
+				&& _countUsage(state, -1, HID_Usage_Y)
+				&& !HID_RepItem_Main_isConst(flags);
 }
-static void _modi_mouseY(struct DataState *state, int isIn, u8 flags, USB_HID_ReportHelper *helper) {
+static int _modi_mouseY(struct DataState *state, int isIn, u8 flags, USB_HID_ReportHelper *helper) {
+	printk(WHITE, BLACK, "mouseY off:%d\n", helper->inSz);
 	_applyItem(state, flags, 1, helper, &helper->items.mouse.y);
+	return 1;
 }
-static int _modiChk_mouseWheel(struct DataState *state, int isIn) {
-	return isIn && _countUsage(state, 0, HID_Usage_Mouse) && _countUsage(state, -1, HID_Usage_Wheel);
+static int _modiChk_mouseWheel(struct DataState *state, int isIn, u8 flags) {
+	return isIn && _countUsage(state, 0, HID_Usage_Mouse)
+				&& _countUsage(state, -1, HID_Usage_Wheel)
+				&& !HID_RepItem_Main_isConst(flags);
 }
-static void _modi_mouseWheel(struct DataState *state, int isIn, u8 flags, USB_HID_ReportHelper *helper) {
+static int _modi_mouseWheel(struct DataState *state, int isIn, u8 flags, USB_HID_ReportHelper *helper) {
+	printk(WHITE, BLACK, "mouse wheel off:%d\n", helper->inSz);
 	_applyItem(state, flags, 1, helper, &helper->items.mouse.wheel);
+	return 1;
 }
-static int _modiChk_mouseBtn(struct DataState *state, int isIn) {
-	return isIn && _countUsage(state, 0, HID_Usage_Mouse) && (state->usagePg == HID_UsagePage_Button);
+static int _modiChk_mouseBtn(struct DataState *state, int isIn, u8 flags) {
+	return isIn && _countUsage(state, 0, HID_Usage_Mouse)
+				&& state->usagePg == HID_UsagePage_Button
+				&& !HID_RepItem_Main_isConst(flags);
 }
-static void _modi_mouseBtn(struct DataState *state, int isIn, u8 flags, USB_HID_ReportHelper *helper) {
+static int _modi_mouseBtn(struct DataState *state, int isIn, u8 flags, USB_HID_ReportHelper *helper) {
 	_applyItem(state, flags, 1, helper, &helper->items.mouse.btn);
+	printk(WHITE, BLACK, "mouse button off:%d\n", helper->inSz);
+	helper->items.mouse.btn.size = state->cnt * state->sz;
+	return state->cnt;
+}
+static int _modiChk_keyboard(struct DataState *state, int isIn, u8 flags) {
+	return isIn && state->usagePg == HID_UsagePage_Keyboard && !HID_RepItem_Main_isConst(flags);
+}
+static int _modi_keyboard(struct DataState *state, int isIn, u8 flags, USB_HID_ReportHelper *helper) {
+	helper->type = USB_HID_ReportHelper_Type_Keyboard;
+	// ctrl keys
+	if (state->sz == 1) {
+		printk(WHITE, BLACK, "keyboard spK off:%d size:%d\n", helper->inSz, state->cnt * state->sz);
+		_applyItem(state, flags, 1, helper, &helper->items.keyboard.spK);
+		helper->items.keyboard.spK.off = helper->inSz;
+		helper->items.keyboard.spK.size = state->cnt * state->sz;
+	} else {
+		printk(WHITE, BLACK, "keyboard key off:%d size:%d ", helper->inSz, state->sz);
+		for (int i = 0; i < state->cnt; i++) {
+			register USB_HID_ReportItem *key = &helper->items.keyboard.key[i];
+			printk(WHITE, BLACK, "key %d: off:%d ", i, helper->inSz + i * state->sz);
+			key->off = helper->inSz + i * state->sz;
+			key->flags = flags;
+			key->rgMn = state->lgMn, key->rgMx = state->lgMx;
+			key->size = state->sz;
+		}
+		printk(WHITE, BLACK, "\n");
+	}
+	return state->cnt;
 }
 #pragma endregion
 
 static void regDefaultModifier() {
+	// the order of registration counts
+	regModifer(mouseBtn);
 	regModifer(mouseX);
 	regModifer(mouseY);
 	regModifer(mouseWheel);
-	regModifer(mouseBtn);
+
+	regModifer(keyboard);
 }
 
 static void _tryModify(struct DataState *state, int isIn, u8 flags, USB_HID_ReportHelper *helper) {
-	for (int i = 0; i < _modiNum; i++) if (modiChk[i] && modiChk[i](state, isIn)) {
-		_modi[i](state, isIn, flags, helper);
-		break;
+	int uCnt = 0;
+	for (int i = 0; i < _modiNum; i++) if (modiChk[i] && modiChk[i](state, isIn, flags)) {
+		int used = _modi[i](state, isIn, flags, helper);
+		if (isIn) helper->inSz += used * state->sz;
+		else helper->outSz += used * state->sz;
+		uCnt += used;
+		if (uCnt == state->cnt) break;
 	}
-	if (isIn)	helper->inSz += state->sz * state->cnt;
-	else		helper->outSz += state->sz * state->cnt;
+	// some unrecognizable items
+	if (state->cnt) {
+		if (isIn)	helper->inSz += state->sz * (state->cnt - uCnt);
+		else		helper->outSz += state->sz * (state->cnt - uCnt);
+	}
 }
 
 static int _parseMain(USB_HID_ReportHelper *helper, u8 *rep, struct DataState *state) {
 	switch (_getPrefixField(*rep, HID_RepItem_Tag)) {
 		case HID_RepItem_Tag_Input:
 		case HID_RepItem_Tag_Output:
-			printk(WHITE, BLACK, "main: locTop:%d lgMn:%d lgMx:%d cnt:%d sz:%d usgPg:%d usage:",
-				state->locTop, state->lgMn, state->lgMx, state->cnt, state->sz, state->usagePg);
+			printk(WHITE, BLACK, "main: locTop:%d lgMn:%d lgMx:%d cnt:%d sz:%d usgPg:%d flags:%d usage:",
+				state->locTop, state->lgMn, state->lgMx, state->cnt, state->sz, state->usagePg, _getItemData(rep));
 			for (int i = 0; i < state->usageNum[state->locTop]; i++)
 				printk(WHITE, BLACK, "%x ", state->usage[state->locTop][i]);
 			printk(WHITE, BLACK, "\n");
@@ -130,9 +183,10 @@ static int _parseGlobal(u8 *rep, struct DataState *state) {
 		case HID_RepItem_Tag_UsagePage:
 			state->usagePg = _getItemData(rep);
 			break;
-		case HID_RepItem_Tag_LogicalMin:
-			state->lgMn = _getItemData(rep);
+		case HID_RepItem_Tag_LogicalMin: {
+			int data = state->lgMn = _getItemData(rep);
 			break;
+		}
 		case HID_RepItem_Tag_LogicalMax:
 			state->lgMx = _getItemData(rep);
 			break;
@@ -141,6 +195,9 @@ static int _parseGlobal(u8 *rep, struct DataState *state) {
 			break;
 		case HID_RepItem_Tag_ReportSize:
 			state->sz = _getItemData(rep);
+			break;
+		case HID_RepItem_Tag_ReportId:
+			state->id = _getItemData(rep);
 			break;
 		default:
 			printk(RED, BLACK, "HID parse helper: invalid global item tag:%x\n", _getPrefixField(*rep, HID_RepItem_Tag));
@@ -167,11 +224,17 @@ static int _parseLocal(u8 *rep, struct DataState *state) {
 	return 1;
 }
 
+static SpinLock _lock;
+
 USB_HID_ReportHelper *HW_USB_HID_genParseHelper(u8 *rep, u64 len) {
+	SpinLock_lock(&_lock);
+	printk(YELLOW, BLACK, "rep %#018lx: ", rep);
+	for (int i = 0; i < len; i++) printk(YELLOW, BLACK, "%02x ", rep[i]);
+	printk(WHITE, BLACK, "\n");
 	u64 idx = 0;
 	int res;
 	USB_HID_ReportHelper *helper = kmalloc(sizeof(USB_HID_ReportHelper), Slab_kmalloc_arg_Private | Slab_kmalloc_arg_Clear, NULL);
-	struct DataState curDtState;
+	static struct DataState curDtState;
 	memset(&curDtState, 0, sizeof(struct DataState));
 	while (idx < len) {
 		int itemLen = _getItemSize((rep + idx));
@@ -191,16 +254,45 @@ USB_HID_ReportHelper *HW_USB_HID_genParseHelper(u8 *rep, u64 len) {
 		}
 		if (!res) {
 			helper->type = 0;
+			for (int i = 0; i < len; i++) printk(WHITE, BLACK, "%02x ", rep[i]);
+			printk(WHITE, BLACK, "\n");
+			SpinLock_unlock(&_lock);
 			return helper;
 		}
 		idx += 1 + itemLen;
 	}
 	printk(WHITE, BLACK, "HID parse helper: %#018lx: type:%d inSz:%d outSz:%d\n", helper, helper->type, helper->inSz, helper->outSz);
+	SpinLock_unlock(&_lock);
 	return helper;
 }
 
+static void _parseItem(u8 *raw, USB_HID_ReportItem *item, int *out) {
+	register u32 msk = ((1ul << item->size) - 1) << (item->off & 0x7);
+	u32 data = ((*(u32 *)(raw + (item->off / 8))) & msk) >> (Bit_ffs(msk) - 1);
+	// extend the sign bit if necessary
+	if (data & (1u << (item->size - 1)) && HID_RepItem_Main_isRel(item->flags))
+		data |= ~((1ul << item->size) - 1u);
+	*out = data;
+}
+
+void HW_USB_HID_parseReport(u8 *raw, USB_HID_ReportHelper *helper, USB_HID_Report *out) {
+	out->type = helper->type;
+	switch (helper->type) {
+		case USB_HID_ReportHelper_Type_Mouse:
+			_parseItem(raw, &helper->items.mouse.btn, &out->items.mouse.btn);
+			_parseItem(raw, &helper->items.mouse.x, &out->items.mouse.x);
+			_parseItem(raw, &helper->items.mouse.y, &out->items.mouse.y);
+			_parseItem(raw, &helper->items.mouse.wheel, &out->items.mouse.wheel);
+			break;
+		case USB_HID_ReportHelper_Type_Keyboard:
+			_parseItem(raw, &helper->items.keyboard.spK, &out->items.keyboard.spK);
+			for (int i = 0; i < 6; i++) _parseItem(raw, &helper->items.keyboard.key[i], &out->items.keyboard.key[i]);
+			break;
+	}
+}
 
 void HW_USB_HID_initParse() {
+	SpinLock_init(&_lock);
 	_modiNum = 0;
 	regDefaultModifier();
 }
