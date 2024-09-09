@@ -412,30 +412,13 @@ void HW_USB_XHCI_devMgrTask(XHCI_Device *dev, u64 rootPort) {
 		}
 		printk(GREEN, BLACK, "dev %#018lx address deivce successfully\n", dev);
 	}
-	XHCI_Request *req1 = HW_USB_XHCI_allocReq(3);
 	// get the first 8 bytes of the device descriptor and modify the maxPacketSize0
-	{
-		XHCI_GenerTRB *setup = &req1->trb[0];
-		HW_USB_XHCI_TRB_setData(setup, 		HW_USB_XHCI_TRB_mkSetup(0x80, 0x6, 0x0100, 0x0, 0x8));
-		HW_USB_XHCI_TRB_setStatus(setup, 	HW_USB_XHCI_TRB_mkStatus(8, 0, 0));
-		HW_USB_XHCI_TRB_setType(setup, 		XHCI_TRB_Type_SetupStage);
-		HW_USB_XHCI_TRB_setCtrlBit(setup, 	XHCI_TRB_Ctrl_idt);
-		HW_USB_XHCI_TRB_setTRT(setup, 		XHCI_TRB_TRT_In);
-	}
-	{
-		XHCI_GenerTRB *data = &req1->trb[1];
-		dev->devDesc = kmalloc(0xff, Slab_kmalloc_arg_Private, NULL);
-		memset(dev->devDesc, 0, 0xff);
-		HW_USB_XHCI_TRB_setData(data,	DMAS_virt2Phys(dev->devDesc));
-		HW_USB_XHCI_TRB_setStatus(data, HW_USB_XHCI_TRB_mkStatus(8, 0, 0));
-		HW_USB_XHCI_TRB_setType(data, 	XHCI_TRB_Type_DataStage);
-		HW_USB_XHCI_TRB_setDir(data, 	XHCI_TRB_Ctrl_Dir_In);
-	}
-	{
-		XHCI_GenerTRB *status = &req1->trb[2];
-		HW_USB_XHCI_TRB_setType(status, 	XHCI_TRB_Type_StatusStage);
-		HW_USB_XHCI_TRB_setCtrlBit(status,	XHCI_TRB_Ctrl_ioc);
-	}
+	XHCI_Request *req1 = HW_USB_XHCI_allocReq(3);
+	dev->devDesc = kmalloc(0xff, Slab_kmalloc_arg_Private, NULL);
+	HW_USB_XHCI_ctrlDataReq(req1,
+			HW_USB_XHCI_TRB_mkSetup(0x80, 0x6, 0x0100, 0x0, 0x8),
+			XHCI_TRB_Ctrl_Dir_In,
+			dev->devDesc, 8);
 	HW_USB_XHCI_Ring_insReq(dev->trRing[0], req1);
 	if (HW_USB_XHCI_Req_ringDoorbellWait(dev->host, dev->slotId, 1, 0, req1) != XHCI_TRB_CmplCode_Succ) {
 		printk(RED, BLACK, "dev %#018lx: failed to get device descriptor, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req1->res));

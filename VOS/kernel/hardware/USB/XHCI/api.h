@@ -192,6 +192,12 @@ XHCI_Request *HW_USB_XHCI_allocReq(u64 trbCnt);
 
 void HW_USB_XHCI_freeReq(XHCI_Request *req);
 
+// initialize the request without data stage
+void HW_USB_XHCI_ctrlReq(XHCI_Request *req, u64 setup, int dir);
+
+// initialize the request with data stage
+void HW_USB_XHCI_ctrlDataReq(XHCI_Request *req, u64 setup, int dir, void *data, u16 len);
+
 // wait for the result of request and return the completion code
 int HW_USB_XHCI_Req_wait(XHCI_Request *req);
 

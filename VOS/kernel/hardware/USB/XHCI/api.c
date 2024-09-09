@@ -198,6 +198,45 @@ void HW_USB_XHCI_freeReq(XHCI_Request *req) {
 	if (req->target) kfree(req->target, 0);
 }
 
+void HW_USB_XHCI_ctrlReq(XHCI_Request *req, u64 setup, int dir) {
+	{
+		XHCI_GenerTRB *setupStage = &req->trb[0];
+		HW_USB_XHCI_TRB_setData(setupStage, 	setup);
+		HW_USB_XHCI_TRB_setStatus(setupStage, 	HW_USB_XHCI_TRB_mkStatus(0x08, 0, 0));
+		HW_USB_XHCI_TRB_setType(setupStage, 	XHCI_TRB_Type_SetupStage);
+		HW_USB_XHCI_TRB_setCtrlBit(setupStage, 	XHCI_TRB_Ctrl_idt);
+		HW_USB_XHCI_TRB_setTRT(setupStage, 		XHCI_TRB_TRT_No);
+	}
+	{
+		HW_USB_XHCI_TRB_setDir(&req->trb[1], 		((~dir) & 1));
+		HW_USB_XHCI_TRB_setType(&req->trb[1], 		XHCI_TRB_Type_StatusStage);
+		HW_USB_XHCI_TRB_setCtrlBit(&req->trb[1], 	XHCI_TRB_Ctrl_ioc);
+	}
+}
+
+void HW_USB_XHCI_ctrlDataReq(XHCI_Request *req, u64 setup, int dir, void *data, u16 len) {
+	{
+		XHCI_GenerTRB *setupStage = &req->trb[0];
+		HW_USB_XHCI_TRB_setData(setupStage, 	setup);
+		HW_USB_XHCI_TRB_setStatus(setupStage, 	HW_USB_XHCI_TRB_mkStatus(0x08, 0, 0));
+		HW_USB_XHCI_TRB_setType(setupStage, 	XHCI_TRB_Type_SetupStage);
+		HW_USB_XHCI_TRB_setCtrlBit(setupStage, 	XHCI_TRB_Ctrl_idt);
+		HW_USB_XHCI_TRB_setTRT(setupStage, 		dir == XHCI_TRB_Ctrl_Dir_In ? XHCI_TRB_TRT_In : XHCI_TRB_TRT_Out);
+	}
+	{
+		XHCI_GenerTRB *dataStage = &req->trb[1];
+		HW_USB_XHCI_TRB_setData(dataStage,		DMAS_virt2Phys(data));
+		HW_USB_XHCI_TRB_setStatus(dataStage, 	HW_USB_XHCI_TRB_mkStatus(len, 0, 0));
+		HW_USB_XHCI_TRB_setType(dataStage, 		XHCI_TRB_Type_DataStage);
+		HW_USB_XHCI_TRB_setDir(dataStage, 		dir);
+	}
+	{
+		HW_USB_XHCI_TRB_setDir(&req->trb[2], 		((~dir) & 1));
+		HW_USB_XHCI_TRB_setType(&req->trb[2], 		XHCI_TRB_Type_StatusStage);
+		HW_USB_XHCI_TRB_setCtrlBit(&req->trb[2], 	XHCI_TRB_Ctrl_ioc);
+	}
+}
+
 XHCI_Request *HW_USB_XHCI_allocReq(u64 trbCnt) {
 	XHCI_Request *req = kmalloc(sizeof(XHCI_Request), Slab_kmalloc_arg_Clear | Slab_kmalloc_arg_Private, (void *)HW_USB_XHCI_freeReq);
 	req->trb = kmalloc(sizeof(XHCI_GenerTRB) * trbCnt, Slab_kmalloc_arg_Clear, NULL);
@@ -208,7 +247,7 @@ XHCI_Request *HW_USB_XHCI_allocReq(u64 trbCnt) {
 
 // wait for the result of request and return the completion code
 int HW_USB_XHCI_Req_wait(XHCI_Request *req) {
-	while (!(req->flags & XHCI_Request_Flag_Finished)) ;
+	while (!(req->flags & XHCI_Request_Flag_Finished)) IO_hlt();
 	return HW_USB_XHCI_TRB_getCmplCode(&req->res);
 }
 
