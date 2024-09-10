@@ -13,17 +13,17 @@ static IntrHandler _intrHandler;
 static APICRteDescriptor _intrDesc;
 
 static HPETDescriptor *_hpetDesc;
-static u64 _jiffies = 0;
+static Atomic _jiffies;
 
 
 static inline void _setTimerConfig(u32 id, u64 config) {
 	u64 readonlyPart = *(u64 *)(DMAS_phys2Virt(_hpetDesc->address.Address) + 0x100 + 0x20 * id) & 0x8030;
 	// focused to run in 32-bit mode
-	*(u64 *)(DMAS_phys2Virt(_hpetDesc->address.Address) + 0x100 + 0x20 * id) = config | readonlyPart | 0x100;
+	*(u64 *)((u64)DMAS_phys2Virt(_hpetDesc->address.Address) + 0x100 + 0x20 * id) = config | readonlyPart | 0x100;
 	IO_mfence();
 }
 static __always_inline__ void _setTimerComparator(u32 id, u32 comparator) {
-	*(u32 *)(DMAS_phys2Virt(_hpetDesc->address.Address) + 0x108 + 0x20 * id) = comparator;
+	*(u32 *)((u64)DMAS_phys2Virt(_hpetDesc->address.Address) + 0x108 + 0x20 * id) = comparator;
 	IO_mfence();
 }
 
@@ -32,7 +32,7 @@ static int _mode;
 IntrHandlerDeclare(HW_Timer_HPET_handler) {
 	// print the counter
 	if (_mode & 1) {
-		_jiffies++;
+		Atomic_inc(&_jiffies);
 		if (SMP_current->flags & SMP_CPUInfo_flag_InTaskLoop) Intr_SoftIrq_Timer_updateState();
 	} else {
 		Task_updateAllProcessorState();
@@ -44,7 +44,7 @@ IntrHandlerDeclare(HW_Timer_HPET_handler) {
 void HW_Timer_HPET_init() {
 	printk(RED, BLACK, "HW_Timer_HPET_init()\n");
 	// initializ the data structure
-	_jiffies = _mode = 0;
+	_jiffies.value = _mode = 0;
 	// get XSDT address
 	XSDTDescriptor *xsdt = HW_UEFI_getXSDT();
 	// find HPET in XSDT
@@ -106,9 +106,9 @@ void HW_Timer_HPET_init() {
 	}
 	// get min tick
 	_minTick = (cReg >> 32) & ((1ul << 32) - 1);
-	printk(WHITE, BLACK, "\n");
+	printk(WHITE, BLACK, " minTick=%d\n", _minTick);
 	_setTimerConfig(0, 0x40000004c);
-	// set it to 1 ms
+	// set it to 0.5 ms
 	_setTimerComparator(0, (u32)(0.5 * 1e12 / _minTick + 1));
 	*(u64 *)(DMAS_phys2Virt(_hpetDesc->address.Address) + 0xf0) = 0x0;
 	IO_mfence();
@@ -120,4 +120,9 @@ void HW_Timer_HPET_init() {
 	Intr_register(0x22, &_intrDesc, HW_Timer_HPET_handler, 0, &_intrCotroller, "HPET");
 }
 
-u64 HW_Timer_HPET_jiffies() { return _jiffies; }
+i64 HW_Timer_HPET_jiffies() {
+	IO_cli(); 
+	i64 res = _jiffies.value;
+	IO_sti();
+	return res;
+}

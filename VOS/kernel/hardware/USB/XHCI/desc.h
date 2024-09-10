@@ -188,6 +188,11 @@ typedef struct XHCI_CfgDesc {
 	u8 bMxPw;
 } __attribute__ ((packed)) XHCI_CfgDesc;
 
+typedef struct XHCI_StrDesc {
+	XHCI_DescHdr hdr;
+	u8 str[0];
+} __attribute__ ((packed)) XHCI_StrDesc;
+
 typedef struct XHCI_InterDesc {
 	XHCI_DescHdr hdr;
 	u8 bInterNum;
@@ -209,6 +214,7 @@ typedef struct XHCI_EpDesc {
 
 #define XHCI_Descriptor_Type_Device		0x01
 #define XHCI_Descriptor_Type_Cfg		0x02
+#define XHCI_Descriptor_Type_Str		0x03
 #define XHCI_Descriptor_Type_Inter		0x04
 #define XHCI_Descriptor_Type_Endpoint	0x05
 #define XHCI_Descriptor_Type_HID		0x21

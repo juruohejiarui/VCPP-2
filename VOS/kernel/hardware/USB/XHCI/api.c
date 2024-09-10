@@ -158,7 +158,7 @@ int HW_USB_XHCI_Ring_tryInsReq(XHCI_Ring *ring, XHCI_Request *req) {
 
 // try to insert the request into the ring until successful.
 void HW_USB_XHCI_Ring_insReq(XHCI_Ring *ring, XHCI_Request *req) {
-	while (!HW_USB_XHCI_Ring_tryInsReq(ring, req));
+	while (!HW_USB_XHCI_Ring_tryInsReq(ring, req)) IO_hlt();
 }
 
 void HW_USB_XHCI_freeEveRing(XHCI_EveRing *ring) {

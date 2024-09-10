@@ -18,14 +18,31 @@ void HW_USB_HID_init() {
 int HW_USB_HID_setReport(XHCI_Device *dev, u8 reportId, u8 interId, u8 *report, u8 repLen) {
 	XHCI_Request *req = HW_USB_XHCI_allocReq(3);
 	HW_USB_XHCI_ctrlDataReq(req, 
-			HW_USB_XHCI_TRB_mkSetup(0x12, 0x09, 0x0200 | reportId, interId, repLen), 
+			HW_USB_XHCI_TRB_mkSetup(0x21, 0x09, 0x0200 | reportId, interId, repLen), 
 			XHCI_TRB_Ctrl_Dir_Out, 
 			report, repLen);
 	HW_USB_XHCI_Ring_insReq(dev->trRing[0], req);
 	if (HW_USB_XHCI_Req_ringDoorbellWait(dev->host, dev->slotId, 1, 0, req) != XHCI_TRB_CmplCode_Succ) {
 		printk(RED, BLACK, "dev %#018lx: failed to set report, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req->res));
 	}
-	return HW_USB_XHCI_TRB_getCmplCode(&req->res);
+	int res = HW_USB_XHCI_TRB_getCmplCode(&req->res);
+	kfree(req, Slab_kmalloc_arg_Private);
+	return res;
+}
+
+int HW_USB_HID_getReport(XHCI_Device *dev, u8 reportId, u8 interId, u8 *report, u8 repLen) {
+	XHCI_Request *req = HW_USB_XHCI_allocReq(3);
+	HW_USB_XHCI_ctrlDataReq(req, 
+			HW_USB_XHCI_TRB_mkSetup(0xa1, 0x01, 0x0100 | reportId, interId, repLen), 
+			XHCI_TRB_Ctrl_Dir_In, 
+			report, repLen);
+	HW_USB_XHCI_Ring_insReq(dev->trRing[0], req);
+	if (HW_USB_XHCI_Req_ringDoorbellWait(dev->host, dev->slotId, 1, 0, req) != XHCI_TRB_CmplCode_Succ) {
+		printk(RED, BLACK, "dev %#018lx: failed to set report, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req->res));
+	}
+	int res = HW_USB_XHCI_TRB_getCmplCode(&req->res);
+	kfree(req, Slab_kmalloc_arg_Private);
+	return res;
 }
 
 int HW_USB_HID_check(XHCI_Device *dev) {
@@ -65,7 +82,7 @@ void HW_USB_HID_processMouse(XHCI_Device *dev, XHCI_InterDesc *inter, USB_HID_Re
 	HW_USB_XHCI_TRB_setData(&req1->trb[0], DMAS_virt2Phys(repRaw));
 	HW_USB_XHCI_TRB_setStatus(&req1->trb[0], HW_USB_XHCI_TRB_mkStatus(helper->inSz / 8, 0x0, 0));
 	HW_USB_XHCI_TRB_setType(&req1->trb[0], XHCI_TRB_Type_Normal);
-	HW_USB_XHCI_TRB_setCtrlBit(&req1->trb[0], XHCI_TRB_Ctrl_ioc | XHCI_TRB_Ctrl_isp);
+	HW_USB_XHCI_TRB_setCtrlBit(&req1->trb[0], XHCI_TRB_Ctrl_ioc);
 	// start to get report from the endpoint
 	while (1) {	
 		HW_USB_XHCI_Ring_insReq(dev->trRing[inEpId], req1);
@@ -77,20 +94,20 @@ void HW_USB_HID_processMouse(XHCI_Device *dev, XHCI_InterDesc *inter, USB_HID_Re
 		HW_USB_HID_parseReport(repRaw, helper, rep);
 		printk(WHITE, BLACK, "M b:%d x:%d y:%d w:%d\r", 
 			rep->items.mouse.btn, rep->items.mouse.x, rep->items.mouse.y, rep->items.mouse.wheel);
-		Intr_SoftIrq_Timer_mdelay(inInterval);
 	}
 }
 
 void HW_USB_HID_processKeyboard(XHCI_Device *dev, XHCI_InterDesc *inter, USB_HID_ReportHelper *helper, int inEpId, int outEpId, int inInterval) {
+	printk(WHITE, BLACK, "dev %#018lx: keyboard, interval:%d\n", dev, inInterval);
 	XHCI_Request *req1 = HW_USB_XHCI_allocReq(1);
 	u8 *repRaw = kmalloc(0xff, Slab_kmalloc_arg_Private | Slab_kmalloc_arg_Clear, NULL);
 	USB_HID_Report *rep = kmalloc(sizeof(USB_HID_Report), Slab_kmalloc_arg_Private | Slab_kmalloc_arg_Private, NULL);
 
 	HW_USB_XHCI_TRB_setData(&req1->trb[0], DMAS_virt2Phys(repRaw));
 	HW_USB_XHCI_TRB_setType(&req1->trb[0], XHCI_TRB_Type_Normal);
-	HW_USB_XHCI_TRB_setCtrlBit(&req1->trb[0], XHCI_TRB_Ctrl_ioc | XHCI_TRB_Ctrl_isp);
+	HW_USB_XHCI_TRB_setCtrlBit(&req1->trb[0], XHCI_TRB_Ctrl_ioc);
 
-	repRaw[0] = (1 << 4);
+	repRaw[0] = (1 << 4) | (1 << 0);
 	// set SET_REPORT to enable default led
 	if (outEpId != -1) {
 		HW_USB_XHCI_TRB_setStatus(&req1->trb[0], HW_USB_XHCI_TRB_mkStatus(helper->outSz / 8, 0x0, 0));
@@ -101,8 +118,7 @@ void HW_USB_HID_processKeyboard(XHCI_Device *dev, XHCI_InterDesc *inter, USB_HID
 			while (1) IO_hlt();
 		}
 	} else HW_USB_HID_setReport(dev, 0, inter->bInterNum, repRaw, 1);
-
-	HW_USB_XHCI_TRB_setStatus(&req1->trb[0], HW_USB_XHCI_TRB_mkStatus(helper->outSz / 8, 0x0, 0));
+	HW_USB_XHCI_TRB_setStatus(&req1->trb[0], HW_USB_XHCI_TRB_mkStatus(helper->inSz / 8, 0x0, 0));
 	// start to get report from the endpoint
 	while (1) {	
 		HW_USB_XHCI_Ring_insReq(dev->trRing[inEpId], req1);
@@ -112,32 +128,42 @@ void HW_USB_HID_processKeyboard(XHCI_Device *dev, XHCI_InterDesc *inter, USB_HID
 			while (1) IO_hlt(); 
 		}
 		HW_USB_HID_parseReport(repRaw, helper, rep);
-		printk(WHITE, BLACK, "K sp:%02x k:%d %d %d %d %d %d raw:%016lx\r",
-			rep->items.keyboard.spK,
-			rep->items.keyboard.key[0], rep->items.keyboard.key[1],
-			rep->items.keyboard.key[2], rep->items.keyboard.key[3],
-			rep->items.keyboard.key[4], rep->items.keyboard.key[5],
-			*(u64 *)repRaw);
+		printk(WHITE, BLACK, "K raw:%016lx %016lx\n", *(u64 *)repRaw, *((u64 *)repRaw + 1));
 		Intr_SoftIrq_Timer_mdelay(inInterval);
 	}
 }
 
 void HW_USB_HID_process(XHCI_Device *dev) {
+	XHCI_InterDesc *bstInter = NULL;
+	XHCI_Request *req0, *req1;
+	int bstRate = -1, inEpId = 0, inInterval = 0, outEpId = -1;
+	// get the string descriptor
+	req1 = HW_USB_XHCI_allocReq(3);
+	XHCI_StrDesc *strDesc = kmalloc(0xff, Slab_kmalloc_arg_Private | Slab_kmalloc_arg_Clear, NULL);
+	HW_USB_XHCI_ctrlDataReq(req1, 
+			HW_USB_XHCI_TRB_mkSetup(0x80, 0x06, 0x0300 | dev->devDesc->iProduct, 0x0409, 0xff), 
+			XHCI_TRB_Ctrl_Dir_In,
+			strDesc, 0xff);
+	HW_USB_XHCI_Ring_insReq(dev->trRing[0], req1);
+	if (HW_USB_XHCI_Req_ringDoorbellWait(dev->host, dev->slotId, 1, 0, req1) != XHCI_TRB_CmplCode_Succ) {
+		printk(WHITE, BLACK, "dev %#018lx: failed to get device string descriptor, code=%d\n", 
+				dev, HW_USB_XHCI_TRB_getCmplCode(&req1->res));
+		while (1) IO_hlt();
+	}
+	// convert the unicode string into ascii
+	for (int i = 2; i < strDesc->hdr.len - 2; i += 2) strDesc->str[i >> 1] = strDesc->str[i], strDesc->str[i] = 0;
+	printk(WHITE, BLACK, "dev %#018lx: %s\n", dev, strDesc->str);
+	kfree(req1, Slab_kmalloc_arg_Private);
 	// get a correct interface
 	// the interface with class=0x03 and subClass=0x00 is the best one
 	// the interface with class=0x03 and subClass=0x01 is the second best
-	XHCI_InterDesc *bstInter = NULL;
-	int bstRate = -1, inEpId = 0, inInterval = 0, outEpId = -1;
+	
 	printk(BLUE, BLACK, "dev %#018lx accept HID Driver\n", dev);
 	for (XHCI_DescHdr *hdr = &dev->cfgDesc[0]->hdr; hdr; hdr = HW_USB_XHCI_Desc_nxtCfgItem(dev->cfgDesc[0], hdr))
 		if (hdr->type == XHCI_Descriptor_Type_Inter) {
 			XHCI_InterDesc *cur = container(hdr, XHCI_InterDesc, hdr); 
-			int curRate = (cur->bInterClass == 0x03 ? 1 : 0) + (cur->bInterSubClass == 0x00 ? 1 : 0);
-			printk(WHITE, BLACK, "dev %#018lx: interface: id:%d class:%#04x subClass:%#04x proto:%#04x epNum:%#04x\n", 
-				dev, cur->bInterNum, cur->bInterClass, cur->bInterSubClass, cur->bInterProto, cur->bNumEp);
-			if (curRate > bstRate || (curRate == bstRate && bstInter->bNumEp > cur->bNumEp)) {
-				bstInter = cur, bstRate = curRate;
-			}
+			bstInter = cur;
+			break;
 		}
 	// Normally, there will be only one endpoint for one interface
 	XHCI_EpDesc **epDesc = kmalloc(sizeof(XHCI_EpDesc *) * bstInter->bNumEp, Slab_kmalloc_arg_Clear | Slab_kmalloc_arg_Private, NULL);
@@ -145,6 +171,7 @@ void HW_USB_HID_process(XHCI_Device *dev) {
 	USB_HidDesc *hidDesc = NULL;
 	USB_HID_ReportHelper *repHelper = NULL;
 	for (XHCI_DescHdr *hdr = &bstInter->hdr; hdr; hdr = HW_USB_XHCI_Desc_nxtCfgItem(dev->cfgDesc[0], hdr)) {
+		printk(WHITE, BLACK, "dev:%#018lx hdr %#018lx: type %d\n", dev, hdr, hdr->type);
 		switch (hdr->type) {
 			case XHCI_Descriptor_Type_Inter :
 				// has been moved to next interface descriptor
@@ -180,7 +207,8 @@ void HW_USB_HID_process(XHCI_Device *dev) {
 		printk(WHITE, BLACK, "dev %#018lx\tepId:%d epType:%d mxPackSz:%d mxBurstSize:%d interval:%d\n", 
 			dev, epId, epType, epDesc[i]->wMxPackSz & 0x07ff, (epDesc[i]->wMxPackSz & 0x1800) >> 11, epDesc[i]->interval);
 
-		HW_USB_XHCI_writeCtx(&dev->inCtx->slot, 0, XHCI_SlotCtx_ctxEntries, epId + 1);
+		HW_USB_XHCI_writeCtx(&dev->inCtx->slot, 0, XHCI_SlotCtx_ctxEntries, 
+			max(HW_USB_XHCI_readCtx(&dev->inCtx->slot, 0, XHCI_SlotCtx_ctxEntries), epId + 1));
 
 		HW_USB_XHCI_writeCtx(ep, 0, XHCI_EpCtx_interval,	epDesc[i]->interval);
 		HW_USB_XHCI_writeCtx(ep, 1, XHCI_EpCtx_epType, 		epType);
@@ -204,7 +232,7 @@ void HW_USB_HID_process(XHCI_Device *dev) {
 	}
 	
 	// modify the endpoint using "Configure Endpoint Command"
-	XHCI_Request *req0 = HW_USB_XHCI_allocReq(1);
+	req0 = HW_USB_XHCI_allocReq(1);
 	HW_USB_XHCI_TRB_setData(&req0->trb[0], DMAS_virt2Phys(dev->inCtx));
 	HW_USB_XHCI_TRB_setSlot(&req0->trb[0], dev->slotId);
 	HW_USB_XHCI_TRB_setType(&req0->trb[0], XHCI_TRB_Type_CfgEp);
@@ -218,36 +246,36 @@ void HW_USB_HID_process(XHCI_Device *dev) {
 	printk(BLUE, BLACK, "dev %#018lx: configure endpoint(s)\n", dev);
 
 	// set SET_CONFIGURATION request to device
-	XHCI_Request *req1 = HW_USB_XHCI_allocReq(2);
+	req1 = HW_USB_XHCI_allocReq(2);
 	HW_USB_XHCI_ctrlReq(req1, HW_USB_XHCI_TRB_mkSetup(0x00, 0x09, dev->cfgDesc[0]->bCfgVal, 0, 0), XHCI_TRB_Ctrl_Dir_Out);
 	HW_USB_XHCI_Ring_insReq(dev->trRing[0], req1);
 	if (HW_USB_XHCI_Req_ringDoorbellWait(dev->host, dev->slotId, 1, 0, req1) != XHCI_TRB_CmplCode_Succ) {
 		printk(RED, BLACK, "dev %#018lx: failed to set configuration, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req1->res));
 		while (1) IO_hlt();
 	}
-	printk(BLUE, BLACK, "dev %#018lx: set configuration successfully\n", dev);
-	// set SET_INTERFACE request to device
-	HW_USB_XHCI_TRB_setData(&req1->trb[0], HW_USB_XHCI_TRB_mkSetup(0x01, 0x0b, bstInter->bAlterSet, bstInter->bInterNum, 0));
+	printk(BLUE, BLACK, "dev %#018lx: set configuration successfully cfgVal:%d\n", dev, dev->cfgDesc[0]->bCfgVal);
+	// set SET_PROTOCOL request to use report descriptor as the format
+	// if (bstInter->bInterSubClass == 0x01) {
+	// 	HW_USB_XHCI_TRB_setData(&req1->trb[0], HW_USB_XHCI_TRB_mkSetup(0x21, 0x0b, 0x0001, bstInter->bInterNum, 0));
+	// 	HW_USB_XHCI_Ring_insReq(dev->trRing[0], req1);
+	// 	if (HW_USB_XHCI_Req_ringDoorbellWait(dev->host, dev->slotId, 1, 0, req1) != XHCI_TRB_CmplCode_Succ) {
+	// 		printk(RED, BLACK, "dev %#018lx: failed to set protocol, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req1->res));
+	// 		while (1) IO_hlt();
+	// 	}
+	// }
+	HW_USB_XHCI_TRB_setData(&req1->trb[0], HW_USB_XHCI_TRB_mkSetup(0x21, 0x0a,
+			(HW_USB_HID_getIdleDuration(repHelper->type) << 8), bstInter->bInterNum, 0));
 	HW_USB_XHCI_Ring_insReq(dev->trRing[0], req1);
 	if (HW_USB_XHCI_Req_ringDoorbellWait(dev->host, dev->slotId, 1, 0, req1) != XHCI_TRB_CmplCode_Succ) {
-		printk(RED, BLACK, "dev %#018lx: failed to set interface, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req1->res));
+		printk(RED, BLACK, "dev %#018lx: failed to set idle#0, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req1->res));
 		while (1) IO_hlt();
-	}
-	// set SET_PROTOCOL request to use report descriptor as the format
-	if (bstInter->bInterSubClass == 0x01) {
-		HW_USB_XHCI_TRB_setData(&req1->trb[0], HW_USB_XHCI_TRB_mkSetup(0x21, 0x0b, 0x0001, bstInter->bInterNum, 0));
-		HW_USB_XHCI_Ring_insReq(dev->trRing[0], req1);
-		if (HW_USB_XHCI_Req_ringDoorbellWait(dev->host, dev->slotId, 1, 0, req1) != XHCI_TRB_CmplCode_Succ) {
-			printk(RED, BLACK, "dev %#018lx: failed to set protocol, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req1->res));
-			while (1) IO_hlt();
-		}
 	}
 	// set Idle
 	HW_USB_XHCI_TRB_setData(&req1->trb[0], HW_USB_XHCI_TRB_mkSetup(0x21, 0x0a,
-			repHelper->type == USB_HID_ReportHelper_Type_Mouse ? 0xff00 : 0x7d00, 0, 0));
+			(HW_USB_HID_getIdleDuration(repHelper->type) << 8) | 1, bstInter->bInterNum, 0));
 	HW_USB_XHCI_Ring_insReq(dev->trRing[0], req1);
 	if (HW_USB_XHCI_Req_ringDoorbellWait(dev->host, dev->slotId, 1, 0, req1) != XHCI_TRB_CmplCode_Succ) {
-		printk(RED, BLACK, "dev %#018lx: failed to set idle, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req1->res));
+		printk(RED, BLACK, "dev %#018lx: failed to set idle#1, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req1->res));
 		while (1) IO_hlt();
 	}
 

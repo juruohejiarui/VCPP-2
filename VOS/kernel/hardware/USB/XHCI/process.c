@@ -426,7 +426,7 @@ void HW_USB_XHCI_devMgrTask(XHCI_Device *dev, u64 rootPort) {
 		Task_setSignal(Task_current, Task_Signal_Int);
 		while (1) IO_hlt();
 	}
-	printk(GREEN, BLACK, "dev %#018lx device descriptor %016lx\n", dev, *(u64 *)dev->devDesc);
+	// printk(GREEN, BLACK, "dev %#018lx device descriptor %016lx\n", dev, *(u64 *)dev->devDesc);
 	u32 val = (speed >= 4 ? (1u << (dev->devDesc->bMaxPackSz0)) : dev->devDesc->bMaxPackSz0);
 	// the max packet size for control endpoint is not correct
 	if (val != HW_USB_XHCI_EpCtx_getMxPackSize0(speed)) {
@@ -455,8 +455,8 @@ void HW_USB_XHCI_devMgrTask(XHCI_Device *dev, u64 rootPort) {
 		Task_setSignal(Task_current, Task_Signal_Int);
 		while (1) IO_hlt();
 	}
-	printk(GREEN, BLACK, "dev %#018lx device descriptor %016lx %016lx %04lx\n", dev, 
-		*(u64 *)dev->devDesc, *((u64 *)dev->devDesc + 1), *((u64 *)dev->devDesc + 2));
+	// printk(GREEN, BLACK, "dev %#018lx device descriptor %016lx %016lx %04lx\n", dev, 
+		// *(u64 *)dev->devDesc, *((u64 *)dev->devDesc + 1), *((u64 *)dev->devDesc + 2));
 	
 	dev->cfgDesc = kmalloc(sizeof(void *) * dev->devDesc->bNumCfg, Slab_kmalloc_arg_Clear | Slab_kmalloc_arg_Private, NULL);
 	for (int i = 0; i < dev->devDesc->bNumCfg; i++) {
@@ -471,7 +471,7 @@ void HW_USB_XHCI_devMgrTask(XHCI_Device *dev, u64 rootPort) {
 			Task_setSignal(Task_current, Task_Signal_Int);
 			while (1) IO_hlt();
 		}
-		printk(GREEN, BLACK, "dev %#018lx: configuration descriptor #%ld: %#018lx\n", dev, i, *(u64 *)dev->cfgDesc[i]);
+		// printk(GREEN, BLACK, "dev %#018lx: configuration descriptor #%ld: %#018lx\n", dev, i, *(u64 *)dev->cfgDesc[i]);
 	}
 	kfree(req0, Slab_kmalloc_arg_Private);
 	kfree(req1, Slab_kmalloc_arg_Private);

@@ -44,7 +44,6 @@ void startSMP() {
 	rsp -= 0x4000ul;
 	Intr_Gate_setTSS(pkg->tssTable, rsp + 0x4000ul, rsp + 0x4000ul, rsp + 0x4000ul, rsp, rsp, rsp, rsp, rsp, rsp, rsp);
 	Intr_Gate_loadTR(pkg->trIdx);
-	printk(WHITE, BLACK, "APU %d: tr:%d trap rsp:%#018lx\n", SMP_getCurCPUIndex(), pkg->trIdx, rsp);
 	IO_sti();
 	SMP_current->flags |= SMP_CPUInfo_flag_APUInited;
 	Task_Syscall_init();

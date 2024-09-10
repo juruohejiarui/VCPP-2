@@ -9,6 +9,8 @@ void HW_USB_HID_init();
 USB_HID_ReportHelper *HW_USB_HID_genParseHelper(u8 *report, u64 len);
 void HW_USB_HID_parseReport(u8 *raw, USB_HID_ReportHelper *helper, USB_HID_Report *out);
 
+int HW_USB_HID_getIdleDuration(int repType);
+
 // set a SET_REPORT to control endpoint and return the completion code
 int HW_USB_HID_setReport(XHCI_Device *dev, u8 reportId, u8 interId, u8 *report, u8 repLen);
 

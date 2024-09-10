@@ -75,16 +75,11 @@ static int _parseMADT() {
 		struct MADTEntry *entry = (struct MADTEntry *)((u64)_madt + offset);
 		switch (entry->type) {
 			case 0 :
-				printk(WHITE, BLACK, "Type0: processorID:%d apicId:%d\t", entry->ct.type0.processorID, entry->ct.type0.apicID);
 				offset += sizeof(u8) * 2 + sizeof(struct MADTEntry_Type0);
 				// register this processor
 				int idx = SMP_registerCPU(entry->ct.type0.apicID);
-				if (idx != -1) {
-					printk(WHITE, BLACK, "idx:%d pkg:%#018lx cpuId:%#018lx stack: %#018lx\n", idx, &SMP_cpuInfo[idx], SMP_cpuInfo[idx].cpuId, SMP_cpuInfo[idx].initStk);
-				}
 				break;
 			case 9 :
-				printk(WHITE, BLACK, "Type9: x2apic:%d apicId:%d\n", entry->ct.type9.x2apicID, entry->ct.type9.apicID);
 				offset += sizeof(u8) * 2 + sizeof(struct MADTEntry_Type9);
 				break;
 			#define skip(typeId) \

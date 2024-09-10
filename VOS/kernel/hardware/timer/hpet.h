@@ -36,6 +36,6 @@ typedef struct {
 #define HW_Timer_HPET_Signature "HPET"
 
 void HW_Timer_HPET_init();
-u64 HW_Timer_HPET_jiffies();
+i64 HW_Timer_HPET_jiffies();
 
 #endif

@@ -291,6 +291,14 @@ void HW_USB_HID_parseReport(u8 *raw, USB_HID_ReportHelper *helper, USB_HID_Repor
 	}
 }
 
+int HW_USB_HID_getIdleDuration(int repType) {
+	switch (repType) {
+		case USB_HID_ReportHelper_Type_Mouse : return 0xff;
+		case USB_HID_ReportHelper_Type_Keyboard : return 0x0;
+	}
+	return 0;
+}
+
 void HW_USB_HID_initParse() {
 	SpinLock_init(&_lock);
 	_modiNum = 0;
