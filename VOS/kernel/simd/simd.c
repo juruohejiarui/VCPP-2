@@ -56,7 +56,7 @@ void SIMD_enable() {
 u64 SIMD_XsaveAreaSize() { return _xsaveAreaSize; }
 
 SIMD_XsaveArea *SIMD_allocXsaveArea(u64 kmallocArg, void (*destructor)(void *)) {
-	return kmalloc(_xsaveAreaSize, kmallocArg | Slab_kmalloc_arg_Clear, destructor);
+	return kmalloc(_xsaveAreaSize, kmallocArg | Slab_Flag_Clear, destructor);
 }
 
 // switch the SIMD registers of the current CPU to the current task

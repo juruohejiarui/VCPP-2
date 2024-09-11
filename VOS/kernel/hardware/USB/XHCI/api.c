@@ -15,18 +15,6 @@ u64 HW_USB_XHCI_readQuad(u64 addr) {
 	return HW_USB_XHCI_readDword(addr) | (((u64)HW_USB_XHCI_readDword(addr + 0x4)) << 32);
 }
 
-u32 HW_USB_XHCI_readDword(u64 addr) { 
-	u32 val;
-	__asm__ volatile (
-		"movl (%1), %0	\n\t"
-		"mfence			\n\t"
-		: "=b"(val)
-		: "a"(addr)
-		: "memory"
-	);
-	return val;
- }
-
 u16 HW_USB_XHCI_readWord(u64 addr) {
 	u32 data = HW_USB_XHCI_readDword(addr & ~0x3);
 	return (data >> ((addr & 0x3) << 3)) & 0xffff;
@@ -40,16 +28,6 @@ u8 HW_USB_XHCI_readByte(u64 addr) {
 void HW_USB_XHCI_writeQuad(u64 addr, u64 val) {
 	HW_USB_XHCI_writeDword(addr, val & ((1ul << 32) - 1));
 	HW_USB_XHCI_writeDword(addr + 0x4, (val >> 32) & ((1ul << 32) - 1));
-}
-
-void HW_USB_XHCI_writeDword(u64 addr, u32 val) {
-	__asm__ volatile (
-		"movl %0, (%1)		\n\t"
-		"mfence				\n\t"
-		:
-		: "a"(val), "b"(addr)
-		: "memory"
-	);
 }
 
 void HW_USB_XHCI_writeWord(u64 addr, u16 val) {
@@ -100,9 +78,9 @@ void HW_USB_XHCI_freeRing(XHCI_Ring *ring) {
 }
 
 XHCI_Ring *HW_USB_XHCI_allocRing(u64 size) {
-	XHCI_Ring *ring = kmalloc(sizeof(XHCI_Ring), Slab_kmalloc_arg_Clear | Slab_kmalloc_arg_Private, (void *)HW_USB_XHCI_freeRing);
-	ring->ring = kmalloc(sizeof(XHCI_GenerTRB) * size, Slab_kmalloc_arg_Clear, NULL);
-	ring->reqSrc = kmalloc(sizeof(XHCI_Request *) * size, Slab_kmalloc_arg_Clear, NULL);
+	XHCI_Ring *ring = kmalloc(sizeof(XHCI_Ring), Slab_Flag_Clear | Slab_Flag_Private, (void *)HW_USB_XHCI_freeRing);
+	ring->ring = kmalloc(sizeof(XHCI_GenerTRB) * size, Slab_Flag_Clear, NULL);
+	ring->reqSrc = kmalloc(sizeof(XHCI_Request *) * size, Slab_Flag_Clear, NULL);
 	ring->cur = ring->ring;
 	ring->cycBit = 1;
 	SpinLock_init(&ring->lock);
@@ -161,6 +139,14 @@ void HW_USB_XHCI_Ring_insReq(XHCI_Ring *ring, XHCI_Request *req) {
 	while (!HW_USB_XHCI_Ring_tryInsReq(ring, req)) IO_hlt();
 }
 
+XHCI_Request *HW_USB_XHCI_Ring_release(XHCI_Ring *ring, int pos) {
+	SpinLock_lock(&ring->lock);
+	XHCI_Request *req = ring->reqSrc[pos];
+	for (int i = 0; i < req->trbCnt; i++) *req->target[i] = NULL;
+	SpinLock_unlock(&ring->lock);
+	return req;
+}
+
 void HW_USB_XHCI_freeEveRing(XHCI_EveRing *ring) {
 	for (int i = 0; i < ring->ringNum; i++)
 		kfree(ring->rings[i], 0);
@@ -169,12 +155,12 @@ void HW_USB_XHCI_freeEveRing(XHCI_EveRing *ring) {
 }
 
 XHCI_EveRing *HW_USB_XHCI_allocEveRing(u32 num, u32 size) {
-	XHCI_EveRing *ring = kmalloc(sizeof(XHCI_EveRing), Slab_kmalloc_arg_Clear | Slab_kmalloc_arg_Private, (void *)HW_USB_XHCI_freeEveRing);
+	XHCI_EveRing *ring = kmalloc(sizeof(XHCI_EveRing), Slab_Flag_Clear | Slab_Flag_Private, (void *)HW_USB_XHCI_freeEveRing);
 	ring->ringNum = num, ring->ringSize = size;
 	ring->cycBit = 1;
 	ring->curRingId = ring->curPos = 0;
-	ring->rings = kmalloc(sizeof(XHCI_GenerTRB *) * num, Slab_kmalloc_arg_Clear, NULL);
-	for (int i = 0; i < num; i++) ring->rings[i] = kmalloc(size * sizeof(XHCI_GenerTRB), Slab_kmalloc_arg_Clear, NULL);
+	ring->rings = kmalloc(sizeof(XHCI_GenerTRB *) * num, Slab_Flag_Clear, NULL);
+	for (int i = 0; i < num; i++) ring->rings[i] = kmalloc(size * sizeof(XHCI_GenerTRB), Slab_Flag_Clear, NULL);
 	return ring;
 }
 
@@ -238,9 +224,9 @@ void HW_USB_XHCI_ctrlDataReq(XHCI_Request *req, u64 setup, int dir, void *data, 
 }
 
 XHCI_Request *HW_USB_XHCI_allocReq(u64 trbCnt) {
-	XHCI_Request *req = kmalloc(sizeof(XHCI_Request), Slab_kmalloc_arg_Clear | Slab_kmalloc_arg_Private, (void *)HW_USB_XHCI_freeReq);
-	req->trb = kmalloc(sizeof(XHCI_GenerTRB) * trbCnt, Slab_kmalloc_arg_Clear, NULL);
-	req->target = kmalloc(sizeof(XHCI_Request **) * trbCnt, Slab_kmalloc_arg_Clear, NULL);
+	XHCI_Request *req = kmalloc(sizeof(XHCI_Request), Slab_Flag_Clear | Slab_Flag_Private, (void *)HW_USB_XHCI_freeReq);
+	req->trb = kmalloc(sizeof(XHCI_GenerTRB) * trbCnt, Slab_Flag_Clear, NULL);
+	req->target = kmalloc(sizeof(XHCI_Request **) * trbCnt, Slab_Flag_Clear, NULL);
 	req->trbCnt = trbCnt;
 	return req;
 }

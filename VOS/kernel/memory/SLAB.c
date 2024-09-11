@@ -139,13 +139,13 @@ void Slab_pushNewSlab(int id) {
         slab->virtAddr = DMAS_phys2Virt(page2M->phyAddr);
         slab->page = page2M;
     } else { // 1KB, 2KB, 4KB, 8KB, 16KB, 32KB, 64KB, 128KB, 256KB, 512KB, 1MB
-        slab = (Slab *)kmalloc(sizeof(Slab), Slab_kmalloc_arg_Inner, NULL);
+        slab = (Slab *)kmalloc(sizeof(Slab), Slab_Flag_Inner, NULL);
         slab->usingCnt = 0;
         slab->freeCnt = Page_2MSize / Slab_kmallocCache[id].size;
 
         slab->colCnt = slab->freeCnt;
         slab->colLen = upAlignTo(slab->colCnt, 64) / 64;
-        slab->colMap = (u64 *)kmalloc(slab->colLen * sizeof(u64), Slab_kmalloc_arg_Inner, NULL);
+        slab->colMap = (u64 *)kmalloc(slab->colLen * sizeof(u64), Slab_Flag_Inner, NULL);
 
         slab->virtAddr = DMAS_phys2Virt(page2M->phyAddr);
         slab->page = page2M;
@@ -166,11 +166,11 @@ void Slab_pushNewSlab(int id) {
 void *kmalloc(u64 size, u64 arg, void (*destructor)(void *)) {
     IO_maskIntrPreffix
     // printk(BLACK, WHITE, "kmalloc %08d\t", size);
-	if (!(arg & Slab_kmalloc_arg_Inner)) SpinLock_lock(&_SlabLocker);
+	if (!(arg & Slab_Flag_Inner)) SpinLock_lock(&_SlabLocker);
     int id = 0;
 
     if (size > MM_Slab_maxSize) {
-		if (!(arg & Slab_kmalloc_arg_Inner)) SpinLock_unlock(&_SlabLocker);
+		if (!(arg & Slab_Flag_Inner)) SpinLock_unlock(&_SlabLocker);
 		return NULL;
 	}
 
@@ -199,17 +199,17 @@ void *kmalloc(u64 size, u64 arg, void (*destructor)(void *)) {
 		// finally calculate the address
 		u64 addr = (u64)slab->virtAddr + j * Slab_kmallocCache[id].size;
 		// clear the memory block to 0 if needed
-		if (arg & Slab_kmalloc_arg_Clear) memset((void *)addr, 0, size);
+		if (arg & Slab_Flag_Clear) memset((void *)addr, 0, size);
 		// release the spin lock and enable the interrupts
-		if (!(arg & Slab_kmalloc_arg_Inner)) SpinLock_unlock(&_SlabLocker);
+		if (!(arg & Slab_Flag_Inner)) SpinLock_unlock(&_SlabLocker);
         IO_maskIntrSuffix
 		// record this memory block if it is private
-		if (arg & Slab_kmalloc_arg_Private) _addUsage((void *)addr, destructor, Slab_kmallocCache[id].size); 
+		if (arg & Slab_Flag_Private) _addUsage((void *)addr, destructor, Slab_kmallocCache[id].size); 
         return (void *)(addr);
     }
     printk(RED, BLACK, "kmalloc: invalid state\n");
 
-	if (!(arg & Slab_kmalloc_arg_Inner)) SpinLock_unlock(&_SlabLocker);
+	if (!(arg & Slab_Flag_Inner)) SpinLock_unlock(&_SlabLocker);
     IO_maskIntrSuffix
 
     return NULL;
@@ -221,16 +221,16 @@ void Slab_destroySlab(int id, Slab *slab) {
     if (0 <= id && id < 5) {
         MM_Buddy_free(slab->page);
     } else {
-        kfree(slab->colMap, Slab_kmalloc_arg_Inner);
+        kfree(slab->colMap, Slab_Flag_Inner);
         MM_Buddy_free(slab->page);
-        kfree(slab, Slab_kmalloc_arg_Inner);
+        kfree(slab, Slab_Flag_Inner);
     }
 }
 
 void kfree(void *addr, u64 arg) {
-	if (arg & Slab_kmalloc_arg_Private) _delUsage(addr);
+	if (arg & Slab_Flag_Private) _delUsage(addr);
     IO_maskIntrPreffix
-    if (!(arg & Slab_kmalloc_arg_Inner)) SpinLock_lock(&_SlabLocker);
+    if (!(arg & Slab_Flag_Inner)) SpinLock_lock(&_SlabLocker);
     int id = 0, flag = 0;
     Slab *slab = NULL;
     for (id = 0; id < 16; id++) {
@@ -247,7 +247,7 @@ void kfree(void *addr, u64 arg) {
     if (!flag) {
         printk(RED, BLACK, "kfree: invalid address %#018lx\n", addr);
         while (1) ;
-        if (!(arg & Slab_kmalloc_arg_Inner)) SpinLock_unlock(&_SlabLocker);
+        if (!(arg & Slab_Flag_Inner)) SpinLock_unlock(&_SlabLocker);
         IO_maskIntrSuffix
         return ;
     }
@@ -258,6 +258,6 @@ void kfree(void *addr, u64 arg) {
     if (slab->usingCnt == 0 && Slab_kmallocCache[id].freeCnt >= slab->colCnt * 3 / 2 && Slab_kmallocCache[id].slabs != slab)
         Slab_destroySlab(id, slab);
 
-    if (!(arg & Slab_kmalloc_arg_Inner)) SpinLock_unlock(&_SlabLocker);
+    if (!(arg & Slab_Flag_Inner)) SpinLock_unlock(&_SlabLocker);
     IO_maskIntrSuffix
 }

@@ -318,7 +318,7 @@ TaskStruct *Task_createTask(Task_Entry entry, void *arg1, u64 arg2, u64 flag) {
 	SpinLock_init(&task->timerTreeLock);
 
 	// initialize the simd structure
-	task->simdRegs = SIMD_allocXsaveArea(Slab_kmalloc_arg_Clear, NULL);
+	task->simdRegs = SIMD_allocXsaveArea(Slab_Flag_Clear, NULL);
 	SIMD_kernelAreaStart;
 	SIMD_xsave(task->simdRegs);
 	SIMD_kernelAreaEnd;
@@ -357,7 +357,7 @@ void Task_exit(int retVal) {
     }
 	for (List *kmallocList = Task_current->mem->kmallocUsage.next; kmallocList != &Task_current->mem->kmallocUsage; kmallocList = Task_current->mem->kmallocUsage.next) {
 		Task_KmallocUsage *usage = container(kmallocList, Task_KmallocUsage, listEle);
-		kfree(usage->addr, Slab_kmalloc_arg_Private);
+		kfree(usage->addr, Slab_Flag_Private);
 	}
 	
     if (Task_current->mem->totUsage > 0) {

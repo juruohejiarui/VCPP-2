@@ -80,22 +80,26 @@ typedef struct USB_HID_ReportItem {
 	// offset == -1 means this item does not exist in a report
 } USB_HID_ReportItem;
 
-typedef struct USB_HID_ReportHelper {
+typedef struct USB_HID_ParseHelper {
 	int type, inSz, outSz;
 	// the raw data of report descriptor
 	u8 *raw;
-	#define USB_HID_ReportHelper_Type_Mouse 1
-	#define USB_HID_ReportHelper_Type_Keyboard 2
+	#define USB_HID_ReportHelper_Type_Mouse		1
+	#define USB_HID_ReportHelper_Type_Keyboard 	2
+	#define USB_HID_ReportHelper_Type_Touchpad	3
 	union {
 		struct {
 			USB_HID_ReportItem btn, x, y, wheel;
 		} mouse;
+		struct {
+			USB_HID_ReportItem btn, x, y, wheel;
+		} touchpad;
 		union {
 			USB_HID_ReportItem spK, key[6];
 			USB_HID_ReportItem leds;
 		} keyboard;
 	} items;
-} __attribute__ ((packed)) USB_HID_ReportHelper;
+} __attribute__ ((packed)) USB_HID_ParseHelper;
 
 // the report after parsing
 typedef struct USB_HID_Report {
@@ -103,9 +107,18 @@ typedef struct USB_HID_Report {
 	int type;
 	union {
 		struct { int btn, x, y, wheel; } mouse;
+		struct { int btn, x, y, wheel; } touchpad;
 		struct { int spK, key[6]; } keyboard;
 	} items;
 } USB_HID_Report;
+
+typedef struct USB_HID_Interface {
+	XHCI_InterDesc *desc;
+	USB_HidDesc *hidDesc;
+	XHCI_EpDesc **eps;
+	USB_HID_ParseHelper *helper;
+} USB_HID_Interface;
+
 
 extern struct USB_HID_Driver HW_USB_HID_driver;
 

@@ -82,7 +82,7 @@ void Task_init() {
     Init_taskStruct.thread->fs = Init_taskStruct.thread->gs = Segment_kernelData;
     List_init(&Init_taskStruct.listEle);
     
-    TaskStruct **initTask = kmalloc(sizeof(TaskStruct *) * SMP_cpuNum, Slab_kmalloc_arg_Clear, NULL);
+    TaskStruct **initTask = kmalloc(sizeof(TaskStruct *) * SMP_cpuNum, Slab_Flag_Clear, NULL);
 	initTask[0] = Task_createTask(task0, NULL, 0, Task_Flag_Inner | Task_Flag_Kernel);
 	for (int i = 1; i < SMP_cpuNum; i++) initTask[i] = Task_createTask(task_empty, NULL, 0, Task_Flag_Inner | Task_Flag_Kernel);
     List_del(&Init_taskStruct.listEle);

@@ -45,7 +45,7 @@ u32 SMP_registerCPU(u32 topoIdx) {
     } else {
 		u32 trIdx = trIdxCnt;
 		trIdxCnt += 2;
-        pkg->tssTable = kmalloc(128, Slab_kmalloc_arg_Clear, NULL);
+        pkg->tssTable = kmalloc(128, Slab_Flag_Clear, NULL);
         pkg->trIdx = trIdx;
 		pkg->initStk = kmalloc(Init_taskStackSize, 0, NULL);
 		pkg->idtTblSize = 512 * 8;

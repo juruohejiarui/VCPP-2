@@ -181,7 +181,7 @@ typedef struct XHCI_DevDesc {
 typedef struct XHCI_CfgDesc {
 	XHCI_DescHdr hdr;
 	u16 wtotLen;
-	u8 bnumInte;
+	u8 bNumInter;
 	u8 bCfgVal;
 	u8 iCfg;
 	u8 bmAttr;
@@ -317,7 +317,10 @@ typedef struct XHCI_Host {
 	XHCI_DevCtx **devCtx;
 	
 	TaskStruct **eveHandlerTask;
-	List *eveList;
+
+	XHCI_GenerTRB **eveQue;
+	#define XHCI_Host_EveQueSize 1024
+	int *eveQueHdr, *eveQueTil, *eveQueLen;
 	SpinLock *eveLock;
 
 	XHCI_Device **dev;

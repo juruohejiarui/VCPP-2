@@ -6,8 +6,8 @@
 void HW_USB_HID_initParse();
 void HW_USB_HID_init();
 
-USB_HID_ReportHelper *HW_USB_HID_genParseHelper(u8 *report, u64 len);
-void HW_USB_HID_parseReport(u8 *raw, USB_HID_ReportHelper *helper, USB_HID_Report *out);
+USB_HID_ParseHelper *HW_USB_HID_genParseHelper(u8 *report, u64 len);
+void HW_USB_HID_parseReport(u8 *raw, USB_HID_ParseHelper *helper, USB_HID_Report *out);
 
 int HW_USB_HID_getIdleDuration(int repType);
 

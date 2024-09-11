@@ -39,14 +39,14 @@ static int _countUsage(struct DataState *state, int rgSt, int usage) {
 }
 
 static int (*modiChk[0x200])(struct DataState *, int, u8);
-static int (*_modi[0x200])(struct DataState *, int isIn, u8 flags, USB_HID_ReportHelper *helper);
+static int (*_modi[0x200])(struct DataState *, int isIn, u8 flags, USB_HID_ParseHelper *helper);
 
 #define regModifer(modifier) \
 	(modiChk[_modiNum] = (_modiChk_##modifier), _modi[_modiNum] = (_modi_##modifier), ++_modiNum)
 
 static int _modiNum;
 
-static void _applyItem(struct DataState *state, u8 flags, int isIn, USB_HID_ReportHelper *helper, USB_HID_ReportItem *item) {
+static void _applyItem(struct DataState *state, u8 flags, int isIn, USB_HID_ParseHelper *helper, USB_HID_ReportItem *item) {
 	item->flags = flags;
 	item->rgMn = state->lgMn;
 	item->rgMx = state->lgMx;
@@ -60,8 +60,8 @@ static int _modiChk_mouseX(struct DataState *state, int isIn, u8 flags) {
 				&& _countUsage(state, -1, HID_Usage_X)
 				&& !HID_RepItem_Main_isConst(flags);
 }
-static int _modi_mouseX(struct DataState *state, int isIn, u8 flags, USB_HID_ReportHelper *helper) {
-	helper->type = USB_HID_ReportHelper_Type_Mouse;
+static int _modi_mouseX(struct DataState *state, int isIn, u8 flags, USB_HID_ParseHelper *helper) {
+	helper->type = HID_RepItem_Main_isRel(flags) ? USB_HID_ReportHelper_Type_Mouse : USB_HID_ReportHelper_Type_Touchpad;
 	printk(WHITE, BLACK, "mouseX off:%d\n", helper->inSz);
 	_applyItem(state, flags, 1, helper, &helper->items.mouse.x);
 	return 1;
@@ -71,7 +71,7 @@ static int _modiChk_mouseY(struct DataState *state, int isIn, u8 flags) {
 				&& _countUsage(state, -1, HID_Usage_Y)
 				&& !HID_RepItem_Main_isConst(flags);
 }
-static int _modi_mouseY(struct DataState *state, int isIn, u8 flags, USB_HID_ReportHelper *helper) {
+static int _modi_mouseY(struct DataState *state, int isIn, u8 flags, USB_HID_ParseHelper *helper) {
 	printk(WHITE, BLACK, "mouseY off:%d\n", helper->inSz);
 	_applyItem(state, flags, 1, helper, &helper->items.mouse.y);
 	return 1;
@@ -81,7 +81,7 @@ static int _modiChk_mouseWheel(struct DataState *state, int isIn, u8 flags) {
 				&& _countUsage(state, -1, HID_Usage_Wheel)
 				&& !HID_RepItem_Main_isConst(flags);
 }
-static int _modi_mouseWheel(struct DataState *state, int isIn, u8 flags, USB_HID_ReportHelper *helper) {
+static int _modi_mouseWheel(struct DataState *state, int isIn, u8 flags, USB_HID_ParseHelper *helper) {
 	printk(WHITE, BLACK, "mouse wheel off:%d\n", helper->inSz);
 	_applyItem(state, flags, 1, helper, &helper->items.mouse.wheel);
 	return 1;
@@ -91,7 +91,7 @@ static int _modiChk_mouseBtn(struct DataState *state, int isIn, u8 flags) {
 				&& state->usagePg == HID_UsagePage_Button
 				&& !HID_RepItem_Main_isConst(flags);
 }
-static int _modi_mouseBtn(struct DataState *state, int isIn, u8 flags, USB_HID_ReportHelper *helper) {
+static int _modi_mouseBtn(struct DataState *state, int isIn, u8 flags, USB_HID_ParseHelper *helper) {
 	_applyItem(state, flags, 1, helper, &helper->items.mouse.btn);
 	printk(WHITE, BLACK, "mouse button off:%d\n", helper->inSz);
 	helper->items.mouse.btn.size = state->cnt * state->sz;
@@ -100,7 +100,7 @@ static int _modi_mouseBtn(struct DataState *state, int isIn, u8 flags, USB_HID_R
 static int _modiChk_keyboard(struct DataState *state, int isIn, u8 flags) {
 	return isIn && state->usagePg == HID_UsagePage_Keyboard && !HID_RepItem_Main_isConst(flags);
 }
-static int _modi_keyboard(struct DataState *state, int isIn, u8 flags, USB_HID_ReportHelper *helper) {
+static int _modi_keyboard(struct DataState *state, int isIn, u8 flags, USB_HID_ParseHelper *helper) {
 	helper->type = USB_HID_ReportHelper_Type_Keyboard;
 	// ctrl keys
 	if (state->sz == 1) {
@@ -134,7 +134,7 @@ static void regDefaultModifier() {
 	regModifer(keyboard);
 }
 
-static void _tryModify(struct DataState *state, int isIn, u8 flags, USB_HID_ReportHelper *helper) {
+static void _tryModify(struct DataState *state, int isIn, u8 flags, USB_HID_ParseHelper *helper) {
 	int uCnt = 0;
 	for (int i = 0; i < _modiNum; i++) if (modiChk[i] && modiChk[i](state, isIn, flags)) {
 		int used = _modi[i](state, isIn, flags, helper);
@@ -150,7 +150,7 @@ static void _tryModify(struct DataState *state, int isIn, u8 flags, USB_HID_Repo
 	}
 }
 
-static int _parseMain(USB_HID_ReportHelper *helper, u8 *rep, struct DataState *state) {
+static int _parseMain(USB_HID_ParseHelper *helper, u8 *rep, struct DataState *state) {
 	switch (_getPrefixField(*rep, HID_RepItem_Tag)) {
 		case HID_RepItem_Tag_Input:
 		case HID_RepItem_Tag_Output:
@@ -226,14 +226,14 @@ static int _parseLocal(u8 *rep, struct DataState *state) {
 
 static SpinLock _lock;
 
-USB_HID_ReportHelper *HW_USB_HID_genParseHelper(u8 *rep, u64 len) {
+USB_HID_ParseHelper *HW_USB_HID_genParseHelper(u8 *rep, u64 len) {
 	SpinLock_lock(&_lock);
 	printk(YELLOW, BLACK, "rep %#018lx: ", rep);
 	for (int i = 0; i < len; i++) printk(YELLOW, BLACK, "%02x ", rep[i]);
 	printk(WHITE, BLACK, "\n");
 	u64 idx = 0;
 	int res;
-	USB_HID_ReportHelper *helper = kmalloc(sizeof(USB_HID_ReportHelper), Slab_kmalloc_arg_Private | Slab_kmalloc_arg_Clear, NULL);
+	USB_HID_ParseHelper *helper = kmalloc(sizeof(USB_HID_ParseHelper), Slab_Flag_Private | Slab_Flag_Clear, NULL);
 	static struct DataState curDtState;
 	memset(&curDtState, 0, sizeof(struct DataState));
 	while (idx < len) {
@@ -275,7 +275,7 @@ static void _parseItem(u8 *raw, USB_HID_ReportItem *item, int *out) {
 	*out = data;
 }
 
-void HW_USB_HID_parseReport(u8 *raw, USB_HID_ReportHelper *helper, USB_HID_Report *out) {
+void HW_USB_HID_parseReport(u8 *raw, USB_HID_ParseHelper *helper, USB_HID_Report *out) {
 	out->type = helper->type;
 	switch (helper->type) {
 		case USB_HID_ReportHelper_Type_Mouse:
@@ -293,7 +293,7 @@ void HW_USB_HID_parseReport(u8 *raw, USB_HID_ReportHelper *helper, USB_HID_Repor
 
 int HW_USB_HID_getIdleDuration(int repType) {
 	switch (repType) {
-		case USB_HID_ReportHelper_Type_Mouse : return 0xff;
+		case USB_HID_ReportHelper_Type_Mouse : return 0x00;
 		case USB_HID_ReportHelper_Type_Keyboard : return 0x0;
 	}
 	return 0;

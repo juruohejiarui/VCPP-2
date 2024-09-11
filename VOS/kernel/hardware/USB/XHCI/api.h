@@ -7,12 +7,30 @@ u64 HW_USB_XHCI_readQuad(u64 addr);
 /// @brief read a dword from the xhci host
 /// @param addr the virtual address
 /// @return the data
-u32 HW_USB_XHCI_readDword(u64 addr);
+static __always_inline__ u32 HW_USB_XHCI_readDword(u64 addr) { 
+	u32 val;
+	__asm__ volatile (
+		"movl (%1), %0	\n\t"
+		"mfence			\n\t"
+		: "=b"(val)
+		: "a"(addr)
+		: "memory"
+	);
+	return val;
+ }
 u16 HW_USB_XHCI_readWord(u64 addr);
 u8 HW_USB_XHCI_readByte(u64 addr);
 
 void HW_USB_XHCI_writeQuad(u64 addr, u64 val);
-void HW_USB_XHCI_writeDword(u64 addr, u32 val);
+static __always_inline__ void HW_USB_XHCI_writeDword(u64 addr, u32 val) {
+	__asm__ volatile (
+		"movl %0, (%1)		\n\t"
+		"mfence				\n\t"
+		:
+		: "a"(val), "b"(addr)
+		: "memory"
+	);
+}
 void HW_USB_XHCI_writeWord(u64 addr, u16 val);
 void HW_USB_XHCI_writeByte(u64 addr, u8 val);
 
@@ -168,7 +186,7 @@ int HW_USB_XHCI_reset(XHCI_Host *host);
 
 void HW_USB_XHCI_waiForHostIsReady(XHCI_Host *host);
 
-// allocate a ring (transfer ring/command ring) with SIZE trbs with parameter SLAB_Kmalloc_arg_Private
+// allocate a ring (transfer ring/command ring) with SIZE trbs with parameter Slab_Flag_Private
 XHCI_Ring *HW_USB_XHCI_allocRing(u64 size);
 
 void HW_USB_XHCI_freeRing(XHCI_Ring *ring);
@@ -180,14 +198,17 @@ int HW_USB_XHCI_Ring_tryInsReq(XHCI_Ring *ring, XHCI_Request *req);
 // try to insert the request into the ring until successful.
 void HW_USB_XHCI_Ring_insReq(XHCI_Ring *ring, XHCI_Request *req);
 
-// allocate a event ring array with NUM * SIZE TRBS with parameter SLAB_Kmalloc_arg_Private
+// release the occurpancy from the request on POS and return the pointer of that request
+XHCI_Request *HW_USB_XHCI_Ring_release(XHCI_Ring *ring, int pos);
+
+// allocate a event ring array with NUM * SIZE TRBS with parameter Slab_Flag_Private
 XHCI_EveRing *HW_USB_XHCI_allocEveRing(u32 num, u32 size);
 
 void HW_USB_XHCI_freeEveRing(XHCI_EveRing *ring);
 
 int HW_USB_XHCI_EveRing_getNxt(XHCI_EveRing *ring, XHCI_GenerTRB **trb);
 
-// allocate a request block with TRB_CNT trbs with parameter SLAB_Kmalloc_arg_Private
+// allocate a request block with TRB_CNT trbs with parameter Slab_Flag_Private
 XHCI_Request *HW_USB_XHCI_allocReq(u64 trbCnt);
 
 void HW_USB_XHCI_freeReq(XHCI_Request *req);
