@@ -116,44 +116,39 @@ void HW_USB_HID_processKeyboard(XHCI_Device *dev, XHCI_InterDesc *inter, USB_HID
 		printk(RED, BLACK, "dev %#018lx: failed to set idle, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req0->res));
 		while (1) IO_hlt();
 	}
-	HW_USB_XHCI_ctrlReq(req0, HW_USB_XHCI_TRB_mkSetup(0x21, 0x0a, 0x0001, inter->bInterNum, 0), XHCI_TRB_Ctrl_Dir_Out);
-	HW_USB_XHCI_Ring_insReq(dev->trRing[0], req0);
-	if (HW_USB_XHCI_Req_ringDoorbellWait(dev->host, dev->slotId, 1, 0, req0) != XHCI_TRB_CmplCode_Succ) {
-		printk(RED, BLACK, "dev %#018lx: failed to set idle, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req0->res));
-		while (1) IO_hlt();
-	}
 	kfree(req0, Slab_Flag_Private);
 
-	XHCI_Request *req1 = HW_USB_XHCI_allocReq(1);
+	req0 = HW_USB_XHCI_allocReq(1);
 	u8 *repRaw = kmalloc(0xff, Slab_Flag_Private | Slab_Flag_Clear, NULL);
 	USB_HID_Report *rep = kmalloc(sizeof(USB_HID_Report), Slab_Flag_Private | Slab_Flag_Private, NULL);
 
-	HW_USB_XHCI_TRB_setData(&req1->trb[0], DMAS_virt2Phys(repRaw));
-	HW_USB_XHCI_TRB_setType(&req1->trb[0], XHCI_TRB_Type_Normal);
-	HW_USB_XHCI_TRB_setCtrlBit(&req1->trb[0], XHCI_TRB_Ctrl_ioc);
+	HW_USB_XHCI_TRB_setData(&req0->trb[0], DMAS_virt2Phys(repRaw));
+	HW_USB_XHCI_TRB_setType(&req0->trb[0], XHCI_TRB_Type_Normal);
+	HW_USB_XHCI_TRB_setCtrlBit(&req0->trb[0], XHCI_TRB_Ctrl_ioc);
 
-	repRaw[0] = (1 << 4) | (1 << 0);
+	repRaw[0] = (1 << 4);
 	// set SET_REPORT to enable default led
 	if (outEpId != -1) {
-		HW_USB_XHCI_TRB_setStatus(&req1->trb[0], HW_USB_XHCI_TRB_mkStatus(helper->outSz / 8, 0x0, 0));
-		HW_USB_XHCI_Ring_insReq(dev->trRing[outEpId], req1);
-		register int res = HW_USB_XHCI_Req_ringDoorbellWait(dev->host, dev->slotId, outEpId + 1, 0, req1);
+		HW_USB_XHCI_TRB_setStatus(&req0->trb[0], HW_USB_XHCI_TRB_mkStatus(helper->outSz / 8, 0x0, 0));
+		HW_USB_XHCI_Ring_insReq(dev->trRing[outEpId], req0);
+		register int res = HW_USB_XHCI_Req_ringDoorbellWait(dev->host, dev->slotId, outEpId + 1, 0, req0);
 		if (res != XHCI_TRB_CmplCode_Succ) {
-			printk(RED, BLACK, "dev %#018lx: set report failed, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req1->res));
+			printk(RED, BLACK, "dev %#018lx: set report failed, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req0->res));
 			while (1) IO_hlt();
 		}
 	} else HW_USB_HID_setReport(dev, 0, inter->bInterNum, repRaw, 1);
-	HW_USB_XHCI_TRB_setStatus(&req1->trb[0], HW_USB_XHCI_TRB_mkStatus(helper->inSz / 8, 0x0, 0));
+	HW_USB_XHCI_TRB_setStatus(&req0->trb[0], HW_USB_XHCI_TRB_mkStatus(helper->inSz / 8, 0x0, 0));
 	// start to get report from the endpoint
 	while (1) {	
-		HW_USB_XHCI_Ring_insReq(dev->trRing[inEpId], req1);
-		register int res = HW_USB_XHCI_Req_ringDoorbellWait(dev->host, dev->slotId, inEpId + 1, 0, req1);
+		HW_USB_XHCI_Ring_insReq(dev->trRing[inEpId], req0);
+		register int res = HW_USB_XHCI_Req_ringDoorbellWait(dev->host, dev->slotId, inEpId + 1, 0, req0);
 		if (res != XHCI_TRB_CmplCode_Succ) {
-			printk(RED, BLACK, "dev %#018lx: get report failed, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req1->res));
+			printk(RED, BLACK, "dev %#018lx: get report failed, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req0->res));
 			while (1) IO_hlt(); 
 		}
 		HW_USB_HID_parseReport(repRaw, helper, rep);
-		printk(WHITE, BLACK, "K raw:%016lx %016lx\n", *(u64 *)repRaw, *((u64 *)repRaw + 1));
+		printk(WHITE, BLACK, "K raw:%016lx\t", *(u64 *)repRaw);
+		Intr_SoftIrq_Timer_mdelay(inInterval);
 	}
 }
 
@@ -268,9 +263,18 @@ void HW_USB_HID_process(XHCI_Device *dev) {
 	printk(BLUE, BLACK, "dev %#018lx: set configuration successfully cfgVal:%d\n", dev, dev->cfgDesc[0]->bCfgVal);
 
 	// get all the report descriptor and generate parse helper for each them
+	// and then set SET_PROTOCOL request to use report descriptor
 	for (int i = 0; i < dev->cfgDesc[0]->bNumInter; i++) {
 		USB_HID_ParseHelper *helper = HW_USB_HID_mkParseHelper(dev, inters[i].desc, inters[i].hidDesc);
 		inters[i].helper = helper;
+		if (inters[i].desc->bInterSubClass == 0x01) {
+			HW_USB_XHCI_TRB_setData(&req1->trb[0], HW_USB_XHCI_TRB_mkSetup(0x21, 0x0b, 0x0001, inters[i].desc->bInterNum, 0));
+			HW_USB_XHCI_Ring_insReq(dev->trRing[0], req1);
+			if (HW_USB_XHCI_Req_ringDoorbellWait(dev->host, dev->slotId, 1, 0, req1) != XHCI_TRB_CmplCode_Succ) {
+				printk(RED, BLACK, "dev %#018lx: failed to set protocol for interface %d, code=%d\n", dev, inters[i].desc->bInterNum, HW_USB_XHCI_TRB_getCmplCode(&req1->res));
+				while (1) IO_hlt();
+			}
+		}
 	}
 
 	kfree(req0, Slab_Flag_Private);

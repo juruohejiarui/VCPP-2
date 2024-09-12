@@ -228,9 +228,6 @@ static SpinLock _lock;
 
 USB_HID_ParseHelper *HW_USB_HID_genParseHelper(u8 *rep, u64 len) {
 	SpinLock_lock(&_lock);
-	printk(YELLOW, BLACK, "rep %#018lx: ", rep);
-	for (int i = 0; i < len; i++) printk(YELLOW, BLACK, "%02x ", rep[i]);
-	printk(WHITE, BLACK, "\n");
 	u64 idx = 0;
 	int res;
 	USB_HID_ParseHelper *helper = kmalloc(sizeof(USB_HID_ParseHelper), Slab_Flag_Private | Slab_Flag_Clear, NULL);
@@ -261,7 +258,8 @@ USB_HID_ParseHelper *HW_USB_HID_genParseHelper(u8 *rep, u64 len) {
 		}
 		idx += 1 + itemLen;
 	}
-	printk(WHITE, BLACK, "HID parse helper: %#018lx: type:%d inSz:%d outSz:%d\n", helper, helper->type, helper->inSz, helper->outSz);
+	helper->id = curDtState.id;
+	printk(WHITE, BLACK, "HID parse helper: %#018lx: reportId:%d type:%d inSz:%d outSz:%d\n", helper, helper->id, helper->type, helper->inSz, helper->outSz);
 	SpinLock_unlock(&_lock);
 	return helper;
 }

@@ -120,9 +120,4 @@ void HW_Timer_HPET_init() {
 	Intr_register(0x22, &_intrDesc, HW_Timer_HPET_handler, 0, &_intrCotroller, "HPET");
 }
 
-i64 HW_Timer_HPET_jiffies() {
-	IO_cli(); 
-	i64 res = _jiffies.value;
-	IO_sti();
-	return res;
-}
+i64 HW_Timer_HPET_jiffies() { return _jiffies.value; }

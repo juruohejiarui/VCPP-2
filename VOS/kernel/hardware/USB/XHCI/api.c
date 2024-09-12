@@ -44,7 +44,7 @@ void HW_USB_XHCI_writeByte(u64 addr, u8 val) {
 
 u32 HW_USB_XHCI_maxScrSz(XHCI_Host *host) {
 	u32 val = HW_USB_XHCI_CapReg_hcsParam(host, 2);
-	const u32 mask = (1 << 5) - 1;
+	const u32 mask = (1u << 5) - 1;
 	return (((val >> 21) & mask) << 5) | ((val >> 27) & mask);
 }
 

@@ -101,16 +101,16 @@ void HW_USB_XHCI_init(PCIeManager *pci) {
 	// allocate the scratchpad array and items
 	{
 		int maxScrSz = max(64, HW_USB_XHCI_maxScrSz(host));
-		u64 *scrArray = kmalloc(0x1000, Slab_Flag_Clear, NULL);
-		for (int i = 0; i < maxScrSz; i++)
-			scrArray[i] = DMAS_virt2Phys(kmalloc(0x1000, 0, NULL));
+		u64 *scrArray = kmalloc(upAlignTo((maxScrSz + 1) * sizeof(u64), 0x1000), Slab_Flag_Clear, NULL);
+		for (int i = 0; i <= maxScrSz; i++)
+			scrArray[i] = DMAS_virt2Phys(kmalloc(0x1000, Slab_Flag_Clear, NULL));
 		dcbaa[0] = DMAS_virt2Phys(scrArray);
 	}
 	// allocate device context and set dcbaa items
 	host->devCtx = kmalloc(sizeof(XHCI_DevCtx *) * (HW_USB_XHCI_maxSlot(host) + 1), Slab_Flag_Clear, NULL);
 	host->devCtx[0] = (XHCI_DevCtx *)DMAS_phys2Virt(dcbaa[0]);
 	for (int i = HW_USB_XHCI_maxSlot(host); i > 0; i--) {
-		host->devCtx[i] = kmalloc(0x1000, Slab_Flag_Clear, NULL);
+		host->devCtx[i] = kmalloc(sizeof(XHCI_DevCtx), Slab_Flag_Clear, NULL);
 		dcbaa[i] = DMAS_virt2Phys(host->devCtx[i]);
 	}
 	host->dev = kmalloc(sizeof(XHCI_Device *) * (HW_USB_XHCI_maxSlot(host) + 1), Slab_Flag_Clear, NULL);
@@ -299,7 +299,7 @@ void HW_USB_XHCI_evehandleTask(XHCI_Host *host, u64 intrMap) {
 						u32 sc = HW_USB_XHCI_readPortReg(host, portId, XHCI_PortReg_sc);
 						if (sc & 1) {
 							// this port has been enabled
-							if (sc & (1u << 1)) HW_USB_XHCI_portConnect(host, portId);
+							if ((sc & (1u << 1)) && ((sc >> 5) & 0xf) == 0) HW_USB_XHCI_portConnect(host, portId);
 							else // this port is not enabled, then reset this port for attempting to enable it.
 								HW_USB_XHCI_writePortReg(host, portId, XHCI_PortReg_sc, (1u << 4) | XHCI_PortReg_sc_Power |  XHCI_PortReg_sc_AllChg | XHCI_PortReg_sc_AllEve);
 						} else HW_USB_XHCI_portDisconnect(host, portId);
@@ -479,7 +479,7 @@ void HW_USB_XHCI_devMgrTask(XHCI_Device *dev, u64 rootPort) {
 	}
 	kfree(req0, Slab_Flag_Private);
 	kfree(req1, Slab_Flag_Private);
-	printk(YELLOW, BLACK, "dev %#018lx: search for driver\n");
+	printk(YELLOW, BLACK, "dev %#018lx: search for driver\n", dev);
 	while (1) {
 		SpinLock_lock(&HW_USB_XHCI_DriverListLock);
 		// search for a compatible driver

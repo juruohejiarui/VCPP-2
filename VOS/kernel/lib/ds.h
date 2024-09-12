@@ -42,11 +42,23 @@ __always_inline__ void List_del(List *ele) {
 }
 
 __always_inline__ u64 Bit_get(u64 *addr, u64 index) { return ((*addr) >> index) & 1; }
-__always_inline__ void Bit_set1(u64 *addr, u64 index) { *addr |= (1ul << index); }
-__always_inline__ void Bit_set0(u64 *addr, u64 index) { *addr &= (~(1ul << index)); }
+__always_inline__ void Bit_set1(u64 *addr, u64 index) { 
+	__asm__ volatile (
+		"btsq %1, %0		\n\t"
+		: "+m"(*addr)
+		: "r"(index)
+		: "memory");
+}
+__always_inline__ void Bit_set0(u64 *addr, u64 index) {
+	__asm__ volatile (
+		"btrq %1, %0		\n\t"
+		: "+m"(*addr)
+		: "r"(index)
+		: "memory");
+}
 __always_inline__ void Bit_rev(u64 *addr, u64 index) {
     __asm__ volatile (
-        "btsq %1, %0    \n\t"
+        "btcq %1, %0    \n\t"
         : "+m"(*addr)
         : "r"(index)
         : "memory"

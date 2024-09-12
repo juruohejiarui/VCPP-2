@@ -198,11 +198,11 @@ void *kmalloc(u64 size, u64 arg, void (*destructor)(void *)) {
 		
 		// finally calculate the address
 		u64 addr = (u64)slab->virtAddr + j * Slab_kmallocCache[id].size;
+		if (!(arg & Slab_Flag_Inner)) SpinLock_unlock(&_SlabLocker);
+        IO_maskIntrSuffix
 		// clear the memory block to 0 if needed
 		if (arg & Slab_Flag_Clear) memset((void *)addr, 0, size);
 		// release the spin lock and enable the interrupts
-		if (!(arg & Slab_Flag_Inner)) SpinLock_unlock(&_SlabLocker);
-        IO_maskIntrSuffix
 		// record this memory block if it is private
 		if (arg & Slab_Flag_Private) _addUsage((void *)addr, destructor, Slab_kmallocCache[id].size); 
         return (void *)(addr);
