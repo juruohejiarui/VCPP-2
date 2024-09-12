@@ -223,7 +223,7 @@ void HW_USB_XHCI_ctrlDataReq(XHCI_Request *req, u64 setup, int dir, void *data, 
 int HW_USB_XHCI_Req_wait(XHCI_Request *req);
 
 // ring the doorbell of HOST, wait for interrupt result and finally return the completion code
-int HW_USB_XHCI_Req_ringDoorbellWait(XHCI_Host *host, u32 slotId, u32 epId, u32 taskId, XHCI_Request *req);
+int HW_USB_XHCI_Req_ringDbWait(XHCI_Host *host, u32 slotId, u32 epId, u32 taskId, XHCI_Request *req);
 
 void HW_USB_XHCI_writeCtx(void *ctx, int dwId, u32 mask, u32 val);
 

@@ -46,7 +46,6 @@ void HW_USB_XHCI_init(PCIeManager *pci) {
 	List_init(&host->listEle);
 	printk(WHITE, BLACK, "capPtr:%x\n", pci->cfg->type.type0.capPtr);
 	for (PCIe_CapabilityHeader *hdr = HW_PCIe_getNxtCapHdr(pci->cfg, NULL); hdr; hdr = HW_PCIe_getNxtCapHdr(pci->cfg, hdr)) {
-		printk(WHITE, BLACK, "\tCapId:%x nxtPtr:%x\n", hdr->capId, hdr->nxtPtr);
 		if (hdr->capId == PCIe_CapId_MSI) {
 			host->msiCapDesc = container(hdr, PCIe_MSICapability, hdr);
 			break;
@@ -364,7 +363,7 @@ void HW_USB_XHCI_devMgrTask(XHCI_Device *dev, u64 rootPort) {
 		req0 = HW_USB_XHCI_allocReq(1);
 		HW_USB_XHCI_TRB_setType(&req0->trb[0], XHCI_TRB_Type_EnblSlot);
 		HW_USB_XHCI_Ring_insReq(dev->host->cmdRing, req0);
-		if (HW_USB_XHCI_Req_ringDoorbellWait(dev->host, 0, 0, 0, req0) != XHCI_TRB_CmplCode_Succ) {
+		if (HW_USB_XHCI_Req_ringDbWait(dev->host, 0, 0, 0, req0) != XHCI_TRB_CmplCode_Succ) {
 			printk(RED, BLACK, "dev:%#018lx failed to allocate slot, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req0->res));
 			dev->mgrTask = NULL;
 			Task_setSignal(Task_current, Task_Signal_Int);
@@ -408,7 +407,7 @@ void HW_USB_XHCI_devMgrTask(XHCI_Device *dev, u64 rootPort) {
 		}
 		HW_USB_XHCI_TRB_setData(&req0->trb[0], DMAS_virt2Phys(dev->inCtx));
 		HW_USB_XHCI_Ring_insReq(dev->host->cmdRing, req0);
-		if (HW_USB_XHCI_Req_ringDoorbellWait(dev->host, 0, 0, 0, req0) != XHCI_TRB_CmplCode_Succ) {
+		if (HW_USB_XHCI_Req_ringDbWait(dev->host, 0, 0, 0, req0) != XHCI_TRB_CmplCode_Succ) {
 			printk(RED, BLACK, "dev:%#018lx failed to address device, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req0->res));
 			dev->mgrTask = NULL;
 			Task_setSignal(Task_current, Task_Signal_Int);
@@ -424,13 +423,12 @@ void HW_USB_XHCI_devMgrTask(XHCI_Device *dev, u64 rootPort) {
 			XHCI_TRB_Ctrl_Dir_In,
 			dev->devDesc, 8);
 	HW_USB_XHCI_Ring_insReq(dev->trRing[0], req1);
-	if (HW_USB_XHCI_Req_ringDoorbellWait(dev->host, dev->slotId, 1, 0, req1) != XHCI_TRB_CmplCode_Succ) {
+	if (HW_USB_XHCI_Req_ringDbWait(dev->host, dev->slotId, 1, 0, req1) != XHCI_TRB_CmplCode_Succ) {
 		printk(RED, BLACK, "dev %#018lx: failed to get device descriptor, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req1->res));
 		dev->mgrTask = NULL;
 		Task_setSignal(Task_current, Task_Signal_Int);
 		while (1) IO_hlt();
 	}
-	// printk(GREEN, BLACK, "dev %#018lx device descriptor %016lx\n", dev, *(u64 *)dev->devDesc);
 	u32 val = (speed >= 4 ? (1u << (dev->devDesc->bMaxPackSz0)) : dev->devDesc->bMaxPackSz0);
 	// the max packet size for control endpoint is not correct
 	if (val != HW_USB_XHCI_EpCtx_getMxPackSize0(speed)) {
@@ -440,7 +438,7 @@ void HW_USB_XHCI_devMgrTask(XHCI_Device *dev, u64 rootPort) {
 		
 		HW_USB_XHCI_TRB_setType(&req0->trb[0], XHCI_TRB_Type_EvalCtx);
 		HW_USB_XHCI_Ring_insReq(dev->host->cmdRing, req0);
-		if (HW_USB_XHCI_Req_ringDoorbellWait(dev->host, 0, 0, 0, req0) != XHCI_TRB_CmplCode_Succ) {
+		if (HW_USB_XHCI_Req_ringDbWait(dev->host, 0, 0, 0, req0) != XHCI_TRB_CmplCode_Succ) {
 			printk(RED, BLACK, "dev %#018lx: failed to modify max packet size 0, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req0->res));
 			dev->mgrTask = NULL;
 			Task_setSignal(Task_current, Task_Signal_Int);
@@ -453,14 +451,12 @@ void HW_USB_XHCI_devMgrTask(XHCI_Device *dev, u64 rootPort) {
 	HW_USB_XHCI_TRB_setData(&req1->trb[0], 	HW_USB_XHCI_TRB_mkSetup(0x80, 0x6, 0x0100, 0x0, 0xff));
 	HW_USB_XHCI_TRB_setStatus(&req1->trb[1], HW_USB_XHCI_TRB_mkStatus(0xff, 0, 0));
 	HW_USB_XHCI_Ring_insReq(dev->trRing[0], req1);
-	if (HW_USB_XHCI_Req_ringDoorbellWait(dev->host, dev->slotId, 1, 0, req1) != XHCI_TRB_CmplCode_Succ) {
+	if (HW_USB_XHCI_Req_ringDbWait(dev->host, dev->slotId, 1, 0, req1) != XHCI_TRB_CmplCode_Succ) {
 		printk(RED, BLACK, "dev %#018lx: failed to get device descriptor, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req1->res));
 		dev->mgrTask = NULL;
 		Task_setSignal(Task_current, Task_Signal_Int);
 		while (1) IO_hlt();
 	}
-	// printk(GREEN, BLACK, "dev %#018lx device descriptor %016lx %016lx %04lx\n", dev, 
-		// *(u64 *)dev->devDesc, *((u64 *)dev->devDesc + 1), *((u64 *)dev->devDesc + 2));
 	
 	dev->cfgDesc = kmalloc(sizeof(void *) * dev->devDesc->bNumCfg, Slab_Flag_Clear | Slab_Flag_Private, NULL);
 	for (int i = 0; i < dev->devDesc->bNumCfg; i++) {
@@ -469,13 +465,12 @@ void HW_USB_XHCI_devMgrTask(XHCI_Device *dev, u64 rootPort) {
 		HW_USB_XHCI_TRB_setData(&req1->trb[0], HW_USB_XHCI_TRB_mkSetup(0x80, 0x6, 0x0200 | i, 0x0, 0xff));
 		HW_USB_XHCI_TRB_setData(&req1->trb[1], DMAS_virt2Phys(dev->cfgDesc[i]));
 		HW_USB_XHCI_Ring_insReq(dev->trRing[0], req1);
-		if (HW_USB_XHCI_Req_ringDoorbellWait(dev->host, dev->slotId, 1, 0, req1) != XHCI_TRB_CmplCode_Succ) {
+		if (HW_USB_XHCI_Req_ringDbWait(dev->host, dev->slotId, 1, 0, req1) != XHCI_TRB_CmplCode_Succ) {
 			printk(RED, BLACK, "dev %#018lx: failed to get configuration descriptor #%ld, code=%d\n", dev, i, HW_USB_XHCI_TRB_getCmplCode(&req1->res));
 			dev->mgrTask = NULL;
 			Task_setSignal(Task_current, Task_Signal_Int);
 			while (1) IO_hlt();
 		}
-		// printk(GREEN, BLACK, "dev %#018lx: configuration descriptor #%ld: %#018lx\n", dev, i, *(u64 *)dev->cfgDesc[i]);
 	}
 	kfree(req0, Slab_Flag_Private);
 	kfree(req1, Slab_Flag_Private);
@@ -503,6 +498,4 @@ void HW_USB_XHCI_devMgrTask(XHCI_Device *dev, u64 rootPort) {
 	End:
 	while (1) IO_hlt();
 	Task_kernelThreadExit(0);
-}
-void HW_USB_XHCI_test(XHCI_Host *host) {
 }

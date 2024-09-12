@@ -22,7 +22,7 @@ int HW_USB_HID_setReport(XHCI_Device *dev, u8 reportId, u8 interId, u8 *report, 
 			XHCI_TRB_Ctrl_Dir_Out, 
 			report, repLen);
 	HW_USB_XHCI_Ring_insReq(dev->trRing[0], req);
-	if (HW_USB_XHCI_Req_ringDoorbellWait(dev->host, dev->slotId, 1, 0, req) != XHCI_TRB_CmplCode_Succ) {
+	if (HW_USB_XHCI_Req_ringDbWait(dev->host, dev->slotId, 1, 0, req) != XHCI_TRB_CmplCode_Succ) {
 		printk(RED, BLACK, "dev %#018lx: failed to set report, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req->res));
 	}
 	int res = HW_USB_XHCI_TRB_getCmplCode(&req->res);
@@ -37,7 +37,7 @@ int HW_USB_HID_getReport(XHCI_Device *dev, u8 reportId, u8 interId, u8 *report, 
 			XHCI_TRB_Ctrl_Dir_In, 
 			report, repLen);
 	HW_USB_XHCI_Ring_insReq(dev->trRing[0], req);
-	if (HW_USB_XHCI_Req_ringDoorbellWait(dev->host, dev->slotId, 1, 0, req) != XHCI_TRB_CmplCode_Succ) {
+	if (HW_USB_XHCI_Req_ringDbWait(dev->host, dev->slotId, 1, 0, req) != XHCI_TRB_CmplCode_Succ) {
 		printk(RED, BLACK, "dev %#018lx: failed to set report, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req->res));
 	}
 	int res = HW_USB_XHCI_TRB_getCmplCode(&req->res);
@@ -65,7 +65,7 @@ USB_HID_ParseHelper *HW_USB_HID_mkParseHelper(XHCI_Device *dev, XHCI_InterDesc *
 			XHCI_TRB_Ctrl_Dir_In,
 			reportDesc, 0xff);
 	HW_USB_XHCI_Ring_insReq(dev->trRing[0], req);
-	if (HW_USB_XHCI_Req_ringDoorbellWait(dev->host, dev->slotId, 1, 0, req) != XHCI_TRB_CmplCode_Succ) {
+	if (HW_USB_XHCI_Req_ringDbWait(dev->host, dev->slotId, 1, 0, req) != XHCI_TRB_CmplCode_Succ) {
 		printk(RED, BLACK, "dev %#018lx: failed to get report descriptor, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req->res));
 		while (1) IO_hlt();
 	}
@@ -79,7 +79,7 @@ void HW_USB_HID_processMouse(XHCI_Device *dev, XHCI_InterDesc *inter, USB_HID_Pa
 
 	HW_USB_XHCI_ctrlReq(req0, HW_USB_XHCI_TRB_mkSetup(0x21, 0x0a, 0xff00, inter->bInterNum, 0), XHCI_TRB_Ctrl_Dir_Out);
 	HW_USB_XHCI_Ring_insReq(dev->trRing[0], req0);
-	if (HW_USB_XHCI_Req_ringDoorbellWait(dev->host, dev->slotId, 1, 0, req0) != XHCI_TRB_CmplCode_Succ) {
+	if (HW_USB_XHCI_Req_ringDbWait(dev->host, dev->slotId, 1, 0, req0) != XHCI_TRB_CmplCode_Succ) {
 		printk(RED, BLACK, "dev %#018lx: failed to set idle, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req0->res));
 		while (1) IO_hlt();
 	}
@@ -96,7 +96,7 @@ void HW_USB_HID_processMouse(XHCI_Device *dev, XHCI_InterDesc *inter, USB_HID_Pa
 	// start to get report from the endpoint
 	while (1) {	
 		HW_USB_XHCI_Ring_insReq(dev->trRing[inEpId], req1);
-		register int res = HW_USB_XHCI_Req_ringDoorbellWait(dev->host, dev->slotId, inEpId + 1, 0, req1);
+		register int res = HW_USB_XHCI_Req_ringDbWait(dev->host, dev->slotId, inEpId + 1, 0, req1);
 		if (res != XHCI_TRB_CmplCode_Succ) {
 			printk(RED, BLACK, "dev %#018lx: get report failed, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req1->res));
 			while (1) IO_hlt(); 
@@ -112,7 +112,7 @@ void HW_USB_HID_processKeyboard(XHCI_Device *dev, XHCI_InterDesc *inter, USB_HID
 	XHCI_Request *req0 = HW_USB_XHCI_allocReq(2);
 	HW_USB_XHCI_ctrlReq(req0, HW_USB_XHCI_TRB_mkSetup(0x21, 0x0a, 0x0000, inter->bInterNum, 0), XHCI_TRB_Ctrl_Dir_Out);
 	HW_USB_XHCI_Ring_insReq(dev->trRing[0], req0);
-	if (HW_USB_XHCI_Req_ringDoorbellWait(dev->host, dev->slotId, 1, 0, req0) != XHCI_TRB_CmplCode_Succ) {
+	if (HW_USB_XHCI_Req_ringDbWait(dev->host, dev->slotId, 1, 0, req0) != XHCI_TRB_CmplCode_Succ) {
 		printk(RED, BLACK, "dev %#018lx: failed to set idle, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req0->res));
 		while (1) IO_hlt();
 	}
@@ -131,7 +131,7 @@ void HW_USB_HID_processKeyboard(XHCI_Device *dev, XHCI_InterDesc *inter, USB_HID
 	if (outEpId != -1) {
 		HW_USB_XHCI_TRB_setStatus(&req0->trb[0], HW_USB_XHCI_TRB_mkStatus(helper->outSz / 8, 0x0, 0));
 		HW_USB_XHCI_Ring_insReq(dev->trRing[outEpId], req0);
-		register int res = HW_USB_XHCI_Req_ringDoorbellWait(dev->host, dev->slotId, outEpId + 1, 0, req0);
+		register int res = HW_USB_XHCI_Req_ringDbWait(dev->host, dev->slotId, outEpId + 1, 0, req0);
 		if (res != XHCI_TRB_CmplCode_Succ) {
 			printk(RED, BLACK, "dev %#018lx: set report failed, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req0->res));
 			while (1) IO_hlt();
@@ -141,13 +141,15 @@ void HW_USB_HID_processKeyboard(XHCI_Device *dev, XHCI_InterDesc *inter, USB_HID
 	// start to get report from the endpoint
 	while (1) {	
 		HW_USB_XHCI_Ring_insReq(dev->trRing[inEpId], req0);
-		register int res = HW_USB_XHCI_Req_ringDoorbellWait(dev->host, dev->slotId, inEpId + 1, 0, req0);
-		if (res != XHCI_TRB_CmplCode_Succ) {
+		if (HW_USB_XHCI_Req_ringDbWait(dev->host, dev->slotId, inEpId + 1, 0, req0) != XHCI_TRB_CmplCode_Succ) {
 			printk(RED, BLACK, "dev %#018lx: get report failed, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req0->res));
 			while (1) IO_hlt(); 
 		}
 		HW_USB_HID_parseReport(repRaw, helper, rep);
-		printk(WHITE, BLACK, "K raw:%016lx\t", *(u64 *)repRaw);
+		printk(WHITE, BLACK, "K: %d %d %d %d %d %d %d\r", 
+				rep->items.keyboard.spK, 
+				rep->items.keyboard.key[0], rep->items.keyboard.key[1], rep->items.keyboard.key[2],
+				rep->items.keyboard.key[3], rep->items.keyboard.key[4], rep->items.keyboard.key[5]);
 		Intr_SoftIrq_Timer_mdelay(inInterval);
 	}
 }
@@ -165,7 +167,7 @@ void HW_USB_HID_process(XHCI_Device *dev) {
 			XHCI_TRB_Ctrl_Dir_In,
 			strDesc, 0xff);
 	HW_USB_XHCI_Ring_insReq(dev->trRing[0], req1);
-	if (HW_USB_XHCI_Req_ringDoorbellWait(dev->host, dev->slotId, 1, 0, req1) != XHCI_TRB_CmplCode_Succ) {
+	if (HW_USB_XHCI_Req_ringDbWait(dev->host, dev->slotId, 1, 0, req1) != XHCI_TRB_CmplCode_Succ) {
 		printk(WHITE, BLACK, "dev %#018lx: failed to get device string descriptor, code=%d\n", 
 				dev, HW_USB_XHCI_TRB_getCmplCode(&req1->res));
 		while (1) IO_hlt();
@@ -245,7 +247,7 @@ void HW_USB_HID_process(XHCI_Device *dev) {
 	HW_USB_XHCI_TRB_setType(&req0->trb[0], XHCI_TRB_Type_CfgEp);
 
 	HW_USB_XHCI_Ring_insReq(dev->host->cmdRing, req0);
-	if (HW_USB_XHCI_Req_ringDoorbellWait(dev->host, 0, 0, 0, req0) != XHCI_TRB_CmplCode_Succ) {
+	if (HW_USB_XHCI_Req_ringDbWait(dev->host, 0, 0, 0, req0) != XHCI_TRB_CmplCode_Succ) {
 		printk(RED, BLACK, "dev %#018lx: failed to configure endpoint(s), code=%d\n", 
 			dev, HW_USB_XHCI_TRB_getCmplCode(&req0->res));
 		while (1) IO_hlt();
@@ -256,7 +258,7 @@ void HW_USB_HID_process(XHCI_Device *dev) {
 	req1 = HW_USB_XHCI_allocReq(2);
 	HW_USB_XHCI_ctrlReq(req1, HW_USB_XHCI_TRB_mkSetup(0x00, 0x09, dev->cfgDesc[0]->bCfgVal, 0, 0), XHCI_TRB_Ctrl_Dir_Out);
 	HW_USB_XHCI_Ring_insReq(dev->trRing[0], req1);
-	if (HW_USB_XHCI_Req_ringDoorbellWait(dev->host, dev->slotId, 1, 0, req1) != XHCI_TRB_CmplCode_Succ) {
+	if (HW_USB_XHCI_Req_ringDbWait(dev->host, dev->slotId, 1, 0, req1) != XHCI_TRB_CmplCode_Succ) {
 		printk(RED, BLACK, "dev %#018lx: failed to set configuration, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req1->res));
 		while (1) IO_hlt();
 	}
@@ -270,10 +272,18 @@ void HW_USB_HID_process(XHCI_Device *dev) {
 		if (inters[i].desc->bInterSubClass == 0x01) {
 			HW_USB_XHCI_TRB_setData(&req1->trb[0], HW_USB_XHCI_TRB_mkSetup(0x21, 0x0b, 0x0001, inters[i].desc->bInterNum, 0));
 			HW_USB_XHCI_Ring_insReq(dev->trRing[0], req1);
-			if (HW_USB_XHCI_Req_ringDoorbellWait(dev->host, dev->slotId, 1, 0, req1) != XHCI_TRB_CmplCode_Succ) {
-				printk(RED, BLACK, "dev %#018lx: failed to set protocol for interface %d, code=%d\n", dev, inters[i].desc->bInterNum, HW_USB_XHCI_TRB_getCmplCode(&req1->res));
+			if (HW_USB_XHCI_Req_ringDbWait(dev->host, dev->slotId, 1, 0, req1) != XHCI_TRB_CmplCode_Succ) {
+				printk(RED, BLACK, "dev %#018lx: failed to set protocol for interface %d, code=%d\n", 
+						dev, inters[i].desc->bInterNum, HW_USB_XHCI_TRB_getCmplCode(&req1->res));
 				while (1) IO_hlt();
 			}
+		}
+		HW_USB_XHCI_TRB_setData(&req1->trb[0], HW_USB_XHCI_TRB_mkSetup(0x21, 0x0a, 0x0000, inters[i].desc->bInterNum, 0));
+		HW_USB_XHCI_Ring_insReq(dev->trRing[0], req1);
+		if (HW_USB_XHCI_Req_ringDbWait(dev->host, dev->slotId, 1, 0, req1) != XHCI_TRB_CmplCode_Succ) {
+			printk(RED, BLACK, "dev %#018lx: failed to set idle for interface %d, code=%d\n",
+					dev, inters[i].desc->bInterNum, HW_USB_XHCI_TRB_getCmplCode(&req1->res));
+			while (1) IO_hlt();
 		}
 	}
 

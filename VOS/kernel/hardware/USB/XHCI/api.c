@@ -237,7 +237,7 @@ int HW_USB_XHCI_Req_wait(XHCI_Request *req) {
 	return HW_USB_XHCI_TRB_getCmplCode(&req->res);
 }
 
-int HW_USB_XHCI_Req_ringDoorbellWait(XHCI_Host *host, u32 slotId, u32 epId, u32 taskId, XHCI_Request *req) {
+int HW_USB_XHCI_Req_ringDbWait(XHCI_Host *host, u32 slotId, u32 epId, u32 taskId, XHCI_Request *req) {
 	HW_USB_XHCI_writeDbReg(host, slotId, epId, taskId);
 	return HW_USB_XHCI_Req_wait(req);
 }
