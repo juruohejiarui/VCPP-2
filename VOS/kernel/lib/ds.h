@@ -16,6 +16,7 @@ typedef struct List {
 } List;
 
 #define __always_inline__  inline __attribute__ ((always_inline))
+#define __noinline__ __attribute__ ((noinline))
 
 __always_inline__ void List_init(List *list) {
     list->prev = list->next = list;

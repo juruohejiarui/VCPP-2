@@ -32,8 +32,10 @@
 #define irqName(preffix, num) irqName2(preffix, num)
 
 #define Intr_buildIrq(preffix, num, dispatcher)   \
-void irqName(preffix, num);      \
-__asm__ ( \
+__noinline__ void irqName(preffix, num);      \
+ __asm__ ( \
+    ".section .text     \n\t" \
+    ".global "SYMBOL_NAME_STR(preffix)#num"Interrupt    \n\t" \
     SYMBOL_NAME_STR(preffix)#num"Interrupt: \n\t" \
     "cli       			\n\t" \
     "pushq $0   		\n\t" \

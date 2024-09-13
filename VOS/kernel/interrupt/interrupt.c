@@ -98,7 +98,7 @@ void Intr_unregister(u64 irqId) {
 	desc->handler = NULL;
 }
 
-u64 Intr_irqdispatch(u64 rsp, u64 irqId) {
+__noinline__ u64 Intr_irqdispatch(u64 rsp, u64 irqId) {
     u64 res = 0;
     switch (irqId & 0x80) {
         case 0x00 : {
