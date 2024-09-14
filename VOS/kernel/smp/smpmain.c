@@ -3,7 +3,6 @@
 #include "../includes/log.h"
 
 void startSMP() {
-	printk(WHITE, BLACK, "startSMP:%d\t", SMP_getCurCPUIndex());
 	u64 rsp = 0;
 	SMP_CPUInfoPkg *pkg = SMP_current;
 	rsp = (u64)pkg->initStk + Init_taskStackSize;	

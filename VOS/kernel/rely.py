@@ -63,10 +63,12 @@ def main() :
             outputRely(path)
             outFile.write('\n')
             if path.endswith('.c') :
-                outFile.write('\t$(CC) $(CFLAGS) -c ' + f"{path} -o {path[0 : -2]}.o \n\n")
+                outFile.write('\t@$(CC) $(CFLAGS) -c ' + f"{path} -o {path[0 : -2]}.o \n")
+                outFile.write(f'\t@echo \"[CC] {path}" \n\n')
             else :
-                outFile.write('\t$(CC) -E ' + f"{path} > " + f"{path[0 : -2]}.s\n")
-                outFile.write('\t$(ASM) $(ASMFLAG) -o ' + f"{path[0 : -2]}.o {path[0 : -2]}.s\n\n")
+                outFile.write('\t@$(CC) -E ' + f"{path} > " + f"{path[0 : -2]}.s\n")
+                outFile.write('\t@$(ASM) $(ASMFLAG) -o ' + f"{path[0 : -2]}.o {path[0 : -2]}.s\n")
+                outFile.write(f'\t@echo \"[AS] {path}\" \n\n')
     objList : str = ''
     for objFile in objFiles : 
         if objFile != 'head.o' :

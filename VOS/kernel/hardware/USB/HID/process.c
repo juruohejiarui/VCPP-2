@@ -108,23 +108,13 @@ void HW_USB_HID_processMouse(XHCI_Device *dev, XHCI_InterDesc *inter, USB_HID_Pa
 }
 
 void HW_USB_HID_processKeyboard(XHCI_Device *dev, XHCI_InterDesc *inter, USB_HID_ParseHelper *helper, int inEpId, int outEpId, int inInterval) {
-	printk(WHITE, BLACK, "dev %#018lx: keyboard, interval:%d\n", dev, inInterval);
-	XHCI_Request *req0 = HW_USB_XHCI_allocReq(2);
-	HW_USB_XHCI_ctrlReq(req0, HW_USB_XHCI_TRB_mkSetup(0x21, 0x0a, 0x0000, inter->bInterNum, 0), XHCI_TRB_Ctrl_Dir_Out);
-	HW_USB_XHCI_Ring_insReq(dev->trRing[0], req0);
-	if (HW_USB_XHCI_Req_ringDbWait(dev->host, dev->slotId, 1, 0, req0) != XHCI_TRB_CmplCode_Succ) {
-		printk(RED, BLACK, "dev %#018lx: failed to set idle, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req0->res));
-		while (1) IO_hlt();
-	}
-	kfree(req0, Slab_Flag_Private);
-
-	req0 = HW_USB_XHCI_allocReq(1);
+	XHCI_Request *req0 = HW_USB_XHCI_allocReq(1);
 	u8 *repRaw = kmalloc(0xff, Slab_Flag_Private | Slab_Flag_Clear, NULL);
 	USB_HID_Report *rep = kmalloc(sizeof(USB_HID_Report), Slab_Flag_Private | Slab_Flag_Private, NULL);
 
 	HW_USB_XHCI_TRB_setData(&req0->trb[0], DMAS_virt2Phys(repRaw));
 	HW_USB_XHCI_TRB_setType(&req0->trb[0], XHCI_TRB_Type_Normal);
-	HW_USB_XHCI_TRB_setCtrlBit(&req0->trb[0], XHCI_TRB_Ctrl_ioc);
+	HW_USB_XHCI_TRB_setCtrlBit(&req0->trb[0], XHCI_TRB_Ctrl_ioc | XHCI_TRB_Ctrl_noSnoop);
 
 	repRaw[0] = (1 << 4);
 	// set SET_REPORT to enable default led

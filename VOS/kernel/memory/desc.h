@@ -60,7 +60,7 @@ extern char _end;
 
 struct Page {
     u64 phyAddr;
-    u64 attr;
+    u32 attr;
     u32 buddyId;
     List listEle;
     struct tmpZone *blgZone;

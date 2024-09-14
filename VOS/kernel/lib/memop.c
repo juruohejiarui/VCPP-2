@@ -2,90 +2,90 @@
 #include "../includes/log.h"
 
 void *memset(void *addr, u8 dt, u64 size) {
-    int d0, d1;
-    u64 tmp = dt * 0x0101010101010101UL;
-    __asm__ volatile (
-        "cld                    \n\t"
-        "rep                    \n\t"
-        "stosq                  \n\t"
-        "testb $4, %b3          \n\t"
-        "je 1f                  \n\t"
-        "stosl                  \n\t"
-        "1:\ttestb $2, %b3      \n\t"
-        "je 2f                  \n\t"
-        "stosw                  \n\t"
-        "2:\ttestb $1, %b3      \n\t"
-        "je 3f                  \n\t"
-        "stosb                  \n\t"
-        "3:                     \n\t"
-        : "=&c"(d0), "=&D"(d1)
-        : "a"(tmp), "q"(size), "0"(size >> 3), "1"(addr)
-        : "memory"
-    );
-    return addr;
+	int d0, d1;
+	u64 tmp = dt * 0x0101010101010101UL;
+	__asm__ volatile (
+		"cld					\n\t"
+		"rep					\n\t"
+		"stosq				  	\n\t"
+		"testb $4, %b3		  	\n\t"
+		"je 1f				  	\n\t"
+		"stosl				  	\n\t"
+		"1:\ttestb $2, %b3	  	\n\t"
+		"je 2f				  	\n\t"
+		"stosw				  	\n\t"
+		"2:\ttestb $1, %b3	  	\n\t"
+		"je 3f				  	\n\t"
+		"stosb				  	\n\t"
+		"3:					 	\n\t"
+		: "=&c"(d0), "=&D"(d1)
+		: "a"(tmp), "q"(size), "0"(size >> 3), "1"(addr)
+		: "memory"
+	);
+	return addr;
 }
 
 void *memcpy(void *src, void *dst, i64 num)
 {
 	int d0, d1, d2;
 	__asm__ volatile(
-        "cld				\n\t"
-        "rep				\n\t"
-        "movsq				\n\t"
-        "testb	$4, %b4		\n\t"
-        "je	1f			\n\t"
-        "movsl				\n\t"
-        "1:\ttestb	$2, %b4	\n\t"
-        "je	2f			\n\t"
-        "movsw				\n\t"
-        "2:\ttestb	$1,%b4	\n\t"
-        "je	3f			\n\t"
-        "movsb				\n\t"
-        "3:				\n\t"
-        : "=&c"(d0), "=&D"(d1), "=&S"(d2)
-        : "0"(num / 8), "q"(num), "1"(dst), "2"(src)
-        : "memory");
+		"cld				\n\t"
+		"rep				\n\t"
+		"movsq				\n\t"
+		"testb	$4, %b4		\n\t"
+		"je	1f				\n\t"
+		"movsl				\n\t"
+		"1:\ttestb	$2, %b4	\n\t"
+		"je	2f				\n\t"
+		"movsw				\n\t"
+		"2:\ttestb	$1,%b4	\n\t"
+		"je	3f				\n\t"
+		"movsb				\n\t"
+		"3:					\n\t"
+		: "=&c"(d0), "=&D"(d1), "=&S"(d2)
+		: "0"(num / 8), "q"(num), "1"(dst), "2"(src)
+		: "memory");
 	return dst;
 }
 
 int memcmp(void *fir, void *sec, u64 size) {
-    register int res;
-    __asm__ volatile (
-        "cld            \n\t"
-        "repe           \n\t"
-        "cmpsb          \n\t"
-        "je 1f          \n\t"
-        "movl $1, %%eax \n\t"
-        "jl 1f          \n\t"
-        "negl %%eax     \n\t"
-        "1:             \n\t"
-        : "=a"(res)
-        : "0"(0), "D"(fir), "S"(sec), "c"(size)
-        :
-    );
-    return res;
+	register int res;
+	__asm__ volatile (
+		"cld			\n\t"
+		"repe		   	\n\t"
+		"cmpsb		  	\n\t"
+		"je 1f		  	\n\t"
+		"movl $1, %%eax \n\t"
+		"jl 1f		  	\n\t"
+		"negl %%eax	 	\n\t"
+		"1:			 	\n\t"
+		: "=a"(res)
+		: "0"(0), "D"(fir), "S"(sec), "c"(size)
+		:
+	);
+	return res;
 }
 
 i64 strlen(u8 *str) {
-    register i64 res;
-    __asm__ volatile (
-        "cld        \n\t"
-        "repne      \n\t"
-        "scasb      \n\t"
-        "notq %0    \n\t"
-        "decq %0    \n\t"
-        : "=c"(res)
-        : "D"(str), "a"(0), "0"(0xffffffffffffffff)
-    );
-    return res;
+	register i64 res;
+	__asm__ volatile (
+		"cld		\n\t"
+		"repne	  	\n\t"
+		"scasb	  	\n\t"
+		"notq %0	\n\t"
+		"decq %0	\n\t"
+		: "=c"(res)
+		: "D"(str), "a"(0), "0"(0xffffffffffffffff)
+	);
+	return res;
 }
 
 
 int strcmp(char *a, char *b) {
-    register int _res;
-    __asm__ volatile (
-        "cld        		\n\t"
-        "1: 				\n\t"
+	register int _res;
+	__asm__ volatile (
+		"cld				\n\t"
+		"1: 				\n\t"
 		"lodsb				\n\t"
 		"scasb				\n\t"
 		"jne 2f				\n\t"
@@ -101,8 +101,8 @@ int strcmp(char *a, char *b) {
 		: "=a"(_res)
 		: "D"(a), "S"(b)
 		:
-    );
-    return _res;
+	);
+	return _res;
 }
 
 int strncmp(char *a, char *b, i64 size) {
@@ -129,5 +129,5 @@ int strncmp(char *a, char *b, i64 size) {
 		: "D"(a), "S"(b), "c"(size)
 		:
 	);
-    return _res;
+	return _res;
 }

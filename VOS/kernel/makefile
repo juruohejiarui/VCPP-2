@@ -9,11 +9,14 @@ CFLAGS = -mcmodel=large -fno-builtin -fno-stack-protector -Wno-packed-bitfield-c
 include ./.depend
 
 all: system_tmp ../Tools/kallsyms.o
-	ld -b elf64-x86-64 -z muldefs -o system $(ALLOBJS) ../Tools/kallsyms.o -T Kernel.lds 
-	objcopy -I elf64-x86-64 -S -R ".eh_frame" -R ".comment" -O binary system kernel.bin
+	@ld -b elf64-x86-64 -z muldefs -o system $(ALLOBJS) ../Tools/kallsyms.o -T Kernel.lds 
+	@echo "[LD] system"
+	@objcopy -I elf64-x86-64 -S -R ".eh_frame" -R ".comment" -O binary system kernel.bin
+	@echo "[OBJ] kernel.bin"
 
 system_tmp: $(ALLOBJS)
-	ld -b elf64-x86-64 -z muldefs -o system_tmp $(ALLOBJS) -T Kernel.lds 
+	@ld -b elf64-x86-64 -z muldefs -o system_tmp $(ALLOBJS) -T Kernel.lds 
+	@echo "[LD] system_tmp"
 
 ../Tools/kallsyms.o: ../Tools/kallsyms.c system_tmp
 	$(CC) -o ../Tools/kallsyms ../Tools/kallsyms.c
