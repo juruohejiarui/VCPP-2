@@ -41,13 +41,26 @@ u64 MM_PageTable_alloc() {
 	SpinLock_unlock(&_PageTableLocker);
     IO_maskIntrSuffix
     memset(DMAS_phys2Virt(page->phyAddr), 0, 512 * sizeof(u64));
+	page->attr |= Page_Flag_MMU;
     return page->phyAddr;
 }
 
 u64 MM_PageTable_free(u64 *tbl) {
     IO_maskIntrPreffix
     SpinLock_lock(&_PageTableLocker);
-    Page *page = memManageStruct.pages + (DMAS_virt2Phys(tbl) >> Page_4KShift);
+    Page *page = NULL;
+	for (int i = 0; i < memManageStruct.zonesLength; i++) {
+		Zone *zone = &memManageStruct.zones[i];
+		if (zone->phyAddrSt <= DMAS_virt2Phys(tbl) && DMAS_virt2Phys(tbl) < zone->phyAddrEd) {
+			page = zone->pages + (DMAS_virt2Phys(tbl) - zone->phyAddrSt) / Page_4KSize;
+			break;
+		}
+	}
+	if (!page || !(page->attr & Page_Flag_MMU)) {
+		printk(RED, BLACK, "MM_PageTable: %#018lx is not a page table\n", tbl);
+		while (1) IO_hlt();
+		return (u64)-1;
+	}
     // if there is enough cache, then just free this page
     if (cachePoolSize == PGTable_maxCacheSize)
         MM_Buddy_free(page);

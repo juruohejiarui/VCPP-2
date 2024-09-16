@@ -16,7 +16,6 @@ void Log_enableBuf() {
     u64 pixelSize = HW_UEFI_bootParamInfo->graphicsInfo.VerticalResolution * HW_UEFI_bootParamInfo->graphicsInfo.PixelsPerScanLine * sizeof(u32);
     _bufAddr = DMAS_phys2Virt(MM_Buddy_alloc(max(log2Ceil(pixelSize) - 12, 0), Page_Flag_Active | Page_Flag_Kernel | Page_Flag_KernelShare)->phyAddr);
     memcpy(position.FBAddr, _bufAddr, pixelSize);
-    printk(WHITE, BLACK, "buf:%#018lx size:%ld->2^%d 4k pages\n", _bufAddr, pixelSize, max(log2Ceil(pixelSize) - 12, 0));
 }
 
 void Log_init() {
@@ -24,6 +23,14 @@ void Log_init() {
     memset(lineLength, 0, sizeof(lineLength));
 	SpinLock_init(&_printLock);
     SpinLock_init(&_bufLock);
+
+	position.XResolution = HW_UEFI_bootParamInfo->graphicsInfo.HorizontalResolution & 0xffff;
+	position.YResolution = HW_UEFI_bootParamInfo->graphicsInfo.VerticalResolution & 0xffff;
+    position.XCharSize = 8;
+    position.YCharSize = 16;
+
+    position.XPosition = position.YPosition = 0;
+    position.FBAddr = DMAS_phys2Virt(HW_UEFI_bootParamInfo->graphicsInfo.FrameBufferBase);
 }
 
 #define isDigit(ch) ((ch) >= '0' && (ch) <= '9')
@@ -284,7 +291,7 @@ void clearScreen() {
 
 void printk(unsigned int fcol, unsigned int bcol, const char *fmt, ...) {
     // SpinLock_lock(&_bufLock);
-    char buf[1024] = {0};
+    char buf[512] = {0};
     int len = 0, i;
     va_list args;
     va_start(args, fmt);

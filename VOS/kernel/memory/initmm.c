@@ -14,32 +14,35 @@ static void _initArray() {
 	#ifdef DEBUG_MM
     printk(RED, BLACK, "->initArray()\n");
 	#endif
-    int kernelZoneId = -1;
-    u64 totPage = 0;
+    int kernelZoneId = -1, lstType1 = 0;
     memManageStruct.zonesLength = 0;
     for (int i = 0; i <= memManageStruct.e820Length; i++) {
         E820 *e820 = memManageStruct.e820 + i;
+		printk(YELLOW, BLACK, "e820[%02d]: addr:%#018lx len:%#018lx type:%#018lx\n", i, e820->addr, e820->size, e820->type);
         if (e820->type != 1) continue;
         u64 st = Page_4KUpAlign(e820->addr), ed = Page_4KDownAlign(e820->addr + e820->size);
         if (st >= ed) continue;
-        if (0x100000 >= st && ed > memManageStruct.edOfStruct - Init_virtAddrStart && memManageStruct.zonesLength > 0)
+        if (0x100000 >= st && ed > (u64)availVirtAddrSt - Init_virtAddrStart)
             kernelZoneId = i;
         memManageStruct.zonesLength++;
+		lstType1 = i;
     }
-    totPage = (memManageStruct.e820[memManageStruct.e820Length].addr + memManageStruct.e820[memManageStruct.e820Length].size) >> Page_4KShift;
+	printk(WHITE, BLACK, "kernel Zone:%d availVirtAddtSt:%#018lx\n", kernelZoneId, availVirtAddrSt);
+
+	memManageStruct.totMemSize = memManageStruct.e820[lstType1].addr + memManageStruct.e820[lstType1].size;
     // search for a place for building zones
-    u64 reqSize = upAlignTo(sizeof(Zone) * memManageStruct.zonesLength, sizeof(u64));
-    for (int i = 0; i <= memManageStruct.e820Length; i++) {
+    u64 reqSize = upAlignTo(sizeof(Zone) * memManageStruct.zonesLength, Page_4KSize);
+    for (int i = kernelZoneId; i <= memManageStruct.e820Length; i++) {
         E820 *e820 = memManageStruct.e820 + i;
         if (e820->type != 1) continue;
-        u64 availdSt = max((kernelZoneId == i ? (memManageStruct.edOfStruct - Init_virtAddrStart) : e820->addr), (u64)availVirtAddrSt - Init_virtAddrStart),
+        u64 availdSt = Page_4KUpAlign(i == kernelZoneId ? (u64)availVirtAddrSt - Init_virtAddrStart : e820->addr),
             ed = Page_4KDownAlign(e820->addr + e820->size);
         if (availdSt + reqSize >= ed) continue;
         // build the system in this zone
         memset(DMAS_phys2Virt(availdSt), 0, reqSize);
-		#ifdef DEBUG_MM
-        printk(ORANGE, BLACK, "Set the zone array on %#018lx\n", DMAS_phys2Virt(availdSt));
-		#endif
+		// #ifdef DEBUG_MM
+        printk(ORANGE, BLACK, "Set the zone array on zone %d\n", i);
+		// #endif
         memManageStruct.zones = DMAS_phys2Virt(availdSt);
         for (int j = 0, id = 0; j <= memManageStruct.e820Length; j++) {
             E820 *e820 = memManageStruct.e820 + j;
@@ -48,61 +51,53 @@ static void _initArray() {
             zone->phyAddrSt = Page_4KUpAlign(e820->addr);
             zone->phyAddrEd = Page_4KDownAlign(e820->addr + e820->size);
             zone->attribute = zone->phyAddrSt;
+			// for the zone before kernel zone, which is boot zone, should not be used.
             if (j < kernelZoneId) zone->attribute = zone->phyAddrEd;
-            if (zone->phyAddrSt <= (u64)availVirtAddrSt - Init_virtAddrStart && zone->phyAddrEd > (u64)availVirtAddrSt - Init_virtAddrStart)
-                zone->attribute = Page_4KUpAlign((u64)availVirtAddrSt - Init_virtAddrStart);
+			// for the zone that includes the kernel, should ignores the pages occupied by the kernel
+            else if (j == kernelZoneId) zone->attribute = Page_4KUpAlign((u64)availVirtAddrSt - Init_virtAddrStart);
             if (j == i) zone->attribute += reqSize;
 
-			if (zone->phyAddrSt <= HW_UEFI_bootParamInfo->memDesc && HW_UEFI_bootParamInfo->memDesc <= zone->phyAddrEd)
-				printk(WHITE, BLACK, "Crash...\n");
-			#ifdef DEBUG_MM
-            printk(WHITE, BLACK, "zone[%d]: phyAddr: [%#018lx, %#018lx], attribute = %#018lx\n", 
-                id, zone->phyAddrSt, zone->phyAddrEd, zone->attribute);
-			#endif
+			// #ifdef DEBUG_MM
+            printk(WHITE, BLACK, "zone[%d]: phyAddr: [%#018lx, %#018lx], attribute = %#018lx remain:%ld\n", 
+                id, zone->phyAddrSt, zone->phyAddrEd, zone->attribute, zone->phyAddrEd - zone->attribute);
+			// #endif
             id++;
         }
+		printk(WHITE, BLACK, "zones:%#018lx\n", memManageStruct.zones);
         goto SuccBuildZones;
     }
     printk(RED, BLACK, "Fail to build a zone array\n");
+	while (1) IO_hlt();
     return ;
     SuccBuildZones:
-    reqSize = upAlignTo(sizeof(Page) * totPage, sizeof(u64));
 	#ifdef DEBUG_MM
     printk(RED, BLACK, "%ld->%d\n", sizeof(Page) * totPage, reqSize);
 	#endif
-    memManageStruct.pagesLength = totPage;
-    for (int i = 1; i < memManageStruct.zonesLength; i++) {
-        Zone *zone = memManageStruct.zones + i;
-        if (zone->attribute + reqSize >= zone->phyAddrEd) continue;
-        memset(DMAS_phys2Virt(zone->attribute), 0, reqSize);
-		#ifdef DEBUG_ALLOC
-        printk(ORANGE, BLACK, "Set the page array on %#018lx, size = %#018lx\n", DMAS_phys2Virt(zone->attribute), reqSize);
-		#endif
-        memManageStruct.pages = DMAS_phys2Virt(zone->attribute);
-        zone->attribute = upAlignTo(zone->attribute + reqSize, sizeof(u64));
-        for (u64 j = 0; j < totPage; j++)
-            memManageStruct.pages[j].phyAddr = j * Page_4KSize;
-        goto SuccBuildPages;
-    }
-    printk(RED, BLACK, "Fail to build a page array\n");
-    return ;
-    SuccBuildPages:
-    // set the property "blgZone" of the pages
-    for (int i = 0; i < memManageStruct.zonesLength; i++) {
-        Zone *zone = memManageStruct.zones + i;
-        zone->pages = memManageStruct.pages + zone->phyAddrSt / Page_4KSize;
-        zone->pagesLength = (zone->phyAddrEd - zone->phyAddrSt) / Page_4KSize;
-        zone->usingCnt = Page_4KUpAlign(zone->attribute) / Page_4KSize - zone->phyAddrSt / Page_4KSize;
-        zone->freeCnt = zone->pagesLength - zone->usingCnt;
-        for (u64 j = 0; j < zone->usingCnt; j++)
-            zone->pages[j].attr = Page_Flag_Kernel | Page_Flag_KernelInit;
-        for (int i = 0; i < zone->pagesLength; i++) zone->pages[i].blgZone = zone;
-    }
-    return ;
+    // allocate page array for each zones
+	for (int i = 0; i < memManageStruct.zonesLength; i++) {
+		Zone *zone = memManageStruct.zones + i;
+		if (zone->attribute == zone->phyAddrEd) { zone->pages = NULL; continue; }
+		reqSize = (zone->phyAddrEd - zone->phyAddrSt) / Page_4KSize * sizeof(Page);
+		if (zone->attribute + reqSize >= zone->phyAddrEd) {
+			printk(RED, BLACK, "zone[%02d]: failed to create page array\n", i);
+			while (1) IO_hlt();
+		}
+		zone->pages = DMAS_phys2Virt(zone->attribute);
+		zone->pagesLength = (zone->phyAddrEd - zone->phyAddrSt) / Page_4KSize;
+		zone->attribute = Page_4KUpAlign(zone->attribute + reqSize);
+		zone->freeCnt = (zone->phyAddrEd - zone->attribute) / Page_4KSize;
+		zone->usingCnt = (zone->attribute - zone->phyAddrSt) / Page_4KSize;
+		printk(WHITE, BLACK, "zone[%02d](%#018lx): pages:%#018lx len:%ld reqSize:%#018lx attribute:%#018lx ed:%#018lx: usingCnt:%ld\n", 
+				i, zone, zone->pages, zone->pagesLength, reqSize, zone->attribute, zone->phyAddrEd, zone->usingCnt);
+
+		for (u64 j = 0; j < zone->pagesLength; j++) 
+			zone->pages[j].phyAddr = zone->phyAddrSt + (j << Page_4KShift),
+			zone->pages[j].attr = Page_Flag_Kernel | Page_Flag_KernelInit;
+	}
 }
 
 void MM_init() {
-    printk(RED, BLACK, "MM_init()\n");
+    // printk(RED, BLACK, "MM_init()\n");
     EFI_E820MemoryDescriptor *p = (EFI_E820MemoryDescriptor *)HW_UEFI_bootParamInfo->E820Info.entry;
     u64 totMem = 0;
     // printk(WHITE, BLACK, "Display Physics Address MAP,Type(1:RAM,2:ROM or Reserved,3:ACPI Reclaim Memory,4:ACPI NVS Memory,Others:Undefine)\n");
@@ -116,7 +111,6 @@ void MM_init() {
         p++;
         if (p->type > 4 || p->length == 0 || p->type < 1) break;
     }
-    memManageStruct.totMemSize = totMem;
 
     // get the total 4K pages
     totMem = 0;
@@ -152,16 +146,17 @@ inline void MM_Bs_setPageAttr(Page *page, u64 attr) { page->attr = attr; }
 inline u64 MM_Bs_getPageAttr(Page *page) { return page->attr; }
 
 Page *MM_Bs_alloc(u64 num, u64 attr) {
-    for (int i = 1; i < memManageStruct.zonesLength; i++) {
+	printk(YELLOW, BLACK, "MM_Bs_alloc(): num:%d->", num);
+    for (int i = 0; i < memManageStruct.zonesLength; i++) {
         Zone *zone = memManageStruct.zones + i;
         if (zone->freeCnt < num) continue;
         // check if there are enough continuous pages
         Page *stPage = zone->pages + zone->usingCnt;
         zone->usingCnt += num;
-        u64 bitPos = stPage - memManageStruct.pages;
         // set the attribute of the pages
         for (int j = 0; j < num; j++) 
             MM_Bs_setPageAttr(stPage + j, attr);
+		printk(WHITE, BLACK, "stPage:%018lx\n", stPage);
         return stPage;
     }
     return NULL;

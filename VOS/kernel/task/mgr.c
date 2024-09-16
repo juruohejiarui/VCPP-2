@@ -242,6 +242,7 @@ TaskStruct *Task_createTask(Task_Entry entry, void *arg1, u64 arg2, u64 flag) {
     task->pid = Task_pidCounter++;
 	// printk(WHITE, BLACK, "pid:%ld ", task->pid);
     task->mem->pgdPhyAddr = pgdPhyAddr;
+	task->mem->tskPage = tskStructPage;
 	task->state = Task_State_Uninterruptible;
 
 	memset(task->tss, 0, sizeof(TSS));
@@ -392,8 +393,7 @@ void Task_recycleThread(void *arg1, u64 arg2) {
             MM_PageTable_cleanMap(tsk->mem->pgdPhyAddr);
 			kfree(tsk->simdRegs, 0); 
             // free the page of the task structure
-            Page *tskPage = memManageStruct.pages + (DMAS_virt2Phys(tsk) >> Page_4KShift);
-            MM_Buddy_free(tskPage);
+            MM_Buddy_free(tsk->mem->tskPage);
         } else Atomic_dec(&Task_cfsStruct.recycTskState);
 		IO_hlt();
     }

@@ -78,6 +78,7 @@ void MM_Buddy_init() {
             Page *page = MM_Bs_alloc(1, Page_Flag_Active | Page_Flag_Kernel | Page_Flag_KernelInit);
             if (page == NULL) {
                 printk(RED, BLACK, "MM_Buddy_init() failed to allocate memory for bitmap\n");
+				while (1) IO_hlt();
                 return;
             }
             for (int j = 0; j < numOfOnePage  && i + j < Buddy_maxOrder; j++)
@@ -92,7 +93,8 @@ void MM_Buddy_init() {
             Page *page = MM_Bs_alloc(regPage, Page_Flag_Active | Page_Flag_Kernel | Page_Flag_KernelInit);
             if (page == NULL) {
                 printk(RED, BLACK, "MM_Buddy_init() failed to allocate memory for bitmap\n");
-                return;
+                while (1) IO_hlt();
+				return ;
             }
             mmStruct.bitmap[i] = DMAS_phys2Virt(page->phyAddr);
         }
@@ -103,13 +105,15 @@ void MM_Buddy_init() {
     // initialize the free list
     for (int i = 1; i < memManageStruct.zonesLength; i++) {
         Zone *zone = memManageStruct.zones + i;
+		printk(WHITE, BLACK, "zone[%02d]:", i);
         if (zone->usingCnt == zone->pagesLength) continue;
         u64 pgPos = zone->usingCnt;
 		while (pgPos < zone->pagesLength) {
 			Page *headPage = zone->pages + pgPos;
-			u64 ord = min(log2(lowbit(headPage->phyAddr)) - 12, Buddy_maxOrder);
+			u64 ord = min(max(Bit_ffs(lowbit(headPage->phyAddr)) - 13, 0), Buddy_maxOrder);
 			while (pgPos + (1ul << ord) > zone->pagesLength) ord--;
 			headPage->attr = Page_Flag_BuddyHeadPage;
+			printk(WHITE, BLACK, "(%#018lx,%2d)", headPage->phyAddr, ord);
 			MM_Buddy_setOrder(headPage, ord);
 			List_init(&headPage->listEle);
 			headPage->buddyId = 1;
@@ -117,6 +121,7 @@ void MM_Buddy_init() {
 			pgPos += (1ul << ord);
 			memManageStruct.totMemSize += (1 << (ord + Page_4KShift));
 		}
+		printk(WHITE, BLACK, "\n");
     }
 }
 

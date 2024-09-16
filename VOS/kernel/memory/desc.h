@@ -45,13 +45,14 @@ extern char _end;
 #define Page_Flag_ShareK2U      (1ul << 3)
 #define Page_Flag_BuddyHeadPage (1ul << 4)
 #define Page_Flag_KernelShare   (1ul << 5)
+#define Page_Flag_MMU			(1ul << 6)
 
 #define userAddrStart   0x0000000000000000ul
 #define userAddrEd      0x00007ffffffffffful
 #define kernelAddrStart 0xffff800000000000ul
 #define kernelAddrEd    0xfffffffffffffffful
 
-#define availVirtAddrSt ((u64 *)Page_4KUpAlign(0xffff800003000000ul + HW_UEFI_bootParamInfo->graphicsInfo.FrameBufferSize))
+#define availVirtAddrSt ((u64 *)Page_4KUpAlign((u64)memManageStruct.edOfStruct))
 
 #define Segment_kernelData 0x10
 #define Segment_kernelCode 0x18
@@ -60,21 +61,20 @@ extern char _end;
 
 struct Page {
     u64 phyAddr;
-    u32 attr;
-    u32 buddyId;
+    u16 attr;
+    u16 buddyId;
     List listEle;
-    struct tmpZone *blgZone;
-} __attribute__ ((packed));
+};
 typedef struct Page Page;
 
-struct tmpZone {
+struct Zone {
     u64 phyAddrSt, phyAddrEd;
     Page *pages;
     u64 pagesLength;
     u64 attribute;
     u64 freeCnt, usingCnt;
 };
-typedef struct tmpZone Zone;
+typedef struct Zone Zone;
 
 typedef struct {
     u64 addr;
@@ -86,15 +86,12 @@ struct GlobalMemManageStruct {
     E820 e820[32];
     u32 e820Length;
 
-    Page *pages;
     Zone *zones;
-    u64 pagesLength;
     u64 zonesLength;
-    u64 pagesSize;
     u64 zonesSize;
 
     u64 edOfStruct;
-    u64 totMemSize;
+	u64 totMemSize;
 };
 
 extern struct GlobalMemManageStruct memManageStruct;

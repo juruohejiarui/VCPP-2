@@ -73,7 +73,8 @@ void MM_Slab_init() {
 
     Page *page = MM_Buddy_alloc(log2Size, Page_Flag_Kernel | Page_Flag_KernelShare);
     if (page == NULL) {
-        printk(RED, BLACK, "MM_Slab_init: MM_Buddy_alloc failed\n");
+        printk(RED, BLACK, "MM_Slab_init: MM_Buddy_alloc for slab root failed\n");
+		while (1) IO_hlt();
         return ;
     }
     u64 virtAddr = (u64)DMAS_phys2Virt(page->phyAddr);
@@ -85,8 +86,9 @@ void MM_Slab_init() {
         // initial the information for the first slab of this cache
         Slab_kmallocCache[i].slabs->page = alloc2MPage();
         if (Slab_kmallocCache[i].slabs->page == NULL) {
-            printk(RED, BLACK, "MM_Slab_init: MM_Buddy_alloc failed\n");
+            printk(RED, BLACK, "MM_Slab_init: MM_Buddy_alloc() for slabs failed\n");
             MM_Buddy_free(page);
+			while (1) IO_hlt();
             return ;
         }
         Slab_kmallocCache[i].slabs->usingCnt = 0, Slab_kmallocCache[i].slabs->freeCnt = Page_2MSize / Slab_kmallocCache[i].size;

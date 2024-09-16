@@ -5,9 +5,9 @@
 
 #define NULL ((void *)0)
 
-void *memset(void *addr, u8 dt, u64 size);
+void *memset(void *addr, u8 dt, i64 size);
 void *memcpy(void *src, void *dst, i64 size);
-int memcmp(void *fir, void *sec, u64 size);
+int memcmp(void *fir, void *sec, i64 size);
 
 i64 strlen(u8 *str);
 

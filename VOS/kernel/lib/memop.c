@@ -1,7 +1,7 @@
 #include "memop.h"
 #include "../includes/log.h"
 
-void *memset(void *addr, u8 dt, u64 size) {
+void *memset(void *addr, u8 dt, i64 size) {
 	int d0, d1;
 	u64 tmp = dt * 0x0101010101010101UL;
 	__asm__ volatile (
@@ -48,7 +48,7 @@ void *memcpy(void *src, void *dst, i64 num)
 	return dst;
 }
 
-int memcmp(void *fir, void *sec, u64 size) {
+int memcmp(void *fir, void *sec, i64 size) {
 	register int res;
 	__asm__ volatile (
 		"cld			\n\t"
