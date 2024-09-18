@@ -22,8 +22,8 @@ void SIMD_enable() {
 	// printk(WHITE, BLACK, "enable SIMD on processor %d\n", SMP_getCurCPUIndex());
 	u32 a, b, c, d;
 	HW_CPU_cpuid(0x01, 0, &a, &b, &c, &d);
-	if (!(c & (1u << 26))) { printk(RED, BLACK, "SIMD: no xsave support.\n"); return ; }
-	if (!(c & (1u << 28))) { printk(RED, BLACK, "SIMD: no AVX support.\n"); return ; }
+	if (!(c & (1u << 26))) { printk(RED, BLACK, "SIMD: no xsave support.\n"); while (1) IO_hlt(); return ; }
+	if (!(c & (1u << 28))) { printk(RED, BLACK, "SIMD: no AVX support.\n"); while (1) IO_hlt(); return ; }
 	// set Monitor Coprocessor flag (bit 1) and Numeric Error flag (bit 5) of cr0
 	u64 cr0 = IO_getCR(0);
 	IO_setCR(0, cr0 | (1ul << 1) | (1ul << 5) | (1ul << 16));

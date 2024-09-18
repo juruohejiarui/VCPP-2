@@ -108,13 +108,14 @@ void HW_USB_HID_processMouse(XHCI_Device *dev, XHCI_InterDesc *inter, USB_HID_Pa
 }
 
 void HW_USB_HID_processKeyboard(XHCI_Device *dev, XHCI_InterDesc *inter, USB_HID_ParseHelper *helper, int inEpId, int outEpId, int inInterval) {
-	XHCI_Request *req0 = HW_USB_XHCI_allocReq(1);
+	XHCI_Request *req0;
+	req0 = HW_USB_XHCI_allocReq(1);
 	u8 *repRaw = kmalloc(0xff, Slab_Flag_Private | Slab_Flag_Clear, NULL);
 	USB_HID_Report *rep = kmalloc(sizeof(USB_HID_Report), Slab_Flag_Private | Slab_Flag_Private, NULL);
 
 	HW_USB_XHCI_TRB_setData(&req0->trb[0], DMAS_virt2Phys(repRaw));
 	HW_USB_XHCI_TRB_setType(&req0->trb[0], XHCI_TRB_Type_Normal);
-	HW_USB_XHCI_TRB_setCtrlBit(&req0->trb[0], XHCI_TRB_Ctrl_ioc | XHCI_TRB_Ctrl_noSnoop);
+	HW_USB_XHCI_TRB_setCtrlBit(&req0->trb[0], XHCI_TRB_Ctrl_ioc);
 
 	repRaw[0] = (1 << 4);
 	// set SET_REPORT to enable default led

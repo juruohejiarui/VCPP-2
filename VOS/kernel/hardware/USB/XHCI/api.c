@@ -263,8 +263,8 @@ u32 HW_USB_XHCI_EpCtx_getMxPackSize0(u32 speed) {
 	switch (speed) {
 		case XHCI_Port_Speed_Super :	return 512;
 		case XHCI_Port_Speed_Low : 		return 8;
-		case XHCI_Port_Speed_High : 
-		case XHCI_Port_Speed_Full :		return 64;
+		case XHCI_Port_Speed_Full : 	
+		case XHCI_Port_Speed_High : 	return 64;
 	}
 	return 512;
 }

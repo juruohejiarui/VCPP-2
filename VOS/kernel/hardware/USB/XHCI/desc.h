@@ -321,7 +321,7 @@ typedef struct XHCI_Host {
 	XHCI_GenerTRB **eveQue;
 	#define XHCI_Host_EveQueSize 1024
 	int *eveQueHdr, *eveQueTil, *eveQueLen;
-	SpinLock *eveLock;
+	SpinLock *eveLock, addr0Lock;
 
 	XHCI_Device **dev;
 } XHCI_Host;

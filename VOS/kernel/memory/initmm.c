@@ -18,7 +18,9 @@ static void _initArray() {
     memManageStruct.zonesLength = 0;
     for (int i = 0; i <= memManageStruct.e820Length; i++) {
         E820 *e820 = memManageStruct.e820 + i;
+		#ifdef DEBUG_MM
 		printk(YELLOW, BLACK, "e820[%02d]: addr:%#018lx len:%#018lx type:%#018lx\n", i, e820->addr, e820->size, e820->type);
+		#endif
         if (e820->type != 1) continue;
         u64 st = Page_4KUpAlign(e820->addr), ed = Page_4KDownAlign(e820->addr + e820->size);
         if (st >= ed) continue;
@@ -40,9 +42,9 @@ static void _initArray() {
         if (availdSt + reqSize >= ed) continue;
         // build the system in this zone
         memset(DMAS_phys2Virt(availdSt), 0, reqSize);
-		// #ifdef DEBUG_MM
+		#ifdef DEBUG_MM
         printk(ORANGE, BLACK, "Set the zone array on zone %d\n", i);
-		// #endif
+		#endif
         memManageStruct.zones = DMAS_phys2Virt(availdSt);
         for (int j = 0, id = 0; j <= memManageStruct.e820Length; j++) {
             E820 *e820 = memManageStruct.e820 + j;
@@ -57,10 +59,10 @@ static void _initArray() {
             else if (j == kernelZoneId) zone->attribute = Page_4KUpAlign((u64)availVirtAddrSt - Init_virtAddrStart);
             if (j == i) zone->attribute += reqSize;
 
-			// #ifdef DEBUG_MM
+			#ifdef DEBUG_MM
             printk(WHITE, BLACK, "zone[%d]: phyAddr: [%#018lx, %#018lx], attribute = %#018lx remain:%ld\n", 
                 id, zone->phyAddrSt, zone->phyAddrEd, zone->attribute, zone->phyAddrEd - zone->attribute);
-			// #endif
+			#endif
             id++;
         }
 		printk(WHITE, BLACK, "zones:%#018lx\n", memManageStruct.zones);
@@ -87,8 +89,11 @@ static void _initArray() {
 		zone->attribute = Page_4KUpAlign(zone->attribute + reqSize);
 		zone->freeCnt = (zone->phyAddrEd - zone->attribute) / Page_4KSize;
 		zone->usingCnt = (zone->attribute - zone->phyAddrSt) / Page_4KSize;
+		
+		#ifdef DEBUG_MM
 		printk(WHITE, BLACK, "zone[%02d](%#018lx): pages:%#018lx len:%ld reqSize:%#018lx attribute:%#018lx ed:%#018lx: usingCnt:%ld\n", 
 				i, zone, zone->pages, zone->pagesLength, reqSize, zone->attribute, zone->phyAddrEd, zone->usingCnt);
+		#endif
 
 		for (u64 j = 0; j < zone->pagesLength; j++) 
 			zone->pages[j].phyAddr = zone->phyAddrSt + (j << Page_4KShift),
@@ -146,7 +151,6 @@ inline void MM_Bs_setPageAttr(Page *page, u64 attr) { page->attr = attr; }
 inline u64 MM_Bs_getPageAttr(Page *page) { return page->attr; }
 
 Page *MM_Bs_alloc(u64 num, u64 attr) {
-	printk(YELLOW, BLACK, "MM_Bs_alloc(): num:%d->", num);
     for (int i = 0; i < memManageStruct.zonesLength; i++) {
         Zone *zone = memManageStruct.zones + i;
         if (zone->freeCnt < num) continue;
@@ -156,7 +160,6 @@ Page *MM_Bs_alloc(u64 num, u64 attr) {
         // set the attribute of the pages
         for (int j = 0; j < num; j++) 
             MM_Bs_setPageAttr(stPage + j, attr);
-		printk(WHITE, BLACK, "stPage:%018lx\n", stPage);
         return stPage;
     }
     return NULL;

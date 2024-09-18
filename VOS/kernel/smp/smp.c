@@ -17,7 +17,7 @@ static u32 _cvtId(u32 topoIdx) {
 	if (!SMP_cpuNum) return 0;
 	int l = 0, r = SMP_cpuNum - 1;
 	while (l <= r) {
-		int mid = (l + r) >> 1, idx = SMP_cpuInfo[mid].cpuId;
+		int mid = (l + r) >> 1, idx = SMP_cpuInfo[mid].apicID;
 		if (idx == topoIdx) return mid;
 		if (idx < topoIdx) l = mid + 1;
 		else r = mid - 1;
@@ -30,7 +30,7 @@ u32 SMP_registerCPU(u32 topoIdx) {
     SpinLock_lock(&_lock);
 	SMP_CPUInfoPkg *pkg = &SMP_cpuInfo[SMP_cpuNum++];
 	memset(pkg, 0, sizeof(SMP_CPUInfoPkg));
-	pkg->cpuId = topoIdx;
+	pkg->apicID = topoIdx;
     SpinLock_unlock(&_lock);
     // is BSP
     if (SMP_cpuNum == 1) {
@@ -94,6 +94,7 @@ static int _parseMADT() {
 			#undef skip
 		}
 	}
+	printk(WHITE, BLACK, "SMP: processor num: %d\n", SMP_cpuNum);
 	return 1;
 }
 
@@ -126,18 +127,20 @@ void SMP_init() {
 	icr.DestShorthand = HW_APIC_DestShorthand_AllExcludingSelf;
 	icr.dest.x2Apic = 0;
 	IO_writeMSR(0x830, *(u64 *)&icr);
+	printk(WHITE, BLACK, "SMP: init-IPI #1 sent\n");
 
 	for (int i = 1; i < SMP_cpuNum; i++) {
 		icr.vector = 0x20;
 		icr.deliverMode = HW_APIC_DeliveryMode_Startup;
 		icr.DestShorthand = HW_APIC_DestShorthand_None;
-		icr.dest.x2Apic = SMP_cpuInfo[i].cpuId;
+		icr.dest.x2Apic = SMP_cpuInfo[i].apicID;
 		
 		IO_writeMSR(0x830, *(u64 *)&icr);
 		IO_writeMSR(0x830, *(u64 *)&icr);
 		while (!(SMP_cpuInfo[i].flags & SMP_CPUInfo_flag_APUInited))
 			IO_hlt();
 	}
+	printk(WHITE, BLACK, "SMP: init-IPI #2 sent\n");
 	MM_PageTable_cleanTmpMap();
 	Intr_register(0xc8, NULL, SMP_irq0xc8Handler, 0, NULL, "SMP IPI 0xc8");
 }
@@ -152,7 +155,7 @@ void SMP_sendIPI(int cpuId, u32 vector, void *msg) {
 	icr.destMode = HW_APIC_DestMode_Physical;
 	icr.triggerMode = HW_APIC_TriggerMode_Edge;
 	icr.DestShorthand = HW_APIC_DestShorthand_None;
-	icr.dest.x2Apic = SMP_cpuInfo[cpuId].cpuId;
+	icr.dest.x2Apic = SMP_cpuInfo[cpuId].apicID;
 	IO_writeMSR(0x830, *(u64 *)&icr);
 }
 

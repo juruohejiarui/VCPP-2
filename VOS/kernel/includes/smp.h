@@ -68,7 +68,7 @@ typedef struct MADTDescriptor {
 
 typedef struct SMP_CPUInfoPkg {
 	// the topo index of this processor
-	u32 cpuId;
+	u32 apicID;
 	u32 trIdx;
 	u64 *initStk;
 	TaskStruct *simdRegDomain;

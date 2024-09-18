@@ -51,6 +51,11 @@ void HW_USB_XHCI_init(PCIeManager *pci) {
 			break;
 		}
 	}
+	if (!host->msiCapDesc) {
+		printk(RED, BLACK, "XHCI %#018lx: no MSI support.\n", host);
+		kfree(host, 0);
+		return ;
+	}
 	printk(WHITE, BLACK, "vendor:%04x device:%04x revision:%04x\n", pci->cfg->vendorID, pci->cfg->devID, pci->cfg->revID);
 	if (pci->cfg->vendorID == 0x8086 && pci->cfg->devID == 0x1e31 && pci->cfg->revID == 4) {
 		*(u32 *)((u64)pci->cfg + 0xd8) = 0xffffffff;
@@ -88,6 +93,8 @@ void HW_USB_XHCI_init(PCIeManager *pci) {
 		return ;
 	}
 	HW_USB_XHCI_waiForHostIsReady(host);
+
+	SpinLock_init(&host->addr0Lock);
 
 	// set max slot field of config register
 	HW_USB_XHCI_writeOpReg(host, XHCI_OpReg_cfg, 
@@ -202,7 +209,7 @@ void HW_USB_XHCI_init(PCIeManager *pci) {
 	}
 	printk(WHITE, BLACK, "XHCI: %#018lx: msiCtrl:%#06x -> get interrupt vector: %#04x~%#04x on processor %d\n", 
 		host, host->msiCapDesc->msgCtrl, vecSt, vecSt + vecNum - 1, cpuId);
-	HW_PCIe_MSI_setMsgAddr(host->msiCapDesc, SMP_getCPUInfoPkg(cpuId)->cpuId, 0, HW_APIC_DestMode_Physical);
+	HW_PCIe_MSI_setMsgAddr(host->msiCapDesc, SMP_getCPUInfoPkg(cpuId)->apicID, 0, HW_APIC_DestMode_Physical);
 	HW_PCIe_MSI_setMsgData(host->msiCapDesc, vecSt, HW_APIC_DeliveryMode_Fixed, HW_APIC_Level_Assert, HW_APIC_TriggerMode_Edge);
 	// allocate the MSI interrupt descriptor
 	host->msiDesc = kmalloc(sizeof(PCIe_MSI_Descriptor) * vecNum, Slab_Flag_Clear, NULL);
@@ -241,9 +248,8 @@ void HW_USB_XHCI_init(PCIeManager *pci) {
 	// restart the host
 	HW_USB_XHCI_writeOpReg(host, XHCI_OpReg_cmd, (1 << 0) | (1 << 2) | (1 << 3));
 
-	printk(WHITE, BLACK, "XHCI: %#018lx: command ring control: %#018lx\n", host, DMAS_virt2Phys(host->cmdRing->ring) | 1);
-
-	printk(WHITE, BLACK, "XHCI: %#018lx: finish initialization. host cmd:%#010x\n", host, HW_USB_XHCI_readOpReg(host, XHCI_OpReg_cmd));
+	printk(WHITE, BLACK, "XHCI: %#018lx: finish initialization. host cmd:%#010x state:%#010x\n", 
+			host, HW_USB_XHCI_readOpReg(host, XHCI_OpReg_cmd), HW_USB_XHCI_readOpReg(host, XHCI_OpReg_status));
 }
 
 IntrHandlerDeclare(HW_USB_XHCI_msiHandler) {
@@ -373,15 +379,18 @@ void HW_USB_XHCI_devMgrTask(XHCI_Device *dev, u64 rootPort) {
 		dev->host->dev[dev->slotId] = dev;
 		dev->ctx = dev->host->devCtx[dev->slotId];
 		printk(GREEN, BLACK, "dev %#018lx on slot %d\n", dev, dev->slotId);
-	}	 
+	}
+	SpinLock_lock(&dev->host->addr0Lock);
 	// create input context structure
 	{
 		req0->flags = 0;
 		HW_USB_XHCI_TRB_setType(&req0->trb[0], XHCI_TRB_Type_AddrDev);
 		HW_USB_XHCI_TRB_setSlot(&req0->trb[0], dev->slotId);
+		// set BSR bit
+		HW_USB_XHCI_TRB_setBSR(&req0->trb[0], 1);
 		
-		dev->inCtx = kmalloc(sizeof(XHCI_InputCtx), Slab_Flag_Clear | Slab_Flag_Private, NULL);
-		dev->inCtx->ctrl.addFlags |= (1 << 1) | (1 << 0);
+		dev->inCtx = kmalloc(0x800, Slab_Flag_Clear | Slab_Flag_Private, NULL);
+		dev->inCtx->ctrl.addFlags = (1 << 0) | (1 << 1);
 		{
 			XHCI_SlotCtx *slot = &dev->inCtx->slot;
 			HW_USB_XHCI_writeCtx(slot, 0, XHCI_SlotCtx_ctxEntries, 1);
@@ -406,6 +415,7 @@ void HW_USB_XHCI_devMgrTask(XHCI_Device *dev, u64 rootPort) {
 			HW_USB_XHCI_writeCtx(ep0, 4, XHCI_EpCtx_aveTrbLen, 8);
 		}
 		HW_USB_XHCI_TRB_setData(&req0->trb[0], DMAS_virt2Phys(dev->inCtx));
+		
 		HW_USB_XHCI_Ring_insReq(dev->host->cmdRing, req0);
 		if (HW_USB_XHCI_Req_ringDbWait(dev->host, 0, 0, 0, req0) != XHCI_TRB_CmplCode_Succ) {
 			printk(RED, BLACK, "dev:%#018lx failed to address device, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req0->res));

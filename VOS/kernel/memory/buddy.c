@@ -105,7 +105,6 @@ void MM_Buddy_init() {
     // initialize the free list
     for (int i = 1; i < memManageStruct.zonesLength; i++) {
         Zone *zone = memManageStruct.zones + i;
-		printk(WHITE, BLACK, "zone[%02d]:", i);
         if (zone->usingCnt == zone->pagesLength) continue;
         u64 pgPos = zone->usingCnt;
 		while (pgPos < zone->pagesLength) {
@@ -113,7 +112,6 @@ void MM_Buddy_init() {
 			u64 ord = min(max(Bit_ffs(lowbit(headPage->phyAddr)) - 13, 0), Buddy_maxOrder);
 			while (pgPos + (1ul << ord) > zone->pagesLength) ord--;
 			headPage->attr = Page_Flag_BuddyHeadPage;
-			printk(WHITE, BLACK, "(%#018lx,%2d)", headPage->phyAddr, ord);
 			MM_Buddy_setOrder(headPage, ord);
 			List_init(&headPage->listEle);
 			headPage->buddyId = 1;
@@ -121,7 +119,6 @@ void MM_Buddy_init() {
 			pgPos += (1ul << ord);
 			memManageStruct.totMemSize += (1 << (ord + Page_4KShift));
 		}
-		printk(WHITE, BLACK, "\n");
     }
 }
 
