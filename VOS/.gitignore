@@ -3,4 +3,6 @@
 /kernel/kernel.bin
 /kernel/system
 /kernel/system_tmp
+/Tools/kallsyms
+/Tools/kallsyms.S
 /gcc-4.7
