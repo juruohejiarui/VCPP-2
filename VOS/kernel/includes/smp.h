@@ -78,7 +78,7 @@ typedef struct SMP_CPUInfoPkg {
 	IDTItem *idtTable;
 	u64 intrMsk[4];
 	IntrDescriptor *intrDesc[0x40];
-	u64 flags;
+	volatile u64 flags;
 	void *ipiMsg;
 } __attribute__ ((packed)) SMP_CPUInfoPkg;
 

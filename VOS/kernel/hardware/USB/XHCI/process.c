@@ -208,8 +208,7 @@ void HW_USB_XHCI_init(PCIeManager *pci) {
 	if (host->msixCapDesc) {
 		int vecNum = host->msixCapDesc->msgCtrl & ((1u << 11) - 1);
 		PCIe_MSIX_Table *tbl = HW_PCIe_MSIX_getTable(host->pci->cfg, host->msixCapDesc);
-		printk(WHITE, BLACK, "XHCI: %#018lx: msix:%#018lx vecNum:%d msgCtrl:%#010x host->state:%#010x\n", 
-				host, tbl, vecNum + 1, host->msixCapDesc->msgCtrl, HW_USB_XHCI_readOpReg(host, XHCI_OpReg_status));
+		printk(WHITE, BLACK, "XHCI: %#018lx: msix:%#018lx vecNum:%d msgCtrl:%#010x\n", host, tbl, vecNum + 1, host->msixCapDesc->msgCtrl);
 		host->msiDesc = kmalloc(sizeof(PCIe_MSI_Descriptor) * (vecNum + 1), Slab_Flag_Clear, NULL);
 		for (int i = 0; i <= vecNum; i++) {
 			int cpuId; u8 vec;
@@ -223,7 +222,6 @@ void HW_USB_XHCI_init(PCIeManager *pci) {
 			HW_PCIe_MSIX_setMsgData(tbl, i, vec, HW_APIC_DeliveryMode_Fixed, HW_APIC_Level_Deassert, HW_APIC_TriggerMode_Edge);
 			HW_PCIe_MSI_initDesc(&host->msiDesc[i], cpuId, vec, HW_USB_XHCI_msiHandler, (u64)host | i);
 			HW_PCIe_MSI_setIntr(&host->msiDesc[i]);
-			printk(WHITE, BLACK, "\tmsix %d: cpu:%d vec:%d\n", i, cpuId, vec);
 		}
 	} else {
 		// register MSI register
@@ -273,8 +271,7 @@ void HW_USB_XHCI_init(PCIeManager *pci) {
 	if (host->msixCapDesc) {
 		PCIe_MSIX_Table *tbl = HW_PCIe_MSIX_getTable(host->pci->cfg, host->msixCapDesc);
 		int vecNum = (host->msixCapDesc->msgCtrl) & ((1u << 11) - 1);
-		// for (int i = 1; i <= vecNum; i++) HW_PCIe_MSIX_maskIntr(tbl, i);
-		HW_PCIe_MSIX_unmaskIntr(tbl, 0);
+		for (int i = 0; i <= vecNum; i++) HW_PCIe_MSIX_unmaskIntr(tbl, i);
 		host->msixCapDesc->msgCtrl |= (1u << 15);
 	} else {
 		// disable mask
@@ -420,14 +417,12 @@ void HW_USB_XHCI_devMgrTask(XHCI_Device *dev, u64 rootPort) {
 		dev->ctx = dev->host->devCtx[dev->slotId];
 		printk(GREEN, BLACK, "dev %#018lx on slot %d\n", dev, dev->slotId);
 	}
-	SpinLock_lock(&dev->host->addr0Lock);
 	// create input context structure
 	{
 		req0->flags = 0;
 		HW_USB_XHCI_TRB_setType(&req0->trb[0], XHCI_TRB_Type_AddrDev);
 		HW_USB_XHCI_TRB_setSlot(&req0->trb[0], dev->slotId);
 		// set BSR bit
-		HW_USB_XHCI_TRB_setBSR(&req0->trb[0], 1);
 		
 		dev->inCtx = kmalloc(0x800, Slab_Flag_Clear | Slab_Flag_Private, NULL);
 		dev->inCtx->ctrl.addFlags = (1 << 0) | (1 << 1);
@@ -460,6 +455,7 @@ void HW_USB_XHCI_devMgrTask(XHCI_Device *dev, u64 rootPort) {
 		if (HW_USB_XHCI_Req_ringDbWait(dev->host, 0, 0, 0, req0) != XHCI_TRB_CmplCode_Succ) {
 			printk(RED, BLACK, "dev:%#018lx failed to address device, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req0->res));
 			dev->mgrTask = NULL;
+			SpinLock_unlock(&dev->host->addr0Lock);
 			Task_setSignal(Task_current, Task_Signal_Int);
 			while (1) IO_hlt();
 		}
@@ -483,18 +479,16 @@ void HW_USB_XHCI_devMgrTask(XHCI_Device *dev, u64 rootPort) {
 	if (val != HW_USB_XHCI_EpCtx_getMxPackSize0(speed))
 		// modify the control endpoint context and update evaluate context command to update
 		HW_USB_XHCI_writeCtx(&dev->inCtx->ep[0], 1, XHCI_EpCtx_mxPackSize, val);
-	
-	HW_USB_XHCI_Ring_reset(dev->trRing[0]);
-	HW_USB_XHCI_TRB_setBSR(&req0->trb[0], 0);
+	HW_USB_XHCI_TRB_setType(&req0->trb[0], XHCI_TRB_Type_EvalCtx);
 	HW_USB_XHCI_Ring_insReq(dev->host->cmdRing, req0);
 	if (HW_USB_XHCI_Req_ringDbWait(dev->host, 0, 0, 0, req0) != XHCI_TRB_CmplCode_Succ) {
-		printk(RED, BLACK, "dev %#018lx: failed to address device with BSR=0, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req1->res));
+		printk(RED, BLACK, "dev %#018lx: failed to evaluate context, code=%d\n", dev, HW_USB_XHCI_TRB_getCmplCode(&req1->res));
 		dev->mgrTask = NULL;
 		Task_setSignal(Task_current, Task_Signal_Int);
+
 		while (1) IO_hlt();
 	}
 	printk(GREEN, BLACK, "dev %#018lx address deivce with successfully\n", dev);
-	SpinLock_unlock(&dev->host->addr0Lock);
 	
 	// get the full device descriptor
 	HW_USB_XHCI_TRB_setData(&req1->trb[0], 	HW_USB_XHCI_TRB_mkSetup(0x80, 0x6, 0x0100, 0x0, 0xff));

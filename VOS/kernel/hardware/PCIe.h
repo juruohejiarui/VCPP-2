@@ -141,7 +141,7 @@ void HW_PCIe_MSI_setMsgAddr(PCIe_MSICapability *msi, u32 apicId, int redirect, i
 void HW_PCIe_MSI_setMsgData(PCIe_MSICapability *msi, u32 vec, u32 deliverMode, u32 level, u32 triggerMode);
 
 static __always_inline__ PCIe_MSIX_Table *HW_PCIe_MSIX_getTable(PCIeConfig *cfg, PCIe_MSIXCapability *cap) {
-	return DMAS_phys2Virt((*(u64 *)&cfg->type.type0.bar[PCIe_MSIXCapability_bir(cap)]) + PCIe_MSIXCapability_tblOff(cap));
+	return DMAS_phys2Virt((*(u64 *)&cfg->type.type0.bar[PCIe_MSIXCapability_bir(cap)] & ~0xf) + PCIe_MSIXCapability_tblOff(cap));
 }
 void HW_PCIe_MSIX_setMsgAddr(PCIe_MSIX_Table *tbl, int intrId, u32 apicId, int redirect, int destMode);
 void HW_PCIe_MSIX_setMsgData(PCIe_MSIX_Table *tbl, int intrId, u32 vec, u32 deliverMode, u32 level, u32 triggerMode);

@@ -132,7 +132,7 @@ void SMP_init() {
 	icr.DestShorthand = HW_APIC_DestShorthand_AllExcludingSelf;
 	icr.dest.x2Apic = 0;
 	IO_writeMSR(0x830, *(u64 *)&icr);
-	printk(WHITE, BLACK, "SMP: init-IPI #1 sent\n");
+	printk(WHITE, BLACK, "SMP: init-IPI sent\n"); 
 
 	for (int i = 1; i < SMP_cpuNum; i++) {
 		icr.vector = 0x20;
@@ -145,7 +145,7 @@ void SMP_init() {
 		while (!(SMP_cpuInfo[i].flags & SMP_CPUInfo_flag_APUInited))
 			IO_hlt();
 	}
-	printk(WHITE, BLACK, "SMP: init-IPI #2 sent\n");
+	printk(WHITE, BLACK, "SMP: startUp-IPI sent\n");
 	MM_PageTable_cleanTmpMap();
 	Intr_register(0xc8, NULL, SMP_irq0xc8Handler, 0, NULL, "SMP IPI 0xc8");
 }
