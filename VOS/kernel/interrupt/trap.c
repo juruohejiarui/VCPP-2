@@ -71,7 +71,7 @@ void _backtrace(PtReg *regs)
 	{
 		if (_lookupKallsyms(ret_address, i))
 			break; 
-		if ((u64)rbp < (u64)regs->rsp || (u64)rbp > Task_current->thread->rsp)
+		if ((u64)rbp < (u64)regs->rsp || (u64)rbp > Task_kernelStackEnd)
 			break;
 
 		ret_address = *(rbp + 1);

@@ -94,8 +94,8 @@ typedef struct TaskStruct {
     TaskMemStruct *mem;
 	TSS *tss;
     u64 flags;
-    i64 pid, vRunTime;
-	i64 cpuId;
+    i64 vRunTime;
+	i32 pid, cpuId;
 	u64 signal, priority;
 
 	RBTree timerTree;

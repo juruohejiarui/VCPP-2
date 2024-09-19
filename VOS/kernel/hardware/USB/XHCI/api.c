@@ -83,6 +83,7 @@ XHCI_Ring *HW_USB_XHCI_allocRing(u64 size) {
 	ring->reqSrc = kmalloc(sizeof(XHCI_Request *) * size, Slab_Flag_Clear, NULL);
 	ring->cur = ring->ring;
 	ring->cycBit = 1;
+	ring->size = size;
 	SpinLock_init(&ring->lock);
 	return ring;
 }
@@ -137,6 +138,17 @@ int HW_USB_XHCI_Ring_tryInsReq(XHCI_Ring *ring, XHCI_Request *req) {
 // try to insert the request into the ring until successful.
 void HW_USB_XHCI_Ring_insReq(XHCI_Ring *ring, XHCI_Request *req) {
 	while (!HW_USB_XHCI_Ring_tryInsReq(ring, req)) IO_hlt();
+}
+
+void HW_USB_XHCI_Ring_reset(XHCI_Ring *ring) {
+	SpinLock_lock(&ring->lock);
+	ring->cur = &ring->ring[0];
+	ring->curPos = 0, ring->cycBit = 1;
+	for (int i = 0; i < ring->size - 1; i++)
+		HW_USB_XHCI_writeQuad((u64)&ring->ring[0], 0),
+		HW_USB_XHCI_writeQuad((u64)&ring->ring[0] + 0x08, 0);
+	memset(ring->reqSrc, 0, sizeof(XHCI_Request *) * ring->size);
+	SpinLock_unlock(&ring->lock);
 }
 
 XHCI_Request *HW_USB_XHCI_Ring_release(XHCI_Ring *ring, int pos) {

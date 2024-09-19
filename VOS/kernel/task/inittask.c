@@ -31,6 +31,7 @@ void Task_keyboardEvent(void *arg1, u64 arg2) {
 void task_empty(void *arg1, u64 arg2) {
 	Task_kernelEntryHeader();
 	Task_current->priority = Task_Priority_Trapped;
+	Atomic_inc(&SMP_task0LaunchNum);
 	while (1) IO_hlt();
 	Task_kernelThreadExit(1);
 }
@@ -63,6 +64,7 @@ void usrInit(void *arg1, u64 arg2) {
 void task0(void *arg1, u64 arg2) {
 	Task_kernelEntryHeader();
 	printk(WHITE, BLACK, "task0 is running...\n");
+	Atomic_inc(&SMP_task0LaunchNum);
 	// launch keyboard task
 	TaskStruct *kbTask = Task_createTask(Task_keyboardEvent, NULL, 0, Task_Flag_Inner | Task_Flag_Kernel),
 				*recycTask = Task_createTask(Task_recycleThread, NULL, 0, Task_Flag_Kernel | Task_Flag_Inner);

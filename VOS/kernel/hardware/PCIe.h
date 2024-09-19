@@ -97,11 +97,17 @@ typedef struct PCIe_MSIXCapability {
 	u16 msgCtrl;
 	u32 dw1;
 	#define PCIe_MSIXCapability_bir(cap) ((cap)->dw1 & 0x7)
-	#define PCIe_MSIXCapability_tblOff(cap) ((cap)->dw1 & ~0x7u);
+	#define PCIe_MSIXCapability_tblOff(cap) ((cap)->dw1 & ~0x7u)
 	u32 dw2;
-	#define PCIe_MSIXCapability_pendingBir(cap) ((cap)->dw2 & 0x7);
+	#define PCIe_MSIXCapability_pendingBir(cap) ((cap)->dw2 & 0x7)
 	#define PCIe_MSIXCapability_pendingTblOff(cap) ((cap)->dw2 & ~0x7u)
 } __attribute__ ((packed)) PCIe_MSIXCapability;
+
+typedef struct PCIe_MSIX_Table {
+	u64 msgAddr;
+	u32 msgData;
+	u32 vecCtrl;
+} __attribute__ ((packed)) PCIe_MSIX_Table;
 
 typedef struct PCIe_MSI_Descriptor {
 	int cpuId, vec;
@@ -133,6 +139,14 @@ void HW_PCIe_MSI_unmaskIntr(PCIe_MSICapability *cap, int intrId);
 
 void HW_PCIe_MSI_setMsgAddr(PCIe_MSICapability *msi, u32 apicId, int redirect, int destMode);
 void HW_PCIe_MSI_setMsgData(PCIe_MSICapability *msi, u32 vec, u32 deliverMode, u32 level, u32 triggerMode);
+
+static __always_inline__ PCIe_MSIX_Table *HW_PCIe_MSIX_getTable(PCIeConfig *cfg, PCIe_MSIXCapability *cap) {
+	return DMAS_phys2Virt((*(u64 *)&cfg->type.type0.bar[PCIe_MSIXCapability_bir(cap)]) + PCIe_MSIXCapability_tblOff(cap));
+}
+void HW_PCIe_MSIX_setMsgAddr(PCIe_MSIX_Table *tbl, int intrId, u32 apicId, int redirect, int destMode);
+void HW_PCIe_MSIX_setMsgData(PCIe_MSIX_Table *tbl, int intrId, u32 vec, u32 deliverMode, u32 level, u32 triggerMode);
+void HW_PCIe_MSIX_maskIntr(PCIe_MSIX_Table *tbl, int intrId);
+void HW_PCIe_MSIX_unmaskIntr(PCIe_MSIX_Table *tbl, int intrId);
 
 
 #endif

@@ -154,6 +154,7 @@ typedef struct XHCI_Ring {
 	XHCI_GenerTRB *ring, *cur;
 	u32 curPos;
 	u32 cycBit;
+	u32 size;
 	XHCI_Request **reqSrc;
 } XHCI_Ring;
 
@@ -301,6 +302,7 @@ typedef struct XHCI_Host {
 	List listEle;
 	PCIeManager *pci;
 	PCIe_MSICapability *msiCapDesc;
+	PCIe_MSIXCapability *msixCapDesc;
 
 	// this address is the virtual address
 	u64 capRegAddr;

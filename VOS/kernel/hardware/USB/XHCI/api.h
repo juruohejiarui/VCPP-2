@@ -95,6 +95,9 @@ static __always_inline__ u32 HW_USB_XHCI_TRB_getSlot(XHCI_GenerTRB *trb) {
 static __always_inline__ u32 HW_USB_XHCI_TRB_setSlot(XHCI_GenerTRB *trb, u32 val) {
 	HW_USB_XHCI_writeDword((u64)&trb->ctrl, (HW_USB_XHCI_readDword((u64)&trb->ctrl) & 0xffffffu) | (val << 24));
 }
+static __always_inline__ void HW_USB_XHCI_TRB_setBSR(XHCI_GenerTRB *trb, u32 val) {
+	HW_USB_XHCI_writeDword((u64)&trb->ctrl, (HW_USB_XHCI_readDword((u64)&trb->ctrl) & ~(1u << 9)) | (val << 9));
+}
 static __always_inline__ int HW_USB_XHCI_TRB_getPos(XHCI_GenerTRB *trb) {
 	return ((u64)trb - ((u64)trb & ~0xfffful)) / sizeof(XHCI_GenerTRB);
 }
@@ -197,6 +200,8 @@ int HW_USB_XHCI_Ring_tryInsReq(XHCI_Ring *ring, XHCI_Request *req);
 
 // try to insert the request into the ring until successful.
 void HW_USB_XHCI_Ring_insReq(XHCI_Ring *ring, XHCI_Request *req);
+
+void HW_USB_XHCI_Ring_reset(XHCI_Ring *ring);
 
 // release the occurpancy from the request on POS and return the pointer of that request
 XHCI_Request *HW_USB_XHCI_Ring_release(XHCI_Ring *ring, int pos);

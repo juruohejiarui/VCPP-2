@@ -82,8 +82,6 @@ typedef struct SMP_CPUInfoPkg {
 	void *ipiMsg;
 } __attribute__ ((packed)) SMP_CPUInfoPkg;
 
-#define SMP_current (SMP_getCPUInfoPkg(SMP_getCurCPUIndex()))
-
 #define SMP_IPI_Type_Schedule	0xc8
 
 IntrHandlerDeclare(SMP_irq0xc8Handler);
@@ -92,7 +90,10 @@ extern u8 SMP_APUBootStart[];
 extern u8 SMP_APUBootEnd[];
 
 extern SMP_CPUInfoPkg SMP_cpuInfo[Hardware_CPUNumber];
-extern u32 SMP_cpuNum;
+extern int SMP_cpuNum;
+extern Atomic SMP_task0LaunchNum;
+
+#define SMP_current (SMP_getCPUInfoPkg(SMP_task0LaunchNum.value == SMP_cpuNum ? Task_current->cpuId : SMP_getCurCPUIndex()))
 
 void SMP_init();
 

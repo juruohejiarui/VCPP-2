@@ -10,11 +10,13 @@ SMP_CPUInfoPkg SMP_cpuInfo[Hardware_CPUNumber];
 u32 _cpuApicId[Hardware_CPUNumber];
 
 SpinLock _lock;
-u32 SMP_cpuNum, trIdxCnt;
+int SMP_cpuNum;
+u32 trIdxCnt;
+Atomic SMP_task0LaunchNum;
 
 static u32 _cvtId(u32 topoIdx) {
 	// SMP not enabled
-	if (!SMP_cpuNum) return 0;
+	if (SMP_cpuNum < 1) return 0;
 	int l = 0, r = SMP_cpuNum - 1;
 	while (l <= r) {
 		int mid = (l + r) >> 1, idx = SMP_cpuInfo[mid].apicID;
@@ -104,12 +106,15 @@ IntrHandlerDeclare(SMP_irq0xc8Handler) {
 }
 
 void SMP_init() {
+	IO_cli();
 	printk(RED, BLACK, "SMP_init()\n");
 	SpinLock_init(&_lock);
+	SMP_cpuNum = 0;
     trIdxCnt = 12;
 	// find the local processor list and register each of them.
 	int res = _parseMADT();
 	if (!res) { printk(RED, BLACK, "SMP: unable to get the processor map.\n"); return ; }
+	IO_sti();
 
 
     printk(WHITE, BLACK, "SMP: copy byte:%#010lx\n", (u64)&SMP_APUBootEnd - (u64)&SMP_APUBootStart);

@@ -12,6 +12,8 @@
 u8 Init_stack[32768] __attribute__((__section__ (".data.Init_stack") )) = { 0 };
 
 void startKernel() {
+	SMP_cpuNum = -1;
+	SMP_task0LaunchNum.value = 0;
     Intr_Gate_setTSS(
             tss64Table,
             (u64)(Init_stack + 32768), (u64)(Init_stack + 32768), (u64)(Init_stack + 32768), 0xffff800000007c00, 0xffff800000007c00,
@@ -19,7 +21,6 @@ void startKernel() {
 	Intr_Gate_loadTR(10);
     Intr_Trap_setSysVec();
 
-    SMP_cpuNum = 0;
 	memset(SMP_cpuInfo, 0, sizeof(SMP_cpuInfo));
     Task_cfsStruct.flags = 0;
  

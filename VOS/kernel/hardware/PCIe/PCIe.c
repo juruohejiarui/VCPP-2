@@ -16,7 +16,7 @@ static __always_inline__ u16 _getVendor(u64 addrBase, u8 bus, u8 slot, u8 func) 
 static __always_inline__ u8 _getHeaderType(u32 addrBase, u8 bus, u8 slot, u8 func) {
     return HW_PCIe_getDevPtr(addrBase, bus, slot, func)->headerType;
 }
-
+	
 void _chkBus(u64 addrBase, u8 bus);
 
 void _chkFunc(u64 addrBase, u8 bus, u8 slot, u8 func) {
@@ -152,9 +152,25 @@ void HW_PCIe_MSI_unmaskIntr(PCIe_MSICapability *cap, int intrId) {
     else cap->mask = 0;
 }
 void HW_PCIe_MSI_setMsgAddr(PCIe_MSICapability *msi, u32 apicId, int redirect, int destMode) {
-	msi->msgAddr = 0xfee00000u | (apicId << 12) | (redirect << 3) | (destMode << 1);
+	msi->msgAddr = 0xfee00000u | (apicId << 12) | (redirect << 3) | (destMode << 2);
 }
 
 void HW_PCIe_MSI_setMsgData(PCIe_MSICapability *msi, u32 vec, u32 deliverMode, u32 level, u32 triggerMode) {
 	msi->msgData = vec | (deliverMode << 8) | (level << 14) | (triggerMode << 15);
+}
+
+void HW_PCIe_MSIX_setMsgAddr(PCIe_MSIX_Table *tbl, int intrId, u32 apicId, int redirect, int destMode) {
+	tbl[intrId].msgAddr = 0xfee00000u | (apicId << 12) | (redirect << 3) | (destMode << 2);
+}
+
+void HW_PCIe_MSIX_setMsgData(PCIe_MSIX_Table *tbl, int intrId, u32 vec, u32 deliverMode, u32 level, u32 triggerMode) {
+	tbl[intrId].msgData = vec | (deliverMode << 8) | (level << 14) | (triggerMode << 15);
+}
+
+void HW_PCIe_MSIX_maskIntr(PCIe_MSIX_Table *tbl, int intrId) {
+	tbl[intrId].vecCtrl |= 1;
+}
+
+void HW_PCIe_MSIX_unmaskIntr(PCIe_MSIX_Table *tbl, int intrId) {
+	tbl[intrId].vecCtrl &= ~1u;
 }
