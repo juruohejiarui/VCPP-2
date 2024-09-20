@@ -326,6 +326,9 @@ typedef struct XHCI_Host {
 	SpinLock *eveLock, addr0Lock;
 
 	XHCI_Device **dev;
+
+	u64 flags;
+	#define XHCI_Host_Flag_Initialized	(1 << 0)
 } XHCI_Host;
 
 #define XHCI_CapReg_capLen 0x0

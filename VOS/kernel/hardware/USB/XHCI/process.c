@@ -199,7 +199,7 @@ void HW_USB_XHCI_init(PCIeManager *pci) {
 		eveRingTbl[(i << 1) + 0] = DMAS_virt2Phys(host->eveRing->rings[i]),
 		eveRingTbl[(i << 1) + 1] = XHCI_Ring_maxSize;
 	HW_USB_XHCI_writeIntrDword(host, 0, XHCI_IntrReg_IMan, (1 << 1) | (1 << 0) | (HW_USB_XHCI_readIntrDword(host, 0, XHCI_IntrReg_IMan) | ~0x3u));
-	HW_USB_XHCI_writeIntrDword(host, 0, XHCI_IntrReg_IMod, 0);
+	HW_USB_XHCI_writeIntrDword(host, 0, XHCI_IntrReg_IMod, 400); // set the interval to be 10 microseconds
 	HW_USB_XHCI_writeIntrDword(host, 0, XHCI_IntrReg_TblSize, 4 | (HW_USB_XHCI_readIntrDword(host, 0, XHCI_IntrReg_TblSize) & ~0xffffu));
 	HW_USB_XHCI_writeIntrQuad(host, 0, XHCI_IntrReg_DeqPtr, 
 		DMAS_virt2Phys(&host->eveRing->rings[host->eveRing->curRingId][host->eveRing->curPos]) | (1ul << 3));
@@ -285,6 +285,8 @@ void HW_USB_XHCI_init(PCIeManager *pci) {
 	// restart the host
 	HW_USB_XHCI_writeOpReg(host, XHCI_OpReg_cmd, (1 << 0) | (1 << 2) | (1 << 3));
 
+	host->flags |= XHCI_Host_Flag_Initialized;
+	
 	printk(WHITE, BLACK, "XHCI: %#018lx: finish initialization. host cmd:%#010x state:%#010x\n", 
 			host, HW_USB_XHCI_readOpReg(host, XHCI_OpReg_cmd), HW_USB_XHCI_readOpReg(host, XHCI_OpReg_status));
 }
@@ -329,6 +331,8 @@ void HW_USB_XHCI_portDisconnect(XHCI_Host *host, int portId) {
 
 void HW_USB_XHCI_evehandleTask(XHCI_Host *host, u64 intrMap) {
 	Task_kernelEntryHeader();
+	while (!(host->flags & XHCI_Host_Flag_Initialized))
+			IO_hlt();
 	while (1) {
 		for (int i = 0; i < HW_USB_XHCI_maxIntr(host); i++) {
 			if (!(intrMap & (1ul << i))) continue;
