@@ -34,6 +34,11 @@ static __always_inline__ void HW_USB_XHCI_writeDword(u64 addr, u32 val) {
 void HW_USB_XHCI_writeWord(u64 addr, u16 val);
 void HW_USB_XHCI_writeByte(u64 addr, u8 val);
 
+static __always_inline__ u32 HW_USB_XHCI_EpDesc_epId(XHCI_EpDesc *epDesc) {
+	return ((epDesc->bEpAddr & 0xf) << 1) + (epDesc->bEpAddr >> 7) - 1;
+}
+
+
 static __always_inline__ u32 HW_USB_XHCI_TRB_getType(XHCI_GenerTRB *trb) {
 	return (HW_USB_XHCI_readDword((u64)&trb->ctrl) >> 10) & ((1 << 6) - 1);
 }

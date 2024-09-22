@@ -200,6 +200,7 @@ void *kmalloc(u64 size, u64 arg, void (*destructor)(void *)) {
 		
 		// finally calculate the address
 		u64 addr = (u64)slab->virtAddr + j * Slab_kmallocCache[id].size;
+		// printk(WHITE, BLACK, "size=%d: %#018lx + %d*%#018x=%#018lx\n", size, slab->virtAddr, j, Slab_kmallocCache[id].size, addr);
 		if (!(arg & Slab_Flag_Inner)) SpinLock_unlock(&_SlabLocker);
         IO_maskIntrSuffix
 		// clear the memory block to 0 if needed

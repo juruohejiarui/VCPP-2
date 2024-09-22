@@ -296,7 +296,7 @@ typedef struct XHCI_PortInfo {
 #define XHCI_Port_Speed_High	3 // USB 2.0
 #define XHCI_Port_Speed_Super	4 // USB 3.0
 
-#define XHCI_EveHandleTaskNum	0x1
+#define XHCI_EveHandleTaskNum	0x4
 
 typedef struct XHCI_Host {
 	List listEle;

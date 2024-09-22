@@ -259,8 +259,8 @@ USB_HID_ParseHelper *HW_USB_HID_genParseHelper(u8 *rep, u64 len) {
 		idx += 1 + itemLen;
 	}
 	helper->id = curDtState.id;
-	printk(WHITE, BLACK, "HID parse helper: %#018lx: reportId:%d type:%d inSz:%d outSz:%d\n", helper, helper->id, helper->type, helper->inSz, helper->outSz);
 	SpinLock_unlock(&_lock);
+	printk(WHITE, BLACK, "HID parse helper: %#018lx: reportId:%d type:%d inSz:%d outSz:%d\n", helper, helper->id, helper->type, helper->inSz, helper->outSz);
 	return helper;
 }
 

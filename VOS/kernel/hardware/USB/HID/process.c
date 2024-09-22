@@ -115,7 +115,7 @@ void HW_USB_HID_processKeyboard(XHCI_Device *dev, XHCI_InterDesc *inter, USB_HID
 
 	HW_USB_XHCI_TRB_setData(&req0->trb[0], DMAS_virt2Phys(repRaw));
 	HW_USB_XHCI_TRB_setType(&req0->trb[0], XHCI_TRB_Type_Normal);
-	HW_USB_XHCI_TRB_setCtrlBit(&req0->trb[0], XHCI_TRB_Ctrl_ioc | XHCI_TRB_Ctrl_isp);
+	HW_USB_XHCI_TRB_setCtrlBit(&req0->trb[0], XHCI_TRB_Ctrl_ioc);
 
 	repRaw[0] = (1 << 4);
 	// set SET_REPORT to enable default led
@@ -173,12 +173,16 @@ void HW_USB_HID_process(XHCI_Device *dev) {
 			Slab_Flag_Private | Slab_Flag_Clear, NULL),
 		*bstInter = NULL;
 
-	int curInter = 0, curEp = 0;
+	int curInter = 0, curEp = 0, hasCtrlEp = 0;
 	dev->inCtx->ctrl.addFlags = 1;
 	// set up endpoints for all endpoints (doge)
 	for (XHCI_DescHdr *hdr = &dev->cfgDesc[0]->hdr; hdr; hdr = HW_USB_XHCI_Desc_nxtCfgItem(dev->cfgDesc[0], hdr)) {
 		switch (hdr->type) {
-			case XHCI_Descriptor_Type_Cfg: continue;
+			case XHCI_Descriptor_Type_Cfg: {
+				XHCI_CfgDesc *cfg = container(hdr, XHCI_CfgDesc, hdr);
+				printk(WHITE, BLACK, "dev %#018lx: cfg %d: attr:%02x mxPw:%02x numInter:%d\n", dev, cfg->bCfgVal, cfg->bmAttr, cfg->bMxPw, cfg->bNumInter);
+				continue;
+			}
 			case XHCI_Descriptor_Type_Inter: {
 				XHCI_InterDesc *inter = container(hdr, XHCI_InterDesc, hdr);
 				curInter = inter->bInterNum;
@@ -187,7 +191,8 @@ void HW_USB_HID_process(XHCI_Device *dev) {
 				inters[curInter].eps = kmalloc(sizeof(XHCI_EpDesc *) * sizeof(inter->bNumEp),
 						Slab_Flag_Private | Slab_Flag_Clear, NULL);
 				printk(WHITE, BLACK, "dev %#018lx: inter %d epNum:%d alter:%d class:%d subClass:%d proto:%d\n",
-						dev, inter->bInterNum, inter->bNumEp, inter->bInterClass, inter->bInterSubClass, inter->bInterProto);
+						dev, inter->bInterNum, inter->bNumEp, inter->bAlterSet, inter->bInterClass, inter->bInterSubClass, inter->bInterProto);
+				hasCtrlEp = 0;
 				break;
 			}
 			case XHCI_Descriptor_Type_HID:
@@ -197,39 +202,38 @@ void HW_USB_HID_process(XHCI_Device *dev) {
 				break;
 		}
 		XHCI_EpDesc *epDesc = container(hdr, XHCI_EpDesc, hdr);
-		int epId = ((epDesc->bEpAddr & 0xf) << 1) + (epDesc->bEpAddr >> 7) - 1,
+		int epId = HW_USB_XHCI_EpDesc_epId(epDesc),
 			epType = (epDesc->bmAttr & 0x3) | ((epDesc->bEpAddr >> 5) & 0x4);
-		if ((dev->inCtx->ctrl.addFlags & (1 << (epId + 1))) || (epType & 3) != 0x3) continue;
-		XHCI_EpCtx *ep = &dev->inCtx->ep[epId];
-		memset(ep, 0, sizeof(XHCI_EpCtx));
 
 		printk(WHITE, BLACK, "dev %#018lx:\tepId:%d epType:%d mxPackSz:%d mxBurstSize:%d interval:%d\n", 
 				dev, epId, epType, epDesc->wMxPackSz & 0x07ff, (epDesc->wMxPackSz & 0x1800) >> 11, epDesc->interval);
+		
+		// only focus on interrupt in endpoint
+		if (epType == 0x7) {
+			if (dev->inCtx->ctrl.addFlags & (1 << (epId + 1))) continue;
+			XHCI_EpCtx *ep = &dev->inCtx->ep[epId];
+			memset(ep, 0, sizeof(XHCI_EpCtx));
 
-		HW_USB_XHCI_writeCtx(&dev->inCtx->slot, 0, XHCI_SlotCtx_ctxEntries, 
-			max(HW_USB_XHCI_readCtx(&dev->inCtx->slot, 0, XHCI_SlotCtx_ctxEntries), epId + 1));
+			HW_USB_XHCI_writeCtx(&dev->inCtx->slot, 0, XHCI_SlotCtx_ctxEntries, 
+				max(HW_USB_XHCI_readCtx(&dev->inCtx->slot, 0, XHCI_SlotCtx_ctxEntries), epId + 1));
 
-		HW_USB_XHCI_writeCtx(ep, 0, XHCI_EpCtx_interval,	epDesc->interval);
-		HW_USB_XHCI_writeCtx(ep, 1, XHCI_EpCtx_epType, 		epType);
-		HW_USB_XHCI_writeCtx(ep, 1, XHCI_EpCtx_CErr, 		3);
-		HW_USB_XHCI_writeCtx(ep, 1, XHCI_EpCtx_mxPackSize, 	epDesc->wMxPackSz & 0x07ff);
-		HW_USB_XHCI_writeCtx(ep, 1, XHCI_EpCtx_mxBurstSize,	(epDesc->wMxPackSz & 0x1800) >> 11);
+			HW_USB_XHCI_writeCtx(ep, 0, XHCI_EpCtx_interval,	epDesc->interval);
+			HW_USB_XHCI_writeCtx(ep, 1, XHCI_EpCtx_epType, 		epType);
+			HW_USB_XHCI_writeCtx(ep, 1, XHCI_EpCtx_CErr, 		3);
+			HW_USB_XHCI_writeCtx(ep, 1, XHCI_EpCtx_mxPackSize, 	epDesc->wMxPackSz & 0x07ff);
+			HW_USB_XHCI_writeCtx(ep, 1, XHCI_EpCtx_mxBurstSize,	(epDesc->wMxPackSz & 0x1800) >> 11);
 
-		dev->trRing[epId] = HW_USB_XHCI_allocRing(XHCI_Ring_maxSize);
-		XHCI_GenerTRB *lk = &dev->trRing[epId]->ring[XHCI_Ring_maxSize - 1];
-		HW_USB_XHCI_TRB_setData(lk, DMAS_virt2Phys(&dev->trRing[epId]->ring[0]));
-		HW_USB_XHCI_TRB_setType(lk, XHCI_TRB_Type_Link);
-		HW_USB_XHCI_TRB_setToggle(lk, 1);
-		ep->deqPtr = DMAS_virt2Phys(dev->trRing[epId]->cur) | 1;
+			dev->trRing[epId] = HW_USB_XHCI_allocRing(XHCI_Ring_maxSize);
+			ep->deqPtr = DMAS_virt2Phys(dev->trRing[epId]->cur) | 1;
 
-		HW_USB_XHCI_writeCtx(ep, 4, XHCI_EpCtx_aveTrbLen, (epType & 0x3 == 3 ? (1 << 10) : 8));
+			HW_USB_XHCI_writeCtx(ep, 4, XHCI_EpCtx_aveTrbLen, (epType & 0x3 == 3 ? (1 << 10) : 8));
 
-		HW_USB_XHCI_EpCtx_writeMxESITPay(ep, 
-			HW_USB_XHCI_readCtx(ep, 1, XHCI_EpCtx_mxPackSize) * (HW_USB_XHCI_readCtx(ep, 1, XHCI_EpCtx_mxBurstSize) + 1));
+			HW_USB_XHCI_EpCtx_writeMxESITPay(ep, 
+				HW_USB_XHCI_readCtx(ep, 1, XHCI_EpCtx_mxPackSize) * (HW_USB_XHCI_readCtx(ep, 1, XHCI_EpCtx_mxBurstSize) + 1));
 
-		dev->inCtx->ctrl.addFlags |= (1u << (epId + 1));
-
-		inters[curInter].eps[curEp++] = epDesc;
+			dev->inCtx->ctrl.addFlags |= (1u << (epId + 1));
+			inters[curInter].eps[curEp++] = epDesc;
+		}
 	}
 	// modify the endpoint using "Configure Endpoint Command"
 	req0 = HW_USB_XHCI_allocReq(1);
@@ -269,6 +273,7 @@ void HW_USB_HID_process(XHCI_Device *dev) {
 				while (1) IO_hlt();
 			}
 		}
+		// set SET_IDLE
 		HW_USB_XHCI_TRB_setData(&req1->trb[0], HW_USB_XHCI_TRB_mkSetup(0x21, 0x0a, 0x0000, inters[i].desc->bInterNum, 0));
 		HW_USB_XHCI_Ring_insReq(dev->trRing[0], req1);
 		if (HW_USB_XHCI_Req_ringDbWait(dev->host, dev->slotId, 1, 0, req1) != XHCI_TRB_CmplCode_Succ) {
@@ -294,10 +299,29 @@ void HW_USB_HID_process(XHCI_Device *dev) {
 		printk(RED, BLACK, "dev %#018lx: unsupported HID device\n", dev);
 		while (1) IO_hlt();
 	}
+	// for unused endpoint, also place a normal TRB.
+	for (int i = 0; i < dev->cfgDesc[0]->bNumInter; i++) {
+		if (bstInter == &inters[i]) continue;
+		for (int j = 0; j < bstInter->desc->bNumEp; j++) {
+			if (!inters[i].eps[j]) continue;
+			int epId = HW_USB_XHCI_EpDesc_epId(inters[i].eps[j]);
+			if (!(epId & 1) && epId > 0) {
+				XHCI_Request *req = HW_USB_XHCI_allocReq(1);
+				u64 *repRaw = kmalloc(inters[i].helper->inSz / 8, Slab_Flag_Private, NULL);
+				HW_USB_XHCI_TRB_setData(&req->trb[0], DMAS_virt2Phys(repRaw));
+				HW_USB_XHCI_TRB_setStatus(&req->trb[0], HW_USB_XHCI_TRB_mkStatus(inters[i].helper->inSz / 8, 0, 0));
+				HW_USB_XHCI_TRB_setType(&req->trb[0], XHCI_TRB_Type_Normal);
+				HW_USB_XHCI_TRB_setCtrlBit(&req->trb[0], XHCI_TRB_Ctrl_ioc);
+				HW_USB_XHCI_Ring_insReq(dev->trRing[epId], req);
+				HW_USB_XHCI_writeDbReg(dev->host, dev->slotId, epId + 1, 0);
+			}
+		}
+	}
 	// get the input endpoint id and output endpoint id
 	int inEpId = 0, outEpId = -1, inInterval = 0;
 	for (int i = 0; i < bstInter->desc->bNumEp; i++) {
-		int epId = ((bstInter->eps[i]->bEpAddr & 0xf) << 1) + (bstInter->eps[i]->bEpAddr >> 7) - 1;
+		if (!bstInter->eps[i]) continue;
+		int epId = HW_USB_XHCI_EpDesc_epId(bstInter->eps[i]);
 		if (epId & 1) outEpId = epId;
 		else inEpId = epId, inInterval = bstInter->eps[i]->interval;
 	}

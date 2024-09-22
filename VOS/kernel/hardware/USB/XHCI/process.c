@@ -75,11 +75,24 @@ void HW_USB_XHCI_init(PCIeManager *pci) {
 	printk(WHITE, BLACK, "\tcapReg:%#018lx opReg:%#018lx rtReg:%#018lx dbReg:%#018lx msi:%#018lx msix:%#018lx\n", 
 		host->capRegAddr, host->opRegAddr, host->rtRegAddr, host->dbRegAddr,
 		host->msiCapDesc, host->msixCapDesc);
+
+	// check if the host controller support neccessary feature
 	if (!(HW_USB_XHCI_readOpReg(host, XHCI_OpReg_pgSize) & 0x1)) {
 		printk(RED, BLACK, "XHCI: %#018lx: no support for 4K page\n", host);
 		kfree(host, 0);
 		return ;
 	}
+	if (!(HW_USB_XHCI_CapReg_hccParam(host, 1) & 1)) {
+		printk(RED, BLACK, "XHCI: %#018lx: no support for 64-bit address\n", host);
+		kfree(host, 0);
+		return ;
+	}
+	if (HW_USB_XHCI_CapReg_hccParam(host, 1) & (1 << 2)) {
+		printk(RED, BLACK, "XHCI: %#018lx: invalid context size: 64 bits=8 bytes\n", host);
+		kfree(host, 0);
+		return ;
+	}
+
 	// stop the host
 	HW_USB_XHCI_writeOpReg(host, XHCI_OpReg_cmd, HW_USB_XHCI_readOpReg(host, XHCI_OpReg_cmd) & ~1u);
 	int timeout = 30;
@@ -119,7 +132,7 @@ void HW_USB_XHCI_init(PCIeManager *pci) {
 		dcbaa[0] = DMAS_virt2Phys(scrArray);
 	}
 	// allocate device context and set dcbaa items
-	host->devCtx = kmalloc(sizeof(XHCI_DevCtx *) * (HW_USB_XHCI_maxSlot(host) + 1), Slab_Flag_Clear, NULL);
+	host->devCtx = kmalloc(max(64, sizeof(XHCI_DevCtx *) * (HW_USB_XHCI_maxSlot(host) + 1)), Slab_Flag_Clear, NULL);
 	host->devCtx[0] = (XHCI_DevCtx *)DMAS_phys2Virt(dcbaa[0]);
 	for (int i = HW_USB_XHCI_maxSlot(host); i > 0; i--) {
 		host->devCtx[i] = kmalloc(sizeof(XHCI_DevCtx), Slab_Flag_Clear, NULL);
@@ -199,7 +212,7 @@ void HW_USB_XHCI_init(PCIeManager *pci) {
 		eveRingTbl[(i << 1) + 0] = DMAS_virt2Phys(host->eveRing->rings[i]),
 		eveRingTbl[(i << 1) + 1] = XHCI_Ring_maxSize;
 	HW_USB_XHCI_writeIntrDword(host, 0, XHCI_IntrReg_IMan, (1 << 1) | (1 << 0) | (HW_USB_XHCI_readIntrDword(host, 0, XHCI_IntrReg_IMan) | ~0x3u));
-	HW_USB_XHCI_writeIntrDword(host, 0, XHCI_IntrReg_IMod, 400); // set the interval to be 10 microseconds
+	HW_USB_XHCI_writeIntrDword(host, 0, XHCI_IntrReg_IMod, 0); // set the interval to be 0 microseconds
 	HW_USB_XHCI_writeIntrDword(host, 0, XHCI_IntrReg_TblSize, 4 | (HW_USB_XHCI_readIntrDword(host, 0, XHCI_IntrReg_TblSize) & ~0xffffu));
 	HW_USB_XHCI_writeIntrQuad(host, 0, XHCI_IntrReg_DeqPtr, 
 		DMAS_virt2Phys(&host->eveRing->rings[host->eveRing->curRingId][host->eveRing->curPos]) | (1ul << 3));
@@ -260,7 +273,7 @@ void HW_USB_XHCI_init(PCIeManager *pci) {
 		host->eveQue[i] = kmalloc(sizeof(XHCI_GenerTRB) * XHCI_Host_EveQueSize, Slab_Flag_Clear, NULL);
 		SpinLock_init(&host->eveLock[i]);
 	}
-	int evePreTask = HW_USB_XHCI_maxIntr(host) / XHCI_EveHandleTaskNum;
+	int evePreTask = upAlignTo(HW_USB_XHCI_maxIntr(host), XHCI_EveHandleTaskNum) / XHCI_EveHandleTaskNum;
 	for (int i = 0; i < XHCI_EveHandleTaskNum; i++)
 		host->eveHandlerTask[i] = Task_createTask((Task_Entry)HW_USB_XHCI_evehandleTask, 
 			host, ((1ul << evePreTask) - 1) << (evePreTask * i), Task_Flag_Kernel | Task_Flag_Inner);
@@ -333,9 +346,11 @@ void HW_USB_XHCI_evehandleTask(XHCI_Host *host, u64 intrMap) {
 	Task_kernelEntryHeader();
 	while (!(host->flags & XHCI_Host_Flag_Initialized))
 			IO_hlt();
+	int fir = Bit_ffs(intrMap) - 1;
+
 	while (1) {
-		for (int i = 0; i < HW_USB_XHCI_maxIntr(host); i++) {
-			if (!(intrMap & (1ul << i))) continue;
+		for (int i = fir; i < HW_USB_XHCI_maxIntr(host); i++) {
+			if (!(intrMap & (1ul << i))) break;
 			for (XHCI_GenerTRB *evePtr = _getEvePtr(host, i); evePtr; evePtr = _getEvePtr(host, i)) {
 				switch (HW_USB_XHCI_TRB_getType(evePtr)) {
 					case XHCI_TRB_Type_PortStChg : {
@@ -444,10 +459,6 @@ void HW_USB_XHCI_devMgrTask(XHCI_Device *dev, u64 rootPort) {
 
 
 			dev->trRing[0] = HW_USB_XHCI_allocRing(XHCI_Ring_maxSize);
-			XHCI_GenerTRB *lk = &dev->trRing[0]->ring[XHCI_Ring_maxSize - 1];
-			HW_USB_XHCI_TRB_setType(lk, XHCI_TRB_Type_Link);
-			HW_USB_XHCI_TRB_setToggle(lk, 1);
-			HW_USB_XHCI_TRB_setData(lk, DMAS_virt2Phys(&dev->trRing[0]->ring[0]));
 
 			HW_USB_XHCI_writeQuad((u64)&ep0->deqPtr, DMAS_virt2Phys(dev->trRing[0]->cur));
 			HW_USB_XHCI_writeCtx(ep0, 2, XHCI_EpCtx_dcs, 1);

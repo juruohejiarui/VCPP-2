@@ -84,6 +84,12 @@ XHCI_Ring *HW_USB_XHCI_allocRing(u64 size) {
 	ring->cur = ring->ring;
 	ring->cycBit = 1;
 	ring->size = size;
+
+	// make a link TRB at the end and point to the first TRB
+	XHCI_GenerTRB *lk = &ring->ring[size - 1];
+	HW_USB_XHCI_TRB_setData(lk, DMAS_virt2Phys(&ring->ring[0]));
+	HW_USB_XHCI_TRB_setType(lk, XHCI_TRB_Type_Link);
+	HW_USB_XHCI_TRB_setToggle(lk, 1);
 	SpinLock_init(&ring->lock);
 	return ring;
 }
