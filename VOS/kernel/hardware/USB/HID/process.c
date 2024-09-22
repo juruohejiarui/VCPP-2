@@ -197,8 +197,8 @@ void HW_USB_HID_process(XHCI_Device *dev) {
 			}
 			case XHCI_Descriptor_Type_HID:
 				inters[curInter].hidDesc = container(hdr, USB_HidDesc, hdr);
-				printk(WHITE, BLACK, "dev %#018lx: hidDesc %#018lx for interface %d\n",
-						dev, inters[curInter].hidDesc, curInter);
+				printk(WHITE, BLACK, "dev %#018lx: hidDesc: numDesc:%d descLen:%d descType:%d\n",
+						dev, inters[curInter].hidDesc->bNumDesc, inters[curInter].hidDesc->wDescLen, inters[curInter].hidDesc->bDescType);
 				break;
 		}
 		XHCI_EpDesc *epDesc = container(hdr, XHCI_EpDesc, hdr);
