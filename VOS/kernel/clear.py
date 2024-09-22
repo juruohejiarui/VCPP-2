@@ -22,7 +22,6 @@ def scanDir(path : str) :
 		cmd += " "
 	if cmd != "rm ":
 		os.system(cmd)
-		print(cmd)
 
 if __name__ == "__main__" :
 	scanDir("./") 
